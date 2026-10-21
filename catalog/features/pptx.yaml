@@ -1826,8 +1826,11 @@ areas:
         office: >-
           Measured: zero is included unless all values lie in the top sixth of their maximum; the maximum gets
           5 % headroom; with a fixed maximum and an automatic minimum the ticks count down from the maximum
-          (700000 over data down to -479325: -700000 … 700000); the major unit is the smallest 1-2-5 step giving at most ten intervals, each at least
-          1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 ("m/d/yyyy")
+          (700000 over data down to -479325: -700000 … 700000); the major unit is the smallest 1-2-5 step giving at
+          most ten intervals: on a vertical axis as many as leave room for two labels more in the plot area's outer
+          box (the chart less its title, legend and 11 pt edges, before the axis labels, less 0.2 pt), each label a
+          single line of its font high (measured in Word, docx chart.axes; local/catwrap-horizontal 95.6 → 96.5 %), in
+          a plot area placed by hand each at least 1.1 line heights tall; 100 % stacked axes are exactly 0 to 100 %. Built-in format 14 ("m/d/yyyy")
           shows the locale's short date. Numbers and dates take the system's regional format, not the chart's
           language (c:lang; measured: an en-US chart shows 2,5 on a German system); the converter takes it as an
           option, the current culture by default. Category labels that do not fit their slots wrap at the slot's

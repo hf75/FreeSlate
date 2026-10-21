@@ -1691,7 +1691,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             // where the plot area is placed by hand (measured: bar charts with category labels of a third or half the
             // chart's width; LibreOffice's tdf48041).
             foreach (var layout in axes.Where(a => a.Axis.IsValue))
-                ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H, layout.Axis.Horizontal && ex == null ? outer.W : null);
+                ScaleValueAxis(layout, layout.Axis.Horizontal ? plot.W : plot.H,
+                    layout.Axis.Horizontal && ex == null ? outer.W : ex == null && inner == null ? outer.H : null);
             if (inner != null)
             {
                 // A plot area placed by hand still turns category labels that do not fit (measured: −45° in a
@@ -2279,6 +2280,25 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     static double LevelColumn(TextStyle style) => (LevelGap + 1) * LineHeight(style) + LevelPad;
 
+    /// <summary>
+    /// Office divides a vertical value axis by the plot area's outer box, the chart less its title, legend and 11 pt
+    /// edges before the axis labels take their room, less this: into as many intervals as leave room for two labels
+    /// more, each a single line of the labels' font high (measured with Word's docx/local/cvm-*: a column chart 60 to
+    /// 280 pt high with value labels of 8 to 24 pt Calibri, 12 pt Arial and Times New Roman, 371 of 379 counts in steps
+    /// of 2 pt, the rest charts of 8 pt labels under 80 pt, which Word lays out otherwise; cvq-*: a title or a legend
+    /// at the bottom shortens the box by their room, category labels of 20 pt and a value axis title not; the outer box
+    /// less 22.0 to 22.34 pt fits all; LibreOffice's extras-ooxmlexport/chart-in-footer: 0, 5, 10 in a chart 77 pt
+    /// high; PowerPoint's corpus decks alike, local/catwrap-horizontal 95.6 → 96.5 %).
+    /// </summary>
+    const double ValueAxisSlack = 0.2;
+
+    /// <summary>A single line of the style's font as Word sets it (hhea ascender, descender and line gap).</summary>
+    static double SingleLineHeight(TextStyle style)
+    {
+        var (above, below) = FreeSlate.Docx.Layout.WordFonts.LineMetrics(style.Font.Data, style.Size);
+        return Math.Max(1, above + below);
+    }
+
     /// <summary>Labels "next to" an axis that crosses inside the plot area are drawn there and take no room at the edge.</summary>
     static bool LabelsInside(AxisLayout layout, List<AxisLayout> axes)
     {
@@ -2293,7 +2313,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     }
 
     /// <param name="length">The axis's length in the plot area.</param>
-    /// <param name="divided">The length the axis divides into intervals where that is not its own.</param>
+    /// <param name="divided">
+    /// The length the axis divides into intervals where that is not its own: a horizontal axis's plot area width before
+    /// the labels beside it take their room; a vertical axis's outer plot area height (see <see cref="ValueAxisSlack"/>).
+    /// </param>
     /// <param name="interval">The least length of an interval where it is not the axis's own rule.</param>
     void ScaleValueAxis(AxisLayout layout, double length, double? divided = null, double? interval = null)
     {
@@ -2312,14 +2335,17 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         if (double.IsInfinity(min)) (min, max) = (0, 1);
 
         var style = layout.Style;
-        // At most ten intervals, each at least 1.1 line heights tall (vertical axes) or four font sizes wide, however
-        // wide the labels are (horizontal axes; measured: bar and scatter charts 150 to 900 pt wide with 9 and 12 pt
-        // labels, which overlap where they are wider). Office 2016 charts keep one label wide plus three font sizes.
+        // At most ten intervals: on a vertical axis by its outer plot area (see ValueAxisSlack), in a plot area placed by
+        // hand each at least 1.1 line heights tall; on a horizontal axis each four font sizes wide, however wide the
+        // labels are (measured: bar and scatter charts 150 to 900 pt wide with 9 and 12 pt labels, which overlap where
+        // they are wider). Office 2016 charts keep one label wide plus three font sizes.
         var extent = interval is { } least ? least
             : !layout.Axis.Horizontal ? LineHeight(style) * 1.1
             : ex == null ? 4 * style.Size
             : Math.Max(Width(NumberFormat.Format(max, Format(layout), culture), style), Width(NumberFormat.Format(min, Format(layout), culture), style)) + 3 * style.Size;
-        var maxIntervals = Math.Clamp((int)Math.Floor((divided ?? length) / Math.Max(1, extent)), 1, 10);
+        var maxIntervals = !layout.Axis.Horizontal && divided is { } outerHeight && interval == null
+            ? Math.Clamp((int)Math.Floor((outerHeight - ValueAxisSlack) / SingleLineHeight(style)) - 2, 1, 10)
+            : Math.Clamp((int)Math.Floor((divided ?? length) / Math.Max(1, extent)), 1, 10);
         // Histograms of Office 2016 charts end at the first major unit past their largest bin (measured: 24 on 0 … 25),
         // radar charts at the first one from their largest value (measured: 7.9 on 0 … 8, 9.6 on 0 … 10).
         var headroom = ex?.Layout != "clusteredColumn" && !layout.Groups.Any(g => g.IsRadar);
