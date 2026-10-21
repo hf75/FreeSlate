@@ -37,6 +37,12 @@ public static class TextWarp
     /// <summary>A warp of VML WordArt whose text path trims its text to the ink (v:textpath trim): its lines aligned by their ink.</summary>
     public static readonly XName Trimmed = XNamespace.Get("urn:freeslate:warp") + "trim";
 
+    /// <summary>
+    /// A warp of Word's VML WordArt (v:textpath): along paths its glyphs stand at their advances' middles, each line's
+    /// baseline half an em less the font's GDI descent inside the path (see FollowPath).
+    /// </summary>
+    public static readonly XName TextPath = XNamespace.Get("urn:freeslate:warp") + "textpath";
+
     /// <summary>An effect list of a VML WordArt shape on its glyphs (a:effectLst): sized as the shape's, not with its text.</summary>
     public static readonly XName ShapeEffects = XNamespace.Get("urn:freeslate:warp") + "shape";
 
@@ -45,8 +51,14 @@ public static class TextWarp
         warp.Element(OwnPaths) is { } own ? GeometryDefinition.Parse(own)
         : (string?)warp.Attribute("prst") is { } preset ? Definition(preset) : null;
 
-    /// <summary>A glyph outline as closed contours in pixels, with the line it belongs to and that line's baseline.</summary>
-    public sealed record Glyph(List<List<(double X, double Y)>> Contours, int Line, double Baseline);
+    /// <summary>
+    /// A glyph outline as closed contours in pixels, with the line it belongs to and that line's baseline; along a path
+    /// placed by the middle of its advance across (pixels) where it has one, else by its ink's.
+    /// </summary>
+    public sealed record Glyph(List<List<(double X, double Y)>> Contours, int Line, double Baseline)
+    {
+        public double? Middle { get; init; }
+    }
 
     /// <summary>
     /// A laid-out line (pixels): its baseline, how far below a single path that baseline lies when the line is the one
@@ -173,6 +185,11 @@ public static class TextWarp
     /// drop below the path (0.79 em under the top of its line box). Each line starts at its parallel's start or as
     /// aligned, insets not counted; glyphs stay rigid at their size, all lines shrunk alike when the longest is longer
     /// than the path's reach, and old WordArt (fromWordArt) scales all lines alike, so that the longest fills the path.
+    /// Word's VML WordArt places its glyphs by their advances' middles, its baseline's drop half an em less the font's
+    /// GDI descent (measured with docx/local/vwa-arch*, vwb-*: "WORD-ART" and "HOH" along arches of 286.45 by 134.8,
+    /// 200 by 200 and 400 by 100 pt in ten fonts, the kerned text filling the half ellipse, each glyph turned to the
+    /// path at its advance's middle, which lies on the path's length as on the line; baselines 0.190 em inside in Arial
+    /// Black, 0.288 in Arial, 0.231 in Calibri, 0.200 in Courier New, 0.249 in Segoe UI: 0.5 less usWinDescent).
     /// </summary>
     static void FollowPath(Polyline path, (double L, double T, double W, double H) box, IReadOnlyList<Glyph> glyphs,
         List<List<List<(double X, double Y)>>> result, IReadOnlyList<Line> lines, bool fromWordArt,
@@ -217,7 +234,7 @@ public static class TextWarp
             foreach (var i in members)
             {
                 var (glyphLeft, _, glyphRight, _) = Bounds(glyphs[i].Contours);
-                var middle = (glyphLeft + glyphRight) / 2;
+                var middle = glyphs[i].Middle ?? (glyphLeft + glyphRight) / 2;
                 var (p, tangent) = parallel.AtDistance(start + (middle - lineStart) * scale);
                 foreach (var contour in result[i])
                 {

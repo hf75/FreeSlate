@@ -699,7 +699,8 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         shape.Add(new XElement(Ns.P + "txBody",
             new XElement(Ns.A + "bodyPr", new XAttribute("wrap", "none"), new XAttribute("lIns", 0), new XAttribute("tIns", 0), new XAttribute("rIns", 0), new XAttribute("bIns", 0),
                 new XAttribute("anchor", "ctr"), new XAttribute("fromWordArt", 1),
-                new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", warp), art.Attribute("trim") != null ? new XAttribute(Pptx.TextWarp.Trimmed, 1) : null,
+                new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", warp), new XAttribute(Pptx.TextWarp.TextPath, 1),
+                    art.Attribute("trim") != null ? new XAttribute(Pptx.TextWarp.Trimmed, 1) : null,
                     new XElement(Ns.A + "avLst", guides), art.Element(Pptx.TextWarp.OwnPaths))),
             lines.Select(line => new XElement(Ns.A + "p", new XElement(Ns.A + "pPr", new XAttribute("algn", "ctr"), pitch),
                 line.Length == 0
@@ -724,9 +725,9 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         (FreeSlate.Fonts.FontLocator.Default.IsInstalled(family) ? FreeSlate.Text.FontResolver.Default.TryResolveFamily(family, bold, italic) : null)
         ?? FreeSlate.Text.FontResolver.Default.Resolve("Arial", bold, italic);
 
-    /// <summary>Whether VML WordArt's text path style kerns its text (v-text-kern:t).</summary>
-    static bool Kerned(string? style) => (style ?? "").Split(';').Any(part => part.Split(':') is [var name, var value]
-        && name.Trim().Equals("v-text-kern", StringComparison.OrdinalIgnoreCase) && value.Trim() is "t" or "true");
+    /// <summary>Whether VML WordArt's text path style kerns its text (v-text-kern:t, its last).</summary>
+    static bool Kerned(string? style) => (style ?? "").Split(';').LastOrDefault(part => part.Split(':') is [var name, _]
+        && name.Trim().Equals("v-text-kern", StringComparison.OrdinalIgnoreCase))?.Split(':')[1].Trim() is "t" or "true";
 
     /// <summary>The font of VML WordArt's text path style (font-family, font-weight, font-style), Calibri by default.</summary>
     static (string Family, bool Bold, bool Italic) WordArtFont(string? style)
@@ -801,6 +802,52 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         var (x0, x1, y0, y1) = (shares[0] * width, width - shares[2] * width, shares[1] * height, height - shares[3] * height);
         var placed = outline.Select(p => (x0 + (p.X - inkLeft) / (inkRight - inkLeft) * (x1 - x0), y0 + (p.Y + top) / Math.Max(1e-9, top - bottom) * (y1 - y0))).ToList();
         return (shares, placed);
+    }
+
+    /// <summary>
+    /// VML WordArt along a path (arches: see Pptx.TextWarp.FollowsPaths) as Word draws it, its lines laid out at 36 pt
+    /// as the text body's runs: its glyphs' outlines bent along the warp in a shape of <paramref name="width"/> by
+    /// <paramref name="height"/> (contours, points from its top left corner); null for other warps or without ink.
+    /// </summary>
+    internal static List<List<(double X, double Y)>>? PathWordArt(XElement art, double width, double height)
+    {
+        const double Size = 36, PxPerPt = 96.0 / 72;
+        var warp = new XElement(Ns.A + "prstTxWarp", new XAttribute("prst", (string?)art.Attribute("warp") ?? "textPlain"),
+            art.Element(Pptx.TextWarp.OwnPaths) is { } own ? new XElement(own) : null);
+        if (Pptx.TextWarp.Definition(warp) is not { } definition || !Pptx.TextWarp.FollowsPaths(definition) || art.Value.Length == 0)
+            return null;
+        var style = (string?)art.Attribute("style");
+        var (family, bold, italic) = WordArtFont(style);
+        var font = WordArtTypeface(family, bold, italic).Data;
+        var (kerned, scale, pitch) = (Kerned(style), Size * PxPerPt / font.UnitsPerEm, (font.WinAscent + font.WinDescent) * Size * PxPerPt);
+        var glyphs = new List<Pptx.TextWarp.Glyph>();
+        var widths = new List<double>();
+        var lines = art.Value.Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            // Each line from the box's left, centered by the warp's alignment.
+            var position = 0.0;
+            foreach (var g in font.Glyphs(lines[i], kerned))
+            {
+                var advance = FreeSlate.Text.FontData.MasterUnits(g.Advance * Size) * PxPerPt;
+                if (font.Outline(g.Id) is { Length: > 0 } outline)
+                {
+                    var contours = Pptx.TextWarp.Contours(outline, position + g.OffsetX * Size * PxPerPt, i * pitch - g.OffsetY * Size * PxPerPt, scale);
+                    glyphs.Add(new Pptx.TextWarp.Glyph(contours, i, i * pitch) { Middle = position + advance / 2 });
+                }
+                position += advance + FreeSlate.Text.FontData.MasterUnits(g.Kerning * Size) * PxPerPt;
+            }
+            widths.Add(position);
+        }
+        if (glyphs.Count == 0)
+            return null;
+        var guides = art.Attributes().Where(a => a.Name.LocalName.StartsWith("adj", StringComparison.Ordinal)).ToList();
+        var adjustments = guides.Select(a => new FreeSlate.Drawing.Geometry.Guide(guides.Count == 1 ? "adj" : a.Name.LocalName, "val " + a.Value));
+        var drop = (0.5 - font.WinDescent) * Size * PxPerPt;
+        var laidOut = Enumerable.Range(0, lines.Length).Select(i => new Pptx.TextWarp.Line(i * pitch, drop, i * pitch - font.WinAscent * Size * PxPerPt, i * pitch + font.WinDescent * Size * PxPerPt)).ToList();
+        var warped = Pptx.TextWarp.Apply(definition, adjustments, (0, 0, width * PxPerPt, height * PxPerPt), glyphs, fromWordArt: true,
+            i => ("ctr", 0, 0, widths[i]), laidOut);
+        return warped.SelectMany(g => g).Select(c => c.Select(p => (p.X / PxPerPt, p.Y / PxPerPt)).ToList()).ToList();
     }
 
     static XElement CNvPr(XElement? own, XElement? docPr)

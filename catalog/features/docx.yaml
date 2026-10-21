@@ -5005,7 +5005,14 @@ areas:
           the shape type's own guide paths (its path's figures, its formulas evaluated: textInflateTop's cubic top
           reaches the shape's top, DrawingML's quadratic only halfway), as text converted from old WordArt
           (docx/local/vwa-*: textCanDown, textCurveUp, textDeflateInflateDeflate, textSlantUp and textInflateTop as
-          Word draws them within 0.2 pt, the arch within 3 pt); filled with the shape's fill, pictures too
+          Word draws them within 0.2 pt); along an arch (textArchUp) the kerned text fills the half ellipse, every
+          glyph rigid at its advance's middle and turned to the path there, its baseline half an em less the font's GDI
+          descent (usWinDescent) inside the path (docx/local/vwa-arch*, vwb-*: "WORD-ART" and "HOH" along arches of
+          286.45 by 134.8, 200 by 200 and 400 by 100 pt in ten fonts, within 0.1 pt, 85 → 99 %;
+          extras-ooxmlexport/FDO78590 98.5 → 99.7 %), and inline it takes the room of its glyphs beyond its box: their
+          ink, across with half its outline (at least 0.75 pt's) out from their corners as mitered lines count, up
+          (and down) with the whole outline, rounded out to whole pixels (vwa-archin, vwb-ab-in, vwc-*, vwd-*: outlines
+          of 0.25 to 6 pt, within 0.17 pt; extras-ooxmlimport/WordArt 13.4 → 75.6 %); filled with the shape's fill, pictures too
           (tdf153258_VML_import_WordArt_detection: a purple mesh tiled over the glyphs, 10.2 → 100 %), outlined with
           its stroke (0.75 pt of black by default) and shadowed with its shadow
           (libreoffice/extras-ooxmlexport/fdo79540 28.2 → 94.7 %, fdo78663 26.7 → 91.1 %, fdo74110 25.7 → 48.4 %,
@@ -5027,10 +5034,17 @@ areas:
           (libreoffice/extras-uiwriter/watermark: DejaVu Sans Light, 55.1 → 99.3 %; extras-ooxmlexport/watermark-font
           45.0 → 68.2 %), also one only in Office's cloud font cache, which GDI does not see
           (extras-ooxmlexport/fdo74110: "Noto Sans" in Arial, 48.1 → 87.4 %). Picture watermarks are VML pictures. WordArt is kerned only where its text path says
-          v-text-kern (docx/external/libreoffice/extras-ooxmlexport/watermark-font: "TestFont" without Arial's T-e
-          pair, 68.2 → 100 %). Known deviations: the glyphs of an inline arch beyond its box do not widen its line, as
-          Word's do (extras-ooxmlimport/WordArt 23.0 → 13.4 %); core-ooxml-pass/ fdo79131, whose shapes Word blows up
-          over three pages.
+          v-text-kern, its type's text path style under the shape's own (docx/external/libreoffice/
+          extras-ooxmlexport/watermark-font: "TestFont" without Arial's T-e pair, 68.2 → 100 %; extras-ooxmlimport/
+          WordArt: kerned by its type's, the kerned advance filling the arch). Known deviations: inline at the line's
+          start, an arch of Word's own shape type outlined thinner than 1.5 pt draws its glyphs closer along the path
+          in some sizes, at their size and with the room as without (docx/local/vwc-stroke-in, extras-ooxmlimport/
+          WordArt: 286.45 by 134.8 pt, 0.979 of their places, also on screen; vwe-*, vwf-*: not indented by 1 pt, after
+          text or centred, not outlined 1.5 pt or more, not 250 to 350 pt wide or 100 to 170 pt high, not "OOO"; no
+          rule found); a shape type other than Word's own (without fitpath or v-text-kern) leaves the room out or
+          draws the glyphs from the room's corner (vwf-nofitpath, vwf-nokern); an arch of 90 degrees Word does not draw
+          (vwa-arch90: the type's formulas leave no sweep); core-ooxml-pass/ fdo79131, whose shapes Word blows up over
+          three pages.
 
   - id: engine
     title: Layout engine (cross-cutting)

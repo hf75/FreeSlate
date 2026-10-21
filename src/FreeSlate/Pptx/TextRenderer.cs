@@ -417,6 +417,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // 20 pt lines 23 pt apart drawn 23.25 pt apart, 3.6 times that in the shape). Text converted from old WordArt
         // keeps the pixels its lines were measured with (docx/local/vwa-*).
         double Baseline(double at) => slide.Presentation.Word && !fromWordArt ? at : Snap(at);
+        // Word's VML WordArt places its glyphs along paths by their advances (see TextWarp.FollowPath).
+        var textPath = slide.Presentation.Word && warp.Attribute(TextWarp.TextPath) != null;
         var glyphs = new List<TextWarp.Glyph>();
         var owners = new List<TextStyle>();
         var selection = new StringBuilder();
@@ -441,7 +443,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     {
                         var x = position + g.OffsetX * style.Size * PxPerPt;
                         var y = baseline * PxPerPt - g.OffsetY * style.Size * PxPerPt;
-                        glyphs.Add(new TextWarp.Glyph(TextWarp.Contours(outline, x, y, scale, slide.Presentation.Word), lineIndex, baseline * PxPerPt));
+                        glyphs.Add(new TextWarp.Glyph(TextWarp.Contours(outline, x, y, scale, slide.Presentation.Word), lineIndex, baseline * PxPerPt)
+                        {
+                            Middle = textPath ? position + FontData.MasterUnits(g.Advance * style.Size) * PxPerPt / 2 : null,
+                        });
                         owners.Add(style);
                     }
                     position += (FontData.MasterUnits(g.Advance * style.Size) + FontData.MasterUnits(g.Kerning * style.Size)) * PxPerPt + spacing;
@@ -488,12 +493,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             return (line.Align, (left + start) * PxPerPt - box.L, box.L + box.W - (left + start + line.Width) * PxPerPt, line.Width * PxPerPt);
         }
         // Every line's baseline and how far below a single path it lies when it is the line next to it: 0.79 em under
-        // the top of its line box (measured with eight fonts on circles, 12 to 72 pt); and its line box.
+        // the top of its line box (measured with eight fonts on circles, 12 to 72 pt), in Word's VML WordArt half an em
+        // less the font's GDI descent (see TextWarp.FollowPath); and its line box.
         var lines = layout.Lines.Select(l =>
         {
             var baseline = (top + Baseline(offset + l.Baseline)) * PxPerPt;
-            return new TextWarp.Line(baseline, (l.Ascent - 0.79 * (l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : l.Ascent / 1.2 / 0.8)) * PxPerPt,
-                baseline - l.Ascent * PxPerPt, baseline + l.Descent * PxPerPt);
+            var drop = textPath && l.Runs.MaxBy(r => r.Style.Size) is { } largest
+                ? (0.5 - largest.Style.Font.Data.WinDescent) * largest.Style.Size
+                : l.Ascent - 0.79 * (l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : l.Ascent / 1.2 / 0.8);
+            return new TextWarp.Line(baseline, drop * PxPerPt, baseline - l.Ascent * PxPerPt, baseline + l.Descent * PxPerPt);
         }).ToList();
         var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment, lines);
         for (var i = 0; i < warped.Count && Outlines != null; i++)

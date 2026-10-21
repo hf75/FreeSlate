@@ -184,6 +184,9 @@ public static class Vml
             return null;
         var room = shape.Name == V + "group" || signature != null ? (0, 0) : Room(shape, type, content, width, height);
         var overhang = shape.Name == V + "group" && style.GetValueOrDefault("position") != "absolute" ? Overhang(content, width, height) : default;
+        // Inline WordArt along a path takes the room of its glyphs instead (see WordArtRoom).
+        if (shape.Name != V + "group" && style.GetValueOrDefault("position") != "absolute" && WordArtRoom(content, width, height) is { } glyphRoom)
+            (room, overhang) = ((0, 0), glyphRoom);
         // Not where the shape is sized in percent, which takes its line out of the share in ways not measured through
         // (docx/local/vlj-*: a rectangle 40 % of the margins wide 2 px narrower with a 0.75 pt line, centered, 5 px with
         // a 3 pt one placed by an offset; extras-ooxmlexport/docxopenhyperlinkbox: a text box 1.5 px narrower).
@@ -609,11 +612,6 @@ public static class Vml
     {
         var (minX, minY, maxX, maxY) = (0.0, 0.0, width, height);
         void Add(double x, double y) => (minX, minY, maxX, maxY) = (Math.Min(minX, x), Math.Min(minY, y), Math.Max(maxX, x), Math.Max(maxY, y));
-        static (double X, double Y) Unit((double X, double Y) from, (double X, double Y) to)
-        {
-            var length = Math.Sqrt((to.X - from.X) * (to.X - from.X) + (to.Y - from.Y) * (to.Y - from.Y));
-            return ((to.X - from.X) / length, (to.Y - from.Y) / length);
-        }
         var any = false;
         foreach (var (properties, figures) in Outlines(content, width, height))
         {
@@ -623,48 +621,93 @@ public static class Vml
             var limit = 2 * ((double?)ln.Attribute(MiterLimit) ?? 8);
             foreach (var (outline, closed, stroked) in figures)
             {
-                if (!stroked)
-                    continue;
-                // The corners where the outline turns, repeated points left out.
-                var points = new List<(double X, double Y)>();
-                foreach (var p in outline)
-                {
-                    if (points.Count == 0 || Math.Abs(p.X - points[^1].X) > 1e-9 || Math.Abs(p.Y - points[^1].Y) > 1e-9)
-                        points.Add(p);
-                }
-                if (closed && points.Count > 1 && Math.Abs(points[0].X - points[^1].X) <= 1e-9 && Math.Abs(points[0].Y - points[^1].Y) <= 1e-9)
-                    points.RemoveAt(points.Count - 1);
-                var n = points.Count;
-                if (n < 2)
-                    continue;
-                any = true;
-                for (var i = 0; i < n; i++)
-                {
-                    var b = points[i];
-                    var (hasBefore, hasAfter) = (closed || i > 0, closed || i < n - 1);
-                    var u1 = hasBefore ? Unit(points[(i - 1 + n) % n], b) : Unit(b, points[(i + 1) % n]);
-                    var u2 = hasAfter ? Unit(b, points[(i + 1) % n]) : u1;
-                    // The line's sides at the corner, then its miter where it turns.
-                    foreach (var (ux, uy) in new[] { u1, u2 })
-                    {
-                        Add(b.X - uy * half, b.Y + ux * half);
-                        Add(b.X + uy * half, b.Y - ux * half);
-                    }
-                    var cross = u1.X * u2.Y - u1.Y * u2.X;
-                    var dot = u1.X * u2.X + u1.Y * u2.Y;
-                    if (!hasBefore || !hasAfter || Math.Abs(cross) < 1e-12 || dot <= -1 + 1e-12)
-                        continue;
-                    var k = (cross > 0 ? -1 : 1) * half / (1 + dot);
-                    var (dx, dy) = (k * (-u1.Y - u2.Y), k * (u1.X + u2.X));
-                    var miter = Math.Sqrt(dx * dx + dy * dy);
-                    if (miter > limit * half)
-                        Add(b.X + dx / miter * half, b.Y + dy / miter * half);
-                    else
-                        Add(b.X + dx + (Math.Abs(dx) > half * 1.001 ? Math.Sign(dx) * half : 0), b.Y + dy + (Math.Abs(dy) > half * 1.001 ? Math.Sign(dy) * half : 0));
-                }
+                if (stroked && LineCorners(outline, closed, half, limit, Add))
+                    any = true;
             }
         }
         return any ? (Math.Max(0, -minX), Math.Max(0, -minY), Math.Max(0, maxX - width), Math.Max(0, maxY - height)) : null;
+    }
+
+    /// <summary>
+    /// The points a line of half width <paramref name="half"/> along an outline reaches as Word counts them (see
+    /// LineReachBox), each given to <paramref name="add"/>; false where the outline has fewer than two points.
+    /// </summary>
+    static bool LineCorners(IEnumerable<(double X, double Y)> outline, bool closed, double half, double limit, Action<double, double> add)
+    {
+        static (double X, double Y) Unit((double X, double Y) from, (double X, double Y) to)
+        {
+            var length = Math.Sqrt((to.X - from.X) * (to.X - from.X) + (to.Y - from.Y) * (to.Y - from.Y));
+            return ((to.X - from.X) / length, (to.Y - from.Y) / length);
+        }
+        // The corners where the outline turns, repeated points left out.
+        var points = new List<(double X, double Y)>();
+        foreach (var p in outline)
+        {
+            if (points.Count == 0 || Math.Abs(p.X - points[^1].X) > 1e-9 || Math.Abs(p.Y - points[^1].Y) > 1e-9)
+                points.Add(p);
+        }
+        if (closed && points.Count > 1 && Math.Abs(points[0].X - points[^1].X) <= 1e-9 && Math.Abs(points[0].Y - points[^1].Y) <= 1e-9)
+            points.RemoveAt(points.Count - 1);
+        var n = points.Count;
+        if (n < 2)
+            return false;
+        for (var i = 0; i < n; i++)
+        {
+            var b = points[i];
+            var (hasBefore, hasAfter) = (closed || i > 0, closed || i < n - 1);
+            var u1 = hasBefore ? Unit(points[(i - 1 + n) % n], b) : Unit(b, points[(i + 1) % n]);
+            var u2 = hasAfter ? Unit(b, points[(i + 1) % n]) : u1;
+            // The line's sides at the corner, then its miter where it turns.
+            foreach (var (ux, uy) in new[] { u1, u2 })
+            {
+                add(b.X - uy * half, b.Y + ux * half);
+                add(b.X + uy * half, b.Y - ux * half);
+            }
+            var cross = u1.X * u2.Y - u1.Y * u2.X;
+            var dot = u1.X * u2.X + u1.Y * u2.Y;
+            if (!hasBefore || !hasAfter || Math.Abs(cross) < 1e-12 || dot <= -1 + 1e-12)
+                continue;
+            var k = (cross > 0 ? -1 : 1) * half / (1 + dot);
+            var (dx, dy) = (k * (-u1.Y - u2.Y), k * (u1.X + u2.X));
+            var miter = Math.Sqrt(dx * dx + dy * dy);
+            if (miter > limit * half)
+                add(b.X + dx / miter * half, b.Y + dy / miter * half);
+            else
+                add(b.X + dx + (Math.Abs(dx) > half * 1.001 ? Math.Sign(dx) * half : 0), b.Y + dy + (Math.Abs(dy) > half * 1.001 ? Math.Sign(dy) * half : 0));
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// The room inline WordArt along a path (an arch) takes beyond its shape, left, above, right and below (pt), as Word
+    /// lays it out: its glyphs' ink, across with an outline's half (at least 0.75 pt's) out from its corners as
+    /// LineReachBox counts them, up and down with the whole outline, rounded out to whole pixels of 0.75 pt (measured
+    /// with docx/local/vwa-archin, vwb-ab-in, vwc-stroke-in, vwd-*: "WORD-ART" and "HOH" along arches of 286.45 by
+    /// 134.8, 200 by 200 and 400 by 100 pt, unstroked and outlined 0.25 to 6 pt, at the line's start: the text after it
+    /// at the room's right, the next line below the shape, the glyphs' tops the line's top within 0.17 pt); null
+    /// for other shapes.
+    /// </summary>
+    static (double L, double T, double R, double B)? WordArtRoom(XElement content, double width, double height)
+    {
+        if (content.Element(Drawings.Wps + "txbxWordArt") is not { } art || Drawings.PathWordArt(art, width, height) is not { } glyphs)
+            return null;
+        var ln = content.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "ln");
+        var line = ln != null && ln.Element(Ns.A + "noFill") == null ? Math.Max(0.75, ((double?)ln.Attribute("w") ?? 9525) / 12700) : 0;
+        var (minX, minY, maxX, maxY) = (double.MaxValue, double.MaxValue, double.MinValue, double.MinValue);
+        foreach (var (x, y) in glyphs.SelectMany(g => g))
+            (minX, minY, maxX, maxY) = (Math.Min(minX, x), Math.Min(minY, y), Math.Max(maxX, x), Math.Max(maxY, y));
+        if (minX > maxX)
+            return null;
+        if (line > 0)
+        {
+            var limit = 2 * ((double?)ln!.Attribute(MiterLimit) ?? 8);
+            foreach (var contour in glyphs)
+                LineCorners(contour, true, line / 2, limit, (x, _) => (minX, maxX) = (Math.Min(minX, x), Math.Max(maxX, x)));
+            (minY, maxY) = (minY - line, maxY + line);
+        }
+        const double Pixel = 0.75;
+        static double Out(double v) => v > 0 ? Math.Ceiling(v / Pixel - 1e-6) * Pixel : 0;
+        return (Out(-minX), Out(-minY), Out(maxX - width), Out(maxY - height));
     }
 
     /// <summary>
@@ -1042,7 +1085,11 @@ public static class Vml
             // (vwa-inflate: three lines and a break fill textInflateTop).
             var (warp, adjustments) = TextWarp(spt, Adjustments(shape, type));
             var trim = ((string?)shape.Element(V + "textpath")?.Attribute("trim") ?? (string?)type?.Element(V + "textpath")?.Attribute("trim")) is "t" or "true";
-            wsp.Add(new XElement(Drawings.Wps + "txbxWordArt", text.Replace("\r\n", "\n").TrimEnd('\n'), new XAttribute("style", (string?)textpath.Attribute("style") ?? ""),
+            // The text path's style is its type's with the shape's own over it (extras-ooxmlimport/WordArt: kerned by
+            // its type's v-text-kern; docx/local/vwa-arch: the kerned advance fills the arch).
+            var textStyle = string.Join(";", new[] { (string?)type?.Element(V + "textpath")?.Attribute("style"), (string?)shape.Element(V + "textpath")?.Attribute("style") }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+            wsp.Add(new XElement(Drawings.Wps + "txbxWordArt", text.Replace("\r\n", "\n").TrimEnd('\n'), new XAttribute("style", textStyle),
                 new XAttribute("warp", warp), trim ? new XAttribute("trim", 1) : null, adjustments.Select((v, i) => new XAttribute("adj" + (i + 1), v)),
                 GuidePaths(shape, type, width, height)));
         }
