@@ -1488,7 +1488,11 @@ areas:
           Level texts with %1 to %9, about 60 number formats (decimal, roman, letters repeated after z, ordinals and
           number words, full-width, enclosed, Chinese, Japanese and Korean counting, Hebrew, Arabic, Thai, Hindi,
           Russian), legal numbering, suffix tab, space or nothing, numbers aligned left, centered or right at the
-          first line's indent (docx/local/num-rules). Number words and ordinals follow the paragraph's language
+          first line's indent (docx/local/num-rules). The space after a number is as wide as Arial's at the number's
+          size, bold and italic as it is, the number's font still setting the line (docx/local/sfy-*, sfx-*: Word's
+          PDFs draw it in Arial after numbers in Times New Roman, Courier New, Verdana and Cambria and after East Asian
+          numbers whatever their hint, theme or fonts, in modes 14 and 15; LibreOffice's extras-ooxmlexport/chtoutline
+          86.4 → 89.3 %). Number words and ordinals follow the paragraph's language
           (English, German, French, Russian; words only below a million); letters repeat up to thirty times, then
           start over; Chinese counting goes digit by digit from 100 (○ for zero); ideographLegalTraditional writes
           financial numerals with the one before ten (壹 to 玖, 10 壹拾, 11 壹拾壹, 20 貳拾; LibreOffice's

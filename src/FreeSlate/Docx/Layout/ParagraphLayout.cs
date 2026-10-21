@@ -973,6 +973,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         levels = BidiLevels(text, charStyles, format.Bidi == true, labelLength);
         var advances = Advances(text, charStyles, CharacterExtra + (CharacterExtraEastAsian && snapCell != null ? snapCell.Value - SnapCell!.Value : 0),
             CharacterExtraEastAsian);
+        SuffixSpace(paragraph, labelLength, advances);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
         if (context.Settings.Child("noPunctuationKerning").OnOff() != true)
@@ -1668,6 +1669,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (!empty && text.Length == 0)
             return (0, 0);
         var advances = Advances(text, charStyles, CharacterExtra, CharacterExtraEastAsian);
+        SuffixSpace(paragraph, labelLength, advances);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
         if (context.Settings.Child("noPunctuationKerning").OnOff() != true)
@@ -1774,6 +1776,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <returns>The text, a style per character and how many characters the list number and its suffix take.</returns>
     /// <summary>Whether Flatten takes tracked deleted text too (see RunFormat.Deleted).</summary>
     bool measuringDeleted;
+
+    /// <summary>
+    /// The space after a list number (w:suff space) Word sets as wide as Arial's at the number's size, bold and italic
+    /// as it is, while the number's font keeps setting the line's height (measured with docx/local/sfy-*, sfx-*: after
+    /// numbers in Times New Roman, Courier New, Verdana and Cambria, East Asian numbers with any hint, theme and explicit
+    /// fonts, in modes 14 and 15, Word's PDFs draw it in Arial; sfy-lab: a 14 pt Courier New number's line as high as
+    /// Courier New's).
+    /// </summary>
+    void SuffixSpace(ParagraphBlock paragraph, int labelLength, double[] advances)
+    {
+        if (paragraph.Label is not { Suffix: "space" } label || labelLength >= advances.Length)
+            return;
+        var arial = label.Format.Clone();
+        (arial.Ascii, arial.HAnsi, arial.EastAsia, arial.ComplexScript) = ("Arial", "Arial", "Arial", "Arial");
+        (arial.AsciiTheme, arial.HAnsiTheme, arial.EastAsiaTheme, arial.ComplexScriptTheme) = (null, null, null, null);
+        advances[labelLength] = Advances(" ", [styles.Style(arial, WordSlot.Ascii)], CharacterExtra, CharacterExtraEastAsian)[0];
+    }
 
     (string Text, List<RunStyle> Styles, int LabelLength) Flatten(ParagraphBlock paragraph, PageFields? fields)
     {
