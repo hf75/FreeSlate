@@ -102,7 +102,16 @@ public static class SvgEffects
             // docx/external/libreoffice/extras-ooxmlexport/fdo66688: a 5 pt glow around a white fill of 20 % alpha as
             // strong as around an opaque one).
             steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"ga\"><feFuncA type=\"linear\" slope=\"255\"/></feComponentTransfer>");
-            steps.Append($"<feMorphology in=\"ga\" operator=\"dilate\" radius=\"{Units.Css(dilate)}\" result=\"gd\"/>");
+            // Grown round, as a disc grows it: corners and slanted edges no further than straight ones (Word's PDFs of
+            // LibreOffice's extras-ooxmlexport/tdf143219ContourWrap_glow_rotate: around a turned rectangle the glow's
+            // half alpha 17.9 pt out, a square kernel's 23.2; docx/local/ggl-*: round corners). SVG dilates by
+            // rectangles only, so the union of four whose corners lie on the circle.
+            for (var k = 0; k < 4; k++)
+            {
+                var angle = (11.25 + 22.5 * k) * Math.PI / 180;
+                steps.Append($"<feMorphology in=\"ga\" operator=\"dilate\" radius=\"{Units.Css(dilate * Math.Cos(angle))} {Units.Css(dilate * Math.Sin(angle))}\" result=\"gd{k}\"/>");
+            }
+            steps.Append("<feMerge result=\"gd\"><feMergeNode in=\"gd0\"/><feMergeNode in=\"gd1\"/><feMergeNode in=\"gd2\"/><feMergeNode in=\"gd3\"/></feMerge>");
             steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(sigma)}\" result=\"gb\"/>");
             steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
             steps.Append("<feComposite in2=\"gb\" operator=\"in\" result=\"glow\"/>");

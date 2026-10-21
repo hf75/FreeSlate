@@ -4437,7 +4437,7 @@
       "difficulty": 3,
       "status": "done",
       "strategy": "Dilate and blur the shape's alpha, colored.",
-      "office": "Verified with generated/effects. The glow grows from the shape's whole silhouette, also where its fill is mostly transparent (Word's PDF of LibreOffice's extras-ooxmlexport/fdo66688: a 5 pt glow around a white fill of 20 % alpha as strong as around an opaque one, 86.7 → 99.9 %).",
+      "office": "Verified with generated/effects. The glow grows from the shape's whole silhouette, also where its fill is mostly transparent (Word's PDF of LibreOffice's extras-ooxmlexport/fdo66688: a 5 pt glow around a white fill of 20 % alpha as strong as around an opaque one, 86.7 → 99.9 %). It grows round, as a disc dilates: corners and slanted edges no further out than straight ones (measured in Word's PDFs, docx effect.glow; local/textfx5 99.3 → 99.9 %, generated/objects 98.8 → 99.3 %, generated/effects 99.2 → 99.5 %, generated/text-effects 96.1 → 96.4 %); SVG dilates by rectangles only, so the union of four whose corners lie on the circle.",
       "elements": [
         "a:glow"
       ],
