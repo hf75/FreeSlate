@@ -2006,7 +2006,10 @@ areas:
           alignment, stay with the row they end in, those of rows on the next page go on at the top of its first row,
           from Word 2013 on a paragraph that widow control keeps together whole, and the merge's last row there grows to
           hold them: docx/local/vmb*-*, docx/external/poi/bug65649, docx/external/libreoffice/extras-layout/tdf152298;
-          known deviation: Word aligns what stays on the first page within its rows there), rows that skip grid
+          a cell aligned to the middle or the bottom of its rows aligns within its part on the first page, and its
+          turned text (btLr, tbRl) is laid out along that part alone, from its end or its top, none of it on the next
+          page: docx/local/vmt-*, a cell over rows of 102, 150.45 and 121.5 pt at least, the third on the next page, in
+          modes 11 and 15; extras-layout/tdf127118 80.3 → 91.9 %), rows that skip grid
           columns (no lines where no cell is), nested tables, right-to-left tables (the
           first column at the right, the table at the right margin); tables that follow each other directly are joined
           with one line between, an inside line: the first's last row's cell bottoms or inside line against the
@@ -2196,7 +2199,9 @@ areas:
           the part on the next page or in the next column begins with the table's top line where no header rows stand
           above it, after a cut in a row and between rows, also of floating tables (docx/local/cb-1 to cb-7: a 3 pt
           outer top line over the continued row of a table whose inside lines are 1 pt or none;
-          core-unocore/floattable-split). A table of header rows only moves to the next page where they do not all
+          core-unocore/floattable-split), over a cell merged down from the row before the cell's own top line in that
+          row, not the merged cell's (docx/local/vmt-*: a merged cell's 1.5 pt top line gone, a 3 pt one of the cell
+          in the row going on drawn, its content below it; extras-layout/tdf127118). A table of header rows only moves to the next page where they do not all
           fit, whether or not they fit a page, and breaks there without repeating them
           (docx/external/libreoffice/extras-ooxmlexport/tdf138020_all_rows_tblHeader 8.0 → 98.1 % with table.styles'
           look, tdf58944-repeating-table-header 47.3 → 100 %). Before Word 2013 (modes 11, 12 and 14 alike) header

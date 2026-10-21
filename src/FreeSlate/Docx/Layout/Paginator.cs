@@ -2923,6 +2923,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
             if (broke)
                 row = row.Continued();
+            // A cell merged down over rows that the page or column breaks is laid out along its part before the break:
+            // its turned text along that part from its end (btLr) or its top (tbRl), its text aligned to the middle or
+            // the bottom of that part, the rest of it going on as before (measured with docx/local/vmt-*: a cell merged
+            // over rows of 102, 150.45 and 121.5 pt at least, the third on the next page, btLr and tbRl text in two lines
+            // along the first two from their bottom or top, centered text from their top as it does not fit, in modes 11
+            // and 15; LibreOffice's extras-layout/tdf127118).
+            foreach (var cell in row.Cells.ToList())
+            {
+                if (cell.Along is not { } along)
+                    continue;
+                var (reach, k) = (y, r);
+                for (var end = Math.Min(box.Rows.Count, r + along.Rows); k < end && Fits(k == r ? row : box.Rows[k], reach); k++)
+                    reach += (k == r ? row : box.Rows[k]).Height;
+                if (k > r && k < Math.Min(box.Rows.Count, r + along.Rows))
+                    row = row.With(cell, along.Part(reach - y - row.TopWidth));
+            }
             PlaceRow(row, left);
             AddNotes(NotesOf(row));
             last = row;

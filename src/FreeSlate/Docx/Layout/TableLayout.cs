@@ -87,6 +87,13 @@ public sealed class CellPart
     /// <summary>The rows the cell spans from this one down (w:vMerge), 1 where it ends here.</summary>
     public int Span { get; init; } = 1;
 
+    /// <summary>
+    /// For a cell merged down over rows whose layout their height gives (turned text, or text aligned to their middle or
+    /// bottom): the rows it spans and the part laid out again for another height of them, as where a page or column
+    /// break cuts the cell (see Paginator.PlaceTable); null for other cells.
+    /// </summary>
+    public (int Rows, Func<double, CellPart> Part)? Along { get; init; }
+
     /// <summary>The part as it stands, its content no longer lowered by an alignment.</summary>
     public CellPart Settled()
     {
@@ -101,7 +108,11 @@ public sealed class CellPart
     /// <summary>The part with its content <paramref name="dy"/> points further down, below a thicker top line.</summary>
     public CellPart Lower(double dy)
     {
-        var moved = new CellPart { ContentTop = ContentTop + dy, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered, Carried = Carried, Span = Span };
+        var moved = new CellPart
+        {
+            ContentTop = ContentTop + dy, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered, Carried = Carried, Span = Span,
+            Along = Along is { } along ? (along.Rows, height => along.Part(height).Lower(dy)) : null,
+        };
         moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
         moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
         moved.Strokes.AddRange(Strokes.Select(s => s.Offset(0, dy)));
@@ -486,6 +497,14 @@ public sealed class RowBox
             below.Add(go);
         }
         return (own, below);
+    }
+
+    /// <summary>The row with one of its cell parts in place of another.</summary>
+    public RowBox With(CellPart old, CellPart part)
+    {
+        var copy = Copy(Height);
+        copy.Cells.AddRange(Cells.Select(c => ReferenceEquals(c, old) ? part : c));
+        return copy;
     }
 
     /// <summary>The row with more cell parts.</summary>
@@ -998,122 +1017,134 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     total += heights[k] + (k > r ? topWidths[k] : 0);
                 var content = laid[cell];
                 var margins = CellMargins(r, cell, Math.Min(rows.Count, r + rowsSpanned) - 1);
-                var free = total - margins.Top - (Rotated(cell) ? content.Height : content.Reach ?? content.Height) - margins.Bottom;
-                var lowered = cell.Format.VerticalAlign switch
+                // The cell's part laid out for a height of the rows it spans: all of them, or where a page or column
+                // break cuts the cell, its part before the break (see CellPart.Along).
+                var cellRow = r;
+                CellPart Part(double total)
                 {
-                    "center" => Math.Max(0, free) / 2,
-                    "bottom" => Math.Max(0, free),
-                    _ => 0,
-                };
-                var (textFrom, _) = Range(content.Left, content.Left + content.Width);
-                var top = topWidths[r] + margins.Top;
-                var (cellFrom, cellWidth) = Range(x[c0] + shift, x[c1] + shift);
-                var part = new CellPart
-                {
-                    ContentTop = top,
-                    BottomMargin = margins.Bottom,
-                    Diagonals = (cellFrom, cellFrom + cellWidth, cell.CellBorders.TopLeftToBottomRight, cell.CellBorders.TopRightToBottomLeft),
-                    Align = Rotated(cell) ? null : cell.Format.VerticalAlign,
-                    Lowered = Rotated(cell) ? 0 : lowered,
-                    Span = Rotated(cell) ? 1 : rowsSpanned,
-                };
-                if (Rotated(cell))
-                {
-                    // tbRl turns clockwise about the content's top right corner, btLr counterclockwise about its bottom
-                    // left (measured with docx/local/tbl-features: lines start at the cell's top and at its bottom);
-                    // tbRlV and tbLrV run down like tbRl, tbLrV's lines from the left (measured with docx/local/vertical5).
-                    var down = cell.Format.TextDirection is "tbRl" or "tbRlV" or "tbLrV";
-                    var fromLeft = cell.Format.TextDirection == "tbLrV";
-                    var pivotX = down ? textFrom + content.Width : textFrom;
-                    var pivotY = down ? top : topWidths[r] + total - margins.Bottom;
-                    var turned = RotatedLines(cell, content, total - margins.Top - margins.Bottom, fields).ToList();
-                    // Vertical alignment moves the lines across the cell, towards its right for btLr and its left for
-                    // tbRl, by the room the cell's width leaves beside its lines and side lines, its margins not
-                    // counted (measured with docx/local/rcv-*: 20, 40 and 80 pt cells of one and two lines of Calibri
-                    // 11, each line 13.78 pt across, centered and bottom aligned within 0.06 pt).
-                    if (!fromLeft && cell.Format.VerticalAlign is "center" or "bottom" && turned.Count > 0)
+                    var free = total - margins.Top - (Rotated(cell) ? content.Height : content.Reach ?? content.Height) - margins.Bottom;
+                    var lowered = cell.Format.VerticalAlign switch
                     {
-                        var room = cellWidth - Width(vertical[r, c0]) - Width(vertical[r, c1]) - turned.Max(l => l.Top + l.Line.Height);
-                        var across = Math.Max(0, room) / (cell.Format.VerticalAlign == "center" ? 2 : 1);
-                        pivotX += down ? -across : across;
-                    }
-                    foreach (var line in turned)
+                        "center" => Math.Max(0, free) / 2,
+                        "bottom" => Math.Max(0, free),
+                        _ => 0,
+                    };
+                    var (textFrom, _) = Range(content.Left, content.Left + content.Width);
+                    var top = topWidths[cellRow] + margins.Top;
+                    var (cellFrom, cellWidth) = Range(x[c0] + shift, x[c1] + shift);
+                    var part = new CellPart
                     {
-                        var lineTop = fromLeft ? content.Width - line.Top - line.Line.Height : line.Top;
-                        part.Lines.Add(line with { Line = fromLeft ? line.Line.Flipped() : line.Line, Left = pivotX + line.Left, Top = pivotY + lineTop, Angle = down ? 90 : -90, PivotX = -line.Left, PivotY = -lineTop });
-                    }
-                }
-                else
-                {
-                    foreach (var line in content.Lines)
-                        part.Lines.Add(line with { Left = textFrom + line.Left, Top = top + content.Lowering(line, lowered) + line.Top });
-                }
-                // What the cell holds is cut at its inside: between its side lines, from below the row's top line
-                // to its bottom (measured with docx/external/libreoffice/core-layout/para-border-in-cell-clip: Word
-                // clips a paragraph's borders past its lines and below a row of exact height away).
-                var (insideLeft, insideRight) = (cellFrom + Width(vertical[r, rtl ? c1 : c0]) / 2, cellFrom + cellWidth - Width(vertical[r, rtl ? c0 : c1]) / 2);
-                foreach (var fill in content.Fills)
-                {
-                    var (fx, fy) = (textFrom + fill.X, top + content.Lowering(fill, lowered) + fill.Y);
-                    var (l, t, rgt, b) = (Math.Max(fx, insideLeft), Math.Max(fy, topWidths[r]), Math.Min(fx + fill.Width, insideRight), Math.Min(fy + fill.Height, topWidths[r] + total));
-                    if (rgt > l + 0.001 && b > t + 0.001)
-                        part.Fills.Add(fill with { X = l, Y = t, Width = rgt - l, Height = b - t });
-                }
-                foreach (var stroke in content.Strokes)
-                    part.Strokes.Add(stroke.Offset(textFrom, top + content.Lowering(stroke, lowered)));
-                if (!Rotated(cell))
-                {
-                    // Drawings in the cell: across from its text area or from the inner edge of its left line, down from
-                    // its content's top (measured with docx/local/cell-anchor).
-                    var inner = vertical[r, c0] is { Visible: true } edge ? edge.Total / 2 : 0;
-                    foreach (var anchor in content.Anchors)
+                        ContentTop = top,
+                        BottomMargin = margins.Bottom,
+                        Diagonals = (cellFrom, cellFrom + cellWidth, cell.CellBorders.TopLeftToBottomRight, cell.CellBorders.TopRightToBottomLeft),
+                        Align = Rotated(cell) ? null : cell.Format.VerticalAlign,
+                        Lowered = Rotated(cell) ? 0 : lowered,
+                        Span = Rotated(cell) ? 1 : rowsSpanned,
+                        Along = rowsSpanned > 1 && (Rotated(cell) || cell.Format.VerticalAlign is "center" or "bottom") ? (rowsSpanned, Part) : null,
+                    };
+                    if (Rotated(cell))
                     {
-                        var moved = anchor.Offset(textFrom, top + lowered);
-                        // Before Word 2013 a drawing of layoutInCell 0 placed by offsets is placed as one of the text
-                        // from its paragraph or line in the cell, the page and the column for the rest (measured with
-                        // docx/local/cig-noin14, cig-noin12: 150 pt right of the column's left edge, the paragraph's top;
-                        // docx/external/libreoffice/extras-ooxmlexport/tdf162541_notLayoutInCell_paraLeft, tdf129888dml:
-                        // a page-relative line in mode 14); one aligned across stands so in the page's frames too
-                        // (docx/local/lica-12, lica-14: aligned left from the column, the margin and the page at the margin
-                        // and left of it, not in the cell; tdf162541) but where it is placed from its line, then in the
-                        // cell (tdf162551: aligned left of the page at the cell's text, centered on its line).
-                        var placement = anchor.Anchor.Anchor;
-                        if (!InCell(placement) && (placement.Element(Docx.Drawings.Wp + "positionH")?.Element(Docx.Drawings.Wp + "align") == null
-                            || (string?)placement.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") != "line"))
+                        // tbRl turns clockwise about the content's top right corner, btLr counterclockwise about its bottom
+                        // left (measured with docx/local/tbl-features: lines start at the cell's top and at its bottom);
+                        // tbRlV and tbLrV run down like tbRl, tbLrV's lines from the left (measured with docx/local/vertical5).
+                        var down = cell.Format.TextDirection is "tbRl" or "tbRlV" or "tbLrV";
+                        var fromLeft = cell.Format.TextDirection == "tbLrV";
+                        var pivotX = down ? textFrom + content.Width : textFrom;
+                        var pivotY = down ? top : topWidths[cellRow] + total - margins.Bottom;
+                        var turned = RotatedLines(cell, content, total - margins.Top - margins.Bottom, fields).ToList();
+                        // Vertical alignment moves the lines across the cell, towards its right for btLr and its left for
+                        // tbRl, by the room the cell's width leaves beside its lines and side lines, its margins not
+                        // counted (measured with docx/local/rcv-*: 20, 40 and 80 pt cells of one and two lines of Calibri
+                        // 11, each line 13.78 pt across, centered and bottom aligned within 0.06 pt).
+                        if (!fromLeft && cell.Format.VerticalAlign is "center" or "bottom" && turned.Count > 0)
                         {
-                            // Placed from its paragraph, it counts from the row's top, whichever paragraph of the cell it
-                            // is in (measured with docx/local/lic-12, lic-14: drawings 20 pt below the first and the third
-                            // paragraph of a cell under a 3 pt top line and a 10 pt margin both 20 pt below the row's top;
-                            // lic-15 from their paragraphs; docx/external/libreoffice/extras-ooxmlexport/
-                            // tdf135595_HFtableWrap_c12, found by agent BE). In a row going on over pages it counts from
-                            // the top of the row's part on its paragraph's page (LibreOffice's core-objectpositioning/
-                            // tdf154863-img-move-crash: seven pictures in a cell of four pages and more, mode 12, each its
-                            // offset below the top margin of its paragraph's page).
-                            if ((string?)anchor.Anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph")
-                                moved = moved with { ParagraphTop = 0, FromRowTop = true };
-                            part.Anchors.Add(moved);
-                            continue;
+                            var room = cellWidth - Width(vertical[cellRow, c0]) - Width(vertical[cellRow, c1]) - turned.Max(l => l.Top + l.Line.Height);
+                            var across = Math.Max(0, room) / (cell.Format.VerticalAlign == "center" ? 2 : 1);
+                            pivotX += down ? -across : across;
                         }
-                        part.Anchors.Add(moved with
+                        foreach (var line in turned)
                         {
-                            Text = moved.Text ?? (textFrom, content.Width),
-                            Cell = moved.Cell ?? (cellFrom + inner, cellWidth - inner),
-                            Content = moved.Content ?? (top, Math.Max(0, total - top - margins.Bottom)),
-                            Inside = moved.Inside ?? (insideLeft, insideRight),
-                        });
+                            var lineTop = fromLeft ? content.Width - line.Top - line.Line.Height : line.Top;
+                            part.Lines.Add(line with { Line = fromLeft ? line.Line.Flipped() : line.Line, Left = pivotX + line.Left, Top = pivotY + lineTop, Angle = down ? 90 : -90, PivotX = -line.Left, PivotY = -lineTop });
+                        }
                     }
+                    else
+                    {
+                        foreach (var line in content.Lines)
+                            part.Lines.Add(line with { Left = textFrom + line.Left, Top = top + content.Lowering(line, lowered) + line.Top });
+                    }
+                    // What the cell holds is cut at its inside: between its side lines, from below the row's top line
+                    // to its bottom (measured with docx/external/libreoffice/core-layout/para-border-in-cell-clip: Word
+                    // clips a paragraph's borders past its lines and below a row of exact height away).
+                    var (insideLeft, insideRight) = (cellFrom + Width(vertical[cellRow, rtl ? c1 : c0]) / 2, cellFrom + cellWidth - Width(vertical[cellRow, rtl ? c0 : c1]) / 2);
+                    foreach (var fill in content.Fills)
+                    {
+                        var (fx, fy) = (textFrom + fill.X, top + content.Lowering(fill, lowered) + fill.Y);
+                        var (l, t, rgt, b) = (Math.Max(fx, insideLeft), Math.Max(fy, topWidths[cellRow]), Math.Min(fx + fill.Width, insideRight), Math.Min(fy + fill.Height, topWidths[cellRow] + total));
+                        if (rgt > l + 0.001 && b > t + 0.001)
+                            part.Fills.Add(fill with { X = l, Y = t, Width = rgt - l, Height = b - t });
+                    }
+                    foreach (var stroke in content.Strokes)
+                        part.Strokes.Add(stroke.Offset(textFrom, top + content.Lowering(stroke, lowered)));
+                    if (!Rotated(cell))
+                    {
+                        // Drawings in the cell: across from its text area or from the inner edge of its left line, down from
+                        // its content's top (measured with docx/local/cell-anchor).
+                        var inner = vertical[cellRow, c0] is { Visible: true } edge ? edge.Total / 2 : 0;
+                        foreach (var anchor in content.Anchors)
+                        {
+                            var moved = anchor.Offset(textFrom, top + lowered);
+                            // Before Word 2013 a drawing of layoutInCell 0 placed by offsets is placed as one of the text
+                            // from its paragraph or line in the cell, the page and the column for the rest (measured with
+                            // docx/local/cig-noin14, cig-noin12: 150 pt right of the column's left edge, the paragraph's top;
+                            // docx/external/libreoffice/extras-ooxmlexport/tdf162541_notLayoutInCell_paraLeft, tdf129888dml:
+                            // a page-relative line in mode 14); one aligned across stands so in the page's frames too
+                            // (docx/local/lica-12, lica-14: aligned left from the column, the margin and the page at the margin
+                            // and left of it, not in the cell; tdf162541) but where it is placed from its line, then in the
+                            // cell (tdf162551: aligned left of the page at the cell's text, centered on its line).
+                            var placement = anchor.Anchor.Anchor;
+                            if (!InCell(placement) && (placement.Element(Docx.Drawings.Wp + "positionH")?.Element(Docx.Drawings.Wp + "align") == null
+                                || (string?)placement.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") != "line"))
+                            {
+                                // Placed from its paragraph, it counts from the row's top, whichever paragraph of the cell it
+                                // is in (measured with docx/local/lic-12, lic-14: drawings 20 pt below the first and the third
+                                // paragraph of a cell under a 3 pt top line and a 10 pt margin both 20 pt below the row's top;
+                                // lic-15 from their paragraphs; docx/external/libreoffice/extras-ooxmlexport/
+                                // tdf135595_HFtableWrap_c12, found by agent BE). In a row going on over pages it counts from
+                                // the top of the row's part on its paragraph's page (LibreOffice's core-objectpositioning/
+                                // tdf154863-img-move-crash: seven pictures in a cell of four pages and more, mode 12, each its
+                                // offset below the top margin of its paragraph's page).
+                                if ((string?)anchor.Anchor.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is null or "paragraph")
+                                    moved = moved with { ParagraphTop = 0, FromRowTop = true };
+                                part.Anchors.Add(moved);
+                                continue;
+                            }
+                            part.Anchors.Add(moved with
+                            {
+                                Text = moved.Text ?? (textFrom, content.Width),
+                                Cell = moved.Cell ?? (cellFrom + inner, cellWidth - inner),
+                                Content = moved.Content ?? (top, Math.Max(0, total - top - margins.Bottom)),
+                                Inside = moved.Inside ?? (insideLeft, insideRight),
+                            });
+                        }
+                    }
+                    return part;
                 }
-                rowBox.Cells.Add(part);
+                rowBox.Cells.Add(Part(total));
             }
             // Lines at the row's top, from the outer edge of the vertical line at their start to that at their end; where
             // the row begins a part of the table on a page, the table's top line (RowBox.AtPageTop).
             if (r > 0 || joined is { Count: > 0 })
             {
                 (rowBox.PageTopBorders, rowBox.PageTopStrokes) = ([], []);
+                // A cell merged down from the row above has its own top line there, not that of the cell it goes on
+                // (measured with docx/local/vmt-*: the 1.5 pt top line of a cell merged over three rows gone at the top of
+                // page 2 where its third row goes on, a 3 pt top line of the merged cell of that row drawn there, the row's
+                // content below it, in modes 11 and 15; LibreOffice's extras-layout/tdf127118).
                 for (var k = 0; k < columns; k++)
                 {
-                    var below = Owner(at[r, k]);
-                    if (below == null || k > 0 && Owner(at[r, k - 1]) == below)
+                    var below = at[r, k];
+                    if (below == null || k > 0 && at[r, k - 1] == below)
                         continue;
                     if (Edge(null, below.CellBorders.Top, TableBorder(row, format, b => b.Top), false) is { Visible: true } line)
                     {
