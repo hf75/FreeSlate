@@ -3603,30 +3603,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         // Space between this paragraph and the previous one.
         var before = bare ? 0 : SpaceBefore(paragraph);
-        var gap = !columnEmpty ? Gap(before) : top switch
-        {
-            Top.Document => before,
-            Top.Section => Math.Max(0, Gap(before) - pendingAfter),
-            // Below the space after the paragraph above, which a continuous section begins below (balanced columns
-            // hold it in their height), what the space before has more than that space after (measured with
-            // page-setup: the heading of the three-column section stands level with the other columns, its 8 pt before
-            // already in the 8 pt after above; docx/local/colsp-*).
-            Top.Continuous => Math.Max(0, Gap(before) - pendingAfter),
-            // After a break that begins the paragraph, what its space before has more than the space after the
-            // paragraph before it (measured with docx/external/libreoffice/extras-ooxmlexport/
-            // tdf153964_topMarginAfterBreak15: 60 pt before after an empty paragraph with 8 pt after leave 52 pt;
-            // docx/local/breakmark2-*: all of it after paragraphs without space after).
-            Top.Leading => Math.Max(0, Gap(before) - pendingAfter),
-            // Before Word 2013 a page break before keeps what the space before has more than the space after the
-            // paragraph before it (measured with docx/local/sptm-11, -12, -14: 18 pt after none; sbk-*: 14 pt, also
-            // beforeAutospacing, after 0, 6 and 20 pt keep 14, 8 and 0 in modes 11, 12 and 14; -15 none;
-            // python-docx/sty-known-styles; LibreOffice's extras-ooxmlexport/fdo81492).
-            Top.Break when brokeBefore && context.Profile.PageBreakKeepsSpaceBefore => Math.Max(0, Gap(before) - pendingAfter),
-            _ => 0,
-        };
+        var spacing = SpaceAbove(before, brokeBefore);
+        var gap = spacing.Here;
         balanced = false;
-        // The space a balanced column gives the paragraph where it does not begin the column.
-        var flowGap = Gap(before);
 
         // Keep with next and keep lines together: move the paragraph to the next column when its keep chain has to
         // break here (ChainBreaks), when it keeps its lines together and they do not fit, also more than a column of
@@ -3679,7 +3658,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // the box before (bsp2-gap: 8 pt after "A" in its shading, the 22 pt more before "B" in B's); at the top of a
         // column the space before it dropped lies above the column (bsp-end, bsp2-flow: "B" at the top margin, its
         // shading 22 pt above it).
-        var boxTop = !continues ? y : columnEmpty ? y - Math.Max(0, Gap(before) - pendingAfter - gap) : y + pendingAfter;
+        var boxTop = !continues ? y : columnEmpty ? y - Math.Max(0, spacing.Between - pendingAfter - gap) : y + pendingAfter;
         // The paragraph's top for drawings placed relative to it: its own space before lies inside it.
         var ownBefore = columnEmpty ? gap : Math.Max(0, gap - pendingAfter);
         // HTML divisions with borders frame their paragraphs like paragraph borders, at the division's indents; a
@@ -3774,7 +3753,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             paragraphTop = (page!, y);
         if (frame != null && !bare && !wasEmpty && columnEmpty)
         {
-            boxTop = continues ? y - Math.Max(0, Gap(before) - pendingAfter) : y + frame.TopShadow;
+            boxTop = continues ? y - spacing.Excess : y + frame.TopShadow;
             if (!continues)
                 y = boxTop + (frame.Top is { Visible: true } opening ? opening.Space + opening.Total : 0);
             betweenLine = null;
@@ -3889,9 +3868,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // (docx/external/libreoffice/core-objectpositioning/do-not-capture-draw-objs-on-page-draw-wrap-none: a
                 // page's first line below another paragraph's shape at the top margin; writerfilter-dmapper/
                 // framepr-pagebreak-style, extras-layout/tdf170846_1, _2: below frames).
-                var dropped = columnEmpty && top == Top.Break && !(brokeBefore && context.Profile.PageBreakKeepsSpaceBefore) && lines.Count > 0
+                var dropped = SpaceAbove(before, brokeBefore).Dropped && lines.Count > 0
                               && owned.Values.Any(e => e.Top < linesTop + lines[0].Height - 0.01 && e.Bottom > linesTop + 0.01);
-                layout.PushedSpace = (dropped ? Gap(before) : ownBefore) + opening;
+                layout.PushedSpace = (dropped ? spacing.Between : ownBefore) + opening;
                 try
                 {
                     double? firstOffset = null;
@@ -4038,7 +4017,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 return;
             betweenLine = null;
             if (continues)
-                partTop = y - Math.Max(0, Gap(before) - pendingAfter);
+                partTop = y - spacing.Excess;
             else
             {
                 partTop = y + frame.TopShadow;
@@ -4209,7 +4188,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     line.Pieces.Count == 0);
             if (page!.Lines.Count == 0 && column == 0 && TopTrim(line, format) is var trim and > 0)
                 line = line.Trimmed(trim);
-            flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? flowGap : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
+            flow.Add(new FlowLine(page!.Lines.Count, k == 0 ? spacing.Between : 0, k == 0 && here == 0 ? gap : 0, paragraphNumber, k, lines.Count,
                 widow, format.KeepNext == true, format.KeepLines == true) { Block = paragraph });
             if (cutsPage != page)
                 (cuts, cutsPage) = ([], page!);
@@ -4982,6 +4961,49 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (context.Profile.SuppressSpacingAtTop && (rule is "atLeast" || rule is "auto" && layout.LinePitch != null && format.SnapToGrid != false))
             return line.Baseline - line.Above - line.RaisedAbove;
         return 0;
+    }
+
+    /// <summary>
+    /// The space above a paragraph, in points (catalog: paragraph.spacing): Between, all of the space between it and the
+    /// paragraph above (see <see cref="Gap"/>), which it has where it goes on below that one, also in balanced columns;
+    /// Excess, what its space before has more than the space after above; Here, the space above it where it begins (see
+    /// <see cref="SpaceAbove"/>); Dropped, whether a break at the column's top dropped its space before.
+    /// </summary>
+    readonly record struct Spacing(double Between, double Excess, double Here, bool Dropped);
+
+    /// <summary>
+    /// The space above the paragraph being placed, with <paramref name="before"/> its own space before: within a
+    /// column all of the space between it and the paragraph above, at a column's top by how the column began (see
+    /// <see cref="Top"/>; <paramref name="brokeBefore"/>: whether its own page break before began the page).
+    /// </summary>
+    Spacing SpaceAbove(double before, bool brokeBefore)
+    {
+        var between = Gap(before);
+        var excess = Math.Max(0, between - pendingAfter);
+        if (!columnEmpty)
+            return new(between, excess, between, false);
+        return top switch
+        {
+            Top.Document => new(between, excess, before, false),
+            Top.Section => new(between, excess, excess, false),
+            // Below the space after the paragraph above, which a continuous section begins below (balanced columns
+            // hold it in their height), what the space before has more than that space after (measured with
+            // page-setup: the heading of the three-column section stands level with the other columns, its 8 pt before
+            // already in the 8 pt after above; docx/local/colsp-*).
+            Top.Continuous => new(between, excess, excess, false),
+            // After a break that begins the paragraph, what its space before has more than the space after the
+            // paragraph before it (measured with docx/external/libreoffice/extras-ooxmlexport/
+            // tdf153964_topMarginAfterBreak15: 60 pt before after an empty paragraph with 8 pt after leave 52 pt;
+            // docx/local/breakmark2-*: all of it after paragraphs without space after).
+            Top.Leading => new(between, excess, excess, false),
+            // Before Word 2013 a page break before keeps what the space before has more than the space after the
+            // paragraph before it (measured with docx/local/sptm-11, -12, -14: 18 pt after none; sbk-*: 14 pt, also
+            // beforeAutospacing, after 0, 6 and 20 pt keep 14, 8 and 0 in modes 11, 12 and 14; -15 none;
+            // python-docx/sty-known-styles; LibreOffice's extras-ooxmlexport/fdo81492).
+            Top.Break when brokeBefore && context.Profile.PageBreakKeepsSpaceBefore => new(between, excess, excess, false),
+            // Otherwise a break drops it at the column's top.
+            _ => new(between, excess, 0, true),
+        };
     }
 
     /// <summary>The space between the previous paragraph and one with the given space before (see <see cref="DocumentContext.Between"/>).</summary>

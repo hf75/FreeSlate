@@ -1021,7 +1021,9 @@ areas:
         strategy: >-
           Line spacing auto (multiples of the font's single line height), exact and at least; spacing before and
           after, auto spacing of HTML paragraphs, contextual spacing between paragraphs of the same style. How Word
-          derives single line height from the font tables is measured, not assumed.
+          derives single line height from the font tables is measured, not assumed. The space above a paragraph comes
+          from one rule: all of the space between it and the paragraph above within a column, at a column's top what
+          the way the column began leaves of it, and whether a break dropped it there.
         office: >-
           A single line is the font's hhea ascender, descender and line gap; the baseline lies the larger of the line
           gaps (hhea against OS/2 win, as DirectWrite does; OS/2 typo metrics where USE_TYPO_METRICS is set) plus the
