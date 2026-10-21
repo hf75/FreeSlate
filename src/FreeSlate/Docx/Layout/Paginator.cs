@@ -2913,7 +2913,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     PlacedDrawing PlaceAnchor(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
         CellAnchor? cell = null, double? character = null, IReadOnlyList<PlacedDrawing>? before = null) =>
-        Clear(Placed(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character), before ?? page.Drawings, page.Section.PageWidth);
+        Clear(Placed(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character), before ?? page.Drawings, page.Section.PageWidth,
+            context.CompatibilityMode < 15 ? (page.BodyBottom, page.Section.PageHeight) : null);
 
     /// <summary>
     /// A floating drawing that may not overlap the drawings placed before it, or that one of them may not overlap
@@ -2925,19 +2926,43 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// wrapped square). Drawings behind the text without wrapping take no part (tdf120760_ZOrderInHeader: a page's
     /// background picture behind a header's band stays).
     /// </summary>
-    static PlacedDrawing Clear(PlacedDrawing drawing, IReadOnlyList<PlacedDrawing> before, double pageWidth)
+    /// <param name="legacy">
+    /// Before Word 2013 the body's bottom and the page's height, where a drawing that moves with its paragraph or line
+    /// first goes its own height down: still beside the one it overlaps and then past the body's bottom it stands there
+    /// right of that one, else below that one where it fits on the page, else right of it as low as the page lets it
+    /// (measured with docx/local/aoy-*-14, -12, aoz-*: in mode 14 a rectangle 112.82 pt wide and 60 to 120 pt high,
+    /// centred on the column 14.2 pt below its paragraph, over one 63.21 x 94.39 pt centred on the margin: of 64 and 68
+    /// pt below it, of 72 to 92 pt right of it and its own height down, of 96 to 110 pt below it, of 120 pt right of it
+    /// at the page's bottom; with that one 70 to 130 pt high, 30 pt down, the bottom margin 2 cm less, in a paragraph of
+    /// its own or the first of the two alike; placed from the page right only, aoy-page-14; LibreOffice's
+    /// extras-ooxmlexport/tdf134114_allowOverlap; known deviation: without text beside the one it overlaps Word leaves
+    /// it its own height down, aoz-short).
+    /// </param>
+    static PlacedDrawing Clear(PlacedDrawing drawing, IReadOnlyList<PlacedDrawing> before, double pageWidth, (double BodyBottom, double PageHeight)? legacy = null)
     {
         static bool Forbids(PlacedDrawing d) => (string?)d.Drawing.Attribute("allowOverlap") is "0" or "false";
         static bool Background(PlacedDrawing d) => d.Behind && d.Drawing.Element(Docx.Drawings.Wp + "wrapNone") != null;
         if (Background(drawing))
             return drawing;
+        var withText = legacy is { } &&
+            (string?)drawing.Drawing.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") is "paragraph" or "line";
+        var planned = drawing.Y;
         for (var round = 0; round < 8; round++)
         {
             var hit = before.FirstOrDefault(p => !ReferenceEquals(p.Drawing, drawing.Drawing) && !Background(p) && (Forbids(p) || Forbids(drawing))
                 && p.X < drawing.X + drawing.Width - 0.01 && drawing.X < p.X + p.Width - 0.01 && p.Y < drawing.Y + drawing.Height - 0.01 && drawing.Y < p.Y + p.Height - 0.01);
             if (hit == null)
                 break;
-            drawing = hit.X + hit.Width + drawing.Width <= pageWidth + 0.01 ? drawing with { X = hit.X + hit.Width } : drawing with { Y = hit.Y + hit.Height };
+            var right = hit.X + hit.Width + drawing.Width <= pageWidth + 0.01;
+            if (withText && legacy is var (bodyBottom, pageHeight))
+            {
+                var (own, below) = (planned + drawing.Height, hit.Y + hit.Height);
+                drawing = own < below - 0.01 && own + drawing.Height > bodyBottom + 0.01 && right ? drawing with { X = hit.X + hit.Width, Y = own }
+                    : below + drawing.Height <= pageHeight + 0.01 ? drawing with { Y = below }
+                    : drawing with { X = right ? hit.X + hit.Width : drawing.X, Y = Math.Min(own, pageHeight - drawing.Height) };
+                continue;
+            }
+            drawing = right ? drawing with { X = hit.X + hit.Width } : drawing with { Y = hit.Y + hit.Height };
         }
         return drawing;
     }
@@ -3740,11 +3765,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // tdf160049_anchorMargin14).
         var tall = new List<Exclusion>();
         var owned = new Dictionary<AnchorInline, Exclusion>(ReferenceEqualityComparer.Instance);
+        // Each where it then stands, clear of the paragraph's drawings before it (see Clear; docx/local/aox-*, aoy-*:
+        // the text beside a rectangle that may not overlap where it moved, not where it was placed).
         void Own()
         {
+            var placedOwn = new List<PlacedDrawing>();
             foreach (var anchor in firstPart)
             {
-                var placed = PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width);
+                var placed = PlaceAnchor(anchor, page!, paragraphTop.Top, y, left, width, before: [.. page!.Drawings, .. placedOwn]);
+                placedOwn.Add(placed);
                 if (ExclusionOf(placed) is { } own)
                 {
                     owned[anchor] = own;
