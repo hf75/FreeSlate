@@ -29,6 +29,9 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     /// <summary>The left inset of the text box the line stands in, which decides where its edge's half dots go (PageRenderer.OnDots).</summary>
     public double? BoxInset { get; init; }
 
+    /// <summary>How far the line was moved across to start on a dot of Word's device (PageRenderer.OnDots).</summary>
+    public double DeviceShift { get; init; }
+
     /// <summary>
     /// The box of the turned frame (w:framePr with w:textDirection tbRl or btLr) the line stands in, its top from the
     /// line's, from which PageRenderer puts the line on Word's device as a turned text box's (TurnedOnDots).

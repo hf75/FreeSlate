@@ -48,6 +48,12 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
     /// <summary>The content of the shape's text box, laid out in its inner rectangle and drawn over the shape.</summary>
     public List<Block>? Text { get; init; }
 
+    /// <summary>
+    /// How far an inline drawing moved across with its line onto Word's device and by the PDF's growth: its text box's
+    /// text counts its dots from where the drawing stood before (PageRenderer.TextBox).
+    /// </summary>
+    public double DeviceShift { get; init; }
+
     /// <summary>The text boxes of the shapes in a group or canvas (catalog: drawing.groups, drawing.canvas), by shape.</summary>
     public IReadOnlyList<(XElement Shape, List<Block> Text)>? ChildText { get; init; }
 

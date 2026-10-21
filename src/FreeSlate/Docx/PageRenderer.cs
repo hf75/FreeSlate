@@ -299,7 +299,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                    && (string?)shapeXfrm!.Attribute("flipH") is not ("1" or "true") && (string?)shapeXfrm.Attribute("flipV") is not ("1" or "true")
             ? rot / 60000.0 : 0;
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
-            html += TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page);
+            html += TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, deviceShift: drawing.DeviceShift);
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         // Groups of DrawingML (wpg), not those of VML (docx/external/libreoffice/extras-ooxmlexport/tdf164065: a v:group's
         // text box's table borders lines in Word's PDF).
@@ -654,8 +654,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// them, line by line.
     /// </summary>
     /// <param name="grouped">Whether the box is a shape's in a group (wpg), whose shading and borders Word's PDF holds as a bitmap.</param>
+    /// <param name="deviceShift">How far an inline box moved with its line onto Word's device (PlacedDrawing.DeviceShift).</param>
     string TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page,
-        bool grouped = false)
+        bool grouped = false, double deviceShift = 0)
     {
         var (l, t, r, b) = Insets(body, shape, w, h, context.Theme);
         var vert = Vertical(body) ? (string?)body!.Attribute("vert") : null;
@@ -764,8 +765,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             Fills(placed, strokes.Select(s => s.Offset(left, top)), svg);
             // An unturned box's lines stand on Word's device as the body's do (docx/external/libreoffice/
-            // extras-ooxmlexport/tdf103573: Word's text box glyphs on whole dots with the PDF writer's adjustments).
-            Lines(lines.Select(p => p with { Left = left + p.Left, Top = top + p.Top, BoxInset = l }), svg, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
+            // extras-ooxmlexport/tdf103573: Word's text box glyphs on whole dots with the PDF writer's adjustments), an
+            // inline box's counted from where it stood before its line moved onto the device, edge and inset rounded
+            // together (docx/local/tbi-1417: a box at 1417 twips, 590.4 dots, on 590 has its text with unfilled lines of
+            // 1, 1.5 and 2 pt on 595, 597 and 599, not 594, 596 and 598).
+            Lines(lines.Select(p => p with { Left = left - deviceShift + p.Left, Top = top + p.Top, BoxInset = l }), svg, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
         }
         else
         {
@@ -1067,7 +1071,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     // A drawing whose turn swaps its box's sides turns about that box's middle (ri-*: Drawings.Box).
                     if (Drawings.InlineSwapped(inline.Drawing))
                         (ix, iy) = (ix + (h - w) / 2, iy + (w - h) / 2);
-                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, ix + dx, iy + dy, w, h) { Text = inline.Text, ChildText = inline.ChildText });
+                    front.Add(new PlacedDrawing(inline.Drawing, inline.Part, ix + dx, iy + dy, w, h)
+                    {
+                        // Its text box's text counts from where it stood before its line moved onto the device and the
+                        // PDF's growth moved it (TextBox).
+                        Text = inline.Text, ChildText = inline.ChildText,
+                        DeviceShift = placed.InlineOrigin == null ? placed.DeviceShift + x - (placed.Left + piece.X) : 0,
+                    });
                     continue;
                 }
                 // Text set across the line: a little line of its own, turned a quarter against the line.
@@ -1414,16 +1424,21 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         // In whole twips first, so that halves stay halves.
         static double Snap(double points) => Math.Round(Math.Round(points * 20) * 5 / 12, MidpointRounding.ToEven) * Dot;
-        // A text box's edge with a left inset of 7.2 pt or more has its half dots go down (measured with docx/local/tbd-*,
-        // tbe-*: a box at 1887.5 dots has its text with left insets of 144 and 288 twips on dots 1947 and 2007, in modes 11
-        // to 15; LibreOffice's extras-ooxmlexport/tdf91260: 1947.5 dots on 1947). Narrower insets keep halves to even,
-        // which Word does not always (rule unknown): it puts 0, 12 and 72 twips beside that box on 1888, 1893 and 1918 and
-        // a box at 1512.5 dots on 1513, but boxes at 472.5 dots without an inset on 472 (extras-ooxmlexport/
+        // A text box's text starts at its edge and inset on a dot, a half dot going down with a left inset of 7.2 pt or
+        // more, up with a narrower one, to even without one (measured with docx/local/tbd-*, tbe-*: a box at 1887.5 dots
+        // has its text with left insets of 144 and 288 twips on dots 1947 and 2007, in modes 11 to 15, with 12 and 72
+        // twips on 1893 and 1918, without on 1888; LibreOffice's extras-ooxmlexport/tdf91260: 1947.5 dots on 1947;
+        // tbi-1417: insets of nothing but half an unfilled line beside a box at 1417 twips, 592.5 dots on 593;
+        // extras-layout/tdf117188; boxes at 472.5 dots without an inset on 472: extras-ooxmlexport/
         // tdf153613_textboxAfterPgBreak3, writerfilter-dmapper/textbox-textline).
+        // The edge and inset in whole twips, halves down: half an unfilled line of 0.25 or 0.75 pt counts 2 or 7 twips,
+        // of 0.255 pt 3 (tbi-1417, tbi-1440: the text on dots 591 and 593 beside a box at 1417 twips; LibreOffice's
+        // extras-ooxmlexport/tdf104354).
         static double BoxSnap(double points, double inset)
         {
-            var dots = Math.Round(points * 20) * 5 / 12;
-            return (Math.Abs(dots - Math.Floor(dots) - 0.5) < 1e-6 && inset >= 7.2 - 1e-6 ? Math.Floor(dots) : Math.Round(dots, MidpointRounding.ToEven)) * Dot;
+            var dots = Math.Ceiling(points * 20 - 0.5 - 1e-6) * 5 / 12;
+            var half = Math.Abs(dots - Math.Floor(dots) - 0.5) < 1e-6;
+            return (!half ? Math.Round(dots) : inset >= 7.2 - 1e-6 ? Math.Floor(dots) : inset > 1e-6 ? Math.Ceiling(dots) : Math.Round(dots, MidpointRounding.ToEven)) * Dot;
         }
         var start = placed.Line.Pieces.Count > 0 ? placed.Line.Pieces[0].X : 0;
         var shift = (placed.BoxInset is { } inset ? BoxSnap(placed.Left, inset) : Snap(placed.Left)) - placed.Left + Snap(start) - start;
@@ -1462,7 +1477,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // The line's left end, also where right-to-left runs were put in visual order after the first piece.
             shift = to - (placed.Left + placed.Line.Pieces.Min(p => p.X));
         }
-        return Math.Abs(shift) < 1e-9 ? placed : placed with { Left = placed.Left + shift };
+        return Math.Abs(shift) < 1e-9 ? placed : placed with { Left = placed.Left + shift, DeviceShift = shift };
     }
 
     /// <summary>Where a line's content ends (from the column's left edge): its last character but spaces, or tab.</summary>

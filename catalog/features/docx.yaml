@@ -5058,10 +5058,15 @@ areas:
           in five fonts: 90 to 100 %, 60 to 75 % before), the text after a tab from the stop's nearest dot, halves
           down (gxt-*: 58 of 60 stops exact, the halves so); so the lines of text boxes that are not turned (40
           documents of the corpus with text boxes: 83.4 % of the characters within half a dot, 73.1 % before), the
-          edge of a box with a left inset of 7.2 pt or more with its halves down (docx/local/tbd-*, tbe-*: a box at
-          1887.5 dots has its text with insets of 144 and 288 twips on dots 1947 and 2007 in modes 11 to 15;
-          extras-ooxmlexport/tdf91260 90.0 → 100 %; known deviation: with narrower insets Word puts some halves up,
-          1512.5, 1887.5 and 1892.5 dots, others down, 472.5 dots, rule unknown), and
+          edge of a box and its inset on a dot together, a half dot going down with a left inset of 7.2 pt or more, up
+          with a narrower one, to even without one (docx/local/tbd-*, tbe-*: a box at 1887.5 dots has its text with
+          insets of 144 and 288 twips on dots 1947 and 2007 in modes 11 to 15, with 12 and 72 twips on 1893 and 1918;
+          extras-ooxmlexport/tdf91260 90.0 → 100 %; boxes at 472.5 dots without an inset on 472), edge and inset in
+          whole twips with halves down (half an unfilled line of 0.25 or 0.75 pt counts 2 or 7 twips, of 0.255 pt 3),
+          an inline box counted from where it stood before its line moved onto the device and the PDF's growth moved
+          it (docx/local/tbi-1417, tbi-1440: unfilled lines of 0 to 2 pt beside boxes at 1417 and 1440 twips, every
+          text start on Word's dot; extras-layout/tdf117188 89.4 → 100 %, extras-ooxmlexport/pagerelsize 97.8 → 100
+          %, tdf92724_continuousBreaksComplex 98.5 → 99.9 %), and
           the turned lines of vert and vert270 boxes along the page: from Word 2013 on the box's top on the dot before
           it and its height in whole dots from there, before the edge the lines start from on a dot (the top on the
           nearest, the bottom for text up on the one before it) and the room in whole dots on from there, lines down the
