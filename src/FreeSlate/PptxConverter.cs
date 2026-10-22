@@ -115,7 +115,7 @@ public static class PptxConverter
             if (!hidden && deck.IsHidden(part))
                 continue;
             var (width, height, items) = new SlideRenderer(new SlideContext(context, part, i + 1), paint).Scene();
-            var scene = new Rendering.PageScene { Number = i + 1, Paper = "", Width = width * 72 / 96, Height = height * 72 / 96 };
+            var scene = new Rendering.PageScene { Number = i + 1, Paper = "", Width = width * 72 / 96, Height = height * 72 / 96, Glyphs = context.Glyphs };
             scene.Items.AddRange(items);
             scenes.Add(scene);
         }

@@ -10,6 +10,7 @@ namespace FreeSlate.Html;
 public sealed class GlyphCache
 {
     readonly Dictionary<(string Font, int Face, string Instance, uint Glyph), string?> ids = new();
+    readonly Dictionary<string, string> outlines = [];
     readonly StringBuilder defs = new();
 
     /// <summary>The id of the glyph's path, or null for glyphs without contours (spaces).</summary>
@@ -21,9 +22,15 @@ public sealed class GlyphCache
         id = outline.Length == 0 ? null : "_g" + ids.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
         ids[(font.Path, font.Index, font.Instance, glyph)] = id;
         if (id != null)
+        {
             defs.Append($"<path id=\"{id}\" d=\"{outline}\"/>");
+            outlines[id] = outline;
+        }
         return id;
     }
+
+    /// <summary>The outline (SVG path data in font units) of the glyph an id names, or null for an id not given out.</summary>
+    public string? Outline(string id) => outlines.GetValueOrDefault(id);
 
     /// <summary>An invisible SVG holding the definitions, or "" when no glyph was used.</summary>
     public string Svg() => defs.Length == 0 ? "" : $"<svg class=\"glyphs\" width=\"0\" height=\"0\" aria-hidden=\"true\"><defs>{defs}</defs></svg>\n";

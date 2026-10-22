@@ -28,6 +28,9 @@ public sealed class PageScene
     /// </summary>
     public (double PaperWidth, double Scale, double Offset)? Sheet { get; init; }
 
+    /// <summary>The outlines the glyph ids of the scene's items name (in HTML the document's definitions).</summary>
+    public GlyphCache? Glyphs { get; init; }
+
     public List<SceneItem> Items { get; } = [];
 }
 

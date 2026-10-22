@@ -26,6 +26,36 @@ public sealed class SvgDrawing
 
     SvgDrawing(SKPicture picture, SKSize size, bool sized) => (Picture, Size, Sized) = (picture, size, sized);
 
+    /// <summary>
+    /// SVG markup that a scene still holds (see MarkupItem; a chart's, a table's) recorded in the coordinates it stands
+    /// in, its text of class sel transparent as the HTML's style sheet has it; what it names by id and does not define
+    /// itself comes from <paramref name="definitions"/> (the page's definitions, the document's glyph outlines). Null
+    /// for markup that is no SVG.
+    /// </summary>
+    public static SKPicture? Fragment(string markup, Func<string, XElement?>? definitions = null)
+    {
+        XDocument document;
+        try
+        {
+            using var reader = XmlReader.Create(new StringReader($"<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">{markup}</svg>"),
+                new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, XmlResolver = null });
+            document = XDocument.Load(reader, LoadOptions.PreserveWhitespace);
+        }
+        catch (XmlException)
+        {
+            return null;
+        }
+        if (document.Root!.Elements().Any(e => e.Name.Namespace == Svg && e.Name.LocalName is "div" or "section" or "span" or "p"))
+            return null;
+        using var recorder = new SKPictureRecorder();
+        var canvas = recorder.BeginRecording(SKRect.Create(-1e6f, -1e6f, 2e6f, 2e6f), useRTree: true);
+        var painter = new Painter(document, definitions, "text.sel{fill-opacity:0}");
+        painter.Children(document.Root!, canvas, Style.Initial);
+        return recorder.EndRecording();
+    }
+
+    static readonly XNamespace Svg = "http://www.w3.org/2000/svg";
+
     /// <summary>Reads and records an SVG picture, or null where it is not one.</summary>
     public static SvgDrawing? Load(byte[] data)
     {
@@ -55,7 +85,7 @@ public sealed class SvgDrawing
                 (float)(height > 0 ? height : width > 0 ? width * boxHeight / boxWidth : boxHeight));
         using var recorder = new SKPictureRecorder();
         var canvas = recorder.BeginRecording(SKRect.Create(size));
-        var painter = new Painter(document);
+        var painter = new Painter(document, null, null);
         painter.Viewport(root, canvas, size.Width, size.Height, Style.Initial, outermost: true);
         return new SvgDrawing(recorder.EndRecording(), size, sized);
     }
@@ -94,6 +124,7 @@ public sealed class SvgDrawing
         public double Opacity { get; init; } = 1;
         public bool Displayed { get; init; } = true;
         public string? ClipPath { get; init; }
+        public string? Mask { get; init; }
         public double StopOpacity { get; init; } = 1;
         public string StopColor { get; init; } = "black";
     }
@@ -102,10 +133,16 @@ public sealed class SvgDrawing
     {
         readonly Dictionary<string, XElement> ids = [];
         readonly List<(string Selector, int Specificity, int Order, List<(string Name, string Value)> Declarations)> rules = [];
+        readonly Func<string, XElement?>? definitions;
 
-        public Painter(XDocument document)
+        /// <param name="definitions">What the document names by id and does not define itself.</param>
+        /// <param name="sheet">A style sheet the document is drawn with before its own.</param>
+        public Painter(XDocument document, Func<string, XElement?>? definitions, string? sheet)
         {
+            this.definitions = definitions;
             var order = 0;
+            if (sheet != null)
+                Sheet(sheet, ref order);
             foreach (var element in document.Descendants())
             {
                 if (element.Attribute("id")?.Value is { Length: > 0 } id)
@@ -176,7 +213,7 @@ public sealed class SvgDrawing
 
         Style Computed(XElement element, Style parent)
         {
-            var style = parent with { Opacity = 1, Displayed = true, ClipPath = null, StopOpacity = 1, StopColor = "black" };
+            var style = parent with { Opacity = 1, Displayed = true, ClipPath = null, Mask = null, StopOpacity = 1, StopColor = "black" };
             foreach (var (name, value) in Properties(element))
             {
                 if (value == "inherit")
@@ -208,6 +245,7 @@ public sealed class SvgDrawing
                     "opacity" => style with { Opacity = Fraction(value) },
                     "display" => style with { Displayed = value != "none" },
                     "clip-path" => style with { ClipPath = value },
+                    "mask" => style with { Mask = value },
                     "stop-opacity" => style with { StopOpacity = Fraction(value) },
                     "stop-color" => style with { StopColor = value },
                     "font" => Font(style, value),
@@ -268,7 +306,7 @@ public sealed class SvgDrawing
                 .PreConcat(SKMatrix.CreateTranslation((float)-box[0], (float)-box[1]));
         }
 
-        void Children(XElement parent, SKCanvas canvas, Style style)
+        public void Children(XElement parent, SKCanvas canvas, Style style)
         {
             foreach (var child in parent.Elements())
             {
@@ -285,7 +323,7 @@ public sealed class SvgDrawing
 
         void Element(XElement element, SKCanvas canvas, Style parent, int depth = 0)
         {
-            if (depth > 32 || element.Name.Namespace != element.Document?.Root?.Name.Namespace && element.Name.Namespace != XNamespace.None)
+            if (depth > 32 || element.Name.Namespace != Svg && element.Name.Namespace != XNamespace.None)
                 return;
             var name = element.Name.LocalName;
             if (name is "defs" or "clipPath" or "mask" or "pattern" or "linearGradient" or "radialGradient" or "symbol" or "style" or "title" or "desc"
@@ -302,6 +340,10 @@ public sealed class SvgDrawing
             var layer = style.Opacity < 1;
             if (layer)
                 canvas.SaveLayer(new SKPaint { Color = SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(style.Opacity, 0, 1) * 255)) });
+            // A mask: the element drawn on a layer of its own, which the mask's luminance then cuts.
+            var mask = style.Mask is { } maskReference && Reference(maskReference) is { Name.LocalName: "mask" } masking ? masking : null;
+            if (mask != null)
+                canvas.SaveLayer();
             switch (name)
             {
                 case "g" or "a" or "switch":
@@ -339,6 +381,16 @@ public sealed class SvgDrawing
                     }
                     break;
             }
+            if (mask != null)
+            {
+                using (var luminance = new SKPaint { BlendMode = SKBlendMode.DstIn, ColorFilter = SKColorFilter.CreateLumaColor() })
+                {
+                    canvas.SaveLayer(luminance);
+                    Children(mask, canvas, Computed(mask, Style.Initial));
+                    canvas.Restore();
+                }
+                canvas.Restore();
+            }
             if (layer)
                 canvas.Restore();
             canvas.Restore();
@@ -349,7 +401,15 @@ public sealed class SvgDrawing
             if (value == null)
                 return null;
             var match = Regex.Match(value, @"#([^)'""\s]+)");
-            return match.Success && ids.TryGetValue(match.Groups[1].Value, out var target) ? target : null;
+            if (!match.Success)
+                return null;
+            var id = match.Groups[1].Value;
+            if (ids.TryGetValue(id, out var target))
+                return target;
+            var defined = definitions?.Invoke(id);
+            if (defined != null)
+                ids[id] = defined;
+            return defined;
         }
 
         /// <summary>A basic shape's or a path's outline, or null for other elements.</summary>

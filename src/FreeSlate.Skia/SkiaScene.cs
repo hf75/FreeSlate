@@ -11,7 +11,7 @@ namespace FreeSlate.Skia;
 /// <summary>What a scene held that the Skia backend did not draw, or drew more simply, counted while drawing.</summary>
 public sealed class SkiaStatistics
 {
-    /// <summary>Items still held as their HTML or SVG (MarkupItem), not drawn.</summary>
+    /// <summary>Items still held as their HTML (MarkupItem), not drawn; their SVG is drawn as SvgDrawing reads it.</summary>
     public int Markup { get; set; }
 
     /// <summary>Effects drawn without them: a picture's recoloring.</summary>
@@ -49,7 +49,7 @@ public static class SkiaScene
     {
         using var paper = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
         canvas.DrawRect(0, 0, Px(scene.Width), Px(scene.Height), paper);
-        new Drawer(canvas, statistics ?? new SkiaStatistics()).Draw(scene.Items);
+        new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs).Draw(scene.Items);
     }
 
     /// <summary>
@@ -124,8 +124,54 @@ public static class SkiaScene
     /// <param name="onPage">Where the canvas's origin lies on the page (a recording's, see Record); by default the canvas
     /// stands at the page's origin when the drawing begins.</param>
     /// <param name="cache">The pictures decoded so far, shared with the drawer of the page.</param>
-    sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null)
+    /// <param name="glyphs">The glyph outlines markup names by id (see PageScene.Glyphs).</param>
+    /// <param name="defined">The page's definitions so far, shared with the drawer of the page.</param>
+    sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null,
+        GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null)
     {
+        /// <summary>The elements the page's definitions (DefsItem) hold by id, which markup refers to.</summary>
+        readonly Dictionary<string, System.Xml.Linq.XElement> definitions = defined ?? [];
+
+        static readonly System.Xml.Linq.XNamespace Svg = "http://www.w3.org/2000/svg";
+
+        /// <summary>What markup names by id: the page's definitions, else a glyph's outline.</summary>
+        System.Xml.Linq.XElement? Definition(string id) =>
+            definitions.GetValueOrDefault(id) ?? (glyphs?.Outline(id) is { } outline
+                ? new System.Xml.Linq.XElement(Svg + "path", new System.Xml.Linq.XAttribute("id", id), new System.Xml.Linq.XAttribute("d", outline))
+                : null);
+
+        /// <summary>Markup drawn as the SVG it is (a chart's, a table's), where it is SVG that SvgDrawing reads.</summary>
+        bool Markup(string html)
+        {
+            var start = html.AsSpan().TrimStart();
+            if (start.Length == 0)
+                return true;
+            if (!start.StartsWith("<") || start.StartsWith("<div") || start.StartsWith("<section") || start.StartsWith("<span"))
+                return false;
+            using var picture = SvgDrawing.Fragment(html, Definition);
+            if (picture == null)
+                return false;
+            canvas.DrawPicture(picture);
+            return true;
+        }
+
+        /// <summary>Keeps a definitions item's elements by id for markup to refer to.</summary>
+        void Define(string markup)
+        {
+            try
+            {
+                var holder = System.Xml.Linq.XElement.Parse($"<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">{markup}</svg>");
+                foreach (var element in holder.Descendants())
+                {
+                    if (element.Attribute("id")?.Value is { Length: > 0 } id)
+                        definitions[id] = element;
+                }
+            }
+            catch (System.Xml.XmlException)
+            {
+            }
+        }
+
         static readonly SKSamplingOptions Sampling = new(SKFilterMode.Linear, SKMipmapMode.Linear);
 
         /// <summary>The pictures of the page, decoded once (a picture may stand on a page many times).</summary>
@@ -147,7 +193,7 @@ public static class SkiaScene
             switch (item)
             {
                 case MarkupItem markup:
-                    if (markup.Html.Length > 0)
+                    if (!Markup(markup.Html))
                         statistics.Markup++;
                     break;
                 case CanvasItem surface:
@@ -350,7 +396,8 @@ public static class SkiaScene
                 case ShapeEllipseItem ellipse:
                     ShapeEllipse(ellipse);
                     break;
-                case DefsItem:
+                case DefsItem defined:
+                    Define(defined.Markup);
                     break;
                 case TransformItem transformed:
                     canvas.Save();
@@ -703,7 +750,7 @@ public static class SkiaScene
             // The recording starts at this canvas's origin; patterns still align to the page.
             var at = page.TryInvert(out var inverse) ? inverse.PreConcat(canvas.TotalMatrix) : canvas.TotalMatrix;
             var origin = at.TryInvert(out var back) ? back : SKMatrix.Identity;
-            new Drawer(recording, statistics, origin, pictures).Draw(items);
+            new Drawer(recording, statistics, origin, pictures, glyphs, definitions).Draw(items);
             return recorder.EndRecording();
         }
 
