@@ -28,9 +28,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>
     /// The settings text boxes and balloons are laid out under: those the pagination ended with (Paginator.Settings),
-    /// which a box's own direction, color and grid change while it is laid out.
+    /// which a header's or footer's drawings and a box's own direction, color and grid change for themselves (see
+    /// BoxScope).
     /// </summary>
     public TextSettings Settings { get; set; } = new();
+
+    /// <summary>
+    /// What a drawing's text boxes are laid out under: the settings, and the page whose header or footer the drawing
+    /// stands in, for its fields (PageFields.On; null in the body).
+    /// </summary>
+    readonly record struct BoxScope(TextSettings Settings, PageBox? StoryPage);
 
     /// <summary>The paragraph layout and run styles of the document (for ruby, two lines in one and emphasis marks).</summary>
     ParagraphLayout? layout => blocks?.Paragraphs;
@@ -255,34 +262,24 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             $"<rect width=\"{w}\" height=\"{edge}\" fill=\"#A0A0A0\"/><rect y=\"{bottom}\" width=\"{w}\" height=\"{edge}\" fill=\"#E3E3E3\"/></svg></div>";
     }
 
-    /// <summary>A drawing as it is drawn on the page: its shape, then its text boxes (see ShapeOf).</summary>
-    List<SceneItem> Drawing(PlacedDrawing drawing, PageBox page)
+    /// <summary>
+    /// A drawing as it is drawn on the page: its shape, then its text boxes (see ShapeOf); <paramref name="outer"/> is
+    /// the scope of the text box the drawing stands in, if it does.
+    /// </summary>
+    List<SceneItem> Drawing(PlacedDrawing drawing, PageBox page, BoxScope? outer = null)
     {
+        var scope = outer ?? new BoxScope(Settings, null);
         // The text boxes of headers and footers keep off the body's grid, as their stories do (measured with docx/local/
         // gbx-*: a footer box's line at its top inset and ascent, at its left inset, under pitches of 18 pt of type
         // lines and snapToChars, where the body's box has its lines on the pitch and centered in the grid's cells;
         // docx/external/libreoffice/extras-ooxmlexport/tdf91261).
         if (layout is null || drawing.Part != page.Header && drawing.Part != page.Footer)
-            return ShapeOf(drawing, page);
-        var body = Settings;
-        Settings = body with { LinePitch = null, CharacterExtra = 0, GridCell = null, SnapCell = null };
+            return ShapeOf(drawing, page, scope);
         // Their fields are a header's or footer's, which Word updates when it prints (see FieldEvaluator.Value).
-        storyPage = page;
-        try
-        {
-            return ShapeOf(drawing, page);
-        }
-        finally
-        {
-            Settings = Settings with { LinePitch = body.LinePitch, CharacterExtra = body.CharacterExtra, GridCell = body.GridCell, SnapCell = body.SnapCell };
-            storyPage = null;
-        }
+        return ShapeOf(drawing, page, new BoxScope(scope.Settings with { LinePitch = null, CharacterExtra = 0, GridCell = null, SnapCell = null }, page));
     }
 
-    /// <summary>The page whose header or footer drawing is being drawn, for its text boxes' fields (PageFields.On).</summary>
-    PageBox? storyPage;
-
-    List<SceneItem> ShapeOf(PlacedDrawing drawing, PageBox page)
+    List<SceneItem> ShapeOf(PlacedDrawing drawing, PageBox page, BoxScope scope)
     {
         var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
         var items = new List<SceneItem>();
@@ -301,9 +298,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             return items;
         }
         if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
-            drawing = Fitted(drawing, content, bodyPr, shape, page);
+            drawing = Fitted(drawing, content, bodyPr, shape, page, scope);
         if (blocks != null && drawing.ChildText is { Count: > 0 })
-            drawing = FittedChildren(drawing, page);
+            drawing = FittedChildren(drawing, page, scope);
         var drawn = new List<SceneItem>();
         drawn.AddRange(drawings!.Render(drawing));
         if (drawing.Drawing.Attribute(Vml.RuleBevel) != null)
@@ -323,7 +320,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                    && (string?)shapeXfrm!.Attribute("flipH") is not ("1" or "true") && (string?)shapeXfrm.Attribute("flipV") is not ("1" or "true")
             ? rot / 60000.0 : 0;
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
-            TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, items, deviceShift: drawing.DeviceShift);
+            TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, scope, items, deviceShift: drawing.DeviceShift);
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         // Groups of DrawingML (wpg), not those of VML (docx/external/libreoffice/extras-ooxmlexport/tdf164065: a v:group's
         // text box's table borders lines in Word's PDF).
@@ -343,7 +340,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 items.AddRange(drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b)));
                 continue;
             }
-            TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, items, grouped);
+            TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, scope, items, grouped);
         }
         return items;
     }
@@ -480,15 +477,15 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// (a:spAutoFit) as high as its text and insets, a box that does not wrap (wrap none) as wide as its longest
     /// line and insets.
     /// </summary>
-    PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page) =>
-        FitToText(drawing, text, body, shape, page, blocks!, Settings, context.Theme);
+    PlacedDrawing Fitted(PlacedDrawing drawing, List<Block> text, XElement body, XElement? shape, PageBox page, BoxScope scope) =>
+        FitToText(drawing, text, body, shape, page, blocks!, scope.Settings, context.Theme);
 
     /// <summary>
     /// A group whose text boxes resize to their text (a:spAutoFit) with those shapes as high as their text and insets,
     /// their tops kept (LibreOffice's extras-ooxmlexport/groupshape-theme-font: a box saved 127.3 pt high fits its text,
     /// 66.45 pt); the drawing's copy, the document's model untouched.
     /// </summary>
-    PlacedDrawing FittedChildren(PlacedDrawing drawing, PageBox page)
+    PlacedDrawing FittedChildren(PlacedDrawing drawing, PageBox page, BoxScope scope)
     {
         if (!drawing.ChildText!.Any(c => c.Text.Count > 0 && c.Shape.Element(Drawings.Wps + "bodyPr") is { } b && b.Element(Ns.A + "spAutoFit") != null && !Vertical(b)))
             return drawing;
@@ -510,14 +507,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 || copy.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "xfrm")?.Element(Ns.A + "ext") is not { } ext
                 || !double.TryParse((string?)ext.Attribute("cy"), NumberStyles.Float, CultureInfo.InvariantCulture, out var cy) || cy <= 0)
                 continue;
-            var fitted = FitToText(new PlacedDrawing(child, drawing.Part, rect.X, rect.Y, rect.W, rect.H), text, body, child, page, blocks!, Settings, context.Theme);
+            var fitted = FitToText(new PlacedDrawing(child, drawing.Part, rect.X, rect.Y, rect.W, rect.H), text, body, child, page, blocks!, scope.Settings, context.Theme);
             var height = (long)Math.Round(fitted.Height * cy / rect.H);
             resized |= height != (long)Math.Round(cy);
             fits.Add((copy, child, text, body));
             ext.SetAttributeValue("cy", height);
         }
         var placed = drawing with { Drawing = clone, ChildText = children };
-        return resized && drawing.Drawing.Attribute(Vml.Source) != null ? Stretched(placed, fits, page) ?? placed : placed;
+        return resized && drawing.Drawing.Attribute(Vml.Source) != null ? Stretched(placed, fits, page, scope) ?? placed : placed;
     }
 
     /// <summary>
@@ -532,7 +529,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// 1800 to 11492 units across the page's 612 pt). Only one way in percent (vgq-fitw) is left as it is. Null where
     /// this does not apply.
     /// </summary>
-    PlacedDrawing? Stretched(PlacedDrawing drawing, List<(XElement Copy, XElement Original, List<Block> Text, XElement Body)> fits, PageBox page)
+    PlacedDrawing? Stretched(PlacedDrawing drawing, List<(XElement Copy, XElement Original, List<Block> Text, XElement Body)> fits, PageBox page, BoxScope scope)
     {
         if (drawing.Drawing.Element(Drawings.Wp14 + "sizeRelH") == null || drawing.Drawing.Element(Drawings.Wp14 + "sizeRelV") == null
             || drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wpg + "wgp") is not { } group
@@ -559,7 +556,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         foreach (var (copy, original, text, body) in fits)
         {
             var width = Value(copy.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "xfrm")?.Element(Ns.A + "ext"), "cx") * sx;
-            heights[copy] = FitToText(new PlacedDrawing(original, drawing.Part, drawing.X, drawing.Y, width, drawing.Height), text, body, original, page, blocks!, Settings, context.Theme).Height;
+            heights[copy] = FitToText(new PlacedDrawing(original, drawing.Part, drawing.X, drawing.Y, width, drawing.Height), text, body, original, page, blocks!, scope.Settings, context.Theme).Height;
         }
         // Down, the scale at which the lowest bottom reaches the box's.
         var sy = double.PositiveInfinity;
@@ -672,12 +669,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// <param name="grouped">Whether the box is a shape's in a group (wpg), whose shading and borders Word's PDF holds as a bitmap.</param>
     /// <param name="deviceShift">How far an inline box moved with its line onto Word's device (PlacedDrawing.DeviceShift).</param>
     void TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page,
-        List<SceneItem> items, bool grouped = false, double deviceShift = 0)
+        BoxScope scope, List<SceneItem> items, bool grouped = false, double deviceShift = 0)
     {
         var (l, t, r, b) = Insets(body, shape, w, h, context.Theme);
         var vert = Vertical(body) ? (string?)body!.Attribute("vert") : null;
         var (areaWidth, areaHeight) = vert != null ? (h - t - b, w - l - r) : (w - l - r, h - t - b);
-        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix, On = storyPage };
+        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix, On = scope.StoryPage };
         List<PlacedLine> lines;
         List<FillRect> fills = [];
         List<Stroke> strokes = [];
@@ -695,31 +692,20 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             // Vertical text has vertical lines; eaVert, mongolianVert and the WordArt kinds set East Asian characters
             // upright (measured with docx/local/vertical6).
-            var outer = Settings;
-            Settings = Settings with { Vertical = vert != null, TurnEastAsian = vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl" };
+            var settings = scope.Settings with { Vertical = vert != null, TurnEastAsian = vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl" };
             // A text box's lines keep its whole width before Word 2013 too, which the body's shrink to whole cells of the
             // character grid (measured with docx/local/gbx-both-14: right aligned text ends at the right inset of a box
             // 185.6 pt wide under cells of 20.265 pt, as in gbx-both-15).
-            Settings = Settings with { GridCell = null };
+            settings = settings with { GridCell = null };
             // Automatic text takes the color of the shape's style (fontRef; see TextSettings.TextColor).
-            Settings = Settings with { TextColor = drawings?.Colors.ResolveChild(shape?.Element(Drawings.Wps + "style")?.Element(Ns.A + "fontRef")) };
+            settings = settings with { TextColor = drawings?.Colors.ResolveChild(shape?.Element(Drawings.Wps + "style")?.Element(Ns.A + "fontRef")) };
             // Text that does not wrap aligns in the box all the same (docx/external/libreoffice/extras-ooxmlexport/
             // testWordArtWithinDraingtool: WordArt right aligned in its box, not 100,000 pt to the right).
             var unwrapped = (string?)body?.Attribute("wrap") == "none" && vert == null;
             if (unwrapped)
-                Settings = Settings with { AlignIn = (1e5, Math.Max(1, areaWidth)) };
-            try
-            {
-                (lines, fills, strokes, height) = blocks!.Blocks(text, unwrapped ? 1e5 : Math.Max(1, areaWidth), Settings, fields);
-                lastShading = blocks.LastShading;
-            }
-            finally
-            {
-                Settings = Settings with
-                {
-                    Vertical = outer.Vertical, TurnEastAsian = outer.TurnEastAsian, AlignIn = outer.AlignIn, TextColor = outer.TextColor, GridCell = outer.GridCell,
-                };
-            }
+                settings = settings with { AlignIn = (1e5, Math.Max(1, areaWidth)) };
+            (lines, fills, strokes, height) = blocks!.Blocks(text, unwrapped ? 1e5 : Math.Max(1, areaWidth), settings, fields);
+            lastShading = blocks.LastShading;
         }
         else
             return;
@@ -810,7 +796,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         drawn.AddRange(selection);
         items.Add(canvas);
         foreach (var drawing in inner)
-            items.AddRange(Drawing(drawing, page));
+            items.AddRange(Drawing(drawing, page, scope));
     }
 
     /// <summary>
