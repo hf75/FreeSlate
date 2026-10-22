@@ -3193,7 +3193,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
             return Held(placed);
         var shape = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Wps + "wsp");
-        var fitted = PageRenderer.FitToText(placed, text, body, shape, page, tables, settings, context.Theme);
+        var fitted = TextBoxLayout.FitToText(placed, text, body, shape, page, tables, settings, context.Theme);
         // A box that grows or shrinks to its text is aligned as it then is (LibreOffice's core-doc/
         // text-box-word-wrap: a header box without wrapping saved 34.95 pt wide, 103.1 pt with its text, ends at the
         // page's right edge).

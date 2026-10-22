@@ -2364,7 +2364,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         if (shape?.Element(Docx.Drawings.Wps + "bodyPr") is { } body && body.Element(Ns.A + "spAutoFit") != null && anchor.Text is { Count: > 0 } text
             && (string?)body.Attribute("vert") is null or "horz")
         {
-            var (l, t, r, b) = PageRenderer.Insets(body, shape, w, h, context.Theme);
+            var (l, t, r, b) = TextBoxLayout.Insets(body, shape, w, h, context.Theme);
             var (_, _, _, height) = Blocks(text, Math.Max(1, w - l - r), scope.Settings, fields);
             h = height + t + b;
         }

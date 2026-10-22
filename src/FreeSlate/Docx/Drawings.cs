@@ -64,7 +64,7 @@ public sealed record PlacedDrawing(XElement Drawing, string Part, double X, doub
     /// </summary>
     public (double X, double Y, double Width, double Height)? Clip { get; init; }
 
-    /// <summary>Whether the drawing is sized to its text already (PageRenderer.FitToText), which it is only once.</summary>
+    /// <summary>Whether the drawing is sized to its text already (TextBoxLayout.FitToText), which it is only once.</summary>
     public bool FittedToText { get; init; }
 
     /// <summary>Whether the bottom margin moved the drawing up, as Word 2013 holds one that text goes around (Paginator.Unpinned).</summary>
