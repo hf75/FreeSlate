@@ -100,6 +100,12 @@ public static class HtmlScene
                     }
                     html.Append("</g>");
                     break;
+                case CurveItem curve:
+                    html.Append($"<path d=\"M{Px(curve.Start.X)} {Px(curve.Start.Y)}");
+                    foreach (var (first, second, end) in curve.Curves)
+                        html.Append($"C{Px(first.X)} {Px(first.Y)} {Px(second.X)} {Px(second.Y)} {Px(end.X)} {Px(end.Y)}");
+                    html.Append($"\" fill=\"none\" stroke=\"{curve.Color.ToHex()}\" stroke-width=\"{Px(curve.Width)}\"/>");
+                    break;
                 case AltTextItem alt:
                     html.Append($"<div class=\"alt\" role=\"img\" aria-label=\"{WebUtility.HtmlEncode(alt.Text)}\" style=\"left:{Px(alt.X)}px;top:{Px(alt.Y)}px;width:{Px(alt.Width)}px;height:{Px(alt.Height)}px\"></div>");
                     break;

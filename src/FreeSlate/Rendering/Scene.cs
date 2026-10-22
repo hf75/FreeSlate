@@ -68,6 +68,13 @@ public sealed record PathItem(string Data, RgbColor? Fill, RgbColor? Stroke, dou
 /// <summary>Paths in points drawn together (the shapes of an art border).</summary>
 public sealed record PathsItem(List<PathItem> Paths) : SceneItem;
 
+/// <summary>
+/// Cubic curves in points stroked in a color: from the start through each curve's two control points to its end, the
+/// next curve going on from there (a wavy underline).
+/// </summary>
+public sealed record CurveItem((double X, double Y) Start, List<((double X, double Y) First, (double X, double Y) Second, (double X, double Y) End)> Curves,
+    double Width, RgbColor Color) : SceneItem;
+
 /// <summary>The alternative text of a region of the page (a picture's description), for assistive technology.</summary>
 public sealed record AltTextItem(string Text, double X, double Y, double Width, double Height) : SceneItem;
 

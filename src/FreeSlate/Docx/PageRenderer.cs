@@ -1003,7 +1003,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 items.Add(new RectItem(tick, bottom - 0.22, 0.6, 0.24, BracketGray));
             }
             // Run borders behind the text; underlines and strikethrough end with the line's content.
-            AddMarkup(items, RunBorders(placed.Line, placed.Left, baseline));
+            RunBorders(placed.Line, placed.Left, baseline, items);
             var contentEnd = placed.Left + ContentEnd(placed.Line, device);
             foreach (var piece in placed.Line.Pieces)
             {
@@ -1164,13 +1164,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     AddItem(drawnText, Glyphs(piece, x + moveX, textBaseline + moveY, turned, device));
                     AddItem(selection, SelectionText(piece, x + moveX, textBaseline + moveY, device));
                 }
-                AddMarkup(drawnText, Strikes(piece, x, textBaseline, contentEnd));
+                Strikes(piece, x, textBaseline, contentEnd, drawnText);
                 if (piece.Style.Emphasis is { } emphasis)
                     EmphasisMarks(piece, emphasis, x, baseline - piece.Style.Raise - piece.Shift, device, drawnText);
             }
             // w:ulTrailSpace underlines the spaces that end the line too (docx/external/libreoffice/extras-cjk/
             // UnderlineTrailingSpace: 70 and 80 underlined spaces drawn in mode 15).
-            AddMarkup(items, Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd, device));
+            Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd, device, items);
         }
     }
 
@@ -1500,20 +1500,25 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// its strikeout size, both on whole device dots; double strikethrough is that line moved up and down by its
     /// thickness. Spaces at the end of the line are not struck through.
     /// </summary>
-    static string Strikes(Piece piece, double x, double baseline, double contentEnd)
+    static void Strikes(Piece piece, double x, double baseline, double contentEnd, List<SceneItem> items)
     {
         var style = piece.Style;
         if (!style.Strike && !style.DoubleStrike || piece.IsTab)
-            return "";
+            return;
         var width = Math.Min(piece.Width, contentEnd - x);
         if (width <= 0)
-            return "";
+            return;
         var data = style.Font.Data;
         var top = Dots(data.StrikeoutPosition * style.Size);
         var thickness = Math.Max(1, Dots(data.StrikeoutThickness * style.Size));
-        var color = style.Color.ToHex();
-        string Line(int from) => $"<rect x=\"{Px(x)}\" y=\"{Px(baseline + from * Dot)}\" width=\"{Px(width)}\" height=\"{Px(thickness * Dot)}\" fill=\"{color}\"/>";
-        return style.DoubleStrike ? Line(-top - thickness) + Line(-top + thickness) : Line(-top);
+        void Line(int from) => items.Add(new RectItem(x, baseline + from * Dot, width, thickness * Dot, style.Color));
+        if (style.DoubleStrike)
+        {
+            Line(-top - thickness);
+            Line(-top + thickness);
+        }
+        else
+            Line(-top);
     }
 
     /// <summary>
@@ -1559,9 +1564,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// The underlines of a line (catalog: run.decoration), as Word prints them (measured with docx/local/underlines,
     /// ulsizes and ulmixed): neighboring pieces with the same underline share one, its color changing with theirs.
     /// </summary>
-    string Underlines(Line line, double left, double baseline, double contentEnd, IReadOnlyDictionary<Piece, double[]>? device)
+    void Underlines(Line line, double left, double baseline, double contentEnd, IReadOnlyDictionary<Piece, double[]>? device, List<SceneItem> items)
     {
-        var sb = new StringBuilder();
         var pieces = line.Pieces;
         for (var i = 0; i < pieces.Count; i++)
         {
@@ -1572,10 +1576,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             while (j + 1 < pieces.Count && pieces[j + 1].Style.Underline == kind && Underlined(pieces[j + 1])
                    && Math.Abs(pieces[j + 1].X - pieces[j].X - pieces[j].Width) < 0.01)
                 j++;
-            sb.Append(Underline(pieces.GetRange(i, j - i + 1), kind, left, baseline, contentEnd, device));
+            Underline(pieces.GetRange(i, j - i + 1), kind, left, baseline, contentEnd, device, items);
             i = j;
         }
-        return sb.ToString();
     }
 
     /// <summary>
@@ -1585,7 +1588,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// New, within a dot), to the end of the line's content. Dots and dashes have fixed lengths from the underline's
     /// start; waves are 2.4 pt long, their crests on the page's 2.4 pt grid. "words" leaves out spaces and tabs.
     /// </summary>
-    string Underline(List<Piece> segment, string kind, double left, double lineBaseline, double contentEnd, IReadOnlyDictionary<Piece, double[]>? device)
+    void Underline(List<Piece> segment, string kind, double left, double lineBaseline, double contentEnd, IReadOnlyDictionary<Piece, double[]>? device,
+        List<SceneItem> items)
     {
         double BaselineOf(Piece p) => lineBaseline - p.Style.Raise - p.Shift;
         var baseline = segment.Max(BaselineOf);
@@ -1598,22 +1602,23 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var (doubleTop, doubleThickness, gap) = (Average(m => m.DoubleTop), Average(m => m.DoubleThickness), Average(m => m.Gap));
         var (heavy, wave) = (Average(m => m.Heavy), Average(m => m.Wave));
 
-        // The stretches to draw, in their colors.
+        // The stretches to draw, in their colors (one where they are written the same).
         var origin = left + segment[0].X;
-        var ranges = new List<(double From, double To, string Color)>();
-        void Add(double from, double to, string color)
+        var ranges = new List<(double From, double To, string Hex, FreeSlate.Drawing.RgbColor Color)>();
+        void Add(double from, double to, FreeSlate.Drawing.RgbColor color)
         {
             to = Math.Min(to, contentEnd);
             if (to - from < 1e-6)
                 return;
-            if (ranges.Count > 0 && ranges[^1].Color == color && Math.Abs(ranges[^1].To - from) < 0.01)
-                ranges[^1] = (ranges[^1].From, to, color);
+            var hex = color.ToHex();
+            if (ranges.Count > 0 && ranges[^1].Hex == hex && Math.Abs(ranges[^1].To - from) < 0.01)
+                ranges[^1] = (ranges[^1].From, to, hex, color);
             else
-                ranges.Add((from, to, color));
+                ranges.Add((from, to, hex, color));
         }
         foreach (var piece in segment)
         {
-            var color = (piece.Style.UnderlineColor ?? piece.Style.Color).ToHex();
+            var color = piece.Style.UnderlineColor ?? piece.Style.Color;
             var x = left + piece.X;
             if (kind != "words")
             {
@@ -1635,29 +1640,28 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
         }
 
-        var sb = new StringBuilder();
-        string Rect(double from, double to, int at, int height, string color) =>
-            $"<rect x=\"{Px(from)}\" y=\"{Px(baseline + at * Dot)}\" width=\"{Px(to - from)}\" height=\"{Px(height * Dot)}\" fill=\"{color}\"/>";
+        void Rect(double from, double to, int at, int height, FreeSlate.Drawing.RgbColor color) =>
+            items.Add(new RectItem(from, baseline + at * Dot, to - from, height * Dot, color));
         var heavyBand = kind is "dottedHeavy" or "dashedHeavy" or "dashLongHeavy" or "dashDotHeavy" or "dashDotDotHeavy";
-        foreach (var (from, to, color) in ranges)
+        foreach (var (from, to, _, color) in ranges)
         {
             switch (kind)
             {
                 case "double":
-                    sb.Append(Rect(from, to, doubleTop, doubleThickness, color));
-                    sb.Append(Rect(from, to, doubleTop + doubleThickness + gap, doubleThickness, color));
+                    Rect(from, to, doubleTop, doubleThickness, color);
+                    Rect(from, to, doubleTop + doubleThickness + gap, doubleThickness, color);
                     break;
                 case "thick":
-                    sb.Append(Rect(from, to, doubleTop, heavy, color));
+                    Rect(from, to, doubleTop, heavy, color);
                     break;
                 case "wave" or "wavyHeavy":
-                    sb.Append(Wave(from, to, baseline + doubleTop * Dot, baseline + (doubleTop + wave) * Dot, kind == "wave" ? 0.24 : 0.96, color));
+                    AddItem(items, Wave(from, to, baseline + doubleTop * Dot, baseline + (doubleTop + wave) * Dot, kind == "wave" ? 0.24 : 0.96, color));
                     break;
                 case "wavyDouble":
                 {
                     var height = (int)Math.Ceiling((wave - 3) / 2.0);
-                    sb.Append(Wave(from, to, baseline + doubleTop * Dot, baseline + (doubleTop + height) * Dot, 0.24, color));
-                    sb.Append(Wave(from, to, baseline + (doubleTop + wave - height) * Dot, baseline + (doubleTop + wave) * Dot, 0.24, color));
+                    AddItem(items, Wave(from, to, baseline + doubleTop * Dot, baseline + (doubleTop + height) * Dot, 0.24, color));
+                    AddItem(items, Wave(from, to, baseline + (doubleTop + wave - height) * Dot, baseline + (doubleTop + wave) * Dot, 0.24, color));
                     break;
                 }
                 default:
@@ -1673,24 +1677,23 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                             {
                                 var (a, b) = (Math.Max(dash, from), Math.Min(dash + pattern[k], to));
                                 if (k % 2 == 0 && b - a > 1e-6)
-                                    sb.Append(Rect(a, b, at, height2, color));
+                                    Rect(a, b, at, height2, color);
                                 dash += pattern[k];
                             }
                         }
                     }
                     else
-                        sb.Append(Rect(from, to, at, height2, color));
+                        Rect(from, to, at, height2, color);
                     break;
             }
         }
-        return sb.ToString();
     }
 
     /// <summary>
     /// A wave from one x to another between two heights, as Word prints it (measured): half waves 1.2 pt long, each an
     /// S-curve with level ends, the crests (at <paramref name="top"/>) on the page's 2.4 pt grid.
     /// </summary>
-    static string Wave(double from, double to, double top, double bottom, double width, string color)
+    static CurveItem? Wave(double from, double to, double top, double bottom, double width, FreeSlate.Drawing.RgbColor color)
     {
         const double half = 1.2;
         // The share t of a half wave's curve where it has come u of its length (x = 1.5 t - 1.5 t² + t³, rising).
@@ -1705,7 +1708,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             return (lo + hi) / 2;
         }
         static (double X, double Y) Lerp((double X, double Y) a, (double X, double Y) b, double t) => (a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
-        var d = new StringBuilder();
+        (double X, double Y)? start = null;
+        var curves = new List<((double X, double Y) First, (double X, double Y) Second, (double X, double Y) End)>();
         for (var n = (long)Math.Floor(from / half); n * half < to - 1e-9; n++)
         {
             var a = n * half;
@@ -1727,11 +1731,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 var (r0, r1) = (Lerp(q01, q12, t0), Lerp(q12, q23, t0));
                 (p0, p1, p2) = (Lerp(r0, r1, t0), r1, q23);
             }
-            if (d.Length == 0)
-                d.Append($"M{Px(p0.X)} {Px(p0.Y)}");
-            d.Append($"C{Px(p1.X)} {Px(p1.Y)} {Px(p2.X)} {Px(p2.Y)} {Px(p3.X)} {Px(p3.Y)}");
+            start ??= p0;
+            curves.Add((p1, p2, p3));
         }
-        return d.Length == 0 ? "" : $"<path d=\"{d}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{Px(width)}\"/>";
+        return start is { } first ? new CurveItem(first, curves, width, color) : null;
     }
 
     /// <summary>
@@ -1739,9 +1742,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// its lines and space outside the text from its start to its end and the font's height above and below the
     /// baseline (measured with docx/local/underlines and ulsizes: Arial 10 to 24 pt, within 0.1 pt).
     /// </summary>
-    string RunBorders(Line line, double left, double baseline)
+    static void RunBorders(Line line, double left, double baseline, List<SceneItem> items)
     {
-        var sb = new StringBuilder();
         var pieces = line.Pieces;
         for (var i = 0; i < pieces.Count; i++)
         {
@@ -1755,10 +1757,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             var (above, below) = (box.Max(p => p.Style.Metrics.Above), box.Max(p => p.Style.Metrics.Below));
             var room = PageBorders.Room(border);
             if (PageBorders.Frame(border, left + box[0].X, at - above - room, left + box[^1].X + box[^1].Width, at + below + room) is { } frame)
-                Fills(frame.Fills, frame.Strokes, sb);
+                Fills(frame.Fills, frame.Strokes, items);
             i = j;
         }
-        return sb.ToString();
     }
 
     /// <summary>
