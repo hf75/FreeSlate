@@ -14,7 +14,7 @@ namespace FreeSlate.Docx;
 /// space between them; tables with their cells; bold, italic, underline, strike, sub- and superscript, colors, sizes
 /// and fonts of style attributes, links and line breaks.
 /// </summary>
-public static class HtmlImport
+public sealed class HtmlImport
 {
     static readonly XNamespace W = Wml.W;
     static readonly HashSet<string> Void = ["br", "hr", "img", "meta", "link", "input", "col", "area", "base", "wbr", "source", "param"];
@@ -36,24 +36,17 @@ public static class HtmlImport
         var root = Parse(html);
         var body = Find(root, "body") ?? root;
         var result = new List<XElement>();
-        sheet = Sheet(root);
-        try
-        {
-            ConvertBlocks(body, new Run(), result, list: null);
-        }
-        finally
-        {
-            sheet = null;
-        }
+        new HtmlImport(Sheet(root)).ConvertBlocks(body, new Run(), result, list: null);
         return result;
     }
 
     /// <summary>
-    /// The page's own CSS rules for element names (style elements), for the conversion under way: Word's "Normal
-    /// (Web)" takes them (measured with docx/local/altchunk: p{margin:0} leaves no space around paragraphs).
+    /// The page's own CSS rules for element names (style elements), for this conversion: Word's "Normal (Web)" takes
+    /// them (measured with docx/local/altchunk: p{margin:0} leaves no space around paragraphs).
     /// </summary>
-    [ThreadStatic]
-    static Dictionary<string, Dictionary<string, string>>? sheet;
+    readonly Dictionary<string, Dictionary<string, string>> sheet;
+
+    HtmlImport(Dictionary<string, Dictionary<string, string>> sheet) => this.sheet = sheet;
 
     static Dictionary<string, Dictionary<string, string>> Sheet(Node root)
     {
@@ -81,7 +74,7 @@ public static class HtmlImport
     }
 
     /// <summary>A block's margin on one side in points: margin-top or -bottom, else the margin shorthand.</summary>
-    static double? Margin(Node node, string side)
+    double? Margin(Node node, string side)
     {
         var value = Style(node, "margin-" + side);
         if (value == null && Style(node, "margin") is { } shorthand)
@@ -114,7 +107,7 @@ public static class HtmlImport
         public string? Link { get; init; }
     }
 
-    static void ConvertBlocks(Node node, Run run, List<XElement> output, (string Kind, int Level)? list)
+    void ConvertBlocks(Node node, Run run, List<XElement> output, (string Kind, int Level)? list)
     {
         var inline = new List<object>();
         void Flush(string style = "p")
@@ -170,7 +163,7 @@ public static class HtmlImport
         Flush();
     }
 
-    static void ConvertListItem(Node item, Run run, List<XElement> output, (string Kind, int Level) list)
+    void ConvertListItem(Node item, Run run, List<XElement> output, (string Kind, int Level) list)
     {
         var items = item.Parent?.Children.OfType<Node>().Where(n => n.Name == "li").ToList() ?? [item];
         var number = list.Kind == "ol" ? items.IndexOf(item) + 1 : (int?)null;
@@ -188,7 +181,7 @@ public static class HtmlImport
     }
 
     /// <summary>A paragraph for a block element and its inline content.</summary>
-    static XElement Paragraph(Node block, List<object> inline, Run run, int? number, int level)
+    XElement Paragraph(Node block, List<object> inline, Run run, int? number, int level)
     {
         var heading = block.Name is ['h', >= '1' and <= '6'] ? block.Name[1] - '0' : 0;
         var pPr = new XElement(W + "pPr");
@@ -232,7 +225,7 @@ public static class HtmlImport
     }
 
     /// <summary>Inline content into runs: whitespace collapsed (kept in pre), formatting from the elements.</summary>
-    static bool Inline(List<object> content, Run run, XElement paragraph, bool pre, bool atStart)
+    bool Inline(List<object> content, Run run, XElement paragraph, bool pre, bool atStart)
     {
         foreach (var item in content)
         {
@@ -303,7 +296,7 @@ public static class HtmlImport
     }
 
     /// <summary>The formatting an element gives its content: its tag and its style attribute.</summary>
-    static Run Styled(Node node, Run run)
+    Run Styled(Node node, Run run)
     {
         run = node.Name switch
         {
@@ -346,7 +339,7 @@ public static class HtmlImport
     /// leave out the cell spacing, and a cell's CSS width becomes its width and its column's (measured by letting
     /// Word save docx/external/tika/testAltChunkHTML).
     /// </summary>
-    static XElement Table(Node table, Run run)
+    XElement Table(Node table, Run run)
     {
         var rows = Descendants(table).Where(n => n.Name == "tr").ToList();
         var columns = Math.Max(1, rows.Select(r => r.Children.OfType<Node>().Count(c => c.Name is "td" or "th")).DefaultIfEmpty(1).Max());
@@ -430,7 +423,7 @@ public static class HtmlImport
     }
 
     /// <summary>A CSS property of an element: its style attribute's, else the page's rule for its name.</summary>
-    static string? Style(Node node, string property)
+    string? Style(Node node, string property)
     {
         if (node.Attributes.TryGetValue("style", out var style))
         {
@@ -441,11 +434,11 @@ public static class HtmlImport
                     return declaration[(colon + 1)..].Trim().ToLowerInvariant();
             }
         }
-        return sheet != null && sheet.TryGetValue(node.Name, out var rules) && rules.TryGetValue(property, out var value) ? value : null;
+        return sheet.TryGetValue(node.Name, out var rules) && rules.TryGetValue(property, out var value) ? value : null;
     }
 
     /// <summary>A CSS length in whole pixels (width: 300px), or null.</summary>
-    static int? CssPixels(Node node, string property) =>
+    int? CssPixels(Node node, string property) =>
         Style(node, property) is { } value && Regex.Match(value, "^([0-9.]+)\\s*px$") is { Success: true } m
         && double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var px) && px > 0 ? (int)Math.Round(px) : null;
 
@@ -453,7 +446,7 @@ public static class HtmlImport
     /// A CSS border (border: 1px solid black) as a Word line: its kind, its width in eighths of a point (a pixel is
     /// six) and its color; null without one or for none and hidden.
     /// </summary>
-    static (string Value, int Eighths, string Color)? CssBorder(Node node)
+    (string Value, int Eighths, string Color)? CssBorder(Node node)
     {
         if (Style(node, "border") is not { } value)
             return null;
