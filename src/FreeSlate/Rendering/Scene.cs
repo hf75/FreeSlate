@@ -1,4 +1,5 @@
 using FreeSlate.Drawing;
+using FreeSlate.Text;
 
 namespace FreeSlate.Rendering;
 
@@ -72,3 +73,87 @@ public sealed record AltTextItem(string Text, double X, double Y, double Width, 
 
 /// <summary>A bookmark's place on the page, which links go to.</summary>
 public sealed record BookmarkItem(string Name, double X, double Y) : SceneItem;
+
+/// <summary>
+/// A run of text set in its font by the backend (in HTML by the browser, which shapes it), its characters on the
+/// baseline Y at their places from X (Positions: each UTF-16 unit's, a piece's end after them), in its color unless it
+/// has a paint of its own; right-to-left text is set whole from its right end (X + Width), its spaces wider by
+/// WordSpacing.
+/// </summary>
+public sealed record TextItem(string Text, double X, double[] Positions, double Y, FontData Font, double Size, RgbColor Color) : SceneItem
+{
+    /// <summary>
+    /// The paint where it is not the color, as SVG attributes each after a space: outlined letters, gradient fills and
+    /// text outlines (not broken down yet).
+    /// </summary>
+    public string? Paint { get; init; }
+
+    /// <summary>Whether the text is bold, from a bold face or as the backend makes letters bold.</summary>
+    public bool Bold { get; init; }
+
+    /// <summary>Bold as Word draws it in a font without a bold face: the letters stroked in the color a 35th of the size wide.</summary>
+    public bool StrokedBold { get; init; }
+
+    public bool Italic { get; init; }
+
+    /// <summary>The OpenType features the text turns on and off (off with a minus), which shaping applies.</summary>
+    public IReadOnlyList<string> Features { get; init; } = [];
+
+    /// <summary>The text's language, which shaping may follow.</summary>
+    public string? Language { get; init; }
+
+    /// <summary>How much wider than the font draws them the letters stand (w:w), about X.</summary>
+    public double Scale { get; init; } = 1;
+
+    public bool RightToLeft { get; init; }
+
+    /// <summary>The run's width from X.</summary>
+    public double Width { get; init; }
+
+    public double WordSpacing { get; init; }
+
+    /// <summary>Whether right-to-left text joins the letters before and after it (a word over several runs).</summary>
+    public bool JoinsBefore { get; init; }
+
+    public bool JoinsAfter { get; init; }
+}
+
+/// <summary>
+/// Glyphs drawn from their outlines, in a font at a size from the point X on the baseline Y: filled in the color or
+/// outlined in it (Hollow; filled white over a shadow), with a synthetic bold's stroke and a synthetic italic's slant,
+/// each glyph wider by Scale about its own origin.
+/// </summary>
+public sealed record GlyphsItem(FontData Font, double Size, double X, double Y, List<GlyphItem> Glyphs, RgbColor Color) : SceneItem
+{
+    public double Scale { get; init; } = 1;
+
+    public bool Hollow { get; init; }
+
+    public bool Shadow { get; init; }
+
+    public bool SyntheticBold { get; init; }
+
+    public bool SyntheticItalic { get; init; }
+}
+
+/// <summary>
+/// A glyph of a GlyphsItem: its id in the font, the name of its outline in the document (in HTML its path's id, see
+/// GlyphCache), its place from the run's origin in font units, and for an East Asian character turned upright in a
+/// vertical line the x of its middle, which it turns a quarter counterclockwise about at the font's em middle.
+/// </summary>
+public readonly record struct GlyphItem(uint Id, string Outline, double X, double Y, double? TurnX = null);
+
+/// <summary>
+/// Text drawn invisibly over the glyphs drawn as outlines for it, its characters at theirs (see TextItem), for
+/// selecting, searching and reading it.
+/// </summary>
+public sealed record HiddenTextItem(string Text, double X, double[] Positions, double Y, FontData Font, double Size) : SceneItem;
+
+/// <summary>A short text in its font and color ending at the point X on the baseline Y: a line number.</summary>
+public sealed record LabelItem(string Text, double X, double Y, FontData Font, double Size, RgbColor Color, bool Bold, bool Italic) : SceneItem;
+
+/// <summary>Items drawn from a point, turned a quarter counterclockwise about it: text set across a vertical line.</summary>
+public sealed record AcrossItem(double X, double Y, List<SceneItem> Items) : SceneItem;
+
+/// <summary>Items drawn but neither selected nor read as text: the copies of a text that emboss, imprint and shadow lay behind it.</summary>
+public sealed record DecorationItem(List<SceneItem> Items) : SceneItem;

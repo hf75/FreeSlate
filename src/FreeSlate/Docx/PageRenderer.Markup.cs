@@ -2,6 +2,7 @@ using System.Text;
 using System.Xml.Linq;
 using FreeSlate.Docx.Layout;
 using FreeSlate.Drawing;
+using FreeSlate.Rendering;
 
 namespace FreeSlate.Docx;
 
@@ -129,7 +130,7 @@ public sealed partial class PageRenderer
     /// The markup beside the page's text: change bars, then the pane with the balloons of the formatting changes and
     /// comments in the order of their places, joined to them by dotted lines.
     /// </summary>
-    void Markup(PageBox page, List<Anchor> comments, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front)
+    void Markup(PageBox page, List<Anchor> comments, StringBuilder svg, List<SceneItem> selection, List<PlacedDrawing> front)
     {
         if (!context.Markup)
             return;
