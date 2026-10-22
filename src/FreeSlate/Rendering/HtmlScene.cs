@@ -101,7 +101,19 @@ public static class HtmlScene
                     html.Append("</div>");
                     break;
                 case ShapePathItem shapePath:
-                    html.Append($"<path d=\"{shapePath.Data}\"{shapePath.Attributes}/>");
+                    html.Append($"<path{shapePath.Lead} d=\"{shapePath.Data}\"{shapePath.Attributes}/>");
+                    break;
+                case ShapeRectItem shapeRect:
+                    html.Append($"<rect x=\"{Units.Css(shapeRect.X)}\" y=\"{Units.Css(shapeRect.Y)}\" width=\"{Units.Css(shapeRect.Width)}\" height=\"{Units.Css(shapeRect.Height)}\"{shapeRect.Attributes}/>");
+                    break;
+                case ImageItem image:
+                    html.Append($"<image href=\"{image.Source}\" x=\"{Units.Css(image.X)}\" y=\"{Units.Css(image.Y)}\" width=\"{Units.Css(image.Width)}\" height=\"{Units.Css(image.Height)}\" preserveAspectRatio=\"none\"/>");
+                    break;
+                case GlyphRunItem glyphRun:
+                    WriteGlyphRun(glyphRun, html);
+                    break;
+                case SvgTextItem svgText:
+                    WriteSvgText(svgText, html);
                     break;
                 case ShapeEllipseItem ellipse:
                     html.Append($"<ellipse cx=\"{Units.Css(ellipse.X)}\" cy=\"{Units.Css(ellipse.Y)}\" rx=\"{Units.Css(ellipse.RadiusX)}\" ry=\"{Units.Css(ellipse.RadiusY)}\" "
@@ -115,7 +127,7 @@ public static class HtmlScene
                         + $"width=\"{Units.Css(picture.Width)}\" height=\"{Units.Css(picture.Height)}\" preserveAspectRatio=\"none\"{picture.Filter}/></g>");
                     break;
                 case TransformItem transformed:
-                    html.Append($"<g transform=\"{transformed.Transform.Css()}\">");
+                    html.Append($"<g transform=\"{transformed.Css ?? transformed.Transform.Css()}\">");
                     Write(transformed.Items, html);
                     html.Append("</g>");
                     break;
@@ -179,6 +191,10 @@ public static class HtmlScene
                     html.Append($"<g filter=\"url(#{filtered.Filter})\">");
                     Write(filtered.Items, html);
                     html.Append("</g>");
+                    break;
+                case FilterCopyItem { Bare: true } copied:
+                    html.Append($"<use href=\"#{copied.Id}\" filter=\"url(#{copied.Filter})\"/>");
+                    Write(copied.Items, html);
                     break;
                 case FilterCopyItem copied:
                     html.Append($"<use href=\"#{copied.Id}\" filter=\"url(#{copied.Filter})\"/><g id=\"{copied.Id}\">");
@@ -399,6 +415,50 @@ public static class HtmlScene
     }
 
     /// <summary>Glyphs from the document's paths of their outlines (see GlyphCache), placed in font units.</summary>
+    /// <summary>A run of slide text's glyphs as uses of their outlines (see GlyphRunItem).</summary>
+    static void WriteGlyphRun(GlyphRunItem run, StringBuilder html)
+    {
+        var transform = $"translate({Units.Css4(run.X)} {Units.Css4(run.Y)}) scale({Units.Scale(run.Scale)})";
+        if (run.Mask != null)
+        {
+            var (bx, by, bw, bh) = run.PaintBox;
+            var (rx, ry, rw, rh) = (Units.Css(-bw), Units.Css(-bh), Units.Css(3 * bw), Units.Css(3 * bh));
+            html.Append($"<g transform=\"translate({Units.Css4(bx)} {Units.Css4(by)})\"><rect x=\"{rx}\" y=\"{ry}\" width=\"{rw}\" height=\"{rh}\"{run.PaintAttributes} mask=\"url(#{run.Mask})\"/></g>");
+            if (run.StrokeAttributes.Length > 0)
+                html.Append($"<g transform=\"{transform}\" fill=\"none\"{run.StrokeAttributes}>").Append(Uses(run.Glyphs)).Append("</g>");
+            return;
+        }
+        html.Append($"<g transform=\"{transform}\"{run.FillAttributes}{run.StrokeAttributes}>").Append(Uses(run.Glyphs)).Append("</g>");
+    }
+
+    /// <summary>The uses of a run's glyph outlines in font units (see RunGlyph), as the mask of a painted run holds them too.</summary>
+    public static string Uses(List<RunGlyph> glyphs)
+    {
+        var uses = new StringBuilder();
+        foreach (var glyph in glyphs)
+        {
+            uses.Append($"<use href=\"#{glyph.Id}\"");
+            if (glyph.Stretch is { } k)
+            {
+                uses.Append($" transform=\"matrix(1 0 0 {Units.Css4(k)} {Units.Css1(glyph.X)} {Units.Css1(glyph.Y)})\"/>");
+                continue;
+            }
+            if (Math.Abs(glyph.X) > 0.05) uses.Append($" x=\"{Units.Css1(glyph.X)}\"");
+            if (Math.Abs(glyph.Y) > 0.05) uses.Append($" y=\"{Units.Css1(glyph.Y)}\"");
+            uses.Append("/>");
+        }
+        return uses.ToString();
+    }
+
+    /// <summary>Slide text as an SVG text element the browser sets (see SvgTextItem).</summary>
+    static void WriteSvgText(SvgTextItem text, StringBuilder html)
+    {
+        html.Append($"<text{(text.Hidden ? " class=\"sel\"" : "")}{text.Placement} y=\"{Units.Css(text.Y)}\" font-family=\"'{WebUtility.HtmlEncode(text.Font.Family.Replace("'", "\\'"))}'\" font-size=\"{Units.Css(text.Size)}\"");
+        if (text.Bold) html.Append(" font-weight=\"700\"");
+        if (text.Italic) html.Append(" font-style=\"italic\"");
+        html.Append(text.Attributes).Append('>').Append(WebUtility.HtmlEncode(text.Text)).Append("</text>");
+    }
+
     /// <summary>
     /// An equation's glyph: as text in its font where it stands for its character (Word's PDFs hold the math as text,
     /// which the rasterizer fits to the pixel grid), else as a use of its outline.

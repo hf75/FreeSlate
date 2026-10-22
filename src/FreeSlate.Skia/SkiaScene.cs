@@ -219,7 +219,7 @@ public static class SkiaScene
                     }
                     canvas.Restore();
                     break;
-                case AltTextItem or BookmarkItem or HiddenTextItem or HiddenSpanItem:
+                case AltTextItem or BookmarkItem or HiddenTextItem or HiddenSpanItem or SvgTextItem { Hidden: true }:
                     break;
                 case TextItem text:
                     Text(text);
@@ -297,8 +297,42 @@ public static class SkiaScene
                 case GroupBoxItem group:
                     Draw(group.Items);
                     break;
-                case ShapePathItem shapePath:
+                case ShapePathItem { Transform: null, Effects: null } shapePath:
                     ShapePath(shapePath);
+                    break;
+                case ShapePathItem shapePath:
+                    canvas.Save();
+                    if (shapePath.Transform is { } pathTransform)
+                        Concat(Matrix(pathTransform));
+                    Effected(shapePath.Effects, [shapePath with { Transform = null, Effects = null }]);
+                    canvas.Restore();
+                    break;
+                case ShapeRectItem shapeRect:
+                {
+                    var bounds = SKRect.Create((float)shapeRect.X, (float)shapeRect.Y, (float)shapeRect.Width, (float)shapeRect.Height);
+                    if (Paint(shapeRect.Fill, bounds) is { } fill)
+                    {
+                        canvas.DrawRect(bounds, fill);
+                        fill.Dispose();
+                    }
+                    if (shapeRect.Outline is { Visible: true } outline)
+                    {
+                        using var pen = Pen(outline);
+                        canvas.DrawRect(bounds, pen);
+                    }
+                    break;
+                }
+                case ImageItem image:
+                    Picture(image.Source, SKRect.Create((float)image.X, (float)image.Y, (float)image.Width, (float)image.Height), null);
+                    break;
+                case GlyphRunItem glyphRun:
+                    GlyphRun(glyphRun);
+                    break;
+                case SvgTextItem { Effects: null } svgText:
+                    SvgText(svgText);
+                    break;
+                case SvgTextItem svgText:
+                    Effected(svgText.Effects, [svgText with { Effects = null }]);
                     break;
                 case ShapeEllipseItem ellipse:
                     ShapeEllipse(ellipse);
@@ -539,6 +573,111 @@ public static class SkiaScene
             }
         }
 
+        /// <summary>A run of slide text from its glyphs' outlines in pixels (see GlyphRunItem), filled with its paint over the paint's box.</summary>
+        void GlyphRun(GlyphRunItem run)
+        {
+            using var path = new SKPath();
+            var origin = SKMatrix.CreateTranslation((float)run.X, (float)run.Y).PreConcat(SKMatrix.CreateScale((float)run.Scale, (float)run.Scale));
+            foreach (var glyph in run.Glyphs)
+            {
+                if (Outline(run.Font, glyph.Glyph) is not { } outline)
+                    continue;
+                var placed = origin.PreConcat(SKMatrix.CreateTranslation((float)glyph.X, (float)glyph.Y));
+                if (glyph.Stretch is { } k)
+                    placed = placed.PreConcat(SKMatrix.CreateScale(1, (float)k));
+                path.AddPath(outline, in placed);
+            }
+            var (bx, by, bw, bh) = run.PaintBox;
+            if ((run.Paint is { } paint ? Paint(paint, SKRect.Create((float)bx, (float)by, (float)bw, (float)bh)) : Brush(run.Color)) is { } fill)
+            {
+                canvas.DrawPath(path, fill);
+                fill.Dispose();
+            }
+            if (run.Outline is { Visible: true } line)
+            {
+                using var pen = Pen(line);
+                canvas.DrawPath(path, pen);
+            }
+        }
+
+        /// <summary>
+        /// Slide text the browser sets (see SvgTextItem): its glyphs shaped as the browser shapes them, every cluster at
+        /// its place, right-to-left text from its right end; a plain underline and strikethrough from the font's metrics.
+        /// </summary>
+        void SvgText(SvgTextItem item)
+        {
+            var font = item.Font;
+            var glyphs = font.Glyphs(item.Text, item.Kerning, item.RightToLeft);
+            if (glyphs.Length == 0 || item.Positions.Length == 0)
+                return;
+            var size = item.Size;
+            var places = new double[glyphs.Length];
+            if (!item.RightToLeft)
+            {
+                var (cluster, x, inCluster) = (-1, 0.0, 0.0);
+                for (var i = 0; i < glyphs.Length; i++)
+                {
+                    if (glyphs[i].Cluster != cluster)
+                    {
+                        cluster = glyphs[i].Cluster;
+                        (x, inCluster) = (item.Positions[Math.Min(cluster, item.Positions.Length - 1)], 0);
+                    }
+                    places[i] = x + inCluster + glyphs[i].OffsetX * size;
+                    inCluster += glyphs[i].Advance * size;
+                }
+            }
+            else
+            {
+                var x = item.Positions[0] + item.Width - glyphs.Sum(g => (g.Advance + g.Kerning) * size);
+                for (var i = 0; i < glyphs.Length; i++)
+                {
+                    places[i] = x + glyphs[i].OffsetX * size;
+                    x += (glyphs[i].Advance + glyphs[i].Kerning) * size;
+                }
+            }
+            using var fill = Brush(item.Color);
+            if (Typeface(font) is { } typeface)
+            {
+                using var face = new SKFont(typeface, (float)size)
+                {
+                    Subpixel = true, LinearMetrics = true, Hinting = SKFontHinting.None, Edging = SKFontEdging.Antialias,
+                    // The browser slants italic of a font without an italic face and emboldens bold of one without a bold face.
+                    SkewX = item.Italic && !typeface.IsItalic ? -0.21f : 0, Embolden = item.Bold && !typeface.IsBold,
+                };
+                using var builder = new SKTextBlobBuilder();
+                var run = builder.AllocatePositionedRun(face, glyphs.Length);
+                var ids = run.Glyphs;
+                var points = run.Positions;
+                for (var i = 0; i < glyphs.Length; i++)
+                {
+                    ids[i] = (ushort)glyphs[i].Id;
+                    points[i] = new SKPoint((float)places[i], (float)(item.Y - glyphs[i].OffsetY * size));
+                }
+                using var blob = builder.Build();
+                if (blob != null)
+                    canvas.DrawText(blob, 0, 0, fill);
+            }
+            else
+            {
+                var scale = size / font.UnitsPerEm;
+                for (var i = 0; i < glyphs.Length; i++)
+                {
+                    if (Outline(font, glyphs[i].Id) is not { } path)
+                        continue;
+                    canvas.Save();
+                    canvas.Translate((float)places[i], (float)(item.Y - glyphs[i].OffsetY * size));
+                    canvas.Scale((float)scale);
+                    canvas.DrawPath(path, fill);
+                    canvas.Restore();
+                }
+            }
+            var (left, right) = (places[0], item.RightToLeft ? item.Positions[0] + item.Width : places[^1] + glyphs[^1].Advance * size);
+            if (item.Underline)
+                canvas.DrawRect(SKRect.Create((float)left, (float)(item.Y + font.UnderlinePosition * size), (float)(right - left), (float)Math.Max(1, font.UnderlineThickness * size)), fill);
+            if (item.Strike)
+                canvas.DrawRect(SKRect.Create((float)left, (float)(item.Y - font.StrikeoutPosition * size), (float)(right - left), (float)Math.Max(1, font.StrikeoutThickness * size)), fill);
+        }
+
         /// <summary>
         /// Items recorded as a picture in this canvas's coordinates (bounded by what they draw), for drawing them through
         /// an image filter or more than once.
@@ -774,6 +913,15 @@ public static class SkiaScene
         /// <summary>A group: its opacity where it has one (a 3D face's), its other attributes not.</summary>
         void Group(SvgGroupItem group)
         {
+            if (group.Transform != null || group.Effects != null)
+            {
+                canvas.Save();
+                if (group.Transform is { } transform)
+                    Concat(Matrix(transform));
+                Effected(group.Effects, [group with { Transform = null, Effects = null }]);
+                canvas.Restore();
+                return;
+            }
             if (Opacity.Match(group.Attributes) is { Success: true } match
                 && double.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var opacity))
             {
@@ -814,21 +962,26 @@ public static class SkiaScene
 
         void Picture(PictureItem item)
         {
-            var decoded = Picture(item.Source);
+            if (item.Filter.Length > 0)
+                statistics.Effects++;
+            Picture(item.Source, SKRect.Create((float)item.X, (float)item.Y, (float)item.Width, (float)item.Height), item.ClipPath);
+        }
+
+        /// <summary>A picture stretched over a rectangle, cut at a path where it has one (SVG path data).</summary>
+        void Picture(string source, SKRect rect, string? clipPath)
+        {
+            var decoded = Picture(source);
             if (decoded is { Image: null, Drawing: null })
             {
                 statistics.Pictures++;
                 return;
             }
-            if (item.Filter.Length > 0)
-                statistics.Effects++;
             canvas.Save();
-            using (var clip = SKPath.ParseSvgPathData(item.ClipPath))
+            using (var clip = clipPath != null ? SKPath.ParseSvgPathData(clipPath) : null)
             {
                 if (clip != null)
                     canvas.ClipPath(clip, antialias: true);
             }
-            var rect = SKRect.Create((float)item.X, (float)item.Y, (float)item.Width, (float)item.Height);
             if (decoded.Image is { } image)
                 canvas.DrawImage(image, rect, Sampling);
             else if (decoded.Drawing is { Size: { Width: > 0, Height: > 0 } size } drawing)

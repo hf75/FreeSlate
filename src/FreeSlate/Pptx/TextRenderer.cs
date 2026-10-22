@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using FreeSlate.Drawing;
 using FreeSlate.Drawing.Geometry;
 using FreeSlate.Html;
+using FreeSlate.Rendering;
 using FreeSlate.Text;
 
 namespace FreeSlate.Pptx;
@@ -103,19 +104,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>The formatting the text being rendered takes instead of its own (see <see cref="TextChain.Override"/>).</summary>
     TextOverride? runOverride;
 
-    public string Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
+    public List<SceneItem> Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         units = chain.Units;
         runOverride = chain.Override;
         try
         {
-            var markup = RenderText(chain, geometry, boxWidth, unflip);
+            var items = RenderText(chain, geometry, boxWidth, unflip);
             // a:bodyPr rot turns the laid-out text about the middle of the text rectangle (LibreOffice's tdf149551).
             var rotation = chain.Shapes.Select(s => TxBody(s.Element)?.Element(Ns.A + "bodyPr")?.Attribute("rot")?.Value)
                 .FirstOrDefault(v => v != null) is { } rot && long.TryParse(rot, out var angle) ? angle / 60000.0 : 0;
-            if (markup.Length > 0 && Math.Abs(rotation) > 1e-9)
-                markup = $"<g transform=\"rotate({Units.Css(rotation)} {Units.Css((geometry.TextLeft + geometry.TextRight) / 2)} {Units.Css((geometry.TextTop + geometry.TextBottom) / 2)})\">{markup}</g>";
-            return markup;
+            if (items.Count > 0 && Math.Abs(rotation) > 1e-9)
+                items = [TransformItem.Rotation(rotation, (geometry.TextLeft + geometry.TextRight) / 2, (geometry.TextTop + geometry.TextBottom) / 2, items)];
+            return items;
         }
         finally
         {
@@ -124,11 +125,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         }
     }
 
-    string RenderText(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
+    List<SceneItem> RenderText(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         var txBody = TxBody(chain.Shapes[0].Element);
         if (txBody == null || !txBody.Elements(Ns.A + "p").Any(p => p.Elements().Any(e => e.Name.LocalName is "r" or "fld" || e.Name == Equations.Equation.A14 + "m")))
-            return "";
+            return [];
 
         var bodies = chain.Shapes.Select(s => TxBody(s.Element)?.Element(Ns.A + "bodyPr")).ToList();
         string? Body(string attribute) => bodies.Select(b => b?.Attribute(attribute)?.Value).FirstOrDefault(v => v != null);
@@ -196,15 +197,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var box = (geometry.TextLeft, geometry.TextTop, geometry.TextRight - geometry.TextLeft, geometry.TextBottom - geometry.TextTop);
             return EmitWarped(layout, left, top, height, Body("anchor") ?? "t", warp, definition, box, Body("fromWordArt") is "1" or "true", width);
         }
-        var markup = Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
+        var items = Emit(layout, left, top, height, Body("anchor") ?? "t", unflip ? boxWidth : null);
         // horzOverflow clip cuts the text at the sides of the text rectangle (measured: not at the insets).
-        if (Body("horzOverflow") == "clip" && markup.Length > 0)
+        if (Body("horzOverflow") == "clip" && items.Count > 0)
         {
             var id = $"hc{++nextClip}";
-            markup = $"<defs><clipPath id=\"{id}\"><rect x=\"{Units.Css(geometry.TextLeft)}\" y=\"-100000\" width=\"{Units.Css(geometry.TextRight - geometry.TextLeft)}\" height=\"200000\"/></clipPath></defs>" +
-                     $"<g clip-path=\"url(#{id})\">{markup}</g>";
+            items = [new DefsItem($"<clipPath id=\"{id}\"><rect x=\"{Units.Css(geometry.TextLeft)}\" y=\"-100000\" width=\"{Units.Css(geometry.TextRight - geometry.TextLeft)}\" height=\"200000\"/></clipPath>"),
+                new SvgGroupItem($" clip-path=\"url(#{id})\"", items)];
         }
-        return markup;
+        return items;
     }
 
     /// <summary>
@@ -212,12 +213,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// and anchored across it, the text's top facing right (left for vert270). East Asian vertical text keeps its
     /// ideographs upright; mongolianVert stacks its lines from left to right.
     /// </summary>
-    string RenderTurned(XElement txBody, List<Source> sources, string mode, double left, double top, double width, double height,
+    List<SceneItem> RenderTurned(XElement txBody, List<Source> sources, string mode, double left, double top, double width, double height,
         bool wrap, double fontScale, double spacingReduction, string anchor) =>
         EmitTurned(Layout(txBody, sources, Math.Max(0, height), wrap, fontScale, spacingReduction), mode, left, top, width, height, anchor);
 
     /// <summary>Emits text laid out along <paramref name="height"/> turned into the area (see <see cref="RenderTurned"/>).</summary>
-    public string EmitTurned(LaidOutText layout, string mode, double left, double top, double width, double height, string anchor)
+    public List<SceneItem> EmitTurned(LaidOutText layout, string mode, double left, double top, double width, double height, string anchor)
     {
         if (mode is "eaVert" or "mongolianVert")
             layout = Upright(layout);
@@ -229,10 +230,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var total = layout.Height;
             shift = line => total - 2 * line.Baseline - line.Descent + line.Ascent;
         }
-        var matrix = mode == "vert270"
-            ? $"matrix(0 -1 1 0 {Px(left)} {Px(top + height)})"
-            : $"matrix(0 1 -1 0 {Px(left + width)} {Px(top)})";
-        return $"<g transform=\"{matrix}\">{Emit(layout, 0, 0, width, anchor, lineShift: shift)}</g>";
+        var (matrix, css) = mode == "vert270"
+            ? (new Matrix(0, -1, 1, 0, left * PxPerPt, (top + height) * PxPerPt), $"matrix(0 -1 1 0 {Px(left)} {Px(top + height)})")
+            : (new Matrix(0, 1, -1, 0, (left + width) * PxPerPt, top * PxPerPt), $"matrix(0 1 -1 0 {Px(left + width)} {Px(top)})");
+        return [new TransformItem(matrix, Emit(layout, 0, 0, width, anchor, lineShift: shift)) { Css = css }];
     }
 
     /// <summary>Splits runs so that East Asian characters stand alone as upright runs.</summary>
@@ -285,7 +286,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// apart and the baseline sits 1.12 × the size into a character's cell; the anchor places the columns, the
     /// alignment the characters in their column; trailing spaces take no room.
     /// </summary>
-    string RenderStacked(LaidOutText layout, bool rightToLeft, double left, double top, double width, double height, string anchor)
+    List<SceneItem> RenderStacked(LaidOutText layout, bool rightToLeft, double left, double top, double width, double height, string anchor)
     {
         const double Step = 1.41, BaselineDepth = 1.12;
         var columns = new List<(List<(string Text, TextStyle Style)> Cells, string Align)>();
@@ -330,7 +331,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var total = pitches.Sum();
         var start = anchor switch { "ctr" => (width - total) / 2, "b" => width - total, _ => 0.0 };
         if (rightToLeft) start = width - total - start;
-        var svg = new StringBuilder("<g data-tx=\"\">");
+        var stack = new SvgGroupItem(" data-tx=\"\"", []);
         var x = left + start;
         for (var c = 0; c < columns.Count; c++)
         {
@@ -345,13 +346,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             {
                 var w = style.Font.Data.LayoutWidth(text, style.Size, false);
                 if (text != " ")
-                    svg.Append(Text(new PlacedRun(text, style, 0, w), center - w / 2, y + BaselineDepth * style.Size));
+                    stack.Items.AddRange(Text(new PlacedRun(text, style, 0, w), center - w / 2, y + BaselineDepth * style.Size));
                 y += Step * style.Size;
             }
             x += pitches[index];
         }
-        svg.Append("</g>");
-        return svg.ToString();
+        return [stack];
     }
 
     static IEnumerable<string> SplitGraphemes(string text)
@@ -408,7 +408,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// Text with a WordArt transform (catalog: text.warp): the glyph outlines in pixels, warped by
     /// <see cref="TextWarp"/>, one path per run style; the text stays transparent on top for selection.
     /// </summary>
-    string EmitWarped(LaidOutText layout, double left, double top, double height, string anchor, XElement warp,
+    List<SceneItem> EmitWarped(LaidOutText layout, double left, double top, double height, string anchor, XElement warp,
         Drawing.Geometry.GeometryDefinition definition, (double L, double T, double W, double H) box, bool fromWordArt, double width)
     {
         var offset = anchor switch { "ctr" => (height - layout.Height) / 2, "b" => height - layout.Height, _ => 0 };
@@ -421,7 +421,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var textPath = slide.Presentation.Word && warp.Attribute(TextWarp.TextPath) != null;
         var glyphs = new List<TextWarp.Glyph>();
         var owners = new List<TextStyle>();
-        var selection = new StringBuilder();
+        var selection = new List<SceneItem>();
         for (var lineIndex = 0; lineIndex < layout.Lines.Count; lineIndex++)
         {
             var line = layout.Lines[lineIndex];
@@ -451,7 +451,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     }
                     position += (FontData.MasterUnits(g.Advance * style.Size) + FontData.MasterUnits(g.Kerning * style.Size)) * PxPerPt + spacing;
                 }
-                selection.Append($"<text class=\"sel\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline)}\" font-family=\"'{WebUtility.HtmlEncode(data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\">{WebUtility.HtmlEncode(text)}</text>");
+                selection.Add(new SvgTextItem(text, Enumerable.Repeat((left + run.X) * PxPerPt, text.Length).ToArray(), baseline * PxPerPt, data, style.Size * PxPerPt, style.Color)
+                {
+                    Hidden = true, Placement = $" x=\"{Px(left + run.X)}\"",
+                });
             }
         }
         // VML WordArt that trims its text centres each line by its ink, spaces before and after it inked over their
@@ -507,7 +510,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         for (var i = 0; i < warped.Count && Outlines != null; i++)
             Outlines.Add((warped[i], (owners[i].Paint is { } warpedPaint ? Fill.MainColor(warpedPaint) : null) ?? owners[i].Color));
 
-        var svg = new StringBuilder("<g data-tx=\"\">");
+        var warpedText = new SvgGroupItem(" data-tx=\"\"", []);
         var defs = new StringBuilder();
         // Shadows, glow and inner shadows fall on the warped glyphs, sized with their line's largest font.
         var lineSizes = layout.Lines.Select(l => l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : 0).ToList();
@@ -518,8 +521,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var j = i;
             for (; j < warped.Count && ReferenceEquals(owners[j], style); j++)
                 contours.AddRange(warped[j]);
-            var fill = style.Paint is { } paint and not NoFill and not SolidFill
-                ? Paint.Fill(paint, box.W, box.H, defs, 0, (box.L, box.T))
+            var fillPaint = style.Paint is { } paint and not NoFill and not SolidFill ? paint : new SolidFill(style.Color);
+            var fill = style.Paint is { } painted and not NoFill and not SolidFill
+                ? Paint.Fill(painted, box.W, box.H, defs, 0, (box.L, box.T))
                 : $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
             var stroke = style.Line is { } outline ? Paint.Stroke(outline, box.W, box.H, defs) : "";
             // A VML WordArt shape's effects keep the shape's sizes (measured with docx/local/vps-wa-plain, vps-wa-4: its
@@ -529,26 +533,33 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             // shape's corner or side (docx/local/vps-*; LibreOffice's extras-ooxmlexport/fdo78300: a perspective shadow
             // half as high and skewed left under "Homer was sleeping").
             if (fromWordArt && slide.Presentation.Word && style.Effects is { } skewed && SvgEffects.Shadow(skewed, Colors, box.W, box.H, defs) is { } copy)
-                svg.Append($"<g transform=\"translate({Units.Css(box.L)},{Units.Css(box.T)})\"><g filter=\"url(#{copy.Filter})\"><g transform=\"{copy.Transform.Css()}\">" +
-                           $"<path transform=\"translate({Units.Css(-box.L)},{Units.Css(-box.T)})\" d=\"{TextWarp.PathData(contours)}\"{fill}/></g></g></g>");
+                warpedText.Items.Add(new TransformItem(Matrix.Translate(box.L, box.T), [new FilterItem(copy.Filter, copy.Model, [new TransformItem(copy.Transform,
+                    [new ShapePathItem(TextWarp.PathData(contours), fillPaint, null, fill)
+                    {
+                        Lead = $" transform=\"translate({Units.Css(-box.L)},{Units.Css(-box.T)})\"", Transform = Matrix.Translate(-box.L, -box.T),
+                    }])])]) { Css = $"translate({Units.Css(box.L)},{Units.Css(box.T)})" });
             // On a printed page (Word) shadows and glow lie behind a copy of the glyphs and the glyphs themselves stay
             // unfiltered on top, as a page's runs do (PageRenderer.WithEffects): a filtered path is printed as a
             // picture (docx/external/libreoffice/extras-ooxmlexport/fdo80897: hollow WordArt with a shadow).
             if (style.Effects is { } own && slide.Presentation.Word
                 && SvgEffects.Filter(own, Colors, 0, 0, new StringBuilder(), boundingBox: true, text: scale, parts: SvgEffects.Parts.Shape) == null
-                && SvgEffects.Filter(own, Colors, 0, 0, defs, boundingBox: true, text: scale, parts: SvgEffects.Parts.Outer) is { } outer)
+                && SvgEffects.FilterOf(own, Colors, 0, 0, defs, boundingBox: true, text: scale, parts: SvgEffects.Parts.Outer) is { } outer)
             {
                 var id = Paint.NewId("wa");
-                svg.Append($"<use href=\"#{id}\" filter=\"url(#{outer})\"/><path id=\"{id}\" d=\"{TextWarp.PathData(contours)}\"{fill}{stroke}/>");
+                warpedText.Items.Add(new FilterCopyItem(id, outer.Id, outer.Model, [new ShapePathItem(TextWarp.PathData(contours), fillPaint, style.Line, $"{fill}{stroke}") { Lead = $" id=\"{id}\"" }])
+                {
+                    Bare = true,
+                });
                 i = j;
                 continue;
             }
-            var filter = style.Effects is { } effects ? SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true, text: scale) : null;
-            svg.Append($"<path d=\"{TextWarp.PathData(contours)}\"{fill}{stroke}{(filter != null ? $" filter=\"url(#{filter})\"" : "")}/>");
+            var filter = style.Effects is { } effects ? SvgEffects.FilterOf(effects, Colors, 0, 0, defs, boundingBox: true, text: scale) : null;
+            warpedText.Items.Add(new ShapePathItem(TextWarp.PathData(contours), fillPaint, style.Line,
+                $"{fill}{stroke}{(filter is { } own2 ? $" filter=\"url(#{own2.Id})\"" : "")}") { Effects = filter?.Model });
             i = j;
         }
-        svg.Append(selection).Append("</g>");
-        return defs.Length > 0 ? $"<defs>{defs}</defs>{svg}" : svg.ToString();
+        warpedText.Items.AddRange(selection);
+        return defs.Length > 0 ? [new DefsItem(defs.ToString()), warpedText] : [warpedText];
     }
 
     /// <summary>Lays out the text of a table cell; <paramref name="tableStyles"/> are the cell's a:tcTxStyle elements, highest priority first.</summary>
@@ -562,8 +573,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         return Layout(txBody, sources, Math.Max(0, width), wrap: true, 1, 0);
     }
 
-    /// <summary>SVG for a laid-out text block placed in a box (points); anchor t, ctr or b.</summary>
-    public string Emit(LaidOutText layout, double left, double top, double height, string anchor, double? unflipWidth = null,
+    /// <summary>The scene items of a laid-out text block placed in a box (points); anchor t, ctr or b.</summary>
+    public List<SceneItem> Emit(LaidOutText layout, double left, double top, double height, string anchor, double? unflipWidth = null,
         Func<LaidOutLine, double>? lineShift = null)
     {
         var offset = anchor switch
@@ -573,9 +584,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             _ => 0,
         };
 
-        var svg = new StringBuilder();
         var defs = new StringBuilder();
-        var filters = new Dictionary<(XElement, double), string?>();
+        var filters = new Dictionary<(XElement, double), (string Id, EffectModel Model)?>();
         // The point that stays where it is when an animation changes the font size (style.fontSize): the text's
         // anchor down, the first line's alignment across.
         var anchorAt = "";
@@ -587,11 +597,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var y = top + anchor switch { "ctr" => height / 2, "b" => height, _ => 0 };
             anchorAt = $" data-anchor=\"{Px(x)} {Px(y)}\"";
         }
-        svg.Append(unflipWidth is { } w ? $"<g data-tx=\"\" transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\">" : $"<g data-tx=\"\"{anchorAt}>");
         // Text drawn character by character: every paragraph's start in the whole text (paragraphs end with a break,
         // as PowerPoint counts them) and every character's word.
         var paragraphStarts = new Dictionary<int, int>();
         var words = Array.Empty<int>();
+        var whole = "";
         if (units)
         {
             var body = new StringBuilder();
@@ -601,7 +611,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 body.Append(group.First().ParagraphText).Append('\n');
             }
             // The text the units index (morph pairs words and letters by it).
-            svg.Replace("<g data-tx=\"\"", $"<g data-tx=\"\" data-text=\"{WebUtility.HtmlEncode(body.ToString())}\"", 0, svg.Length);
+            whole = $" data-text=\"{WebUtility.HtmlEncode(body.ToString())}\"";
             words = new int[body.Length];
             for (int i = 0, word = -1; i < body.Length; i++)
             {
@@ -615,15 +625,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 words[i] = word;
             }
         }
+        var block = unflipWidth is { } w
+            ? new SvgGroupItem($" data-tx=\"\"{whole} transform=\"matrix(-1 0 0 1 {Units.Css(w)} 0)\"", []) { Transform = new Matrix(-1, 0, 0, 1, w, 0) }
+            : new SvgGroupItem($" data-tx=\"\"{whole}{anchorAt}", []);
         var paragraph = -1;
+        List<SceneItem> items = [];
         foreach (var line in layout.Lines)
         {
             // Every paragraph is a group of its own: animations build text by paragraph (catalog: animation.targets).
             if (line.Paragraph != paragraph)
             {
-                if (paragraph >= 0) svg.Append("</g>");
                 paragraph = line.Paragraph;
-                svg.Append($"<g data-p=\"{paragraph}\">");
+                items = [];
+                block.Items.Add(new SvgGroupItem($" data-p=\"{paragraph}\"", items));
             }
             // Baselines and glyphs sit on whole pixels counted from the top of the text area and from the start of
             // each format run (measured with the text-snap deck; see Snap and Text).
@@ -645,18 +659,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 formatEnd = run.X + run.Width;
                 if (run.Style.Highlight is { } highlight)
                 {
-                    svg.Append($"<rect x=\"{Px(left + run.X)}\" y=\"{Px(baseline - line.Ascent)}\" width=\"{Px(run.Width)}\" height=\"{Px(line.Ascent + line.Descent)}\" fill=\"{highlight.ToHex()}\"/>");
+                    items.Add(new ShapeRectItem((left + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt,
+                        new SolidFill(highlight), null, $" fill=\"{highlight.ToHex()}\""));
                 }
                 if (run.Picture != null)
                 {
                     var pictureHeight = run.PictureHeight;
-                    svg.Append($"<image href=\"{run.Picture}\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline - pictureHeight)}\" width=\"{Px(run.Width)}\" height=\"{Px(pictureHeight)}\" preserveAspectRatio=\"none\"/>");
+                    items.Add(new ImageItem(run.Picture, (left + run.X) * PxPerPt, (baseline - pictureHeight) * PxPerPt, run.Width * PxPerPt, pictureHeight * PxPerPt));
                     continue;
                 }
                 if (string.IsNullOrWhiteSpace(run.Text))
                 {
                     if (BetweenWords(line, run))
-                        svg.Append(SpaceDecorations(run, left + run.X, run.Style.BaselineShift == 0 && run.Lift == 0
+                        items.AddRange(SpaceDecorations(run, left + run.X, run.Style.BaselineShift == 0 && run.Lift == 0
                             ? baseline
                             : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size - run.Lift)));
                     continue;
@@ -665,15 +680,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 {
                     // An equation: its glyphs and rules, its characters transparent on top for selection.
                     var (drawn, mathText) = equation.Draw(left + run.X, baseline - run.Lift, slide.Presentation.Glyphs);
-                    svg.Append(FreeSlate.Rendering.HtmlScene.Markup(drawn));
+                    items.AddRange(drawn);
                     if (mathText.Length > 0)
-                        svg.Append($"<text class=\"sel\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline - run.Lift)}\" font-size=\"{Px(run.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
+                        items.Add(new HiddenSpanItem(mathText, left + run.X, baseline - run.Lift, run.Style.Size, equation.Width));
                     continue;
                 }
                 var filter = run.Style.Effects is { } effects
                     ? filters.TryGetValue((effects, effectSize), out var known)
                         ? known
-                        : filters[(effects, effectSize)] = SvgEffects.Filter(effects, Colors, 0, 0, defs, boundingBox: true, text: effectScale)
+                        : filters[(effects, effectSize)] = SvgEffects.FilterOf(effects, Colors, 0, 0, defs, boundingBox: true, text: effectScale)
                     : null;
                 var shifted = run.Style.BaselineShift == 0 && run.Lift == 0 ? baseline : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size - run.Lift);
                 // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
@@ -686,7 +701,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     {
                         var index = paragraphStarts.GetValueOrDefault(line.Paragraph) + run.Start + at;
                         var word = index < words.Length ? words[index] : -1;
-                        svg.Append($"<g data-c=\"{index}\" data-w=\"{word}\">{Text(piece, left + piece.X, shifted, filter, left + formatOrigin, box, defs, from, effectSize)}</g>");
+                        items.Add(new SvgGroupItem($" data-c=\"{index}\" data-w=\"{word}\"", Text(piece, left + piece.X, shifted, filter, left + formatOrigin, box, defs, from, effectSize)));
                     }
                     continue;
                 }
@@ -699,19 +714,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                         ? (0.0, 0.0, shape.Width, shape.Height)
                         : ((left + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt);
                     if (SvgEffects.Shadow(runEffects, Colors, bw, bh, defs, scale: effectScale.Outer) is { } copy)
-                        svg.Append($"<g transform=\"translate({Units.Css(bx)} {Units.Css(by)})\"><g filter=\"url(#{copy.Filter})\"><g transform=\"{copy.Transform.Css()}\">" +
-                                   $"<g transform=\"translate({Units.Css(-bx)} {Units.Css(-by)})\">{Text(run, left + run.X, shifted, null, left + formatOrigin, box, defs)}</g></g></g></g>");
+                        items.Add(new TransformItem(Matrix.Translate(bx, by), [new FilterItem(copy.Filter, copy.Model, [new TransformItem(copy.Transform,
+                            [new TransformItem(Matrix.Translate(-bx, -by), Text(run, left + run.X, shifted, null, left + formatOrigin, box, defs))
+                                { Css = $"translate({Units.Css(-bx)} {Units.Css(-by)})" }])])]) { Css = $"translate({Units.Css(bx)} {Units.Css(by)})" });
                 }
-                var markup = Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs, effectSize: effectSize);
+                var drawnRun = Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs, effectSize: effectSize);
                 // Upright characters in vertical text turn back about the middle of their em box.
-                svg.Append(run.Upright
-                    ? $"<g transform=\"rotate(-90 {Px(left + run.X + run.Width / 2)} {Px(shifted - 0.38 * run.Style.Size)})\">{markup}</g>"
-                    : markup);
+                if (run.Upright)
+                    items.Add(new RotatedItem(-90, left + run.X + run.Width / 2, shifted - 0.38 * run.Style.Size, drawnRun));
+                else
+                    items.AddRange(drawnRun);
             }
         }
-        if (paragraph >= 0) svg.Append("</g>");
-        svg.Append("</g>");
-        return defs.Length > 0 ? $"<defs>{defs}</defs>{svg}" : svg.ToString();
+        return defs.Length > 0 ? [new DefsItem(defs.ToString()), block] : [block];
     }
 
     /// <summary>
@@ -744,20 +759,20 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     /// <summary>A single-style label with its baseline origin at (x, baseline) in points.</summary>
     public string Label(string value, TextStyle style, double x, double baseline) =>
-        string.IsNullOrWhiteSpace(value) ? "" : Text(new PlacedRun(value, style, x, 0), x, baseline);
+        string.IsNullOrWhiteSpace(value) ? "" : HtmlScene.Markup(Text(new PlacedRun(value, style, x, 0), x, baseline));
 
     /// <summary>The runs of a laid-out line with the line's left edge at <paramref name="left"/> and its baseline at <paramref name="baseline"/>.</summary>
     public string EmitLine(LaidOutLine line, double left, double baseline)
     {
-        var svg = new StringBuilder();
+        var items = new List<SceneItem>();
         foreach (var run in line.Runs)
         {
             if (!string.IsNullOrWhiteSpace(run.Text))
-                svg.Append(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
+                items.AddRange(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
             else if (BetweenWords(line, run))
-                svg.Append(SpaceDecorations(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
+                items.AddRange(SpaceDecorations(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
         }
-        return svg.ToString();
+        return HtmlScene.Markup(items);
     }
 
     /// <summary>Whether a run of spaces stands before more of the line's text (not at its end).</summary>
@@ -776,14 +791,14 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// The underline and strikethrough of spaces between words, which PowerPoint draws through (measured: "Math Problem
     /// Solving" underlined in one piece); spaces ending a line stay bare.
     /// </summary>
-    static string SpaceDecorations(PlacedRun run, double x, double y)
+    static List<SceneItem> SpaceDecorations(PlacedRun run, double x, double y)
     {
         var style = run.Style;
         if (style.Underline == null && style.Strike == null)
-            return "";
+            return [];
         var decorations = Decorations(run, style, style.Font.Data, x, y);
         var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
-        return decorations.Length > 0 ? $"<g{fill}>{decorations}</g>" : "";
+        return decorations.Count > 0 ? [new SvgGroupItem(fill, decorations)] : [];
     }
 
     LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction,
@@ -812,7 +827,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     static double Snap(double points) => Math.Floor(points * PxPerPt + 0.5) / PxPerPt;
 
     /// <summary>
-    /// SVG for a run with its first glyph at (x, y) in points. PowerPoint draws a format run with the glyph origins
+    /// The scene items of a run with its first glyph at (x, y) in points. PowerPoint draws a format run with the glyph origins
     /// rounded to whole pixels from the run's start (<paramref name="origin"/>, exact), using advances in master
     /// units (measured with the text-snap deck); a run continuing a format run passes the format run's start.
     /// Glyphs are drawn as outlines, unhinted and at their exact position like PowerPoint draws them, with the
@@ -822,7 +837,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <param name="from">Where the run starts from the format run's start (points), as the format run accumulates it;
     /// by default x - origin.</param>
     /// <param name="effectSize">The largest font size of the line, which sizes its effects (by default the run's).</param>
-    string Text(PlacedRun run, double x, double y, string? filter = null, double? origin = null,
+    List<SceneItem> Text(PlacedRun run, double x, double y, (string Id, EffectModel Model)? filter = null, double? origin = null,
         (double X, double Y, double W, double H)? lineBox = null, StringBuilder? defs = null, double? from = null, double? effectSize = null)
     {
         var style = run.Style;
@@ -847,10 +862,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             position += FontData.MasterUnits(glyph.Advance * style.Size) + FontData.MasterUnits(glyph.Kerning * style.Size) + (firstOfCluster ? spacing : 0);
         }
         var xs = new StringBuilder();
+        var places = new double[text.Length];
         double current = 0;
         for (var i = 0; i < text.Length; i++)
         {
             current = clusterX[i] ?? current;
+            places[i] = startPx + current;
             if (char.IsLowSurrogate(text[i]))
                 continue;
             if (xs.Length > 0) xs.Append(' ');
@@ -863,11 +880,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                        && glyphs.All(g => g.Id != 0 || g.Cluster < text.Length && char.IsWhiteSpace(text[g.Cluster]));
         var family = data.Family;
         var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
-        var sb = new StringBuilder();
+        var items = new List<SceneItem>();
         if (outlined)
         {
             var scale = style.Size * PxPerPt / data.UnitsPerEm;
-            var units = new StringBuilder();
+            var units = new List<RunGlyph>();
             for (var i = 0; i < glyphs.Length; i++)
             {
                 if (slide.Presentation.Glyphs.Id(data, glyphs[i].Id) is not { } id)
@@ -876,28 +893,24 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     y * PxPerPt - glyphs[i].OffsetY * style.Size * PxPerPt, scale), (style.Paint is { } glyphPaint ? Fill.MainColor(glyphPaint) : null) ?? style.Color));
                 var gx = glyphX[i] / scale + glyphs[i].OffsetX * data.UnitsPerEm;
                 var gy = -glyphs[i].OffsetY * data.UnitsPerEm;
-                units.Append($"<use href=\"#{id}\"");
                 if (style.NormalizeHeight && data.GlyphBounds(glyphs[i].Id) is var (bottom, top) && top > bottom)
                 {
                     // Equalized character height (a:rPr normalizeH): the glyph's ink from the baseline to the font's
                     // ascent (measured: every letter of 32 pt Calibri 40 px tall, descenders lifted onto the baseline).
                     var k = data.WinAscent * data.UnitsPerEm / (top - bottom);
-                    units.Append($" transform=\"matrix(1 0 0 {Units.Css4(k)} {Units.Css1(gx)} {Units.Css1(gy + bottom * k)})\"/>");
+                    units.Add(new RunGlyph(id, glyphs[i].Id, gx, gy + bottom * k, k));
                     continue;
                 }
-                if (Math.Abs(gx) > 0.05) units.Append($" x=\"{Units.Css1(gx)}\"");
-                if (Math.Abs(gy) > 0.05) units.Append($" y=\"{Units.Css1(gy)}\"");
-                units.Append("/>");
+                units.Add(new RunGlyph(id, glyphs[i].Id, gx, gy));
             }
             var decorations = Decorations(run, style, data, x, y);
-            if (filter != null || decorations.Length > 0)
-                sb.Append($"<g{fill}{(filter != null ? $" filter=\"url(#{filter})\"" : "")}>");
+            var grouped = filter != null || decorations.Count > 0;
             // PowerPoint samples coverage at the top-left of 8 × 4 sub-pixels, Chromium at the centers of 4 rows:
             // shifting the glyphs by half a sub-pixel makes both see the same edges.
             var (tx, ty) = (startPx + SampleShiftX, y * PxPerPt + SampleShiftY);
-            var transform = $"translate({Units.Css4(tx)} {Units.Css4(ty)}) scale({Units.Scale(scale)})";
             var local = defs ?? new StringBuilder();
             var stroke = style.Line is { } outline ? StrokeInFontUnits(Paint.Stroke(outline, 0, 0, local), scale) : "";
+            var glyphRun = new GlyphRunItem(data, tx, ty, scale, units, style.Color) { Outline = style.Line, StrokeAttributes = stroke };
             if (style.Paint is { } textPaint and not NoFill and not SolidFill)
             {
                 // The paint fills the line box, clipped to the glyphs: gradients, patterns and pictures keep their
@@ -909,21 +922,21 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var maskId = $"tm{slide.Number}-{++nextClip}";
                 var maskTransform = $"translate({Units.Css4(tx - bx)} {Units.Css4(ty - by)}) scale({Units.Scale(scale)})";
                 var (rx, ry, rw, rh) = (Units.Css(-bw), Units.Css(-bh), Units.Css(3 * bw), Units.Css(3 * bh));
-                local.Append($"<mask id=\"{maskId}\" maskUnits=\"userSpaceOnUse\" x=\"{rx}\" y=\"{ry}\" width=\"{rw}\" height=\"{rh}\"><g transform=\"{maskTransform}\" fill=\"#fff\">{units}</g></mask>");
-                sb.Append($"<g transform=\"translate({Units.Css4(bx)} {Units.Css4(by)})\"><rect x=\"{rx}\" y=\"{ry}\" width=\"{rw}\" height=\"{rh}\"{Paint.Fill(textPaint, bw, bh, local, 0, (bx, by))} mask=\"url(#{maskId})\"/></g>");
-                if (stroke.Length > 0)
-                    sb.Append($"<g transform=\"{transform}\" fill=\"none\"{stroke}>{units}</g>");
+                local.Append($"<mask id=\"{maskId}\" maskUnits=\"userSpaceOnUse\" x=\"{rx}\" y=\"{ry}\" width=\"{rw}\" height=\"{rh}\"><g transform=\"{maskTransform}\" fill=\"#fff\">{HtmlScene.Uses(units)}</g></mask>");
+                glyphRun = glyphRun with { Paint = textPaint, PaintBox = (bx, by, bw, bh), PaintAttributes = Paint.Fill(textPaint, bw, bh, local, 0, (bx, by)), Mask = maskId };
             }
-            else
+            else if (!grouped)
+                glyphRun = glyphRun with { FillAttributes = fill };
+            items.Add(glyphRun);
+            if (grouped)
             {
-                sb.Append($"<g transform=\"{transform}\"{(filter != null || decorations.Length > 0 ? "" : fill)}{stroke}>{units}</g>");
+                items.AddRange(decorations);
+                items = [new SvgGroupItem(fill + (filter is { } runFilter ? $" filter=\"url(#{runFilter.Id})\"" : ""), items) { Effects = filter?.Model }];
             }
-            if (filter != null || decorations.Length > 0)
-                sb.Append(decorations).Append("</g>");
-            if (Reflect(sb.ToString(), local) is { } mirrored)
-                sb.Clear().Append(mirrored);
+            if (Reflect(items, local) is { } mirrored)
+                items = [mirrored];
             if (defs == null && local.Length > 0)
-                sb.Insert(0, $"<defs>{local}</defs>");
+                items.Insert(0, new DefsItem(local.ToString()));
         }
         else
         {
@@ -934,17 +947,14 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var placement = run.RightToLeft
             ? $" x=\"{Units.Css(x * PxPerPt + run.Width * PxPerPt)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\""
             : $" x=\"{xs}\"";
-        sb.Append($"<text{(outlined ? " class=\"sel\"" : "")}{placement} y=\"{Px(y)}\" font-family=\"'{WebUtility.HtmlEncode(family.Replace("'", "\'"))}'\" font-size=\"{Px(style.Size)}\"");
-        // Simulated bold of a PostScript font only widens the text; its glyphs stay regular (measured).
-        if (style.Bold && !style.Font.WidenedBold) sb.Append(" font-weight=\"700\"");
-        if (style.Italic) sb.Append(" font-style=\"italic\"");
+        var attributes = new StringBuilder();
         if (!outlined)
         {
-            sb.Append(fill);
+            attributes.Append(fill);
             var decorations = new List<string>();
             if (style.Underline != null) decorations.Add("underline");
             if (style.Strike != null) decorations.Add("line-through");
-            if (decorations.Count > 0) sb.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
+            if (decorations.Count > 0) attributes.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
             // The browser draws small text's underline: its style, color and width as CSS (catalog: text.underline).
             var css = new List<string>();
             if (style.Underline is { } underline)
@@ -967,35 +977,53 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     css.Add("text-decoration-thickness:0.15em");
             }
             if (!style.Kerning) css.Add("font-kerning:none");
-            if (css.Count > 0) sb.Append($" style=\"{string.Join(';', css)}\"");
-            if (filter != null) sb.Append($" filter=\"url(#{filter})\"");
+            if (css.Count > 0) attributes.Append($" style=\"{string.Join(';', css)}\"");
+            if (filter is { } textFilter) attributes.Append($" filter=\"url(#{textFilter.Id})\"");
         }
-        sb.Append('>').Append(WebUtility.HtmlEncode(text)).Append("</text>");
-        if (!outlined)
+        var textItem = new SvgTextItem(text, places, y * PxPerPt, data, style.Size * PxPerPt, style.Color)
+        {
+            Hidden = outlined,
+            // Simulated bold of a PostScript font only widens the text; its glyphs stay regular (measured).
+            Bold = style.Bold && !style.Font.WidenedBold,
+            Italic = style.Italic,
+            RightToLeft = run.RightToLeft,
+            Width = run.Width * PxPerPt,
+            Kerning = style.Kerning,
+            Underline = !outlined && style.Underline != null,
+            Strike = !outlined && style.Strike != null,
+            Effects = !outlined ? filter?.Model : null,
+            Placement = placement,
+            Attributes = attributes.ToString(),
+        };
+        if (outlined)
+            items.Add(textItem);
+        else
         {
             var local = defs ?? new StringBuilder();
-            if (Reflect(sb.ToString(), local) is { } reflected)
+            if (Reflect([textItem], local) is { } reflected)
             {
-                sb.Clear();
-                if (defs == null && local.Length > 0) sb.Append($"<defs>{local}</defs>");
-                sb.Append(reflected);
+                if (defs == null && local.Length > 0)
+                    items.Add(new DefsItem(local.ToString()));
+                items.Add(reflected);
             }
+            else
+                items.Add(textItem);
         }
         // A mouse-over action on the text (a:hlinkMouseOver, catalog: interactivity.hyperlinks) runs when the pointer
         // enters it during the show, like a shape's.
         if (style.HoverLink is { } hover)
         {
-            var attributes = (hover.Action != null ? $" data-hover-action=\"{WebUtility.HtmlEncode(hover.Action)}\"" : "")
-                             + (hover.Href != null ? $" data-hover-href=\"{WebUtility.HtmlEncode(hover.Href)}\"" : "");
-            sb.Insert(0, $"<g{attributes}>").Append("</g>");
+            var hoverAttributes = (hover.Action != null ? $" data-hover-action=\"{WebUtility.HtmlEncode(hover.Action)}\"" : "")
+                                  + (hover.Href != null ? $" data-hover-href=\"{WebUtility.HtmlEncode(hover.Href)}\"" : "");
+            items = [new SvgGroupItem(hoverAttributes, items)];
         }
-        return style.Link is { } link ? Links.Open(link) + sb + "</a>" : sb.ToString();
+        return style.Link is { } link ? [new WrappedItem(Links.Open(link), items, "</a>")] : items;
 
         // Text reflects line by line about its baseline: the box mirrored about its bottom reaches from the font's
         // ascent down to half the reflection's distance below the baseline, sized with the line's largest font, and
         // the fade runs over the mirrored box (measured: below 80 pt text the gap is 5.5 times the distance and the
         // fade starts halfway into it; see SvgEffects.TextScale).
-        string? Reflect(string markup, StringBuilder into)
+        ReflectionItem? Reflect(List<SceneItem> content, StringBuilder into)
         {
             if (style.Effects?.Element(Ns.A + "reflection") is not { } reflection)
                 return null;
@@ -1003,8 +1031,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var below = Units.ToPx(reflection.Long("dist") ?? 0) * scale.ReflectionDistance / 2;
             var bottom = y * PxPerPt + below;
             var height = style.Size * PxPerPt * data.Ascent + below;
-            return SvgEffects.Reflection(style.Effects, markup, (x * PxPerPt, bottom - height, run.Width * PxPerPt, height), into,
-                distanceScale: 0, blurScale: scale.ReflectionBlur);
+            return SvgEffects.ReflectionOf(style.Effects, (x * PxPerPt, bottom - height, run.Width * PxPerPt, height), into,
+                distanceScale: 0, blurScale: scale.ReflectionBlur) is { } model ? new ReflectionItem(model, content) : null;
         }
     }
 
@@ -1057,31 +1085,33 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// of the thickness, the second above the first; wavy ones are waves four units long. An underline line of its own
     /// (a:uLn) gives the thickness, color and dash, a:uFill the color.
     /// </summary>
-    static string Decorations(PlacedRun run, TextStyle style, FontData data, double x, double y)
+    static List<SceneItem> Decorations(PlacedRun run, TextStyle style, FontData data, double x, double y)
     {
         if (style.Underline == null && style.Strike == null)
-            return "";
-        var sb = new StringBuilder();
+            return [];
+        var items = new List<SceneItem>();
         var left = x * PxPerPt;
         var width = run.Width * PxPerPt;
         var size = style.Size * PxPerPt;
         var baseline = y * PxPerPt;
-        string Line(double top, double height, string fill = "", double[]? dashes = null, double unit = 1)
+        // A line in a color, in HTML with the attributes of its fill (none where it takes the text's from around it).
+        void Line(double top, double height, RgbColor color, string fill = "", double[]? dashes = null, double unit = 1)
         {
             if (dashes == null)
-                return $"<rect x=\"{Units.Css(left)}\" y=\"{Units.Css(top)}\" width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"{fill}/>";
+            {
+                items.Add(new ShapeRectItem(left, top, width, height, new SolidFill(color), null, fill));
+                return;
+            }
             // A dashed line: one rectangle per dash, the pattern from the run's start.
-            var line = new StringBuilder();
             var (position, i) = (0.0, 0);
             while (position < width - 1e-6)
             {
                 var length = dashes[i % dashes.Length] * unit;
                 if (i % 2 == 0 && length > 0)
-                    line.Append($"<rect x=\"{Units.Css(left + position)}\" y=\"{Units.Css(top)}\" width=\"{Units.Css(Math.Min(length, width - position))}\" height=\"{Units.Css(height)}\"{fill}/>");
+                    items.Add(new ShapeRectItem(left + position, top, Math.Min(length, width - position), height, new SolidFill(color), null, fill));
                 position += Math.Max(length, 1e-3);
                 i++;
             }
-            return line.ToString();
         }
         if (style.Underline is { } underline)
         {
@@ -1092,6 +1122,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             // baseline).
             var offset = data.UnderlinePosition * size;
             var top = Math.Round(baseline + offset);
+            var lineColor = style.UnderlineColor ?? style.Color;
             var fill = style.UnderlineColor is { } color
                 ? color.A < 0.999 ? $" fill=\"{color.ToHex()}\" fill-opacity=\"{Units.Css4(color.A)}\"" : $" fill=\"{color.ToHex()}\""
                 : "";
@@ -1125,15 +1156,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                         if (b > a)
                             path.Append($"Q{Units.Css(left + px + (a + b) / 2)} {Units.Css(center + 2 * swing)} {Units.Css(left + px + b)} {Units.Css(center)}");
                     }
-                    sb.Append($"<path d=\"{path}\" fill=\"none\"{waveColor} stroke-width=\"{Units.Css(stroke)}\"/>");
+                    items.Add(new ShapePathItem(path.ToString(), Fill.None, Stroked(stroke, lineColor, "solid"), $" fill=\"none\"{waveColor} stroke-width=\"{Units.Css(stroke)}\""));
                 }
             }
             else if (kind == "dbl")
             {
                 var thin = Math.Max(1, Math.Round(thickness * 0.75));
                 var lower = top + thickness - thin;
-                sb.Append(Line(lower, thin, fill));
-                sb.Append(Line(lower - 2 * thin, thin, fill));
+                Line(lower, thin, lineColor, fill);
+                Line(lower - 2 * thin, thin, lineColor, fill);
             }
             else if (style.UnderlineWidth is { } lineWidth && !heavy)
             {
@@ -1152,24 +1183,25 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     // Dashed: the outline as a path from the bottom left corner, where PowerPoint starts the pattern.
                     var strokeColor = style.UnderlineLineColor is { } sc ? $" stroke=\"{sc.ToHex()}\"" : " stroke=\"currentColor\"";
                     var dashUnit = Dashes.Unit(stroke);
-                    sb.Append($"<path d=\"M{Units.Css(left)} {Units.Css(bottom)}V{Units.Css(top)}H{Units.Css(left + width)}V{Units.Css(bottom)}Z\"{Paint(style.UnderlineFillColor)}{strokeColor}" +
-                              $" stroke-width=\"{Units.Css(Math.Max(1, stroke))}\" stroke-dasharray=\"{string.Join(' ', lineDash.Select(d => Units.Css(d * dashUnit)))}\"/>");
+                    items.Add(new ShapePathItem($"M{Units.Css(left)} {Units.Css(bottom)}V{Units.Css(top)}H{Units.Css(left + width)}V{Units.Css(bottom)}Z",
+                        new SolidFill(style.UnderlineFillColor ?? style.Color), Stroked(Math.Max(1, stroke), style.UnderlineLineColor ?? style.Color, dash),
+                        $"{Paint(style.UnderlineFillColor)}{strokeColor} stroke-width=\"{Units.Css(Math.Max(1, stroke))}\" stroke-dasharray=\"{string.Join(' ', lineDash.Select(d => Units.Css(d * dashUnit)))}\""));
                 }
                 else
                 {
                     var half = stroke / 2;
                     var (outerTop, outerBottom) = (Math.Floor(top - half + 0.5), Math.Ceiling(bottom + half));
                     var (innerTop, innerBottom) = (Math.Ceiling(top + half), Math.Floor(bottom - half + 0.5));
-                    sb.Append(Line(outerTop, outerBottom - outerTop, Paint(style.UnderlineLineColor)));
+                    Line(outerTop, outerBottom - outerTop, style.UnderlineLineColor ?? style.Color, Paint(style.UnderlineLineColor));
                     if (innerBottom > innerTop)
-                        sb.Append(Line(innerTop, innerBottom - innerTop, Paint(style.UnderlineFillColor)));
+                        Line(innerTop, innerBottom - innerTop, style.UnderlineFillColor ?? style.Color, Paint(style.UnderlineFillColor));
                 }
             }
             else
             {
                 // A heavy line reaches up from the plain one's bottom.
                 var height = heavy ? Math.Max(1, Math.Round(2 * (style.UnderlineWidth is { } w2 ? w2 * PxPerPt : exact))) : thickness;
-                sb.Append(Line(heavy ? top + thickness - height : top, height, fill, pattern, unit));
+                Line(heavy ? top + thickness - height : top, height, lineColor, fill, pattern, unit);
             }
         }
         if (style.Strike is { } strike)
@@ -1179,15 +1211,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             if (strike == "dblStrike")
             {
                 var gap = thickness;
-                sb.Append(Line(Math.Round(baseline + offset - gap - thickness / 2), thickness));
-                sb.Append(Line(Math.Round(baseline + offset + gap - thickness / 2), thickness));
+                Line(Math.Round(baseline + offset - gap - thickness / 2), thickness, style.Color);
+                Line(Math.Round(baseline + offset + gap - thickness / 2), thickness, style.Color);
             }
             else
             {
-                sb.Append(Line(Math.Round(baseline + offset - thickness / 2), thickness));
+                Line(Math.Round(baseline + offset - thickness / 2), thickness, style.Color);
             }
         }
-        return sb.ToString();
+        return items;
+
+        // An outline of a width in pixels and a color, flat, with a preset dash.
+        static Outline Stroked(double widthPx, RgbColor color, string dash) =>
+            new(widthPx * Units.EmuPerPixel, new SolidFill(color), dash, "flat", "miter", 4, "sng");
     }
 
     static XElement? TxBody(XElement shape) => shape.Element(Ns.P + "txBody") ?? shape.Element(Ns.A + "txBody");

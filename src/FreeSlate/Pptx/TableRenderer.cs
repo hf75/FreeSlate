@@ -137,9 +137,9 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
                 (marL, marR) = (marR, marL);
             if (tcPr.Bool("anchorCtr") == true)
                 TextLayout.CenterBlock(layouts[cell], w - marL - marR);
-            texts.Append(Turned(cell) is { } mode
+            texts.Append(HtmlScene.Markup(Turned(cell) is { } mode
                 ? text.EmitTurned(layouts[cell], mode, x + marL, y + marT, w - marL - marR, h - marT - marB, tcPr.Str("anchor") ?? "t")
-                : text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t"));
+                : text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t")));
         }
 
         foreach (var edge in edges.Values)

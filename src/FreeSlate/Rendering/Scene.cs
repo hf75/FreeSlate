@@ -86,7 +86,17 @@ public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : Sc
 /// no outline where it has none); in HTML a path element with the attributes of its paint, whose gradients and
 /// patterns are the shape's definitions.
 /// </summary>
-public sealed record ShapePathItem(string Data, Fill Fill, Outline? Outline, string Attributes) : SceneItem;
+public sealed record ShapePathItem(string Data, Fill Fill, Outline? Outline, string Attributes) : SceneItem
+{
+    /// <summary>Attributes HTML writes before the path data (the id a copy refers to, a transform).</summary>
+    public string Lead { get; init; } = "";
+
+    /// <summary>The transform the lead attributes hold, in CSS pixels.</summary>
+    public Matrix? Transform { get; init; }
+
+    /// <summary>The effects the filter among its attributes draws (warped text's).</summary>
+    public EffectModel? Effects { get; init; }
+}
 
 /// <summary>
 /// An ellipse of a shape (an oval line end), its center and radii in CSS pixels, turned by Angle degrees about its
@@ -101,20 +111,48 @@ public sealed record ShapeEllipseItem(double X, double Y, double RadiusX, double
 public sealed record DefsItem(string Markup) : SceneItem;
 
 /// <summary>
+/// A rectangle of a drawing in CSS pixels (a highlight, an underline), filled and outlined as DrawingML gives it; in HTML
+/// a rect element with the attributes of its paint (none where it takes its fill from a group around it).
+/// </summary>
+public sealed record ShapeRectItem(double X, double Y, double Width, double Height, Fill Fill, Outline? Outline, string Attributes) : SceneItem;
+
+/// <summary>A picture stretched over a rectangle in CSS pixels (a picture in text); Source is a URI.</summary>
+public sealed record ImageItem(string Source, double X, double Y, double Width, double Height) : SceneItem;
+
+/// <summary>
 /// A picture filling a path of a shape, stretched over a rectangle in CSS pixels (its crop and fill rectangle
 /// applied) and cut at the path (SVG path data); in HTML an image clipped by the shape's definition named Clip, with
 /// the attribute of its filter (recoloring, its effects) where it has one. Source is the picture as a URI.
 /// </summary>
 public sealed record PictureItem(string Source, double X, double Y, double Width, double Height, string ClipPath, string Clip, string Filter) : SceneItem;
 
-/// <summary>Items drawn transformed (in CSS pixels): a scaled, skewed or flipped shadow's copy of its shape.</summary>
-public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem;
+/// <summary>Items drawn transformed (in CSS pixels): a scaled, skewed or flipped shadow's copy of its shape, turned text.</summary>
+public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem
+{
+    /// <summary>The transform as HTML writes it, where that is not its matrix (an SVG translate or rotate).</summary>
+    public string? Css { get; init; }
+
+    /// <summary>Items turned clockwise by degrees about (x, y), written as an SVG rotate.</summary>
+    public static TransformItem Rotation(double degrees, double x, double y, List<SceneItem> items) =>
+        new(Matrix.Translate(x, y).Then(Matrix.Rotate(degrees)).Then(Matrix.Translate(-x, -y)), items)
+        {
+            Css = $"rotate({Units.Css(degrees)} {Units.Css(x)} {Units.Css(y)})",
+        };
+}
 
 /// <summary>
 /// Items of an SVG group with attributes not broken down yet (a clip to the front face inside a bevel, a 3D face's
-/// light, the hook by which animations build a shape's background apart from its text, an isolated blend).
+/// light, the hooks by which animations build a shape's background apart from its text and text by paragraph, word or
+/// letter, an isolated blend, the fill a run's text and decorations share).
 /// </summary>
-public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : SceneItem;
+public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : SceneItem
+{
+    /// <summary>The transform its attributes hold (a block of text flipped back), for other backends.</summary>
+    public Matrix? Transform { get; init; }
+
+    /// <summary>The effects the filter among its attributes draws (a run of text's), for other backends.</summary>
+    public EffectModel? Effects { get; init; }
+}
 
 /// <summary>Items inside markup not broken down yet (a shape's hyperlink, the hidden SVG that holds definitions).</summary>
 public sealed record WrappedItem(string Before, List<SceneItem> Items, string After) : SceneItem;
@@ -242,6 +280,53 @@ public sealed record MathGlyphItem(FontData Font, uint Glyph, double Size, doubl
     public string? Id { get; init; }
 }
 
+/// <summary>
+/// A run of glyphs drawn from their outlines in CSS pixels (slide text): from its origin (X, Y) on the baseline the glyphs
+/// at their places in font units, Scale pixels a unit, filled in Color, or with Paint over PaintBox (a gradient, a pattern
+/// or a picture spanning the line), outlined where it has an outline. In HTML a group of uses of the glyph outlines the
+/// page's definitions hold, with the attributes of its fill (none where a group around it has them) and of its outline
+/// in font units; a painted run is a rectangle of its paint masked by the glyphs (the mask Mask among the definitions).
+/// </summary>
+public sealed record GlyphRunItem(FontData Font, double X, double Y, double Scale, List<RunGlyph> Glyphs, RgbColor Color) : SceneItem
+{
+    public string FillAttributes { get; init; } = "";
+    public Outline? Outline { get; init; }
+    public string StrokeAttributes { get; init; } = "";
+    public Fill? Paint { get; init; }
+    public (double X, double Y, double Width, double Height) PaintBox { get; init; }
+    public string PaintAttributes { get; init; } = "";
+    public string? Mask { get; init; }
+}
+
+/// <summary>
+/// A glyph of a GlyphRunItem: its outline's id among the page's definitions, the font's glyph and its place in font units
+/// from the run's origin; Stretch the factor of equalized character height (its ink from the baseline to the font's
+/// ascent, the place then where its outline's origin lands).
+/// </summary>
+public readonly record struct RunGlyph(string Id, uint Glyph, double X, double Y, double? Stretch = null);
+
+/// <summary>
+/// Slide text set by the backend in CSS pixels: its characters on the baseline Y at their places (Positions, one per
+/// UTF-16 unit; right-to-left text whole from its right end, Positions[0] + Width), in Font at Size, in its color, with a
+/// plain underline or strikethrough where it has one; Hidden where outlines draw it (GlyphRunItem) and it stays for
+/// selecting and searching only. In HTML an SVG text element, its x attribute Placement, its paint, decoration, style and
+/// filter Attributes.
+/// </summary>
+public sealed record SvgTextItem(string Text, double[] Positions, double Y, FontData Font, double Size, RgbColor Color) : SceneItem
+{
+    public bool Hidden { get; init; }
+    public bool Bold { get; init; }
+    public bool Italic { get; init; }
+    public bool RightToLeft { get; init; }
+    public double Width { get; init; }
+    public bool Kerning { get; init; } = true;
+    public bool Underline { get; init; }
+    public bool Strike { get; init; }
+    public EffectModel? Effects { get; init; }
+    public string Placement { get; init; } = "";
+    public string Attributes { get; init; } = "";
+}
+
 /// <summary>A short text in its font and color ending at the point X on the baseline Y: a line number.</summary>
 public sealed record LabelItem(string Text, double X, double Y, FontData Font, double Size, RgbColor Color, bool Bold, bool Italic) : SceneItem;
 
@@ -263,7 +348,11 @@ public sealed record FilterItem(string Filter, EffectModel Effects, List<SceneIt
 /// are over them: in HTML a copy of the group named Id through the filter Filter, which so stands in the page once
 /// (text's glow and shadow).
 /// </summary>
-public sealed record FilterCopyItem(string Id, string Filter, EffectModel Effects, List<SceneItem> Items) : SceneItem;
+public sealed record FilterCopyItem(string Id, string Filter, EffectModel Effects, List<SceneItem> Items) : SceneItem
+{
+    /// <summary>Whether the copy refers to the one item itself, which carries the id (see ShapePathItem.Lead), not to a group.</summary>
+    public bool Bare { get; init; }
+}
 
 /// <summary>
 /// Items with their reflection (a:reflection): a copy of them turned, scaled and skewed by the reflection's transform (in

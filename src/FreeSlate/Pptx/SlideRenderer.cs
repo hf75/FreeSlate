@@ -590,42 +590,43 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 Units = shapeId != null && (Iterated.Contains(shapeId) || Morph is "byWord" or "byChar"),
             };
             text.ShapeSize = (pw, ph);
-            var textMarkup = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
+            var textItems = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
             var glyphOutlines = text.Outlines;
             text.Outlines = null;
             // Text the slide show restyles is drawn in each formatting too (not 3D text).
-            if (textCamera == null && shapeId != null && textMarkup.Length > 0 && Restyled.TryGetValue(shapeId, out var formattings))
-                textMarkup = TextVariants.Merge(textMarkup, formattings.Select(f => (f.Key, text.Render(textChain.With(f), textGeometry, pw, flipH ^ flipV))).ToList(), textChain.Units);
-            if (upright && turn != 0 && textMarkup.Length > 0)
-                textMarkup = $"<g transform=\"rotate({Units.Css(-turn)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g>";
-            if (Math.Abs(textTurn) > 1e-9 && textMarkup.Length > 0)
-                textMarkup = $"<g transform=\"rotate({Units.Css(textTurn)} {Units.Css(textCenter.X)} {Units.Css(textCenter.Y)})\">{textMarkup}</g>";
+            if (textCamera == null && shapeId != null && textItems.Count > 0 && Restyled.TryGetValue(shapeId, out var formattings))
+                textItems = [new MarkupItem(TextVariants.Merge(HtmlScene.Markup(textItems),
+                    formattings.Select(f => (f.Key, HtmlScene.Markup(text.Render(textChain.With(f), textGeometry, pw, flipH ^ flipV)))).ToList(), textChain.Units))];
+            if (upright && turn != 0 && textItems.Count > 0)
+                textItems = [TransformItem.Rotation(-turn, pw / 2, ph / 2, textItems)];
+            if (Math.Abs(textTurn) > 1e-9 && textItems.Count > 0)
+                textItems = [TransformItem.Rotation(textTurn, textCenter.X, textCenter.Y, textItems)];
             if (shapeLink != null)
-                textMarkup = UnlinkText(textMarkup);   // links cannot nest
+                textItems = Unlinked(textItems);   // links cannot nest
             // The text's silhouette in a backdrop's shadow: its glyphs without ids, links or effects of their own.
             if (backdropText)
             {
-                html.Replace(BackdropTextToken, Silhouette(textMarkup));
+                html.Replace(BackdropTextToken, Silhouette(HtmlScene.Markup(textItems)));
                 backdropText = false;
             }
             if (textCamera != null && glyphOutlines is { Count: > 0 })
                 textLayer = Text3D(textCamera, Lighting.For(textScene, textShape3d, flat: (textShape3d.Long("extrusionH") ?? 0) <= 0 && textShape3d?.Element(Ns.A + "bevelT") == null
                                                                                       && textShape3d?.Element(Ns.A + "bevelB") == null && (textShape3d.Long("contourW") ?? 0) <= 0),
-                    textShape3d, glyphOutlines, textMarkup, pw, ph);
+                    textShape3d, glyphOutlines, HtmlScene.Markup(textItems), pw, ph);
             else if (flatText)
-                textLayer = textMarkup.Length > 0
-                    ? $"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><g transform=\"rotate({Units.Css(rotation)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{textMarkup}</g></svg>"
+                textLayer = textItems.Count > 0
+                    ? $"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><g transform=\"rotate({Units.Css(rotation)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{HtmlScene.Markup(textItems)}</g></svg>"
                     : "";
             else if (dag != null)
-                dagText = textMarkup;
+                dagText = HtmlScene.Markup(textItems);
             else
             {
-                if (faceOpacity < 1 && textMarkup.Length > 0)
-                    textMarkup = $"<g filter=\"url(#{LitFilter(frontShade, defs)})\">{textMarkup}</g>";
-                if (effectFilterOf is { } textFilter && !opaque && textMarkup.Length > 0)
-                    body.Add(new FilterItem(textFilter.Id, textFilter.Model, [new MarkupItem(textMarkup)]));
+                if (faceOpacity < 1 && textItems.Count > 0)
+                    textItems = [new SvgGroupItem($" filter=\"url(#{LitFilter(frontShade, defs)})\"", textItems)];
+                if (effectFilterOf is { } textFilter && !opaque && textItems.Count > 0)
+                    body.Add(new FilterItem(textFilter.Id, textFilter.Model, textItems));
                 else
-                    AddMarkup(body, textMarkup);
+                    body.AddRange(textItems);
             }
         }
         if (backdropText)
@@ -1534,6 +1535,38 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     static string UnlinkText(string markup) =>
         System.Text.RegularExpressions.Regex.Replace(markup, "<a(?: [^>]*)?>(?:<title>[^<]*</title>)?|</a>", "");
+
+    /// <summary>Items without their links (see UnlinkText): a link's items stand in its place.</summary>
+    static List<SceneItem> Unlinked(List<SceneItem> items)
+    {
+        var result = new List<SceneItem>(items.Count);
+        foreach (var item in items)
+        {
+            if (item is WrappedItem { After: "</a>" } link && link.Before.StartsWith("<a", StringComparison.Ordinal))
+            {
+                result.AddRange(Unlinked(link.Items));
+                continue;
+            }
+            if (item is MarkupItem markup)
+            {
+                result.Add(new MarkupItem(UnlinkText(markup.Html)));
+                continue;
+            }
+            if (item switch
+                {
+                    SvgGroupItem group => group.Items, TransformItem transformed => transformed.Items, FilterItem filtered => filtered.Items,
+                    FilterCopyItem copied => copied.Items, ReflectionItem reflected => reflected.Items, RotatedItem rotated => rotated.Items,
+                    WrappedItem wrapped => wrapped.Items, _ => null,
+                } is { } children)
+            {
+                var inner = Unlinked(children);
+                children.Clear();
+                children.AddRange(inner);
+            }
+            result.Add(item);
+        }
+        return result;
+    }
 
     static XElement? NonVisual(XElement shape) =>
         shape.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("nv", StringComparison.Ordinal))?.Elements().FirstOrDefault(e => e.Name.LocalName == "cNvPr");
