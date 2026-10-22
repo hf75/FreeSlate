@@ -120,18 +120,18 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// <summary>
     /// The page background (catalog: document.background): the fill of w:background or its v:background on a
     /// rectangle the size of the page, behind everything; Word prints it whether or not w:displayBackgroundShape is
-    /// set (measured with docx/local/misc-nothing, misc-nobg).
+    /// set (measured with docx/local/misc-nothing, misc-nobg). A VML background's paint is still markup.
     /// </summary>
-    public string Background(double width, double height)
+    public List<SceneItem> Background(double width, double height)
     {
         // Word's VML gradients repeat over the page in tiles (see Vml.BackgroundGradient, BackgroundTile).
         if (context.Background?.Element(Vml.V + "background") is { } vml)
         {
             const double Px = 96.0 / 72;
             var (w, h) = (Units.Css(width * Px), Units.Css(height * Px));
-            string Page(string defs, string paint) =>
-                $"<div class=\"sp\" style=\"width:{w}px;height:{h}px\"><svg width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\"><defs>{defs}</defs>" +
-                $"<rect width=\"{w}\" height=\"{h}\"{paint} shape-rendering=\"crispEdges\"/></svg></div>";
+            List<SceneItem> Page(string defs, string paint) =>
+                [new BoxItem((width * Px, height * Px), null, "", [new SvgItem(width * Px, height * Px,
+                    [new DefsItem(defs), new MarkupItem($"<rect width=\"{w}\" height=\"{h}\"{paint} shape-rendering=\"crispEdges\"/>")])])];
             if (Vml.BackgroundGradient(vml) is { } gradient)
             {
                 // The gradient turned back at its ends across the whole page, written out: PDF viewers (Windows' among
@@ -215,7 +215,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             }
         }
         if (Vml.BackgroundFill(context.Background, Colors) is not { } fill)
-            return "";
+            return [];
         var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));
         var drawing = new XElement(Wp + "anchor",
             new XElement(Wp + "extent", new XAttribute("cx", cx), new XAttribute("cy", cy)),
@@ -227,9 +227,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
                         new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
                         fill, new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill"))),
                     new XElement(Wps + "bodyPr")))));
-        var html = new System.Text.StringBuilder();
-        HtmlScene.Write(Render(new PlacedDrawing(drawing, context.MainPart, 0, 0, width, height)), html);
-        return html.ToString();
+        return Render(new PlacedDrawing(drawing, context.MainPart, 0, 0, width, height));
     }
 
     /// <summary>The fonts the drawings' text uses.</summary>

@@ -250,9 +250,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var paths = new List<SceneItem>();
         var slideMatrix = placement.OnSlide(matrix);
         var origin = (Units.ToPx(slideMatrix.E), Units.ToPx(slideMatrix.F));
-        var ends = outline is { Visible: true }
+        List<SceneItem> ends = outline is { Visible: true }
             ? LineEnds.Apply(outline, geometry.Paths, paint.Fill(outline.Fill, pw, ph, defs, rotation, origin), paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs, origin))
-            : "";
+            : [];
         // A fill overlay blends a second fill over the shape's fill, not its outline (catalog: effect.blur).
         var effects = Effects(chain, style);
         var dag = EffectContainer(chain, style) is { Name.LocalName: "effectDag" } effectGraph ? effectGraph : null;
@@ -338,10 +338,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     $"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}"));
             }
             if (dashed && outline!.Cap == "sq")
-                AddMarkup(strokeTarget, Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
+                strokeTarget.AddRange(Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
                     paint.Stroke(outline with { Dash = "solid", Cap = "flat" }, pw, ph, defs, origin) + crisp, paint.DashUnit(outline)));
             if (compound)
-                AddMarkup(strokeTarget, CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
+                strokeTarget.AddRange(CompoundLines.Strokes(path, outline!, part => paint.Stroke(part, pw, ph, defs, origin)));
         }
         paths.AddRange(strokes);
         if (outsetBorder)
@@ -520,7 +520,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var body = new List<SceneItem>();
         List<SceneItem> shapeItems = wireframe && solidBody ? [] : [.. paths];
         if (!(wireframe && solidBody))
-            AddMarkup(shapeItems, ends);
+            shapeItems.AddRange(ends);
         if (beveled && !texturedBevel && solidOutlines != null && shapeItems.Count > 0)
         {
             // The fill shows on the front face inside the bevel; the line lies on the bevel.
@@ -649,11 +649,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     lineOnly.Append($"<path d=\"{data}\" fill=\"none\"{paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path))}/>");
                 }
             }
-            lineOnly.Append(ends);
+            lineOnly.Append(HtmlScene.Markup(ends));
             var graph = new EffectDag(slide.Colors, pw, ph, defs,
                 element => paint.Fill(FillReader.Read(element, slide.Colors, slide.Images(part), slide.ImageSizes(part)), pw, ph, defs, rotation, origin), matrix);
             content = [];
-            AddMarkup(content, graph.Render(dag, new EffectDag.Sources(fillOnly.ToString(), lineOnly.ToString(), HtmlScene.Markup(paths) + ends + dagText)));
+            AddMarkup(content, graph.Render(dag, new EffectDag.Sources(fillOnly.ToString(), lineOnly.ToString(), HtmlScene.Markup(paths) + HtmlScene.Markup(ends) + dagText)));
         }
         // The front face is lit like the rest of the 3D shape (its normal faces the front); a translucent one has
         // lit its drawing and its text apart.
@@ -661,7 +661,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             content = [new SvgGroupItem($" filter=\"url(#{LitFilter(frontShade, defs)})\"", content)];
         var drawn = new List<SceneItem>();
         if (defs.Length > 0)
-            drawn.Add(new MarkupItem($"<defs>{defs}</defs>"));
+            drawn.Add(new DefsItem(defs.ToString()));
         drawn.AddRange(content);
         List<SceneItem> canvas = shapeLink != null ? [new WrappedItem(Links.Open(shapeLink), drawn, "</a>")] : drawn;
         var over = new StringBuilder();
@@ -1513,7 +1513,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (SvgEffects.Filter(effects, slide.Colors, Units.ToPx(bw), Units.ToPx(bh), defs,
                     region: (left, top, corners.Max(p => p.X) - left, corners.Max(p => p.Y) - top)) is { } id)
             {
-                items.Add(new MarkupItem($"<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><defs>{defs}</defs></svg>"));
+                items.Add(new WrappedItem("<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\">", [new DefsItem(defs.ToString())], "</svg>"));
                 filter = $" style=\"filter:url(#{id})\"";
             }
         }

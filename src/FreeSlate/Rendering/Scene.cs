@@ -89,6 +89,18 @@ public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : Sc
 public sealed record ShapePathItem(string Data, Fill Fill, Outline? Outline, string Attributes) : SceneItem;
 
 /// <summary>
+/// An ellipse of a shape (an oval line end), its center and radii in CSS pixels, turned by Angle degrees about its
+/// center and filled as DrawingML gives it; in HTML an ellipse element with the attributes of its paint.
+/// </summary>
+public sealed record ShapeEllipseItem(double X, double Y, double RadiusX, double RadiusY, double Angle, Fill Fill, string Attributes) : SceneItem;
+
+/// <summary>
+/// The definitions (gradients, patterns, filters, clip paths) that the HTML of the items around it names by their ids;
+/// other backends draw from the items themselves.
+/// </summary>
+public sealed record DefsItem(string Markup) : SceneItem;
+
+/// <summary>
 /// A picture filling a path of a shape, stretched over a rectangle in CSS pixels (its crop and fill rectangle
 /// applied) and cut at the path (SVG path data); in HTML an image clipped by the shape's definition named Clip, with
 /// the attribute of its filter (recoloring, its effects) where it has one. Source is the picture as a URI.
@@ -104,7 +116,7 @@ public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : Sc
 /// </summary>
 public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : SceneItem;
 
-/// <summary>Items inside markup not broken down yet (a shape's hyperlink).</summary>
+/// <summary>Items inside markup not broken down yet (a shape's hyperlink, the hidden SVG that holds definitions).</summary>
 public sealed record WrappedItem(string Before, List<SceneItem> Items, string After) : SceneItem;
 
 /// <summary>A solid straight line.</summary>

@@ -1,6 +1,7 @@
 using System.Text;
 using FreeSlate.Drawing;
 using FreeSlate.Drawing.Geometry;
+using FreeSlate.Rendering;
 
 namespace FreeSlate.Html;
 
@@ -22,15 +23,18 @@ public static class CompoundLines
         _ => null,
     };
 
-    /// <summary>SVG paths for the strokes; <paramref name="stroke"/> gives the paint attributes for a stroke width in pixels.</summary>
-    public static string Strokes(EvaluatedPath path, Outline outline, Func<double, string> stroke)
+    /// <summary>
+    /// The strokes as shape paths, each with an outline of its own width and a single line; <paramref name="stroke"/>
+    /// gives the paint attributes of such an outline in HTML.
+    /// </summary>
+    public static List<SceneItem> Strokes(EvaluatedPath path, Outline outline, Func<Outline, string> stroke)
     {
         var parts = Parts(outline.Compound);
         if (parts == null)
-            return "";
+            return [];
         var width = Math.Max(Units.ToPx(outline.WidthEmu), 0.5);
         var figures = Flatten(path.Segments);
-        var svg = new StringBuilder();
+        var items = new List<SceneItem>();
         foreach (var (offset, share) in parts)
         {
             var d = new StringBuilder();
@@ -44,9 +48,12 @@ public static class CompoundLines
                 if (closed) d.Append('Z');
             }
             if (d.Length > 0)
-                svg.Append($"<path d=\"{d}\" fill=\"none\"{stroke(Math.Max(share * width, 0.25))}/>");
+            {
+                var part = outline with { WidthEmu = Math.Max(share * width, 0.25) * Units.EmuPerPixel, Compound = "sng" };
+                items.Add(new ShapePathItem(d.ToString(), Fill.None, part, $" fill=\"none\"{stroke(part)}"));
+            }
         }
-        return svg.ToString();
+        return items;
     }
 
     /// <summary>The path as polylines (figures), curves and arcs sampled every pixel or so.</summary>

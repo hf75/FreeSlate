@@ -2,6 +2,7 @@ using System.Text;
 using System.Xml.Linq;
 using FreeSlate.Drawing;
 using FreeSlate.Html;
+using FreeSlate.Rendering;
 using FreeSlate.Text;
 
 namespace FreeSlate.Pptx;
@@ -293,7 +294,7 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             // Double, thick-thin and triple borders (catalog: line.compound) as parallel strokes.
             var path = new Drawing.Geometry.EvaluatedPath(
                 [new Drawing.Geometry.PathSegment('M', [x1 * PxPerPt, y1 * PxPerPt]), new Drawing.Geometry.PathSegment('L', [x2 * PxPerPt, y2 * PxPerPt])], "none", true);
-            svg.Append(CompoundLines.Strokes(path, flat, width => paint.Stroke(flat with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, 0, 0, defs)));
+            svg.Append(HtmlScene.Markup(CompoundLines.Strokes(path, flat, part => paint.Stroke(part, 0, 0, defs))));
             return;
         }
         svg.Append($"<path d=\"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}\" fill=\"none\"{paint.Stroke(flat, 0, 0, defs)}/>");

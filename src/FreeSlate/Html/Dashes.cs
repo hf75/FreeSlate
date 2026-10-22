@@ -1,6 +1,6 @@
-using System.Text;
 using FreeSlate.Drawing;
 using FreeSlate.Drawing.Geometry;
+using FreeSlate.Rendering;
 
 namespace FreeSlate.Html;
 
@@ -120,15 +120,16 @@ public static class Dashes
     /// The square caps of a dashed line: PowerPoint ends its dashes flat and gives only the ends of an open figure a
     /// cap, its start always (the pattern starts with a dash) and its end where the end lies within a dash (measured
     /// with generated/lines-dash: the dashes keep their full length, the first one reaches half a width before the
-    /// line). <paramref name="paint"/> holds the stroke's paint attributes for a solid line with flat caps, <paramref
-    /// name="unit"/> the pattern's unit in pixels.
+    /// line), as shape paths stroked as a solid line with flat caps. <paramref name="paint"/> holds the paint attributes of
+    /// such a stroke in HTML, <paramref name="unit"/> the pattern's unit in pixels.
     /// </summary>
-    public static string SquareEnds(EvaluatedPath path, Outline outline, double widthPx, string paint, double unit)
+    public static List<SceneItem> SquareEnds(EvaluatedPath path, Outline outline, double widthPx, string paint, double unit)
     {
         var pattern = Pattern(outline);
         if (pattern is not { Length: > 0 })
-            return "";
-        var svg = new StringBuilder();
+            return [];
+        var solid = outline with { Dash = "solid", Cap = "flat" };
+        var items = new List<SceneItem>();
         foreach (var (points, closed) in CompoundLines.Flatten(path.Segments))
         {
             if (closed || points.Count < 2)
@@ -137,11 +138,11 @@ public static class Dashes
             for (var i = 1; i < points.Count; i++)
                 length += Distance(points[i - 1], points[i]);
             if (outline.Head is null or { Type: "none" } && Direction(points, 0, 1) is { } back)
-                svg.Append(Cap(points[0], back, widthPx, paint));
+                items.Add(Cap(points[0], back, widthPx, solid, paint));
             if (outline.Tail is null or { Type: "none" } && InDash(pattern, unit, length) && Direction(points, points.Count - 1, -1) is { } ahead)
-                svg.Append(Cap(points[^1], ahead, widthPx, paint));
+                items.Add(Cap(points[^1], ahead, widthPx, solid, paint));
         }
-        return svg.ToString();
+        return items;
     }
 
     /// <summary>Whether a position along the line (pixels) lies within a dash of the pattern.</summary>
@@ -175,10 +176,10 @@ public static class Dashes
         return null;
     }
 
-    static string Cap((double X, double Y) at, (double X, double Y) direction, double widthPx, string paint)
+    static ShapePathItem Cap((double X, double Y) at, (double X, double Y) direction, double widthPx, Outline solid, string paint)
     {
         var (x, y) = (at.X + direction.X * widthPx / 2, at.Y + direction.Y * widthPx / 2);
-        return $"<path d=\"M{Units.Css(at.X)} {Units.Css(at.Y)}L{Units.Css(x)} {Units.Css(y)}\" fill=\"none\"{paint}/>";
+        return new ShapePathItem($"M{Units.Css(at.X)} {Units.Css(at.Y)}L{Units.Css(x)} {Units.Css(y)}", Fill.None, solid, $" fill=\"none\"{paint}");
     }
 
     static double Distance((double X, double Y) a, (double X, double Y) b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));

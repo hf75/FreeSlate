@@ -85,7 +85,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         if (drawings != null)
         {
-            items.Add(new MarkupItem(drawings.Background(page.PaperWidth, page.PaperHeight)));
+            items.AddRange(drawings.Background(page.PaperWidth, page.PaperHeight));
             foreach (var drawing in drawn.Where(d => d.Behind).OrderBy(d => d.Order))
                 items.AddRange(made.Remove(drawing, out var behind) ? behind : Drawing(drawing, page));
         }
@@ -149,7 +149,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         foreach (var (name, x, y) in page.Bookmarks)
             items.Add(new BookmarkItem(name, x, y));
         if (defs.Length > 0)
-            items.Add(new MarkupItem($"<svg width=\"0\" height=\"0\" style=\"position:absolute\"><defs>{defs}</defs></svg>"));
+            items.Add(new WrappedItem("<svg width=\"0\" height=\"0\" style=\"position:absolute\">", [new DefsItem(defs.ToString())], "</svg>"));
         return scene;
     }
 

@@ -286,6 +286,11 @@ public static class SkiaScene
                 case ShapePathItem shapePath:
                     ShapePath(shapePath);
                     break;
+                case ShapeEllipseItem ellipse:
+                    ShapeEllipse(ellipse);
+                    break;
+                case DefsItem:
+                    break;
                 case TransformItem transformed:
                     canvas.Save();
                     Concat(Matrix(transformed.Transform));
@@ -492,6 +497,18 @@ public static class SkiaScene
             {
                 using var pen = Pen(outline);
                 canvas.DrawPath(path, pen);
+            }
+        }
+
+        void ShapeEllipse(ShapeEllipseItem item)
+        {
+            using var path = new SKPath();
+            path.AddOval(SKRect.Create((float)(item.X - item.RadiusX), (float)(item.Y - item.RadiusY), (float)(2 * item.RadiusX), (float)(2 * item.RadiusY)));
+            path.Transform(SKMatrix.CreateRotationDegrees((float)item.Angle, (float)item.X, (float)item.Y));
+            if (Paint(item.Fill, path.Bounds) is { } fill)
+            {
+                canvas.DrawPath(path, fill);
+                fill.Dispose();
             }
         }
 

@@ -103,6 +103,13 @@ public static class HtmlScene
                 case ShapePathItem shapePath:
                     html.Append($"<path d=\"{shapePath.Data}\"{shapePath.Attributes}/>");
                     break;
+                case ShapeEllipseItem ellipse:
+                    html.Append($"<ellipse cx=\"{Units.Css(ellipse.X)}\" cy=\"{Units.Css(ellipse.Y)}\" rx=\"{Units.Css(ellipse.RadiusX)}\" ry=\"{Units.Css(ellipse.RadiusY)}\" "
+                        + $"transform=\"rotate({Units.Css(ellipse.Angle)} {Units.Css(ellipse.X)} {Units.Css(ellipse.Y)})\"{ellipse.Attributes}/>");
+                    break;
+                case DefsItem defined:
+                    html.Append("<defs>").Append(defined.Markup).Append("</defs>");
+                    break;
                 case PictureItem picture:
                     html.Append($"<g clip-path=\"url(#{picture.Clip})\"><image href=\"{picture.Source}\" x=\"{Units.Css(picture.X)}\" y=\"{Units.Css(picture.Y)}\" "
                         + $"width=\"{Units.Css(picture.Width)}\" height=\"{Units.Css(picture.Height)}\" preserveAspectRatio=\"none\"{picture.Filter}/></g>");
