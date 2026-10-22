@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Xml.Linq;
 using FreeSlate.Docx.Layout;
+using FreeSlate.Rendering;
 using static FreeSlate.Docx.WordDevice;
 
 namespace FreeSlate.Docx;
@@ -33,12 +34,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     readonly StringBuilder defs = new();
 
     /// <param name="paper">The named @page of the page's size, so that printing keeps every page at its size.</param>
-    public string Render(PageBox page, string paper)
+    public string Render(PageBox page, string paper) => HtmlScene.Page(Scene(page, paper));
+
+    /// <summary>The page as it is drawn (see PageScene), from back to front.</summary>
+    /// <param name="paper">The named @page of the page's size, so that printing keeps every page at its size.</param>
+    public PageScene Scene(PageBox page, string paper)
     {
-        var width = page.PaperWidth * PxPerPt;
-        var height = page.PaperHeight * PxPerPt;
-        var svg = new StringBuilder();
         defs.Clear();
+        PageScene scene;
         // With the markup pane the page is as wide as the pane reaches; printed, it is made smaller to fit the paper's
         // width, standing in the middle of its height (as Word prints with markup).
         if (context.Markup && MarkupPane)
@@ -46,18 +49,20 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             var composed = MarkupWidth(page) * PxPerPt;
             var (paperWidth, paperHeight) = MarkupPaper(page.PaperWidth, page.PaperHeight);
             var scale = Math.Min(paperWidth * PxPerPt / composed, paperHeight / page.PaperHeight);
-            svg.Append($"<section class=\"page markup {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(composed)}px;height:{Units.Css(height)}px;"
-                + $"--pw:{Units.Css(width)}px;--s:{Units.Css4(scale)};--oy:{Units.Css((paperHeight * PxPerPt - height * scale) / 2)}px\">");
-            svg.Append($"<div class=\"sheet\" style=\"width:{Units.Css(composed)}px;height:{Units.Css(height)}px\">");
-            width = composed;
+            scene = new PageScene
+            {
+                Number = page.Number, Paper = paper, Width = MarkupWidth(page), Height = page.PaperHeight,
+                Sheet = (page.PaperWidth, scale, (paperHeight * PxPerPt - page.PaperHeight * PxPerPt * scale) / 2),
+            };
         }
         else
-            svg.Append($"<section class=\"page {paper}\" id=\"page-{page.Number}\" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
+            scene = new PageScene { Number = page.Number, Paper = paper, Width = page.PaperWidth, Height = page.PaperHeight };
         paperSize = (page.PaperWidth, page.PaperHeight);
+        var items = scene.Items;
         // A page of vertical text is laid out turned a quarter: its body is turned back onto the page, its drawings
         // stand upright where their middles turn to, its header, footer and border stand upright.
-        var turn = page.Upright != null ? $"translate({Units.Css(width)} 0) rotate(90)" : null;
-        var drawn = turn == null ? page.Drawings : page.Drawings.Select(d => Upright(d, page.PaperWidth)).ToList();
+        var turned = page.Upright != null;
+        var drawn = !turned ? page.Drawings : page.Drawings.Select(d => Upright(d, page.PaperWidth)).ToList();
         if (page.Upright is { } upright)
             drawn.AddRange(upright.Drawings);
         // The page background, drawings behind the text, the text, then inline drawings and the drawings in front.
@@ -74,22 +79,29 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         if (drawings != null)
         {
-            svg.Append(drawings.Background(page.PaperWidth, page.PaperHeight));
+            items.Add(new MarkupItem(drawings.Background(page.PaperWidth, page.PaperHeight)));
             foreach (var drawing in drawn.Where(d => d.Behind).OrderBy(d => d.Order))
-                svg.Append(made.Remove(drawing, out var html) ? html : Drawing(drawing, page));
+                items.Add(new MarkupItem(made.Remove(drawing, out var html) ? html : Drawing(drawing, page)));
         }
-        var textStart = svg.Length;
-        svg.Append($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(height)}\">");
+        var canvas = new CanvasItem(scene.Width, scene.Height, []);
+        var canvasAt = items.Count;
+        items.Add(canvas);
         var selection = new StringBuilder();
         // A page border behind the text, table shading and borders below the text, a page border in front of it.
         if (page.Border is { Front: false } back)
-            Fills(back, svg);
-        if (turn != null)
-            svg.Append($"<g transform=\"{turn}\">");
+            Fills(back, canvas.Items);
+        var body = canvas.Items;
+        if (turned)
+        {
+            var turn = new TurnedItem(scene.Width, []);
+            canvas.Items.Add(turn);
+            body = turn.Items;
+        }
         // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
         foreach (var (x, top, bottom) in page.ColumnLines)
-            svg.Append($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>");
-        Fills(page.Shading.Concat(page.Borders), page.Strokes, svg);
+            body.Add(new MarkupItem($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>"));
+        Fills(page.Shading.Concat(page.Borders), page.Strokes, body);
+        var svg = new StringBuilder();
         var commentAnchors = CommentRanges(page, svg);
         var inline = new List<PlacedDrawing>();
         // The inline drawings of headers and footers lie behind the body's text, as Word draws their layer first
@@ -99,8 +111,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         Lines(page.Lines.Where(l => l.Story), svg, selection, storyInline, onPage: true);
         Lines(page.Lines.Where(l => !l.Story), svg, selection, inline, onPage: true);
         if (drawings != null && storyInline.Count > 0)
-            svg.Insert(textStart, string.Concat((turn == null ? storyInline : storyInline.Select(d => Upright(d, page.PaperWidth))).Select(d => Drawing(d, page))));
-        front.AddRange(turn == null ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
+            items.Insert(canvasAt, new MarkupItem(string.Concat((!turned ? storyInline : storyInline.Select(d => Upright(d, page.PaperWidth))).Select(d => Drawing(d, page)))));
+        front.AddRange(!turned ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
         // Line numbers, right-aligned at their place (catalog: section.lineNumbers).
         foreach (var (number, style, right, baseline) in page.LineNumbers)
         {
@@ -108,32 +120,31 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             svg.Append($"<text x=\"{Px(right)}\" y=\"{Px(baseline)}\" text-anchor=\"end\" font-family=\"'{WebUtility.HtmlEncode(style.Font.Data.Family.Replace("'", "\\'"))}'\" font-size=\"{Px(style.Size)}\" fill=\"{style.Color.ToHex()}\"{(style.Bold ? " font-weight=\"700\"" : "")}{(style.Italic ? " font-style=\"italic\"" : "")}>{number}</text>");
         }
         Markup(page, commentAnchors, svg, selection, inline);
-        if (turn != null)
+        body.Add(new MarkupItem(svg.ToString()));
+        if (turned)
         {
-            svg.Append(selection).Append("</g>");
+            body.Add(new MarkupItem(selection.ToString()));
             selection.Clear();
-            Fills(page.Upright!.Shading.Concat(page.Upright.Borders), page.Upright.Strokes, svg);
-            Lines(page.Upright.Lines, svg, selection, front);
+            Fills(page.Upright!.Shading.Concat(page.Upright.Borders), page.Upright.Strokes, canvas.Items);
+            var uprightLines = new StringBuilder();
+            Lines(page.Upright.Lines, uprightLines, selection, front);
+            canvas.Items.Add(new MarkupItem(uprightLines.ToString()));
         }
         if (page.Border is { Front: true } border)
-            Fills(border, svg);
-        svg.Append(selection);
-        svg.Append("</svg>");
+            Fills(border, canvas.Items);
+        canvas.Items.Add(new MarkupItem(selection.ToString()));
         if (drawings != null)
         {
             foreach (var drawing in front.Concat(drawn.Where(d => !d.Behind).OrderBy(d => d.Order)))
-                svg.Append(made.Remove(drawing, out var html) ? html : Drawing(drawing, page));
+                items.Add(new MarkupItem(made.Remove(drawing, out var html) ? html : Drawing(drawing, page)));
         }
         foreach (var (text, x, y, w, h) in page.Alternatives)
-            svg.Append($"<div class=\"alt\" role=\"img\" aria-label=\"{WebUtility.HtmlEncode(text)}\" style=\"left:{Px(x)}px;top:{Px(y)}px;width:{Px(w)}px;height:{Px(h)}px\"></div>");
+            items.Add(new AltTextItem(text, x, y, w, h));
         foreach (var (name, x, y) in page.Bookmarks)
-            svg.Append($"<a class=\"bm\" id=\"{WebUtility.HtmlEncode(name)}\" style=\"left:{Px(x)}px;top:{Px(y)}px\"></a>");
+            items.Add(new BookmarkItem(name, x, y));
         if (defs.Length > 0)
-            svg.Append("<svg width=\"0\" height=\"0\" style=\"position:absolute\"><defs>").Append(defs).Append("</defs></svg>");
-        if (context.Markup && MarkupPane)
-            svg.Append("</div>");
-        svg.Append("</section>\n");
-        return svg.ToString();
+            items.Add(new MarkupItem($"<svg width=\"0\" height=\"0\" style=\"position:absolute\"><defs>{defs}</defs></svg>"));
+        return scene;
     }
 
     /// <summary>
@@ -165,34 +176,34 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         Clip = null,
     };
 
-    /// <summary>A page border's lines, then its art borders' shapes.</summary>
-    void Fills(PageBorderBox border, StringBuilder svg)
+    /// <summary>A page border's lines, then its art borders' shapes (in points).</summary>
+    static void Fills(PageBorderBox border, List<SceneItem> items)
     {
-        Fills(border.Fills, border.Strokes, svg);
-        if (border.Art.Count == 0)
-            return;
-        // The shapes are in points.
-        svg.Append($"<g transform=\"scale({Units.Css4(PxPerPt)})\">");
-        foreach (var shape in border.Art)
-        {
-            var stroke = shape.Stroke is { } line ? $" stroke=\"{line.ToHex()}\" stroke-width=\"{Units.Css4(shape.StrokeWidth)}\"" : "";
-            svg.Append($"<path d=\"{shape.Path}\" fill=\"{shape.Fill?.ToHex() ?? "none"}\"{stroke}/>");
-        }
-        svg.Append("</g>");
+        Fills(border.Fills, border.Strokes, items);
+        if (border.Art.Count > 0)
+            items.Add(new PathsItem(border.Art.Select(shape => new PathItem(shape.Path, shape.Fill, shape.Stroke, shape.StrokeWidth)).ToList()));
     }
 
-    void Fills(IEnumerable<FillRect> fills, IEnumerable<Stroke> strokes, StringBuilder svg)
+    /// <summary>Fills, then strokes.</summary>
+    static void Fills(IEnumerable<FillRect> fills, IEnumerable<Stroke> strokes, List<SceneItem> items)
     {
         foreach (var fill in fills)
-            svg.Append($"<rect x=\"{Px(fill.X)}\" y=\"{Px(fill.Y)}\" width=\"{Px(fill.Width)}\" height=\"{Px(fill.Height)}\" fill=\"{fill.Color.ToHex()}\"/>");
+            items.Add(new RectItem(fill.X, fill.Y, fill.Width, fill.Height, fill.Color));
         foreach (var s in strokes)
         {
             if (s.Dash is { } pattern && Dashes(s, pattern) is { Count: > 0 } dashes)
-                foreach (var dash in dashes)
-                    svg.Append($"<path d=\"{dash}\" stroke=\"{s.Color.ToHex()}\" stroke-width=\"{Px(s.Width)}\"/>");
+                items.Add(new DashesItem(dashes, s.Width, s.Color));
             else
-                svg.Append($"<line x1=\"{Px(s.X1)}\" y1=\"{Px(s.Y1)}\" x2=\"{Px(s.X2)}\" y2=\"{Px(s.Y2)}\" stroke=\"{s.Color.ToHex()}\" stroke-width=\"{Px(s.Width)}\"/>");
+                items.Add(new LineItem(s.X1, s.Y1, s.X2, s.Y2, s.Width, s.Color));
         }
+    }
+
+    /// <summary>Fills, then strokes, as SVG (where the content around them is not broken down into items yet).</summary>
+    static void Fills(IEnumerable<FillRect> fills, IEnumerable<Stroke> strokes, StringBuilder svg)
+    {
+        var items = new List<SceneItem>();
+        Fills(fills, strokes, items);
+        HtmlScene.Write(items, svg);
     }
 
     /// <summary>
@@ -202,11 +213,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// dashes of 1.44 pt and gaps of 0.48 pt); as the subpaths of one path they lose the ink the rasterizer gives the
     /// pixels at their ends (found by agent BG: fdo64350 and page-borders-export-case-2 86.3 -> 100 %).
     /// </summary>
-    static List<string> Dashes(Stroke s, string pattern)
+    static List<(double X1, double Y1, double X2, double Y2)> Dashes(Stroke s, string pattern)
     {
         var lengths = pattern.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray();
         var length = Math.Sqrt((s.X2 - s.X1) * (s.X2 - s.X1) + (s.Y2 - s.Y1) * (s.Y2 - s.Y1));
-        var dashes = new List<string>();
+        var dashes = new List<(double X1, double Y1, double X2, double Y2)>();
         if (lengths.Length == 0 || lengths.Sum() <= 0 || length <= 0)
             return dashes;
         var (dx, dy) = ((s.X2 - s.X1) / length, (s.Y2 - s.Y1) / length);
@@ -215,7 +226,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             var end = Math.Min(length, at + lengths[k % lengths.Length]);
             if (k % 2 == 0 && end > at)
-                dashes.Add($"M{Px(s.X1 + dx * at)} {Px(s.Y1 + dy * at)}L{Px(s.X1 + dx * end)} {Px(s.Y1 + dy * end)}");
+                dashes.Add((s.X1 + dx * at, s.Y1 + dy * at, s.X1 + dx * end, s.Y1 + dy * end));
             at = end;
             k++;
         }
