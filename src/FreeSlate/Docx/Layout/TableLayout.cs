@@ -255,13 +255,6 @@ public sealed class RowBox
     public double Least { get; init; }
 
     /// <summary>
-    /// Whether a line above a cut needs room for its cell's bottom margin too, as before Word 2013 (measured with
-    /// docx/local/rowmar-11, -12, -14: a line ending 5 pt above the cut in a row with a 10 pt bottom margin goes on to
-    /// the next page; in mode 15 it stays).
-    /// </summary>
-    public bool MarginBelowCut { get; init; }
-
-    /// <summary>
     /// Whether a paragraph whose drawing that text goes around would reach past a cut goes on with it, as from Word 2013
     /// on (see Split).
     /// </summary>
@@ -292,7 +285,7 @@ public sealed class RowBox
         var delta = PageTopWidth - TopWidth;
         var copy = new RowBox
         {
-            Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, AnchorsReach = AnchorsReach, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
+            Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, AnchorsReach = AnchorsReach, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
         };
         copy.Shading.AddRange(Shading);
@@ -358,7 +351,11 @@ public sealed class RowBox
             // modes 11 and 15, without them it stays; LibreOffice's writerfilter-dmapper/floattable-hidemark: a line
             // of a floating table's cell with a 6.75 pt bottom margin, its bottom 1.6 pt above the page's, goes on in
             // mode 12; core-text/floattable-anchor-height: the last line of page 3 in three tables goes on).
-            var margin = MarginBelowCut ? cell.BottomMargin : 0;
+            // A line above the cut needs room for the row's bottom margin too, the largest of its cells', in every mode
+            // (measured with docx/local/bmc-*-b*, -t*, -o*: a line of the cell with a 10 pt bottom margin, of the cell
+            // beside it or of a table nested in it goes on where the margin would reach past the page's bottom, in modes
+            // 11 and 15; rowmar-11, -12, -14; sr-4, sr-5: rows with 5.65 pt margins, mode 15).
+            var margin = cell.BottomMargin;
             var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) + margin + l.CarryBelow > available + 0.01)
                 .MinBy(l => l.Top);
             // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
@@ -606,7 +603,7 @@ public sealed class RowBox
     {
         var copy = new RowBox
         {
-            Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, MarginBelowCut = MarginBelowCut, AnchorsReach = AnchorsReach, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
+            Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, AnchorsReach = AnchorsReach, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
         };
         copy.Shading.AddRange(Shading);
@@ -1071,9 +1068,6 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r],
                 Exact = specified > 0 && row.Format.HeightRule == "exact",
                 Least = row.Format.HeightRule == "exact" || specified <= 0 ? 0 : rowEdges[r].Top + specified + rowEdges[r].Bottom,
-                // A nested table's row needs it in every mode (measured with docx/local/nft-15-m*: a line of a nested
-                // cell whose 10 pt bottom margin would reach past the page's bottom goes on to the next page).
-                MarginBelowCut = context.Profile.CellMarginBelowCut || inCell,
                 AnchorsReach = context.Profile.AnchorsReachPastCut,
             };
             // Shading of every cell the row passes through, also cells merged from above.

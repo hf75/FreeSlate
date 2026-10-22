@@ -2025,7 +2025,8 @@ areas:
           RP033-Table-Prop-Ex-Change). Horizontal merges of old documents (w:hMerge): a
           cell that continues a merge widens the cell before it, which keeps its content (the continuing cells' does
           not show) and takes the right border of the last (docx/local/hmerge, 99.8 %). A cell's empty last paragraph
-          after a nested table takes no room, whatever its spacing and mark (docx/local/nestedend-12, -14, -15).
+          after a nested table takes no room, whatever its spacing and mark (docx/local/nestedend-12, -14, -15), also
+          where it holds runs without text (docx/local/bmc-*-o*, -n*: an empty w:t).
           What a cell holds is cut at its inside, between its side lines and from below the row's top line to its
           bottom: paragraph borders past the lines or below a row of exact height do not show (docx/external/
           libreoffice/core-layout/para-border-in-cell-clip: Word's clip from the left line's inner edge to the right
@@ -2161,10 +2162,13 @@ areas:
           exactly 30 pt 33 pt; beside a cell with 5 pt at the top and one with 10 pt at the bottom a cell without
           margins puts its text 5 pt down; docx/external/poi/60329). A row fits where it and the line that closes the
           table below it fit (docx/local/tblbottom-*). Rows that do not fit split at a line of each cell, a
-          paragraph's last line fitting with its space after, before Word 2013 with its cell's bottom margin too
-          (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes on), and in every mode with
-          the bottom margins of the nested tables' cells it stands in and the lines below their rows, which each part
-          ends with (docx/local/nft-*-c*, -m*: a nested line whose 3 pt bottom line or 10 pt bottom margin would reach
+          paragraph's last line fitting with its space after and with the row's bottom margin, the largest of its
+          cells', in every mode (docx/local/bmc-*-b*, -t*, -o*: a line of the cell with a 10 pt bottom margin, of the
+          cell beside it or of a table nested in it goes on where the margin would reach past the page's bottom, in
+          modes 11 and 15; rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes on; sr-4,
+          sr-5: rows with 5.65 pt margins in mode 15), and with the bottom margins of the nested tables' cells it
+          stands in and the lines below their rows, which each part ends with (docx/local/nft-*-c*, -m*: a nested
+          line whose 3 pt bottom line or 10 pt bottom margin would reach
           past the page's bottom goes on in modes 11 and 15, the part before the cut ending 10 pt below its last line;
           LibreOffice's writerfilter-dmapper/floattable-hidemark: a line of a floating table's cell with 6.75 pt at the
           bottom whose bottom is 1.6 pt above the page's goes on in mode 12, the paragraph after the table 6.75 pt

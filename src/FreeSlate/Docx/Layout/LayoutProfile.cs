@@ -324,12 +324,6 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool SplitRowsKeepLines { get; } = mode >= 15;
 
     /// <summary>
-    /// Whether a line above a row's cut needs room for its cell's bottom margin too: before Word 2013 (see
-    /// RowBox.MarginBelowCut).
-    /// </summary>
-    public bool CellMarginBelowCut { get; } = mode < 15;
-
-    /// <summary>
     /// Whether a paragraph whose drawing that text goes around would reach past a row's cut goes on with it: from Word
     /// 2013 on (see RowBox.AnchorsReach).
     /// </summary>

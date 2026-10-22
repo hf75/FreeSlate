@@ -145,8 +145,11 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
     /// </summary>
     public List<TextInline>? Deleted { get; init; }
 
-    /// <summary>Whether anything of the paragraph's content shows: not hidden, not a bookmark or permission mark.</summary>
-    public bool Shows => Content.Any(i => i is not (BookmarkInline or BookmarkEndInline or PermissionInline) && i.Format.Vanish != true);
+    /// <summary>
+    /// Whether anything of the paragraph's content shows: not hidden, not a bookmark or permission mark, not a run without
+    /// text (docx/local/bmc-*-o*, -n*: a cell's last paragraph after a nested table holding an empty w:t takes no room).
+    /// </summary>
+    public bool Shows => Content.Any(i => i is not (BookmarkInline or BookmarkEndInline or PermissionInline or TextInline { Text.Length: 0 }) && i.Format.Vanish != true);
 
     /// <summary>The tracked change of the paragraph's mark and its tracked formatting change, in the markup view.</summary>
     public RevisionMark? MarkRevision { get; init; }
