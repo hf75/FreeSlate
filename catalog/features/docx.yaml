@@ -1006,7 +1006,11 @@ areas:
           justification break their lines on 0.9 (medium) or 0.8 (high) of the measure, their spaces not squeezed, and
           stretch them over the whole, low as justified ones (docx/local/ksh-*: English paragraphs in Calibri and Times
           New Roman at 11 to 20 pt, 200 and 451 pt wide, indented, in modes 14 and 15, every line breaking as in Word;
-          LibreOffice's extras-ooxmlexport/tdf155707 70.4 → 82.4 %). Spaces at a line's end trail it over runs
+          LibreOffice's extras-ooxmlexport/tdf155707 70.4 → 82.4 %); where their text is kerned or takes ligatures
+          they leave the lines as they broke, flush left, low kashida justification too before Word 2013
+          (docx/local/kss-*: the same paragraph with w:kern 2 or w14:ligatures standardContextual in modes 14 and 15,
+          lowKashida justified in mode 15 only; kss-o: enableOpenTypeFeatures alone stretches; tdf155707 82.4 → 85.9
+          %, page 1 92.3 %). Spaces at a line's end trail it over runs
           of other formatting too, as far back as the runs hold nothing but spaces
           (docx/external/libreoffice/extras-uiwriter/MsWordCompTrailingBlanks: centered and right aligned "TEST"
           before spaces in runs of several shadings, 43.8 → 100 %). Known deviations: low kashida justification widens

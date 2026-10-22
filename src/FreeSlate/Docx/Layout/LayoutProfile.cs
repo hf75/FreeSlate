@@ -374,6 +374,13 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool FrameRoomFromInch { get; } = mode < 15;
 
     /// <summary>
+    /// Whether low kashida justification stretches lines of left-to-right text that is kerned or takes ligatures, as
+    /// justified ones: from Word 2013 on; before, it leaves them as they broke, as medium and high kashida justification
+    /// always do (see ParagraphLayout.Align).
+    /// </summary>
+    public bool LowKashidaStretchesShaped { get; } = mode >= 15;
+
+    /// <summary>
     /// Whether a floating drawing in a table cell of layoutInCell 0 stands outside the cell, from the column: before
     /// Word 2013; from then on every one is laid out in its cell (see TableLayout.InCell).
     /// </summary>

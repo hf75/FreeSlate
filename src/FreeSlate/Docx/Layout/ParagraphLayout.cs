@@ -1520,7 +1520,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         EndBreak = g == lastGroup ? line.EndBreak : null, Hanging = g == lastGroup ? line.Hanging : 0 };
                     part.Pieces.AddRange(groups[g]);
                     Align(part, format, segmentEnd, segmentStart, expandBreaks, Doubled, characters, segmentEnd, context.Profile.IdeographicTrails,
-                        context.Profile.DistributedSpaceShare, phased: context.Profile.PhasedDistribution);
+                        context.Profile.DistributedSpaceShare, phased: context.Profile.PhasedDistribution,
+                        lowKashidaStretches: context.Profile.LowKashidaStretchesShaped);
                 }
                 continue;
             }
@@ -1534,7 +1535,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             }
             var alignEnd = (AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
             Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd,
-                context.Profile.IdeographicTrails, context.Profile.DistributedSpaceShare, snapCell, context.Profile.PhasedDistribution);
+                context.Profile.IdeographicTrails, context.Profile.DistributedSpaceShare, snapCell, context.Profile.PhasedDistribution,
+                context.Profile.LowKashidaStretchesShaped);
             // Horizontal rules take their share of the column's width, aligned in the paragraph's text area.
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {
@@ -3379,7 +3381,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <param name="spaceShare">What a space takes beyond the other characters of a line spread between all of them, in its own width.</param>
     /// <param name="snapCell">The cell of a character grid of snapToChars the paragraph snaps to (see <see cref="SnapCell"/>).</param>
     static void Align(Line line, ParagraphFormat format, double limit, double startX, bool expandBreaks, Func<Piece, int, double>? doubled = null,
-        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false, double spaceShare = 0.45, double? snapCell = null, bool phased = false)
+        Spread spread = Spread.None, double? edge = null, bool ideographicTrails = false, double spaceShare = 0.45, double? snapCell = null, bool phased = false,
+        bool lowKashidaStretches = true)
     {
         var content = line.Pieces.Where(p => !p.IsTab).ToList();
         if (content.Count == 0)
@@ -3455,6 +3458,15 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             return;
         // The last line of a justified paragraph keeps its natural spacing, unless it took a word by squeezing.
         var justify = justified && !line.Natural && (!line.Last || jc is "distribute" or "thaiDistribute" || free < 0) && (expandBreaks || line.EndBreak != "line" || free < 0);
+        // Kashida justification of left-to-right text that is kerned or takes ligatures leaves its lines as they broke, on
+        // the share of the measure they break on (see KashidaShare), before Word 2013 low kashida justification too
+        // (measured with docx/local/kss-*: an English paragraph of Calibri 11 with w:kern 2 or w14:ligatures
+        // standardContextual, mediumKashida and highKashida flush left in modes 14 and 15, lowKashida justified in mode
+        // 15 and flush left in mode 14; without kerning and ligatures all stretched, ksh-*, kss-o, kss-n0;
+        // docx/external/libreoffice/extras-ooxmlexport/tdf155707).
+        if (justify && format.Bidi != true && (jc is "mediumKashida" or "highKashida" || jc == "lowKashida" && !lowKashidaStretches)
+            && movable.Any(p => p.Text.Length > 0 && Shaped(p.Style)))
+            justify = false;
         // A line whose punctuation hangs past its end fills it, aligned as it may be (measured with
         // docx/local/c4-kinsoku12: lines of a left aligned paragraph in compatibility mode 12 spread their characters).
         if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, !line.HangsHalf, doubled, ideographicTrails, spaceShare, phased))
