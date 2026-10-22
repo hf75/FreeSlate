@@ -43,6 +43,14 @@ public static class HtmlScene
         return html.ToString();
     }
 
+    /// <summary>Items as HTML or SVG.</summary>
+    public static string Markup(IEnumerable<SceneItem> items)
+    {
+        var html = new StringBuilder();
+        Write(items, html);
+        return html.ToString();
+    }
+
     /// <summary>Items as HTML and SVG, in their order.</summary>
     public static void Write(IEnumerable<SceneItem> items, StringBuilder html)
     {
@@ -91,6 +99,24 @@ public static class HtmlScene
                     html.Append($"<div class=\"grp\"{group.Attributes}>");
                     Write(group.Items, html);
                     html.Append("</div>");
+                    break;
+                case ShapePathItem shapePath:
+                    html.Append($"<path d=\"{shapePath.Data}\"{shapePath.Attributes}/>");
+                    break;
+                case TransformItem transformed:
+                    html.Append($"<g transform=\"{transformed.Transform.Css()}\">");
+                    Write(transformed.Items, html);
+                    html.Append("</g>");
+                    break;
+                case SvgGroupItem grouped:
+                    html.Append($"<g{grouped.Attributes}>");
+                    Write(grouped.Items, html);
+                    html.Append("</g>");
+                    break;
+                case WrappedItem wrapped:
+                    html.Append(wrapped.Before);
+                    Write(wrapped.Items, html);
+                    html.Append(wrapped.After);
                     break;
                 case RectItem rect:
                     html.Append($"<rect x=\"{Px(rect.X)}\" y=\"{Px(rect.Y)}\" width=\"{Px(rect.Width)}\" height=\"{Px(rect.Height)}\" fill=\"{rect.Color.ToHex()}\"/>");

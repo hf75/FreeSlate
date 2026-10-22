@@ -247,7 +247,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
 
         var defs = new StringBuilder();
-        var paths = new StringBuilder();
+        var paths = new List<SceneItem>();
         var slideMatrix = placement.OnSlide(matrix);
         var origin = (Units.ToPx(slideMatrix.E), Units.ToPx(slideMatrix.F));
         var ends = outline is { Visible: true }
@@ -274,7 +274,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // drawing path after path. Sketched shapes save their outline before their fill (catalog: shape.sketched).
         var lastFilled = geometry.Paths.FindLastIndex(p => p.Fill != "none");
         var strokesLast = outline is { Visible: true } && geometry.Paths.Take(Math.Max(0, lastFilled)).Any(p => p.Stroke);
-        var strokes = new StringBuilder();
+        var strokes = new List<SceneItem>();
         var fillable = isSlide && fill is NoFill && NonVisual(shape)?.Attribute("id")?.Value is { } animatedId && FillsTurnedOn.Contains(animatedId)
             ? " data-fillable=\"\"" : "";
         // A gradient spans the bounds of the geometry's filled paths, not the shape's box, and one that follows the
@@ -296,7 +296,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             // nearest pixel, which is what crispEdges does (measured on fills and outlines at fractional positions).
             var crisp = axisAligned && IsRectilinear(path) ? " shape-rendering=\"crispEdges\"" : "";
             if (background is not NoFill && path.Fill != "none")
-                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}/>");
+                paths.Add(new ShapePathItem(path.Data, background, null, $"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}"));
             var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
             var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path)) : " stroke=\"none\"";
             // A dashed outline starts its pattern where PowerPoint does, in a Word document where Word does (catalog:
@@ -308,38 +308,42 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
                 var mode = blend switch { "mult" => "multiply", "screen" => "screen", "darken" => "darken", "lighten" => "lighten", _ => "normal" };
-                paths.Append($"<g style=\"isolation:isolate\"><path d=\"{path.Data}\"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}/>");
-                paths.Append($"<path d=\"{path.Data}\"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}/></g>");
+                paths.Add(new SvgGroupItem(" style=\"isolation:isolate\"",
+                [
+                    new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}"),
+                    new ShapePathItem(path.Data, overlayPaint, null, $"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}"),
+                ]));
                 if (stroke != " stroke=\"none\"")
-                    strokeTarget.Append($"<path d=\"{strokeData}\" fill=\"none\"{stroke}{crisp}/>");
+                    strokeTarget.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}"));
             }
             else if (strokesLast)
             {
                 if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
-                    paths.Append(image);
+                    AddMarkup(paths, image);
                 else if (pathFill is not NoFill)
-                    paths.Append($"<path d=\"{path.Data}\"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}/>");
+                    paths.Add(new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}"));
                 if (stroke != " stroke=\"none\"")
-                    strokes.Append($"<path d=\"{strokeData}\" fill=\"none\"{stroke}{crisp}/>");
+                    strokes.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}"));
             }
             else if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
             {
                 // A picture prints at its own resolution as an image clipped to the path, the outline over it.
-                paths.Append(image);
+                AddMarkup(paths, image);
                 if (stroke != " stroke=\"none\"")
-                    paths.Append($"<path d=\"{strokeData}\" fill=\"none\"{stroke}{crisp}/>");
+                    paths.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}"));
             }
             else
             {
-                paths.Append($"<path d=\"{strokeData}\"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}/>");
+                paths.Add(new ShapePathItem(strokeData, pathFill, stroke != " stroke=\"none\"" ? outline : null,
+                    $"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}"));
             }
             if (dashed && outline!.Cap == "sq")
-                strokeTarget.Append(Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
+                AddMarkup(strokeTarget, Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
                     paint.Stroke(outline with { Dash = "solid", Cap = "flat" }, pw, ph, defs, origin) + crisp, paint.DashUnit(outline)));
             if (compound)
-                strokeTarget.Append(CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
+                AddMarkup(strokeTarget, CompoundLines.Strokes(path, outline!, width => paint.Stroke(outline! with { WidthEmu = width * Units.EmuPerPixel, Compound = "sng" }, pw, ph, defs, origin)));
         }
-        paths.Append(strokes);
+        paths.AddRange(strokes);
         if (outsetBorder)
         {
             var half = Units.ToPx(outline!.WidthEmu) / 2;
@@ -349,7 +353,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var outset = slide.Presentation.Word && axisAligned
                 ? $"M{Units.Css(-half)} {Units.Css(ph + half)}H{Units.Css(pw + half)}V{Units.Css(-half)}H{Units.Css(-half)}Z"
                 : $"M{Units.Css(-half)} {Units.Css(ph + half)}V{Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}Z";
-            paths.Append($"<path d=\"{outset}\" fill=\"none\"{paint.Stroke(outline with { Join = "miter" }, pw, ph, defs, origin, closed: true)}{crisp}/>");
+            var mitered = outline with { Join = "miter" };
+            paths.Add(new ShapePathItem(outset, Fill.None, mitered, $" fill=\"none\"{paint.Stroke(mitered, pw, ph, defs, origin, closed: true)}{crisp}"));
         }
 
         // A 3D camera (catalog: effect.scene3d) turns the drawn shape about its center: the outer div keeps the
@@ -465,11 +470,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 // seen by the camera, casts them (Word's PDF of LibreOffice's extras-ooxmlexport/
                 // picture-effects-preservation: a tree on a transparent background in an extruded frame seen
                 // isometrically glows around the tree).
-                if (fill is PictureFill && paths.Length > 0
+                if (fill is PictureFill && paths.Count > 0
                     && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer) is { } pictureFilter)
                     html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera! with { Offset = camera.Offset + back }, pw, ph, rotation, flipH, flipV)}\">" +
                                 $"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{outerDefs}</defs>" +
-                                $"<g filter=\"url(#{pictureFilter})\">{paths}</g></svg></div>");
+                                $"<g filter=\"url(#{pictureFilter})\">{HtmlScene.Markup(paths)}</g></svg></div>");
                 else if (backData.Length > 0 && SvgEffects.Filter(effects, slide.Colors, pw, ph, outerDefs, parts: SvgEffects.Parts.Outer, region: backBounds) is { } outerFilter)
                     html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><defs>{outerDefs}</defs><path d=\"{backData}\" fill=\"#000\" filter=\"url(#{outerFilter})\"/></svg>");
             }
@@ -489,7 +494,6 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var attributes = solidBody ? "" : Accessibility(shape, isSlide, part);
         // A zero-sized SVG is not painted at all, so lines (height or width 0) get a 1 px viewport.
         var (sw, sh) = (Math.Max(pw, 1), Math.Max(ph, 1));
-        var canvas = new StringBuilder();
         // A hyperlink or action on the whole shape (catalog: interactivity.hyperlinks).
         var shapeLink = Links.Resolve(NonVisual(shape)?.Element(Ns.A + "hlinkClick"), part, slide.Presentation);
         // A zoom object's picture: its slides, whether the show returns to it, the zoom transition's duration.
@@ -499,8 +503,6 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var duration = (string?)shape.Attribute(Opc.MarkupCompatibility.Annotation + "zoomDur") ?? "";
             shapeLink = shapeLink with { Zoom = $"{range.First},{range.Last},{back},{duration}" };
         }
-        if (shapeLink != null)
-            canvas.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
         // The effects reach the geometry also where it leaves the shape's box (a callout's tail: LibreOffice's
@@ -515,30 +517,35 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0,
             parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All, frame: matrix, region: effectRegion);
         var opaque = fill is not NoFill || outline is { Visible: true };
-        var body = new StringBuilder();
-        var shapeMarkup = wireframe && solidBody ? "" : paths.ToString() + ends;
-        if (beveled && !texturedBevel && solidOutlines != null && shapeMarkup.Length > 0)
+        var body = new List<SceneItem>();
+        List<SceneItem> shapeItems = wireframe && solidBody ? [] : [.. paths];
+        if (!(wireframe && solidBody))
+            AddMarkup(shapeItems, ends);
+        if (beveled && !texturedBevel && solidOutlines != null && shapeItems.Count > 0)
         {
             // The fill shows on the front face inside the bevel; the line lies on the bevel.
             var clip = $"bf{++litFilters}";
             defs.Append($"<clipPath id=\"{clip}\"><path d=\"{Solid.PathData(solidOutlines.Select(o => Solid.Inset(o, topWidth)))}\"/></clipPath>");
-            shapeMarkup = $"<g clip-path=\"url(#{clip})\">{shapeMarkup}</g>";
+            shapeItems = [new SvgGroupItem($" clip-path=\"url(#{clip})\"", shapeItems)];
         }
         // A translucent material (clear, translucentPowder) lets the background through the front face, lit with its
         // highlights added in full; the text on it stays opaque (measured). An effect graph keeps the face opaque.
         var faceOpacity = camera != null && dag == null ? lighting.OpacityAt((0, 0, 1), camera.View((0, 0, 0))) : 1;
         var frontShade = camera != null ? lighting.Shade((0, 0, 1), camera.View((0, 0, 0))) : default;
-        if (faceOpacity < 1 && shapeMarkup.Length > 0)
-            shapeMarkup = $"<g opacity=\"{Units.Css4(faceOpacity)}\" filter=\"url(#{LitFilter(Lighting.Through(frontShade, faceOpacity), defs)})\">{shapeMarkup}</g>";
+        if (faceOpacity < 1 && shapeItems.Count > 0)
+            shapeItems = [new SvgGroupItem($" opacity=\"{Units.Css4(faceOpacity)}\" filter=\"url(#{LitFilter(Lighting.Through(frontShade, faceOpacity), defs)})\"", shapeItems)];
         // The shape's own drawing is a group of its own when it has text: animations can build the background and
         // the text separately (catalog: animation.build).
         var hasText = shape.Name.LocalName == "sp" && shape.Element(Ns.P + "txBody")?.Descendants(Ns.A + "t").Any() == true;
-        if (hasText && shapeMarkup.Length > 0)
-            shapeMarkup = $"<g data-bg=\"\">{shapeMarkup}</g>";
+        if (hasText && shapeItems.Count > 0)
+            shapeItems = [new SvgGroupItem(" data-bg=\"\"", shapeItems)];
         // A scaled, skewed or flipped shadow is a transformed copy of the shape behind it.
-        if (!solidBody && opaque && shapeMarkup.Length > 0 && SvgEffects.Shadow(effects, slide.Colors, pw, ph, defs, matrix) is { } shadowCopy)
-            body.Append($"<g filter=\"url(#{shadowCopy.Filter})\"><g transform=\"{shadowCopy.Transform.Css()}\">{shapeMarkup}</g></g>");
-        body.Append(effectFilter != null && opaque ? $"<g filter=\"url(#{effectFilter})\">{shapeMarkup}</g>" : shapeMarkup);
+        if (!solidBody && opaque && shapeItems.Count > 0 && SvgEffects.Shadow(effects, slide.Colors, pw, ph, defs, matrix) is { } shadowCopy)
+            body.Add(new FilterItem(shadowCopy.Filter, effects!, [new TransformItem(shadowCopy.Transform, shapeItems)]));
+        if (effectFilter != null && opaque)
+            body.Add(new FilterItem(effectFilter, effects!, shapeItems));
+        else
+            body.AddRange(shapeItems);
         if (shape.Name.LocalName == "sp")
         {
             // The master's text style follows the layout placeholder a slide placeholder matched, else its own type
@@ -615,12 +622,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             {
                 if (faceOpacity < 1 && textMarkup.Length > 0)
                     textMarkup = $"<g filter=\"url(#{LitFilter(frontShade, defs)})\">{textMarkup}</g>";
-                body.Append(effectFilter != null && !opaque && textMarkup.Length > 0 ? $"<g filter=\"url(#{effectFilter})\">{textMarkup}</g>" : textMarkup);
+                if (effectFilter != null && !opaque && textMarkup.Length > 0)
+                    body.Add(new FilterItem(effectFilter, effects!, [new MarkupItem(textMarkup)]));
+                else
+                    AddMarkup(body, textMarkup);
             }
         }
         if (backdropText)
             html.Replace(BackdropTextToken, "");
-        var content = SvgEffects.Reflection(effects, body.ToString(), (0, 0, pw, ph), defs, matrix);
+        var content = body;
+        if (body.Count > 0 && SvgEffects.ReflectionOf(effects, (0, 0, pw, ph), defs, matrix) is { } reflected)
+            content = [new ReflectionItem(reflected.Id, reflected.Transform, reflected.Blurred, body)];
         if (dag != null)
         {
             // An effect graph (catalog: effect.dag) draws the shape from its fill, its line and its text.
@@ -640,23 +652,26 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             lineOnly.Append(ends);
             var graph = new EffectDag(slide.Colors, pw, ph, defs,
                 element => paint.Fill(FillReader.Read(element, slide.Colors, slide.Images(part), slide.ImageSizes(part)), pw, ph, defs, rotation, origin), matrix);
-            content = graph.Render(dag, new EffectDag.Sources(fillOnly.ToString(), lineOnly.ToString(), paths.ToString() + ends + dagText));
+            content = [];
+            AddMarkup(content, graph.Render(dag, new EffectDag.Sources(fillOnly.ToString(), lineOnly.ToString(), HtmlScene.Markup(paths) + ends + dagText)));
         }
         // The front face is lit like the rest of the 3D shape (its normal faces the front); a translucent one has
         // lit its drawing and its text apart.
-        if (camera != null && content.Length > 0 && faceOpacity >= 1)
-            content = $"<g filter=\"url(#{LitFilter(frontShade, defs)})\">{content}</g>";
+        if (camera != null && content.Count > 0 && faceOpacity >= 1)
+            content = [new SvgGroupItem($" filter=\"url(#{LitFilter(frontShade, defs)})\"", content)];
+        var drawn = new List<SceneItem>();
         if (defs.Length > 0)
-            canvas.Append("<defs>").Append(defs).Append("</defs>");
-        canvas.Append(content);
-        if (shapeLink != null)
-            canvas.Append("</a>");
+            drawn.Add(new MarkupItem($"<defs>{defs}</defs>"));
+        drawn.AddRange(content);
+        List<SceneItem> canvas = shapeLink != null ? [new WrappedItem(Links.Open(shapeLink), drawn, "</a>")] : drawn;
         var over = new StringBuilder();
         if (shape.Name.LocalName == "pic")
             over.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide)).Append(MissingPicture(shape, part));
         if (solidBody)
         {
-            html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">").Append(canvas).Append("</svg>").Append(over);
+            html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
+            HtmlScene.Write(canvas, html);
+            html.Append("</svg>").Append(over);
             html.Append("</div>");
             if (bevelShading.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{bevelShading}</svg>");
@@ -664,8 +679,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             items.Add(new MarkupItem(html.ToString()));
             return;
         }
-        var shapeCanvas = new SvgItem(sw, sh, []);
-        AddMarkup(shapeCanvas.Items, canvas.ToString());
+        var shapeCanvas = new SvgItem(sw, sh, canvas);
         var shapeBox = new BoxItem((pw, ph), ToPx(matrix), attributes, [shapeCanvas]);
         AddMarkup(shapeBox.Items, over.ToString());
         AddMarkup(shapeBox.Items, textLayer);

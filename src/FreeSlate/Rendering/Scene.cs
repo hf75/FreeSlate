@@ -81,6 +81,25 @@ public sealed record SvgItem(double Width, double Height, List<SceneItem> Items)
 /// <summary>The shapes of a group (DrawingML grpSp), in HTML a div of class grp with the group's own attributes (in Word its effects' filter).</summary>
 public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : SceneItem;
 
+/// <summary>
+/// A path of a shape's geometry, its SVG path data in CSS pixels, filled and outlined as DrawingML gives it (no fill,
+/// no outline where it has none); in HTML a path element with the attributes of its paint, whose gradients and
+/// patterns are the shape's definitions.
+/// </summary>
+public sealed record ShapePathItem(string Data, Fill Fill, Outline? Outline, string Attributes) : SceneItem;
+
+/// <summary>Items drawn transformed (in CSS pixels): a scaled, skewed or flipped shadow's copy of its shape.</summary>
+public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem;
+
+/// <summary>
+/// Items of an SVG group with attributes not broken down yet (a clip to the front face inside a bevel, a 3D face's
+/// light, the hook by which animations build a shape's background apart from its text, an isolated blend).
+/// </summary>
+public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : SceneItem;
+
+/// <summary>Items inside markup not broken down yet (a shape's hyperlink).</summary>
+public sealed record WrappedItem(string Before, List<SceneItem> Items, string After) : SceneItem;
+
 /// <summary>A solid straight line.</summary>
 public sealed record LineItem(double X1, double Y1, double X2, double Y2, double Width, RgbColor Color) : SceneItem;
 
