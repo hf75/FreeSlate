@@ -677,7 +677,9 @@ public static class SkiaScene
             using var path = SKPath.ParseSvgPathData(item.Data);
             if (path == null)
                 return;
-            if (Paint(item.Fill, path.Bounds) is { } fill)
+            if (item.Fill is PictureFill { Tiling: null } picture)
+                Stretched(picture, path);
+            else if (Paint(item.Fill, path.Bounds) is { } fill)
             {
                 canvas.DrawPath(path, fill);
                 fill.Dispose();
@@ -687,6 +689,27 @@ public static class SkiaScene
                 using var pen = Pen(outline);
                 canvas.DrawPath(path, pen);
             }
+        }
+
+        /// <summary>
+        /// A picture stretched over what a path fills (a slide's picture, its fill rectangle within the path's box, its
+        /// crop beyond), cut at the path, as SvgPaint's pattern of it draws it.
+        /// </summary>
+        void Stretched(PictureFill fill, SKPath path)
+        {
+            var bounds = path.Bounds;
+            var (w, h) = (bounds.Width, bounds.Height);
+            var (fl, ft, fr, fb) = fill.FillRect;
+            var (sl, st, sr, sb) = fill.SourceRect;
+            var (innerW, innerH) = (w * (1 - fl - fr), h * (1 - ft - fb));
+            var (fullW, fullH) = (innerW / Math.Max(1e-6, 1 - sl - sr), innerH / Math.Max(1e-6, 1 - st - sb));
+            var (x, y) = (bounds.Left + w * fl - sl * fullW, bounds.Top + h * ft - st * fullH);
+            if (fill.Filter != null)
+                statistics.Effects++;
+            canvas.Save();
+            canvas.ClipPath(path, antialias: true);
+            Picture(fill.Image, SKRect.Create((float)x, (float)y, (float)fullW, (float)fullH), null);
+            canvas.Restore();
         }
 
         /// <summary>A run of slide text from its glyphs' outlines in pixels (see GlyphRunItem), filled with its paint over the paint's box.</summary>
