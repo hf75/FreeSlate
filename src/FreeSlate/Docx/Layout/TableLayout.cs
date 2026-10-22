@@ -752,9 +752,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // with docx/local/ygc-12, -15: 11 pt Yu Gothic lines 18.4 pt apart in a cell under an 18 pt grid, two pitches
         // in the body; ygc-12-adj, -15-adj: two pitches in the cell too; docx/external/libreoffice/extras-uiwriter/
         // tdf128375).
-        var pitch = paragraphs.LinePitch;
+        var pitch = paragraphs.Settings.LinePitch;
         if (!context.Profile.AdjustsLineHeightInTables)
-            paragraphs.LinePitch = null;
+            paragraphs.Settings = paragraphs.Settings with { LinePitch = null };
         TableBox box;
         try
         {
@@ -762,7 +762,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            paragraphs.LinePitch = pitch;
+            paragraphs.Settings = paragraphs.Settings with { LinePitch = pitch };
         }
         // The markup view marks every line of a table whose formatting changed; the balloon hangs from its first line.
         if (table.Change is { } change)
@@ -1010,18 +1010,20 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 if (!Rotated(cell) && cell.Blocks.Any(b => b is TableBlock))
                 {
                     // Laid out again in the state of the layout it was first laid out in.
-                    var (inside, nested, state, cellLeft) = (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned), textLeft);
+                    var (inside, nested, state, cellLeft) = (cellInside, inCell, paragraphs.Settings, textLeft);
                     laidAgain[cell] = cuts =>
                     {
-                        var was = (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned));
-                        (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned)) = (inside, nested, state);
+                        var was = (cellInside, inCell, paragraphs.Settings);
+                        (cellInside, inCell) = (inside, nested);
+                        paragraphs.Settings = paragraphs.Settings with { Vertical = state.Vertical, TurnEastAsian = state.TurnEastAsian, Unaligned = state.Unaligned };
                         try
                         {
                             return Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading, cuts) with { Left = cellLeft, Width = cellWidth };
                         }
                         finally
                         {
-                            (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned)) = was;
+                            (cellInside, inCell) = (was.cellInside, was.inCell);
+                            paragraphs.Settings = paragraphs.Settings with { Vertical = was.Settings.Vertical, TurnEastAsian = was.Settings.TurnEastAsian, Unaligned = was.Settings.Unaligned };
                         }
                     };
                 }
@@ -2255,11 +2257,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, PageFields? fields, bool unaligned = false,
         (bool Vertical, bool Turn)? direction = null)
     {
-        var (wasCell, wasInCell, wasUnaligned, wasVertical, wasTurn) = (cellBlocks, inCell, paragraphs.Unaligned, paragraphs.Vertical, paragraphs.TurnEastAsian);
+        var (wasCell, wasInCell, was) = (cellBlocks, inCell, paragraphs.Settings);
         (cellBlocks, inCell) = (false, false);
-        paragraphs.Unaligned |= unaligned;
+        paragraphs.Settings = paragraphs.Settings with { Unaligned = paragraphs.Settings.Unaligned | unaligned };
         if (direction is { } turned)
-            (paragraphs.Vertical, paragraphs.TurnEastAsian) = (turned.Vertical, turned.Turn);
+            paragraphs.Settings = paragraphs.Settings with { Vertical = turned.Vertical, TurnEastAsian = turned.Turn };
         try
         {
             var content = Content(blocks, width, fields);
@@ -2268,7 +2270,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            (cellBlocks, inCell, paragraphs.Unaligned, paragraphs.Vertical, paragraphs.TurnEastAsian) = (wasCell, wasInCell, wasUnaligned, wasVertical, wasTurn);
+            (cellBlocks, inCell) = (wasCell, wasInCell);
+            paragraphs.Settings = paragraphs.Settings with { Unaligned = was.Unaligned, Vertical = was.Vertical, TurnEastAsian = was.TurnEastAsian };
         }
     }
 
@@ -2458,10 +2461,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         RgbColor? shading = null, IReadOnlyList<CellCut>? cuts = null)
     {
         var was = cellBlocks;
-        var behind = paragraphs.Background;
+        var behind = paragraphs.Settings.Background;
         cellBlocks = true;
         // The cell's shading is behind its text, else what is behind the table (catalog: run.basic, automatic color).
-        paragraphs.Background = shading ?? behind;
+        paragraphs.Settings = paragraphs.Settings with { Background = shading ?? behind };
         try
         {
             return CellBlocks(cell, width, fields, neighbors, edge, cuts);
@@ -2469,7 +2472,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         finally
         {
             cellBlocks = was;
-            paragraphs.Background = behind;
+            paragraphs.Settings = paragraphs.Settings with { Background = behind };
         }
     }
 
@@ -2487,8 +2490,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         if (!Rotated(cell))
         {
-            var wasInCell = paragraphs.InCell;
-            paragraphs.InCell = true;
+            var wasInCell = paragraphs.Settings.InCell;
+            paragraphs.Settings = paragraphs.Settings with { InCell = true };
             try
             {
                 var content = Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
@@ -2504,14 +2507,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
             finally
             {
-                paragraphs.InCell = wasInCell;
+                paragraphs.Settings = paragraphs.Settings with { InCell = wasInCell };
             }
         }
         // Measured unaligned: a centered line's length is its text's, not its place in the unwrapped width (measured
         // with docx/external/powertools/HC008-Test-03: "notes" centered in a btLr cell of a row 72 pt high keeps the
         // row 72 pt high, not 810).
-        var unaligned = paragraphs.Unaligned;
-        paragraphs.Unaligned = true;
+        var unaligned = paragraphs.Settings.Unaligned;
+        paragraphs.Settings = paragraphs.Settings with { Unaligned = true };
         try
         {
             var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
@@ -2520,7 +2523,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            paragraphs.Unaligned = unaligned;
+            paragraphs.Settings = paragraphs.Settings with { Unaligned = unaligned };
         }
     }
 
@@ -2550,15 +2553,15 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var direction = cell.Format.TextDirection;
         if (direction is null or "lrTb")
             return laid();
-        var (vertical, turn) = (paragraphs.Vertical, paragraphs.TurnEastAsian);
-        (paragraphs.Vertical, paragraphs.TurnEastAsian) = (Rotated(cell), direction is "tbRlV" or "tbLrV" or "lrTbV");
+        var (vertical, turn) = (paragraphs.Settings.Vertical, paragraphs.Settings.TurnEastAsian);
+        paragraphs.Settings = paragraphs.Settings with { Vertical = Rotated(cell), TurnEastAsian = direction is "tbRlV" or "tbLrV" or "lrTbV" };
         try
         {
             return laid();
         }
         finally
         {
-            (paragraphs.Vertical, paragraphs.TurnEastAsian) = (vertical, turn);
+            paragraphs.Settings = paragraphs.Settings with { Vertical = vertical, TurnEastAsian = turn };
         }
     }
 
