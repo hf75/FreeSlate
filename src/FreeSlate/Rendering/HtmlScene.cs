@@ -72,6 +72,26 @@ public static class HtmlScene
                 case BitmapItem bitmap:
                     html.Append($"<image x=\"{Px(bitmap.X)}\" y=\"{Px(bitmap.Y)}\" width=\"{Px(bitmap.Width)}\" height=\"{Px(bitmap.Height)}\" preserveAspectRatio=\"none\" href=\"{Metafiles.Png.DataUri(bitmap.PixelWidth, bitmap.PixelHeight, bitmap.Rgba)}\"/>");
                     break;
+                case BoxItem box:
+                    html.Append($"<div class=\"sp\"{box.Attributes} style=\"");
+                    if (box.Size is { } size)
+                        html.Append($"width:{Units.Css(size.Width)}px;height:{Units.Css(size.Height)}px");
+                    if (box.Transform is { } transform)
+                        html.Append(box.Size != null ? ";" : "").Append("transform:").Append(transform.Css());
+                    html.Append("\">");
+                    Write(box.Items, html);
+                    html.Append("</div>");
+                    break;
+                case SvgItem svg:
+                    html.Append($"<svg width=\"{Units.Css(svg.Width)}\" height=\"{Units.Css(svg.Height)}\" viewBox=\"0 0 {Units.Css(svg.Width)} {Units.Css(svg.Height)}\">");
+                    Write(svg.Items, html);
+                    html.Append("</svg>");
+                    break;
+                case GroupBoxItem group:
+                    html.Append($"<div class=\"grp\"{group.Attributes}>");
+                    Write(group.Items, html);
+                    html.Append("</div>");
+                    break;
                 case RectItem rect:
                     html.Append($"<rect x=\"{Px(rect.X)}\" y=\"{Px(rect.Y)}\" width=\"{Px(rect.Width)}\" height=\"{Px(rect.Height)}\" fill=\"{rect.Color.ToHex()}\"/>");
                     break;

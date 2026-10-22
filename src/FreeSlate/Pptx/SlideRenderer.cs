@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using FreeSlate.Drawing;
 using FreeSlate.Drawing.Geometry;
 using FreeSlate.Html;
+using FreeSlate.Rendering;
 
 namespace FreeSlate.Pptx;
 
@@ -78,24 +79,26 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var html = new StringBuilder();
         html.Append($"<section class=\"slide\" id=\"slide-{slide.Number}\"{attributes} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
         html.Append(Background(width, height));
+        var items = new List<SceneItem>();
 
         var showMaster = slide.Slide.Root.Bool("showMasterSp") ?? true;
         if (showMaster && (slide.Layout?.Root.Bool("showMasterSp") ?? true) && slide.Master != null)
-            RenderTree(Tree(slide.Master), slide.MasterPart!, html, Placement.Root, isSlide: false);
+            RenderTree(Tree(slide.Master), slide.MasterPart!, items, Placement.Root, isSlide: false);
         if (showMaster && slide.Layout != null)
-            RenderTree(Tree(slide.Layout), slide.LayoutPart!, html, Placement.Root, isSlide: false);
-        RenderTree(Tree(slide.Slide), slide.SlidePart, html, Placement.Root, isSlide: true);
+            RenderTree(Tree(slide.Layout), slide.LayoutPart!, items, Placement.Root, isSlide: false);
+        RenderTree(Tree(slide.Slide), slide.SlidePart, items, Placement.Root, isSlide: true);
 
         // ActiveX controls are drawn from their stored pictures (catalog: picture.ole).
         foreach (var control in slide.Slide.Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "controls")?.Elements(Ns.P + "control") ?? [])
         {
             if (control.Element(Ns.P + "pic") is { } preview)
-                RenderShape(preview, slide.SlidePart, html, Placement.Root, isSlide: true);
+                RenderShape(preview, slide.SlidePart, items, Placement.Root, isSlide: true);
             // PowerPoint 2007 kept the control's picture and place in the slide's VML drawing only (catalog: legacy.vml).
             else if (LegacyDrawing.Find(slide.Presentation, slide.SlidePart, control.Str("spid")) is { Box: { } box } legacy)
-                RenderShape(LegacyDrawing.Element(legacy, "0", control.Str("name") ?? "", box), legacy.Part, html, Placement.Root, isSlide: true);
+                RenderShape(LegacyDrawing.Element(legacy, "0", control.Str("name") ?? "", box), legacy.Part, items, Placement.Root, isSlide: true);
         }
 
+        HtmlScene.Write(items, html);
         html.Append(appendix).Append("</section>");
         return html.ToString();
     }
@@ -106,14 +109,29 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// One shape, picture, group or graphic frame in PresentationML names, drawn at its own transform (EMU from the
     /// page's top left): the drawings of Word documents (catalog: drawing.inline, drawing.anchor).
     /// </summary>
-    public string RenderElement(XElement element, string part)
+    public List<SceneItem> RenderItems(XElement element, string part)
     {
-        var html = new StringBuilder();
-        RenderTree(new XElement(Ns.P + "spTree", element), part, html, Placement.Root, isSlide: true);
-        return html.ToString();
+        var items = new List<SceneItem>();
+        RenderTree(new XElement(Ns.P + "spTree", element), part, items, Placement.Root, isSlide: true);
+        return items;
     }
 
-    void RenderTree(XElement? tree, string part, StringBuilder html, Placement placement, bool isSlide)
+    /// <summary>What is drawn as HTML or SVG (see MarkupItem), where it is not empty.</summary>
+    static void AddMarkup(List<SceneItem> items, string html)
+    {
+        if (html.Length > 0)
+            items.Add(new MarkupItem(html));
+    }
+
+    /// <summary>A frame's drawing (a chart's, a table's) on a canvas of its box, at least a pixel each way.</summary>
+    static BoxItem Framed(double width, double height, Matrix transform, string attributes, string markup)
+    {
+        var canvas = new SvgItem(Math.Max(width, 1), Math.Max(height, 1), []);
+        AddMarkup(canvas.Items, markup);
+        return new BoxItem((width, height), transform, attributes, [canvas]);
+    }
+
+    void RenderTree(XElement? tree, string part, List<SceneItem> items, Placement placement, bool isSlide)
     {
         foreach (var element in tree?.Elements() ?? [])
         {
@@ -124,17 +142,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 case "sp" or "cxnSp" or "pic":
                     // Placeholders of layouts and masters are prompts and never drawn on slides.
                     if (isSlide || Placeholders.Ph(element) == null)
-                        RenderShape(element, part, html, placement, isSlide);
+                        RenderShape(element, part, items, placement, isSlide);
                     break;
                 case "grpSp":
-                    RenderGroup(element, part, html, placement, isSlide);
+                    RenderGroup(element, part, items, placement, isSlide);
                     break;
                 case "graphicFrame":
                     if (isSlide || Placeholders.Ph(element) == null)
-                        RenderGraphicFrame(element, part, html, placement, isSlide);
+                        RenderGraphicFrame(element, part, items, placement, isSlide);
                     break;
                 case "contentPart":
-                    RenderContentPart(element, part, html, placement, isSlide);
+                    RenderContentPart(element, part, items, placement, isSlide);
                     break;
             }
         }
@@ -169,8 +187,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     static XElement? SpPr(XElement shape) => shape.Element(Ns.P + "spPr");
 
-    void RenderShape(XElement shape, string part, StringBuilder html, Placement placement, bool isSlide)
+    void RenderShape(XElement shape, string part, List<SceneItem> items, Placement placement, bool isSlide)
     {
+        // The markup of a 3D body, which stays as it is drawn (its backdrop's shadow takes the text in later).
+        var html = new StringBuilder();
         var chain = Chain(shape, part, isSlide);
         var xfrm = chain.Select(s => SpPr(s.Element)?.Element(Ns.A + "xfrm")).FirstOrDefault(x => x?.Element(Ns.A + "ext") != null);
         if (xfrm == null)
@@ -466,13 +486,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var hidden = (depth > 0.01 || beveled || bottomWidth > 0) && !wireframe ? ";backface-visibility:hidden" : "";
             html.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, pw, ph, rotation, flipH, flipV)}{hidden}\">");
         }
-        else
-        {
-            html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
-        }
+        var attributes = solidBody ? "" : Accessibility(shape, isSlide, part);
         // A zero-sized SVG is not painted at all, so lines (height or width 0) get a 1 px viewport.
         var (sw, sh) = (Math.Max(pw, 1), Math.Max(ph, 1));
-        html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
+        var canvas = new StringBuilder();
         // A hyperlink or action on the whole shape (catalog: interactivity.hyperlinks).
         var shapeLink = Links.Resolve(NonVisual(shape)?.Element(Ns.A + "hlinkClick"), part, slide.Presentation);
         // A zoom object's picture: its slides, whether the show returns to it, the zoom transition's duration.
@@ -483,7 +500,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             shapeLink = shapeLink with { Zoom = $"{range.First},{range.Last},{back},{duration}" };
         }
         if (shapeLink != null)
-            html.Append(Links.Open(shapeLink));
+            canvas.Append(Links.Open(shapeLink));
         // Effects: the shape's effect list, else the theme effect style referenced by effectRef. Without a visible
         // fill or outline the text casts the effect.
         // The effects reach the geometry also where it leaves the shape's box (a callout's tail: LibreOffice's
@@ -630,24 +647,29 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (camera != null && content.Length > 0 && faceOpacity >= 1)
             content = $"<g filter=\"url(#{LitFilter(frontShade, defs)})\">{content}</g>";
         if (defs.Length > 0)
-            html.Append("<defs>").Append(defs).Append("</defs>");
-        html.Append(content);
+            canvas.Append("<defs>").Append(defs).Append("</defs>");
+        canvas.Append(content);
         if (shapeLink != null)
-            html.Append("</a>");
-        html.Append("</svg>");
+            canvas.Append("</a>");
+        var over = new StringBuilder();
         if (shape.Name.LocalName == "pic")
-            html.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide)).Append(MissingPicture(shape, part));
+            over.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide)).Append(MissingPicture(shape, part));
         if (solidBody)
         {
+            html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">").Append(canvas).Append("</svg>").Append(over);
             html.Append("</div>");
             if (bevelShading.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{bevelShading}</svg>");
             html.Append(textLayer).Append("</div>");
+            items.Add(new MarkupItem(html.ToString()));
+            return;
         }
-        else
-        {
-            html.Append(textLayer).Append("</div>");
-        }
+        var shapeCanvas = new SvgItem(sw, sh, []);
+        AddMarkup(shapeCanvas.Items, canvas.ToString());
+        var shapeBox = new BoxItem((pw, ph), ToPx(matrix), attributes, [shapeCanvas]);
+        AddMarkup(shapeBox.Items, over.ToString());
+        AddMarkup(shapeBox.Items, textLayer);
+        items.Add(shapeBox);
     }
 
     /// <summary>
@@ -1011,7 +1033,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     }
 
     /// <summary>Graphic frames: SmartArt, charts and tables (OLE objects follow).</summary>
-    void RenderGraphicFrame(XElement frame, string part, StringBuilder html, Placement placement, bool isSlide)
+    void RenderGraphicFrame(XElement frame, string part, List<SceneItem> items, Placement placement, bool isSlide)
     {
         var xfrm = frame.Element(Ns.P + "xfrm");
         var data = frame.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
@@ -1020,7 +1042,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
         if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "relIds") is { } relIds)
         {
-            RenderDiagram(relIds, frame, part, html, placement, isSlide);
+            RenderDiagram(relIds, frame, part, items, placement, isSlide);
             return;
         }
 
@@ -1070,13 +1092,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 new XElement(Ns.A + "ext", new XAttribute("cx", (long)cw), new XAttribute("cy", (long)ch)),
                 new XElement(Ns.A + "chOff", new XAttribute("x", (long)cx0), new XAttribute("y", (long)cy0)),
                 new XElement(Ns.A + "chExt", new XAttribute("cx", (long)cw), new XAttribute("cy", (long)ch)))));
-            var content = new StringBuilder();
+            var content = new List<SceneItem>();
             RenderGroup(group, part, content, placement, isSlide: false);
             var (sx, sy) = (fw / cw, fh / ch);
             var (px, py, _, _) = placement.Map(fx, fy, fw, fh);
             var origin = ToPx(placement.Transform.Then(Matrix.Translate(px, py)));
             var (ox, oy) = (origin.E, origin.F);
-            html.Append($"<div class=\"sp\" style=\"transform:matrix({Units.Css4(sx)},0,0,{Units.Css4(sy)},{Units.Css(ox * (1 - sx))},{Units.Css(oy * (1 - sy))})\">{content}</div>");
+            items.Add(new BoxItem(null, new Matrix(sx, 0, 0, sy, ox * (1 - sx), oy * (1 - sy)), "", content));
             return;
         }
 
@@ -1085,12 +1107,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (data.Element(Ns.P + "oleObj") is { } ole)
         {
             if (ole.Element(Ns.P + "pic") is { } preview)
-                RenderShape(WithFrameTransform(preview, xfrm), part, html, placement, isSlide: true);
+                RenderShape(WithFrameTransform(preview, xfrm), part, items, placement, isSlide: true);
             else if (LegacyDrawing.Find(slide.Presentation, part, ole.Str("spid")) is { } legacy)
             {
                 var (x, y, w, h, _, _, _) = ReadTransform(xfrm);
                 var frameId = NonVisual(frame)?.Str("id") ?? "0";
-                RenderShape(LegacyDrawing.Element(legacy, frameId, NonVisual(frame)?.Str("name") ?? "", (x, y, w, h)), legacy.Part, html, placement, isSlide);
+                RenderShape(LegacyDrawing.Element(legacy, frameId, NonVisual(frame)?.Str("name") ?? "", (x, y, w, h)), legacy.Part, items, placement, isSlide);
             }
             return;
         }
@@ -1103,8 +1125,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, 0, false, false));
             var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
             var svg = new Charts.ChartRenderer(slide, paint, text, chartRel.Target).Render(bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, Units.ToPx(matrix.E), Units.ToPx(matrix.F));
-            html.Append($"<div class=\"sp\"{Accessibility(frame, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
-            html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(pw, 1))} {Units.Css(Math.Max(ph, 1))}\">{svg}</svg></div>");
+            items.Add(Framed(pw, ph, ToPx(matrix), Accessibility(frame, isSlide, part), svg));
             // Shapes drawn on the chart (c:userShapes, catalog: chart.userShapes), placed by their anchors.
             var package = slide.Presentation.Package;
             if (package.FirstRelationship(chartRel.Target, "chartUserShapes")?.Target is { } shapesPart && package.Exists(shapesPart))
@@ -1116,7 +1137,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     defaults.SetAttributeValue(attribute.Name, attribute.Value);
                 defaults.Add(chartText?.Elements());
                 textDefaults = new XElement(Ns.A + "lstStyle", Enumerable.Range(1, 9).Select(level => new XElement(Ns.A + $"lvl{level}pPr", new XElement(defaults))));
-                RenderUserShapes(slide.Presentation.Load(shapesPart).Root, shapesPart, html, placement, (x, y, w, h));
+                RenderUserShapes(slide.Presentation.Load(shapesPart).Root, shapesPart, items, placement, (x, y, w, h));
                 textDefaults = null;
             }
             return;
@@ -1128,8 +1149,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var (bx, by, bw, bh) = placement.Map(x, y, w, h);
             var (svg, width, height) = Tables.Render(table);
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, Math.Max(bw, width * Units.EmuPerPixel), Math.Max(bh, height * Units.EmuPerPixel), rotation, flipH, flipV));
-            html.Append($"<div class=\"sp\"{Accessibility(frame, isSlide, part)} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:{ToPx(matrix).Css()}\">");
-            html.Append($"<svg width=\"{Units.Css(Math.Max(width, 1))}\" height=\"{Units.Css(Math.Max(height, 1))}\" viewBox=\"0 0 {Units.Css(Math.Max(width, 1))} {Units.Css(Math.Max(height, 1))}\">{svg}</svg></div>");
+            items.Add(Framed(width, height, ToPx(matrix), Accessibility(frame, isSlide, part), svg));
         }
     }
 
@@ -1189,7 +1209,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// shapes target (catalog: smartart.data). The data model's background (dgm:bg: fill and effects) lies behind
     /// the shapes, its outline (dgm:whole: line and effects) on top of them (measured).
     /// </summary>
-    void RenderDiagram(XElement relIds, XElement frame, string part, StringBuilder html, Placement placement, bool isSlide)
+    void RenderDiagram(XElement relIds, XElement frame, string part, List<SceneItem> items, Placement placement, bool isSlide)
     {
         var package = slide.Presentation.Package;
         var dataPart = relIds.Attribute(Ns.R + "dm") is { } dm ? package.Relationship(part, dm.Value)?.Target : null;
@@ -1217,7 +1237,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var (bx, by, bw, bh) = placement.Map(x, y, w, h);
         var box = placement.Transform.Then(Matrix.Translate(bx, by));
         var flat = new Placement(Matrix.Identity, 0, 0, 1, 1, 0, 0, placement.GroupFill) { Container = placement.OnSlide(box) };
-        html.Append($"<div class=\"sp\"{Accessibility(frame, isSlide, part)} style=\"width:{Units.Css(Units.ToPx(bw))}px;height:{Units.Css(Units.ToPx(bh))}px;transform:{ToPx(box).Css()}\">");
+        var diagramBox = new BoxItem((Units.ToPx(bw), Units.ToPx(bh)), ToPx(box), Accessibility(frame, isSlide, part), []);
+        items.Add(diagramBox);
 
         // The diagram's own background and outline: a rectangle over the frame, each an element of its own, which
         // the animation of the diagram's background targets (a:dgm bldStep="bg").
@@ -1235,9 +1256,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var shape = new XElement(Ns.P + "sp",
                 new XElement(Ns.P + "nvSpPr", new XElement(Ns.P + "cNvPr", new XAttribute("id", 0), new XAttribute("name", "")),
                     new XElement(Ns.P + "cNvSpPr"), new XElement(Ns.P + "nvPr")), spPr);
-            html.Append($"<div class=\"sp\" data-dgm-bg=\"\" style=\"width:{Units.Css(Units.ToPx(bw))}px;height:{Units.Css(Units.ToPx(bh))}px\">");
-            RenderShape(shape, dataPart, html, flat, isSlide: false);
-            html.Append("</div>");
+            var backgroundBox = new BoxItem((Units.ToPx(bw), Units.ToPx(bh)), null, " data-dgm-bg=\"\"", []);
+            diagramBox.Items.Add(backgroundBox);
+            RenderShape(shape, dataPart, backgroundBox.Items, flat, isSlide: false);
         }
         var dgm = dataModel.Name.Namespace;
         Whole(dataModel.Element(dgm + "bg"), outline: false);
@@ -1251,9 +1272,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (tree == null)
         {
             var root = SmartArt.Engine.Layout(layoutDef!, model, bw / Units.EmuPerPoint, bh / Units.EmuPerPoint, (body, width) => text.LayoutCell(body, [], width));
-            RenderTree(SmartArt.Output.Shapes(root, styling, listStyle), dataPart, html, inner, isSlide: false);
+            RenderTree(SmartArt.Output.Shapes(root, styling, listStyle), dataPart, diagramBox.Items, inner, isSlide: false);
             Whole(dataModel.Element(dgm + "whole"), outline: true);
-            html.Append("</div>");
             return;
         }
         var shapes = ToPresentationMl(tree);
@@ -1285,9 +1305,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     SmartArt.Styling.ApplyListStyle(body, node.Text, listStyle);
             }
         }
-        RenderTree(shapes, drawingPart!, html, inner, isSlide: false);
+        RenderTree(shapes, drawingPart!, diagramBox.Items, inner, isSlide: false);
         Whole(dataModel.Element(dgm + "whole"), outline: true);
-        html.Append("</div>");
     }
 
     /// <summary>The diagram drawing uses its own namespace for sp, spPr, style and txBody; map it to PresentationML.</summary>
@@ -1297,7 +1316,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             element.Nodes().Select(n => n is XElement e ? ToPresentationMl(e) : n));
 
     /// <summary>Ink (p:contentPart with an InkML part, catalog: picture.ink) drawn into the part's box.</summary>
-    void RenderContentPart(XElement element, string part, StringBuilder html, Placement placement, bool isSlide)
+    void RenderContentPart(XElement element, string part, List<SceneItem> items, Placement placement, bool isSlide)
     {
         var xfrm = element.Element(P14 + "xfrm") ?? element.Element(Ns.P + "xfrm");
         if (xfrm?.Element(Ns.A + "ext") == null || element.Attribute(Ns.R + "id") is not { } id)
@@ -1316,8 +1335,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (markup.Length == 0)
             return;
         // The id lets animations reach the ink (p:inkTgt, or p:spTgt of the content part).
-        html.Append($"<div class=\"sp\"{Accessibility(element, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{ToPx(matrix).Css()}\">");
-        html.Append($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{markup}</svg></div>");
+        items.Add(new BoxItem((pw, ph), ToPx(matrix), Accessibility(element, isSlide, part),
+            [new MarkupItem($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{markup}</svg>")]));
     }
 
     static readonly XNamespace Cdr = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing";
@@ -1330,7 +1349,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// absSizeAnchor: a corner and a size in EMU) puts its shape into the frame <paramref name="frame"/> (slide EMU);
     /// the shapes are drawn like slide shapes.
     /// </summary>
-    void RenderUserShapes(XElement? root, string part, StringBuilder html, Placement placement, (double X, double Y, double W, double H) frame)
+    void RenderUserShapes(XElement? root, string part, List<SceneItem> items, Placement placement, (double X, double Y, double W, double H) frame)
     {
         var tree = new XElement(Ns.P + "spTree");
         foreach (var anchor in root?.Elements() ?? [])
@@ -1373,7 +1392,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 new XElement(Ns.A + "ext", new XAttribute("cx", (long)Math.Round(w)), new XAttribute("cy", (long)Math.Round(h))));
             tree.Add(converted);
         }
-        RenderTree(tree, part, html, placement, isSlide: false);
+        RenderTree(tree, part, items, placement, isSlide: false);
     }
 
     /// <summary>
@@ -1432,13 +1451,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             element.Attributes(),
             element.Nodes().Select(n => n is XElement e ? FromChartDrawing(e) : n));
 
-    void RenderGroup(XElement group, string part, StringBuilder html, Placement placement, bool isSlide)
+    void RenderGroup(XElement group, string part, List<SceneItem> items, Placement placement, bool isSlide)
     {
         var spPr = group.Element(Ns.P + "grpSpPr");
         var xfrm = spPr?.Element(Ns.A + "xfrm");
         if (xfrm?.Element(Ns.A + "ext") == null)
         {
-            RenderTree(group, part, html, placement, isSlide);
+            RenderTree(group, part, items, placement, isSlide);
             return;
         }
 
@@ -1480,13 +1499,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (SvgEffects.Filter(effects, slide.Colors, Units.ToPx(bw), Units.ToPx(bh), defs,
                     region: (left, top, corners.Max(p => p.X) - left, corners.Max(p => p.Y) - top)) is { } id)
             {
-                html.Append($"<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><defs>{defs}</defs></svg>");
+                items.Add(new MarkupItem($"<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><defs>{defs}</defs></svg>"));
                 filter = $" style=\"filter:url(#{id})\"";
             }
         }
-        html.Append($"<div class=\"grp\"{filter}{Accessibility(group, isSlide, part)}>");
-        RenderTree(group, part, html, child, isSlide);
-        html.Append("</div>");
+        var grouped = new GroupBoxItem(filter + Accessibility(group, isSlide, part), []);
+        items.Add(grouped);
+        RenderTree(group, part, grouped.Items, child, isSlide);
     }
 
     static readonly XNamespace Adec = "http://schemas.microsoft.com/office/drawing/2017/decorative";

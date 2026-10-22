@@ -296,8 +296,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             && WordArt(words, warped) is { } art)
         {
             var (l, t, r, b) = WarpInsets(warped, shape, context.Theme);
-            AddMarkup(items, drawings!.Render(drawing with { Text = null }));
-            AddMarkup(items, drawings.Render(drawings.WordArtText(art, drawing, l, t, r, b)));
+            items.AddRange(drawings!.Render(drawing with { Text = null }));
+            items.AddRange(drawings.Render(drawings.WordArtText(art, drawing, l, t, r, b)));
             return items;
         }
         if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
@@ -305,7 +305,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (blocks != null && drawing.ChildText is { Count: > 0 })
             drawing = FittedChildren(drawing, page);
         var drawn = new List<SceneItem>();
-        AddMarkup(drawn, drawings!.Render(drawing));
+        drawn.AddRange(drawings!.Render(drawing));
         if (drawing.Drawing.Attribute(Vml.RuleBevel) != null)
             AddMarkup(drawn, Bevel(drawing));
         if (drawing.Clip is { } clip)
@@ -340,7 +340,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 var (l, t, r, b) = WarpInsets(childWarp, child, context.Theme);
                 var box = new PlacedDrawing(new XElement(Drawings.Wp + "anchor", new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XElement(child)))),
                     drawing.Part, rect.X, rect.Y, rect.W, rect.H) { Behind = drawing.Behind, Order = drawing.Order };
-                AddMarkup(items, drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b)));
+                items.AddRange(drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b)));
                 continue;
             }
             TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, items, grouped);

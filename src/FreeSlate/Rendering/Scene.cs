@@ -67,6 +67,20 @@ public sealed record ClipItem(double X, double Y, double Width, double Height, L
 /// </summary>
 public sealed record BitmapItem(double X, double Y, double Width, double Height, int PixelWidth, int PixelHeight, byte[] Rgba) : SceneItem;
 
+/// <summary>
+/// A box of the shared DrawingML renderer (slides and the drawings of Word documents), in CSS pixels: of its size where
+/// it has one, placed by its transform where it has one, holding its items; in HTML a div of class sp with the box's own
+/// attributes (the player's shape id, accessibility). A shape's box holds its canvas (SvgItem), then what stands over
+/// it (a picture's media, text laid out flat).
+/// </summary>
+public sealed record BoxItem((double Width, double Height)? Size, Matrix? Transform, string Attributes, List<SceneItem> Items) : SceneItem;
+
+/// <summary>A drawing surface in CSS pixels, Width by Height, with what is drawn on it (a shape's geometry, a chart, a table).</summary>
+public sealed record SvgItem(double Width, double Height, List<SceneItem> Items) : SceneItem;
+
+/// <summary>The shapes of a group (DrawingML grpSp), in HTML a div of class grp with the group's own attributes (in Word its effects' filter).</summary>
+public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : SceneItem;
+
 /// <summary>A solid straight line.</summary>
 public sealed record LineItem(double X1, double Y1, double X2, double Y2, double Width, RgbColor Color) : SceneItem;
 

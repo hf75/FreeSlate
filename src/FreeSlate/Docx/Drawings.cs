@@ -1,6 +1,7 @@
 using System.Xml.Linq;
 using FreeSlate.Html;
 using FreeSlate.Pptx;
+using FreeSlate.Rendering;
 
 namespace FreeSlate.Docx;
 
@@ -226,7 +227,9 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
                         new XElement(Ns.A + "prstGeom", new XAttribute("prst", "rect"), new XElement(Ns.A + "avLst")),
                         fill, new XElement(Ns.A + "ln", new XElement(Ns.A + "noFill"))),
                     new XElement(Wps + "bodyPr")))));
-        return Render(new PlacedDrawing(drawing, context.MainPart, 0, 0, width, height));
+        var html = new System.Text.StringBuilder();
+        HtmlScene.Write(Render(new PlacedDrawing(drawing, context.MainPart, 0, 0, width, height)), html);
+        return html.ToString();
     }
 
     /// <summary>The fonts the drawings' text uses.</summary>
@@ -381,8 +384,8 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         return (E("cx"), E("cy"));
     }
 
-    /// <summary>The HTML of a drawing whose extent's top left lies at (x, y) points on the page.</summary>
-    public string Render(PlacedDrawing placed)
+    /// <summary>The scene items of a drawing whose extent's top left lies at (x, y) points on the page.</summary>
+    public List<SceneItem> Render(PlacedDrawing placed)
     {
         // Ink (w14:contentPart, catalog: drawing.ink) drawn by the ink renderer shared with PowerPoint into the box.
         var inkPart = (placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements() ?? placed.Drawing.Elements())
@@ -393,17 +396,17 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
                 new XElement(P14 + "xfrm",
                     new XElement(Ns.A + "off", new XAttribute("x", (long)Math.Round(placed.X * EmuPerPoint)), new XAttribute("y", (long)Math.Round(placed.Y * EmuPerPoint))),
                     new XElement(Ns.A + "ext", new XAttribute("cx", (long)Math.Round(placed.Width * EmuPerPoint)), new XAttribute("cy", (long)Math.Round(placed.Height * EmuPerPoint)))));
-            return Renderer(placed.Part).RenderElement(part, placed.Part);
+            return Renderer(placed.Part).RenderItems(part, placed.Part);
         }
         var graphic = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
         var content = graphic?.Elements().FirstOrDefault();
         if (graphic == null || content == null)
-            return "";
+            return [];
         var docPr = placed.Drawing.Element(Wp + "docPr");
         var (w, h) = (placed.Width, placed.Height);
         var element = Convert(content, docPr, graphic);
         if (element == null)
-            return "";
+            return [];
         Place(element, placed.X, placed.Y, w, h);
         // VML WordArt: the box shrinks to the ink's share of the text's em boxes and advances, about the same turned
         // (and flipped) center.
@@ -419,8 +422,8 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             element.Attribute(WordArtInk)?.Remove();
         }
         if (docPr?.Attribute("hidden")?.Value is "1" or "true")
-            return "";
-        return Renderer(placed.Part).RenderElement(element, placed.Part);
+            return [];
+        return Renderer(placed.Part).RenderItems(element, placed.Part);
     }
 
     static readonly XNamespace P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
