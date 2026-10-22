@@ -71,13 +71,9 @@ public static class Engine
         }
     }
 
-    /// <summary>The pins of the layout running on this thread, for extents that arrange a subtree (hierarchies).</summary>
-    [ThreadStatic] static Pins? running;
-
     /// <summary>Lays the tree out from scratch with the values the fitting fixed.</summary>
     static void Run(LayoutNode root, double w, double h, Pins pins)
     {
-        running = pins;
         foreach (var node in root.Descendants().Prepend(root))
         {
             node.Values.Clear();
@@ -255,13 +251,13 @@ public static class Engine
     /// <summary>
     /// The room a node takes in its parent's layout, relative to its own origin, from its current values: its size; for
     /// a composite the bounding box of its children; for a lin node without a finite size its children one after the
-    /// other.
+    /// other; <paramref name="pins"/> are the layout's, with which a hierarchy arranges its subtree.
     /// </summary>
-    static (double X, double Y, double W, double H) Extent(LayoutNode node)
+    static (double X, double Y, double W, double H) Extent(LayoutNode node, Pins pins)
     {
         // A hierarchy takes the room of its tree arranged in the units of its constraints (measured: hierarchy5's tree
         // in a lin node with fallback 2D, scaled to fit it).
-        if (IsHierarchy(node) && running is { } pins)
+        if (IsHierarchy(node))
         {
             var box = Arrange(node, pins);
             return (box.X - node.X, box.Y - node.Y, box.W, box.H);
@@ -276,11 +272,11 @@ public static class Engine
             if (Fitted(node, pw, ph) is var (aw, ah) && (aw != pw || ah != ph))
             {
                 (node.Values["w"], node.Values["h"]) = (aw, ah);
-                Constraints.EvaluateList(node, running);
+                Constraints.EvaluateList(node, pins);
                 foreach (var child in node.Children)
                 {
-                    Constraints.EvaluateOwn(child, running);
-                    Refresh(child, running);
+                    Constraints.EvaluateOwn(child, pins);
+                    Refresh(child, pins);
                 }
                 (pw, ph) = (aw, ah);
             }
@@ -288,7 +284,7 @@ public static class Engine
             foreach (var child in children)
             {
                 var (cx, cy, cw, ch) = KeepRatioBounds(node, child, ChildRect(child, pw, ph));
-                var e = child.Children.Count > 0 ? Extent(child) : (0, 0, cw, ch);
+                var e = child.Children.Count > 0 ? Extent(child, pins) : (0, 0, cw, ch);
                 // A lin child without a size of its own takes the composite's box and shrinks its children into it
                 // (measured: lProcess2's inner lists, as high as their composites, their items shrunk to fit).
                 if (child.AlgorithmType == "lin")
@@ -325,7 +321,7 @@ public static class Engine
             // The children the line places, connectors given a size among them (measured: lProcess1's arrows between
             // its boxes take room in its columns).
             children = node.Children.Where(c => c.AlgorithmType != "conn" || Constraints.Get(c, "w") != null).ToList();
-            var extents = children.Select(Extent).ToList();
+            var extents = children.Select(c => Extent(c, pins)).ToList();
             var along = Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), Value(node, "sp"));
             var across = extents.Max(e => horizontal ? e.H : e.W);
             var (ew, eh) = horizontal ? (along, across) : (across, along);
@@ -756,7 +752,7 @@ public static class Engine
     static List<(double X, double Y, double W, double H)> ApplyRules(LayoutNode node, List<LayoutNode> children, bool horizontal, double box, double across, Pins pins, Dictionary<LayoutNode, double?> ruled)
     {
         var type = horizontal ? "w" : "h";
-        var extents = children.Select(Extent).ToList();
+        var extents = children.Select(c => Extent(c, pins)).ToList();
         double Left() => box - Reach(children, extents.Select(e => horizontal ? e.W : e.H).ToList(), Value(node, "sp"));
         bool Fits() => Left() >= -1e-9;
         // A font size rule also applies while a child is larger across the line than the node (measured: hList1's
@@ -774,7 +770,7 @@ public static class Engine
                 Refresh(child, pins);
             }
             // Strictly (measured: 31 pt, not 32 that would leave the columns 0.26 mm too high).
-            return children.Select(Extent).All(e => (horizontal ? e.H : e.W) <= across + 1e-6);
+            return children.Select(c => Extent(c, pins)).All(e => (horizontal ? e.H : e.W) <= across + 1e-6);
         }
         foreach (var rule in node.Rules)
         {
@@ -817,7 +813,7 @@ public static class Engine
                             Refresh(child, pins);
                         }
                     }
-                    extents = children.Select(Extent).ToList();
+                    extents = children.Select(c => Extent(c, pins)).ToList();
                 }
                 var (low, high) = (smallest, largest);
                 Size(low);
@@ -862,7 +858,7 @@ public static class Engine
                     Constraints.EvaluateOwn(child, pins);
                     Refresh(child, pins);
                 }
-                extents = children.Select(Extent).ToList();
+                extents = children.Select(c => Extent(c, pins)).ToList();
             }
             Set(0);
             if (!Fits())
@@ -903,11 +899,11 @@ public static class Engine
         // The cells' size and spacing from their current values, and the arrangement that makes them largest.
         bool Measure()
         {
-            extents = cells.Select(Extent).ToList();
+            extents = cells.Select(c => Extent(c, pins)).ToList();
             (cw, ch) = (extents.Max(e => e.X + e.W) - extents.Min(e => e.X), extents.Max(e => e.Y + e.H) - extents.Min(e => e.Y));
             if (cw <= 0 || ch <= 0)
                 return false;
-            var spacers = node.Children.Where(c => SnakeSpacer(c, columns)).Select(Extent).ToList();
+            var spacers = node.Children.Where(c => SnakeSpacer(c, columns)).Select(c => Extent(c, pins)).ToList();
             lineGap = Value(node, "sp");
             gap = spacers.Count > 0 ? spacers.Max(e => columns ? e.H : e.W) : lineGap;
             best = (0.0, 1);
@@ -1178,7 +1174,7 @@ public static class Engine
         // The arrangement from the cells' current values, and the factor that fits it to the node.
         double Measure()
         {
-            extents = cells.ToDictionary(c => c, Extent);
+            extents = cells.ToDictionary(c => c, c => Extent(c, pins));
             // The circle as small as keeps each two neighbors' outlines sibSp apart along the line between their
             // centers (measured: cycle7's boxes, half as high as wide, 0.65 of their width apart; cycle5's with its
             // spacers; cycle2's circles), each next but one at least touching (arrow5's and arrow1's arrows, up to 0.9 of
@@ -1420,7 +1416,7 @@ public static class Engine
             return ArrangeRoot(node, pins);
         if (node.AlgorithmType == "hierChild")
             return ArrangeRow(node, pins);
-        var e = Extent(node);
+        var e = Extent(node, pins);
         var (w, h) = (Finite(node, "w") ?? e.X + e.W, Finite(node, "h") ?? e.Y + e.H);
         if (node.AlgorithmType == "composite" && h > 100 * Math.Max(w, 1e-6))
             h = e.Y + e.H;
