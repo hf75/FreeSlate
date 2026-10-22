@@ -14,13 +14,13 @@ public sealed class SkiaStatistics
     /// <summary>Items still held as their HTML or SVG (MarkupItem), not drawn.</summary>
     public int Markup { get; set; }
 
-    /// <summary>Effects drawn without them: filters (glow, shadow, soft edges, a picture's recoloring) and reflections.</summary>
+    /// <summary>Effects drawn without them: a picture's recoloring.</summary>
     public int Effects { get; set; }
 
-    /// <summary>Pictures not drawn: SVG and other formats Skia does not decode, tiled picture fills.</summary>
+    /// <summary>Pictures not drawn: formats neither Skia nor SvgDrawing reads.</summary>
     public int Pictures { get; set; }
 
-    /// <summary>Paints drawn in one color: gradients and outlines of text, patterns.</summary>
+    /// <summary>Paints drawn in one color: gradients and outlines of text.</summary>
     public int Paints { get; set; }
 
     public void Add(SkiaStatistics other)
@@ -35,8 +35,8 @@ public sealed class SkiaStatistics
 /// <summary>
 /// Draws scenes (see PageScene) with Skia (catalog: engine.output): a page on a canvas in CSS pixels (96 an inch), as
 /// the HTML backend's page is, the Word engine's items in points and the DrawingML renderer's in pixels; text from its
-/// glyphs' outlines, as the HTML draws glyphs of outlines. What the scene still holds as markup is not drawn, and
-/// effects and some paints are drawn more simply (see SkiaStatistics).
+/// glyphs' outlines, as the HTML draws glyphs of outlines; effects through image filters as SVG's filters draw them.
+/// What the scene still holds as markup is not drawn, and some paints are drawn more simply (see SkiaStatistics).
 /// </summary>
 public static class SkiaScene
 {
@@ -120,12 +120,18 @@ public static class SkiaScene
         ScaleX = (float)m.A, SkewY = (float)m.B, SkewX = (float)m.C, ScaleY = (float)m.D, TransX = (float)m.E, TransY = (float)m.F, Persp2 = 1,
     };
 
-    sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics)
+    /// <param name="onPage">Where the canvas's origin lies on the page (a recording's, see Record); by default the canvas
+    /// stands at the page's origin when the drawing begins.</param>
+    /// <param name="cache">The pictures decoded so far, shared with the drawer of the page.</param>
+    sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null)
     {
         static readonly SKSamplingOptions Sampling = new(SKFilterMode.Linear, SKMipmapMode.Linear);
 
         /// <summary>The pictures of the page, decoded once (a picture may stand on a page many times).</summary>
-        readonly Dictionary<string, SKImage?> pictures = [];
+        readonly Dictionary<string, Decoded> pictures = cache ?? [];
+
+        /// <summary>The page's own transform: where the canvas stood when the drawing began (patterns align to the page).</summary>
+        readonly SKMatrix page = onPage ?? canvas.TotalMatrix;
 
         public void Draw(IEnumerable<SceneItem> items)
         {
@@ -238,17 +244,22 @@ public static class SkiaScene
                     Draw(decoration.Items);
                     break;
                 case FilterItem filtered:
-                    statistics.Effects++;
-                    Draw(filtered.Items);
+                    Effected(filtered.Effects, filtered.Items);
                     break;
                 case FilterCopyItem copied:
-                    statistics.Effects++;
-                    Draw(copied.Items);
+                {
+                    using var picture = Record(copied.Items);
+                    Effects(copied.Effects, picture);
+                    canvas.DrawPicture(picture);
                     break;
+                }
                 case ReflectionItem reflected:
-                    statistics.Effects++;
-                    Draw(reflected.Items);
+                {
+                    using var picture = Record(reflected.Items);
+                    canvas.DrawPicture(picture);
+                    Reflection(reflected.Reflection, picture);
                     break;
+                }
                 case CurveItem curve:
                 {
                     using var path = new SKPath();
@@ -379,8 +390,8 @@ public static class SkiaScene
                 };
                 using var builder = new SKTextBlobBuilder();
                 var run = builder.AllocatePositionedRun(face, glyphs.Length);
-                var ids = run.GetGlyphSpan();
-                var points = run.GetPositionSpan();
+                var ids = run.Glyphs;
+                var points = run.Positions;
                 for (var i = 0; i < glyphs.Length; i++)
                 {
                     ids[i] = (ushort)glyphs[i].Id;
@@ -456,8 +467,8 @@ public static class SkiaScene
                 using var face = new SKFont(typeface, Px(item.Size)) { Subpixel = true, LinearMetrics = true, Hinting = SKFontHinting.None, Edging = SKFontEdging.Antialias };
                 using var builder = new SKTextBlobBuilder();
                 var run = builder.AllocatePositionedRun(face, 1);
-                run.GetGlyphSpan()[0] = (ushort)item.Glyph;
-                run.GetPositionSpan()[0] = new SKPoint(Px(item.X), Px(item.Y));
+                run.Glyphs[0] = (ushort)item.Glyph;
+                run.Positions[0] = new SKPoint(Px(item.X), Px(item.Y));
                 using var blob = builder.Build();
                 if (blob != null)
                     canvas.DrawText(blob, 0, 0, fill);
@@ -484,8 +495,8 @@ public static class SkiaScene
                 using var face = new SKFont(typeface, Px(label.Size)) { Subpixel = true, LinearMetrics = true, Hinting = SKFontHinting.None, Edging = SKFontEdging.Antialias };
                 using var builder = new SKTextBlobBuilder();
                 var run = builder.AllocatePositionedRun(face, glyphs.Length);
-                var ids = run.GetGlyphSpan();
-                var points = run.GetPositionSpan();
+                var ids = run.Glyphs;
+                var points = run.Positions;
                 for (var i = 0; i < glyphs.Length; i++)
                 {
                     ids[i] = (ushort)glyphs[i].Id;
@@ -527,6 +538,138 @@ public static class SkiaScene
                 canvas.DrawPath(path, pen);
             }
         }
+
+        /// <summary>
+        /// Items recorded as a picture in this canvas's coordinates (bounded by what they draw), for drawing them through
+        /// an image filter or more than once.
+        /// </summary>
+        SKPicture Record(List<SceneItem> items)
+        {
+            using var recorder = new SKPictureRecorder();
+            // With a bounding box hierarchy the picture's bounds shrink to what it draws.
+            var recording = recorder.BeginRecording(SKRect.Create(-1e6f, -1e6f, 2e6f, 2e6f), useRTree: true);
+            // The recording starts at this canvas's origin; patterns still align to the page.
+            var at = page.TryInvert(out var inverse) ? inverse.PreConcat(canvas.TotalMatrix) : canvas.TotalMatrix;
+            var origin = at.TryInvert(out var back) ? back : SKMatrix.Identity;
+            new Drawer(recording, statistics, origin, pictures).Draw(items);
+            return recorder.EndRecording();
+        }
+
+        /// <summary>Items drawn through what an effect list draws (see Effects), as they are without one.</summary>
+        void Effected(EffectModel? effects, List<SceneItem> items)
+        {
+            if (effects == null)
+            {
+                Draw(items);
+                return;
+            }
+            using var picture = Record(items);
+            Effects(effects, picture);
+        }
+
+        /// <summary>
+        /// A picture drawn with an effect list (see EffectModel), as SVG's filter primitives draw it (see SvgEffects.Filter):
+        /// its shadow and glow behind it, the picture itself, its inner shadow on it. The picture goes through a filter
+        /// only where it is blurred or its edges are softened, so that its text and pictures stay what they are.
+        /// </summary>
+        void Effects(EffectModel model, SKPicture picture)
+        {
+            void Through(SKImageFilter? filter)
+            {
+                if (filter == null)
+                    return;
+                using var paint = new SKPaint { ImageFilter = filter };
+                canvas.DrawPicture(picture, paint);
+            }
+            Through(Outer(model));
+            if (model.Source)
+            {
+                if (Own(model) is { } own)
+                    Through(own);
+                else
+                    canvas.DrawPicture(picture);
+            }
+            Through(Inner(model));
+        }
+
+        /// <summary>The filter of an effect list's shadow and glow, merged in this order; null without them.</summary>
+        static SKImageFilter? Outer(EffectModel model)
+        {
+            var layers = new List<SKImageFilter>();
+            if (model.Shadow is { } shadow)
+                layers.Add(SKImageFilter.CreateDropShadowOnly((float)shadow.Dx, (float)shadow.Dy, (float)shadow.Sigma, (float)shadow.Sigma, SkiaScene.Color(shadow.Color)));
+            if (model.Glow is { } glow)
+            {
+                // The silhouette made opaque wherever it is not clear, grown by four rectangles whose corners lie on a circle.
+                var solid = SKImageFilter.CreateColorFilter(SKColorFilter.CreateColorMatrix([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 0]));
+                var grown = new SKImageFilter[4];
+                for (var k = 0; k < 4; k++)
+                {
+                    var angle = (11.25 + 22.5 * k) * Math.PI / 180;
+                    grown[k] = SKImageFilter.CreateDilate((float)(glow.Dilate * Math.Cos(angle)), (float)(glow.Dilate * Math.Sin(angle)), solid);
+                }
+                layers.Add(Colored(glow.Color, SKImageFilter.CreateBlur((float)glow.Sigma, (float)glow.Sigma, SKImageFilter.CreateMerge(grown))));
+            }
+            return layers.Count switch { 0 => null, 1 => layers[0], _ => SKImageFilter.CreateMerge([.. layers]) };
+        }
+
+        /// <summary>The filter of an effect list's blur and soft edges on the drawing itself; null without them.</summary>
+        static SKImageFilter? Own(EffectModel model)
+        {
+            if (model.Blur == null && model.SoftEdge == null)
+                return null;
+            var own = model.Blur is { } blur ? SKImageFilter.CreateBlur((float)blur, (float)blur) : SKImageFilter.CreateOffset(0, 0);
+            if (model.SoftEdge is { } soft)
+            {
+                var edge = SKImageFilter.CreateBlur((float)soft.Sigma, (float)soft.Sigma, SKImageFilter.CreateErode((float)soft.Erode, (float)soft.Erode, Alpha()));
+                own = SKImageFilter.CreateBlendMode(SKBlendMode.SrcIn, edge, own);
+            }
+            return own;
+        }
+
+        /// <summary>The filter of an effect list's inner shadow: what lies outside the silhouette, blurred, moved and colored, kept within it.</summary>
+        static SKImageFilter? Inner(EffectModel model)
+        {
+            if (model.InnerShadow is not { } inner)
+                return null;
+            var outside = SKImageFilter.CreateBlendMode(SKBlendMode.SrcOut, Alpha(), SKImageFilter.CreateShader(SKShader.CreateColor(SKColors.Black)));
+            var moved = SKImageFilter.CreateOffset((float)inner.Dx, (float)inner.Dy, SKImageFilter.CreateBlur((float)inner.Sigma, (float)inner.Sigma, outside));
+            return SKImageFilter.CreateBlendMode(SKBlendMode.SrcIn, Alpha(), Colored(inner.Color, moved));
+        }
+
+        /// <summary>The drawing's alpha alone, in black (SVG's SourceAlpha).</summary>
+        static SKImageFilter Alpha() =>
+            SKImageFilter.CreateColorFilter(SKColorFilter.CreateColorMatrix([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]));
+
+        /// <summary>A color where the input is, as opaque as it is.</summary>
+        static SKImageFilter Colored(RgbColor color, SKImageFilter input) =>
+            SKImageFilter.CreateColorFilter(SKColorFilter.CreateBlendMode(SkiaScene.Color(color), SKBlendMode.SrcIn), input);
+
+        /// <summary>
+        /// A reflection of what a picture holds: its copy under the reflection's transform, blurred, faded by a white
+        /// gradient's alpha along the fade (see SvgEffects.ReflectionOf).
+        /// </summary>
+        void Reflection(ReflectionModel reflection, SKPicture picture)
+        {
+            var transform = Matrix(reflection.Transform);
+            var bounds = transform.MapRect(picture.CullRect);
+            bounds.Inflate((float)(3 * reflection.Sigma + 1), (float)(3 * reflection.Sigma + 1));
+            canvas.SaveLayer(bounds, null);
+            using (var blur = reflection.Blurred ? new SKPaint { ImageFilter = SKImageFilter.CreateBlur((float)reflection.Sigma, (float)reflection.Sigma) } : null)
+                canvas.DrawPicture(picture, in transform, blur);
+            using var fade = new SKPaint
+            {
+                Shader = SKShader.CreateLinearGradient(new SKPoint((float)reflection.From.X, (float)reflection.From.Y), new SKPoint((float)reflection.To.X, (float)reflection.To.Y),
+                    [SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(reflection.FromAlpha, 0, 1) * 255)), SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(reflection.ToAlpha, 0, 1) * 255))],
+                    SKShaderTileMode.Clamp),
+                BlendMode = SKBlendMode.DstIn,
+            };
+            canvas.DrawRect(bounds, fade);
+            canvas.Restore();
+        }
+
+        /// <summary>A decoded picture: an image, or an SVG picture's drawing.</summary>
+        internal readonly record struct Decoded(SKImage? Image, SvgDrawing? Drawing);
 
         void ShapeEllipse(ShapeEllipseItem item)
         {
@@ -573,11 +716,28 @@ public static class SkiaScene
                     return new SKPaint { Shader = shader, Style = SKPaintStyle.Fill, IsAntialias = true };
                 }
                 case PatternFill pattern:
-                    statistics.Paints++;
-                    return Brush(new RgbColor((pattern.Foreground.R + pattern.Background.R) / 2, (pattern.Foreground.G + pattern.Background.G) / 2,
-                        (pattern.Foreground.B + pattern.Background.B) / 2, Math.Max(pattern.Foreground.A, pattern.Background.A)));
+                    return Pattern(pattern);
                 case SlideFill slide:
                     return Paint(slide.Fill, bounds);
+                case PictureFill { Tiling: { } tile, NaturalSize: { W: > 0, H: > 0 } size } picture when Picture(picture.Image).Image is { } image:
+                {
+                    // Tiles of the picture's own size times the scale, aligned to a corner, an edge or the middle of
+                    // what is filled and offset; flips mirror every other tile (see SvgPaint.Tiled).
+                    var (tw, th) = (size.W * tile.Sx, size.H * tile.Sy);
+                    var (w, h) = (bounds.Width, bounds.Height);
+                    var ax = tile.Align switch { "t" or "ctr" or "b" => (w - tw) / 2, "tr" or "r" or "br" => w - tw, _ => 0 };
+                    var ay = tile.Align switch { "l" or "ctr" or "r" => (h - th) / 2, "bl" or "b" or "br" => h - th, _ => 0 };
+                    var placed = SKMatrix.CreateScale((float)(tw / image.Width), (float)(th / image.Height))
+                        .PostConcat(SKMatrix.CreateTranslation((float)(bounds.Left + ax + tile.Tx * PxPerPt), (float)(bounds.Top + ay + tile.Ty * PxPerPt)));
+                    if (picture.Filter != null)
+                        statistics.Effects++;
+                    return new SKPaint
+                    {
+                        Shader = image.ToShader(tile.Flip is "x" or "xy" ? SKShaderTileMode.Mirror : SKShaderTileMode.Repeat,
+                            tile.Flip is "y" or "xy" ? SKShaderTileMode.Mirror : SKShaderTileMode.Repeat, Sampling, placed),
+                        Style = SKPaintStyle.Fill, IsAntialias = true,
+                    };
+                }
                 case PictureFill:
                     statistics.Pictures++;
                     return null;
@@ -625,40 +785,93 @@ public static class SkiaScene
             Draw(group.Items);
         }
 
-        void Picture(PictureItem picture)
+        /// <summary>
+        /// A preset pattern (or a pattern of its own bits) as tiles of 8 × 8 bits, a bit a pixel (Cell pixels for Word's
+        /// VML patterns), in the foreground where set, aligned to the page as PowerPoint aligns them to the slide (see
+        /// SvgPaint.Pattern).
+        /// </summary>
+        SKPaint Pattern(PatternFill pattern)
         {
-            if (!pictures.TryGetValue(picture.Source, out var image))
-                pictures[picture.Source] = image = Decode(picture.Source);
-            if (image == null)
+            var tile = pattern.Bits ?? PatternPresets.Tiles.GetValueOrDefault(pattern.Preset) ?? PatternPresets.Tiles["pct50"];
+            using var bitmap = new SKBitmap(new SKImageInfo(8, 8, SKColorType.Rgba8888, SKAlphaType.Premul));
+            var (fore, back) = (SkiaScene.Color(pattern.Foreground), SkiaScene.Color(pattern.Background));
+            for (var row = 0; row < 8; row++)
+                for (var column = 0; column < 8; column++)
+                    bitmap.SetPixel(column, row, (tile[row] & (0x80 >> column)) != 0 ? fore : back);
+            // Where the drawing's origin lies on the page gives the tiles' phase.
+            var onPage = page.Invert().PreConcat(canvas.TotalMatrix);
+            var period = 8 * pattern.Cell;
+            double Phase(double v) => ((-v % period) + period) % period;
+            var placed = SKMatrix.CreateScale((float)pattern.Cell, (float)pattern.Cell)
+                .PostConcat(SKMatrix.CreateTranslation((float)Phase(onPage.TransX), (float)Phase(onPage.TransY)));
+            using var image = SKImage.FromBitmap(bitmap);
+            return new SKPaint
+            {
+                Shader = image.ToShader(SKShaderTileMode.Repeat, SKShaderTileMode.Repeat, new SKSamplingOptions(SKFilterMode.Nearest), placed),
+                Style = SKPaintStyle.Fill, IsAntialias = true,
+            };
+        }
+
+        void Picture(PictureItem item)
+        {
+            var decoded = Picture(item.Source);
+            if (decoded is { Image: null, Drawing: null })
             {
                 statistics.Pictures++;
                 return;
             }
-            if (picture.Filter.Length > 0)
+            if (item.Filter.Length > 0)
                 statistics.Effects++;
             canvas.Save();
-            using (var clip = SKPath.ParseSvgPathData(picture.ClipPath))
+            using (var clip = SKPath.ParseSvgPathData(item.ClipPath))
             {
                 if (clip != null)
                     canvas.ClipPath(clip, antialias: true);
             }
-            canvas.DrawImage(image, SKRect.Create((float)picture.X, (float)picture.Y, (float)picture.Width, (float)picture.Height), Sampling);
+            var rect = SKRect.Create((float)item.X, (float)item.Y, (float)item.Width, (float)item.Height);
+            if (decoded.Image is { } image)
+                canvas.DrawImage(image, rect, Sampling);
+            else if (decoded.Drawing is { Size: { Width: > 0, Height: > 0 } size } drawing)
+            {
+                // An SVG picture of a size (a viewBox, or a width and a height) stretched over the rectangle, as the
+                // HTML's image with preserveAspectRatio none; one without a size in its own pixels from the rectangle's
+                // corner, cut at it (as the browser draws it: LibreOffice's extras-uiwriter/tdf157131).
+                canvas.Translate(rect.Left, rect.Top);
+                if (drawing.Sized)
+                    canvas.Scale(rect.Width / size.Width, rect.Height / size.Height);
+                else
+                    canvas.ClipRect(SKRect.Create(rect.Width, rect.Height));
+                canvas.DrawPicture(drawing.Picture);
+            }
             canvas.Restore();
         }
 
-        /// <summary>A picture of a data URI in a format Skia decodes, else null.</summary>
-        static SKImage? Decode(string uri)
+        Decoded Picture(string uri)
+        {
+            if (!pictures.TryGetValue(uri, out var decoded))
+                pictures[uri] = decoded = Decode(uri);
+            return decoded;
+        }
+
+        /// <summary>
+        /// A picture of a data URI: an image in a format Skia decodes, or an SVG picture (a document's own, a metafile as
+        /// the converter writes it, see SvgDrawing); neither for other formats.
+        /// </summary>
+        static Decoded Decode(string uri)
         {
             if (!uri.StartsWith("data:", StringComparison.Ordinal) || uri.IndexOf(',') is not (> 0 and var comma)
                 || !uri.AsSpan(0, comma).EndsWith(";base64", StringComparison.Ordinal))
-                return null;
+                return default;
             try
             {
-                return SKImage.FromEncodedData(Convert.FromBase64String(uri[(comma + 1)..]));
+                var data = Convert.FromBase64String(uri[(comma + 1)..]);
+                if (!uri.AsSpan(5).StartsWith("image/svg+xml", StringComparison.Ordinal))
+                    return new Decoded(SKImage.FromEncodedData(data), null);
+                return SvgDrawing.Load(data) is { } drawing ? new Decoded(null, drawing) : default;
             }
             catch (FormatException)
             {
-                return null;
+                return default;
             }
         }
     }

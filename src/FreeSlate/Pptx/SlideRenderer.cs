@@ -514,7 +514,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var (rx, ry) = (Math.Min(0, gx), Math.Min(0, gy));
             effectRegion = (rx, ry, Math.Max(pw, gx + gw) - rx, Math.Max(ph, gy + gh) - ry);
         }
-        var effectFilter = SvgEffects.Filter(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0,
+        var effectFilterOf = SvgEffects.FilterOf(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0,
             parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All, frame: matrix, region: effectRegion);
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new List<SceneItem>();
@@ -541,9 +541,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             shapeItems = [new SvgGroupItem(" data-bg=\"\"", shapeItems)];
         // A scaled, skewed or flipped shadow is a transformed copy of the shape behind it.
         if (!solidBody && opaque && shapeItems.Count > 0 && SvgEffects.Shadow(effects, slide.Colors, pw, ph, defs, matrix) is { } shadowCopy)
-            body.Add(new FilterItem(shadowCopy.Filter, effects!, [new TransformItem(shadowCopy.Transform, shapeItems)]));
-        if (effectFilter != null && opaque)
-            body.Add(new FilterItem(effectFilter, effects!, shapeItems));
+            body.Add(new FilterItem(shadowCopy.Filter, shadowCopy.Model, [new TransformItem(shadowCopy.Transform, shapeItems)]));
+        if (effectFilterOf is { } shapeFilter && opaque)
+            body.Add(new FilterItem(shapeFilter.Id, shapeFilter.Model, shapeItems));
         else
             body.AddRange(shapeItems);
         if (shape.Name.LocalName == "sp")
@@ -622,8 +622,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             {
                 if (faceOpacity < 1 && textMarkup.Length > 0)
                     textMarkup = $"<g filter=\"url(#{LitFilter(frontShade, defs)})\">{textMarkup}</g>";
-                if (effectFilter != null && !opaque && textMarkup.Length > 0)
-                    body.Add(new FilterItem(effectFilter, effects!, [new MarkupItem(textMarkup)]));
+                if (effectFilterOf is { } textFilter && !opaque && textMarkup.Length > 0)
+                    body.Add(new FilterItem(textFilter.Id, textFilter.Model, [new MarkupItem(textMarkup)]));
                 else
                     AddMarkup(body, textMarkup);
             }
@@ -632,7 +632,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Replace(BackdropTextToken, "");
         var content = body;
         if (body.Count > 0 && SvgEffects.ReflectionOf(effects, (0, 0, pw, ph), defs, matrix) is { } reflected)
-            content = [new ReflectionItem(reflected.Id, reflected.Transform, reflected.Blurred, body)];
+            content = [new ReflectionItem(reflected, body)];
         if (dag != null)
         {
             // An effect graph (catalog: effect.dag) draws the shape from its fill, its line and its text.

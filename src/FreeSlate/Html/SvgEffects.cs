@@ -50,7 +50,85 @@ public static class SvgEffects
     /// dilated by 0.46 r and blurred by r / 6 at the outer scale (measured).</param>
     /// <param name="flat">Outer effects of the flat shape (a 3D scene's backdrop), with a flat shape's glow.</param>
     public static string? Filter(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, bool boundingBox = false, double stroke = 0,
-        Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null, Matrix? frame = null, TextScale? text = null, bool flat = false)
+        Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null, Matrix? frame = null, TextScale? text = null, bool flat = false) =>
+        FilterOf(effectLst, colors, width, height, defs, boundingBox, stroke, parts, region, frame, text, flat)?.Id;
+
+    /// <summary>Like <see cref="Filter"/>: the filter's id and what it draws.</summary>
+    public static (string Id, EffectModel Model)? FilterOf(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs,
+        bool boundingBox = false, double stroke = 0, Parts parts = Parts.All, (double X, double Y, double W, double H)? region = null, Matrix? frame = null,
+        TextScale? text = null, bool flat = false)
+    {
+        if (Model(effectLst, colors, stroke, parts, frame, text, flat) is not { } built)
+            return null;
+        var (model, extent) = built;
+        var id = $"e{Interlocked.Increment(ref nextId)}";
+        var steps = new StringBuilder();
+        var merge = new List<string>();
+        var source = "SourceGraphic";
+        if (model.Blur is { } blur)
+        {
+            steps.Append($"<feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"{Units.Css(blur)}\" result=\"blur\"/>");
+            source = "blur";
+        }
+        if (model.SoftEdge is { } soft)
+        {
+            steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"erode\" radius=\"{Units.Css(soft.Erode)}\" result=\"se\"/>");
+            steps.Append($"<feGaussianBlur in=\"se\" stdDeviation=\"{Units.Css(soft.Sigma)}\" result=\"sb\"/>");
+            steps.Append($"<feComposite in=\"{source}\" in2=\"sb\" operator=\"in\" result=\"soft\"/>");
+            source = "soft";
+        }
+        if (model.Glow is { } glow)
+        {
+            steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"ga\"><feFuncA type=\"linear\" slope=\"255\"/></feComponentTransfer>");
+            // Grown round, as a disc grows it (see Model): SVG dilates by rectangles only, so the union of four whose
+            // corners lie on the circle.
+            for (var k = 0; k < 4; k++)
+            {
+                var angle = (11.25 + 22.5 * k) * Math.PI / 180;
+                steps.Append($"<feMorphology in=\"ga\" operator=\"dilate\" radius=\"{Units.Css(glow.Dilate * Math.Cos(angle))} {Units.Css(glow.Dilate * Math.Sin(angle))}\" result=\"gd{k}\"/>");
+            }
+            steps.Append("<feMerge result=\"gd\"><feMergeNode in=\"gd0\"/><feMergeNode in=\"gd1\"/><feMergeNode in=\"gd2\"/><feMergeNode in=\"gd3\"/></feMerge>");
+            steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(glow.Sigma)}\" result=\"gb\"/>");
+            steps.Append($"<feFlood flood-color=\"{glow.Color.ToHex()}\" flood-opacity=\"{Units.Css4(glow.Color.A)}\"/>");
+            steps.Append("<feComposite in2=\"gb\" operator=\"in\" result=\"glow\"/>");
+            merge.Add("glow");
+        }
+        if (model.Shadow is { } shadow)
+        {
+            steps.Append($"<feGaussianBlur in=\"SourceAlpha\" stdDeviation=\"{Units.Css(shadow.Sigma)}\"/>");
+            steps.Append($"<feOffset dx=\"{Units.Css(shadow.Dx)}\" dy=\"{Units.Css(shadow.Dy)}\" result=\"so\"/>");
+            steps.Append($"<feFlood flood-color=\"{shadow.Color.ToHex()}\" flood-opacity=\"{Units.Css4(shadow.Color.A)}\"/>");
+            steps.Append("<feComposite in2=\"so\" operator=\"in\" result=\"shadow\"/>");
+            merge.Insert(0, "shadow");
+        }
+        if (model.Source)
+            merge.Add(source);
+        if (model.InnerShadow is { } inner)
+        {
+            steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"io\"><feFuncA type=\"table\" tableValues=\"1 0\"/></feComponentTransfer>");
+            steps.Append($"<feGaussianBlur in=\"io\" stdDeviation=\"{Units.Css(inner.Sigma)}\"/>");
+            steps.Append($"<feOffset dx=\"{Units.Css(inner.Dx)}\" dy=\"{Units.Css(inner.Dy)}\" result=\"ib\"/>");
+            steps.Append($"<feFlood flood-color=\"{inner.Color.ToHex()}\" flood-opacity=\"{Units.Css4(inner.Color.A)}\"/>");
+            steps.Append("<feComposite in2=\"ib\" operator=\"in\"/>");
+            steps.Append("<feComposite in2=\"SourceAlpha\" operator=\"in\" result=\"inner\"/>");
+            merge.Add("inner");
+        }
+
+        var (rx, ry, rw, rh) = region ?? (0, 0, width, height);
+        defs.Append(boundingBox
+            ? $"<filter id=\"{id}\" x=\"-0.5\" y=\"-1\" width=\"2\" height=\"3\" color-interpolation-filters=\"sRGB\">"
+            : $"<filter id=\"{id}\" filterUnits=\"userSpaceOnUse\" x=\"{Units.Css(rx - extent)}\" y=\"{Units.Css(ry - extent)}\" " +
+              $"width=\"{Units.Css(rw + 2 * extent)}\" height=\"{Units.Css(rh + 2 * extent)}\" color-interpolation-filters=\"sRGB\">");
+        defs.Append(steps);
+        defs.Append("<feMerge>").Append(string.Concat(merge.Select(m => $"<feMergeNode in=\"{m}\"/>"))).Append("</feMerge></filter>");
+        return (id, model);
+    }
+
+    /// <summary>
+    /// What the effects of <paramref name="effectLst"/> draw (see <see cref="Filter"/> for the parameters), and how far
+    /// beyond the drawing they reach (pixels), or null where they draw nothing.
+    /// </summary>
+    static (EffectModel Model, double Extent)? Model(XElement? effectLst, ColorContext colors, double stroke, Parts parts, Matrix? frame, TextScale? text, bool flat)
     {
         if (effectLst == null)
             return null;
@@ -69,28 +147,19 @@ public static class SvgEffects
         if (shadow == null && glow == null && soft == null && inner == null && blurEffect == null)
             return null;
 
-        var id = $"e{Interlocked.Increment(ref nextId)}";
-        var steps = new StringBuilder();
-        var merge = new List<string>();
+        var model = new EffectModel { Source = own };
         var extent = 0.0;
-        var source = "SourceGraphic";
-
         if (blurEffect != null)
         {
             // Blur (a:blur, catalog: effect.blur): without grow the result is cut at the shape's outer edge.
             var r = Units.ToPx(blurEffect.Long("rad") ?? 0);
-            steps.Append($"<feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"{Units.Css(r / 3)}\" result=\"blur\"/>");
-            source = "blur";
+            model = model with { Blur = r / 3 };
             extent = blurEffect.Bool("grow") ?? true ? r * 1.5 : stroke / 2;
         }
-
         if (soft != null)
         {
             var r = Units.ToPx(soft.Long("rad") ?? 0);
-            steps.Append($"<feMorphology in=\"SourceAlpha\" operator=\"erode\" radius=\"{Units.Css(r * 0.85)}\" result=\"se\"/>");
-            steps.Append($"<feGaussianBlur in=\"se\" stdDeviation=\"{Units.Css(r / 3)}\" result=\"sb\"/>");
-            steps.Append($"<feComposite in=\"{source}\" in2=\"sb\" operator=\"in\" result=\"soft\"/>");
-            source = "soft";
+            model = model with { SoftEdge = (r * 0.85, r / 3) };
         }
         if (glow != null)
         {
@@ -100,22 +169,11 @@ public static class SvgEffects
             var (dilate, sigma) = text is { } scale ? (0.46 * r * scale.Outer, r * scale.Outer / 6) : own || flat ? (r / 2, r / 6) : (r / 4, r / 8);
             // The glow grows from the shape's whole silhouette, also where its fill is mostly transparent (Word's PDF of
             // docx/external/libreoffice/extras-ooxmlexport/fdo66688: a 5 pt glow around a white fill of 20 % alpha as
-            // strong as around an opaque one).
-            steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"ga\"><feFuncA type=\"linear\" slope=\"255\"/></feComponentTransfer>");
-            // Grown round, as a disc grows it: corners and slanted edges no further than straight ones (Word's PDFs of
-            // LibreOffice's extras-ooxmlexport/tdf143219ContourWrap_glow_rotate: around a turned rectangle the glow's
-            // half alpha 17.9 pt out, a square kernel's 23.2; docx/local/ggl-*: round corners). SVG dilates by
-            // rectangles only, so the union of four whose corners lie on the circle.
-            for (var k = 0; k < 4; k++)
-            {
-                var angle = (11.25 + 22.5 * k) * Math.PI / 180;
-                steps.Append($"<feMorphology in=\"ga\" operator=\"dilate\" radius=\"{Units.Css(dilate * Math.Cos(angle))} {Units.Css(dilate * Math.Sin(angle))}\" result=\"gd{k}\"/>");
-            }
-            steps.Append("<feMerge result=\"gd\"><feMergeNode in=\"gd0\"/><feMergeNode in=\"gd1\"/><feMergeNode in=\"gd2\"/><feMergeNode in=\"gd3\"/></feMerge>");
-            steps.Append($"<feGaussianBlur in=\"gd\" stdDeviation=\"{Units.Css(sigma)}\" result=\"gb\"/>");
-            steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
-            steps.Append("<feComposite in2=\"gb\" operator=\"in\" result=\"glow\"/>");
-            merge.Add("glow");
+            // strong as around an opaque one), grown round, as a disc grows it: corners and slanted edges no further
+            // than straight ones (Word's PDFs of LibreOffice's extras-ooxmlexport/tdf143219ContourWrap_glow_rotate:
+            // around a turned rectangle the glow's half alpha 17.9 pt out, a square kernel's 23.2; docx/local/ggl-*:
+            // round corners).
+            model = model with { Glow = (dilate, sigma, color) };
             extent = Math.Max(extent, r * 1.5);
         }
         if (shadow != null)
@@ -131,17 +189,11 @@ public static class SvgEffects
                 back = back.Invert();
                 (dx, dy) = (back.A * dx + back.C * dy, back.B * dx + back.D * dy);
             }
-            steps.Append($"<feGaussianBlur in=\"SourceAlpha\" stdDeviation=\"{Units.Css(blur * 0.35)}\"/>");
-            steps.Append($"<feOffset dx=\"{Units.Css(dx)}\" dy=\"{Units.Css(dy)}\" result=\"so\"/>");
-            steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
-            steps.Append("<feComposite in2=\"so\" operator=\"in\" result=\"shadow\"/>");
-            merge.Insert(0, "shadow");
+            model = model with { Shadow = (dx, dy, blur * 0.35, color) };
             // The outline's outer half casts its shadow too (docx/external/libreoffice/extras-ooxmlexport/n705956-2: a
             // 3 pt outline's shadow 1 pt off was cut at the box).
             extent = Math.Max(extent, distance + blur * 2 + stroke / 2);
         }
-        if (own)
-            merge.Add(source);
         if (inner != null)
         {
             // Inner shadow: the shape's outside, blurred and moved against the direction, colored and kept inside
@@ -150,29 +202,15 @@ public static class SvgEffects
             var distance = Units.ToPx(inner.Long("dist") ?? 0) * (text?.Inner ?? 1);
             var direction = (inner.Long("dir") ?? 0) / 60000.0 * Math.PI / 180;
             var color = colors.ResolveChild(inner) ?? RgbColor.Black;
-            steps.Append("<feComponentTransfer in=\"SourceAlpha\" result=\"io\"><feFuncA type=\"table\" tableValues=\"1 0\"/></feComponentTransfer>");
-            steps.Append($"<feGaussianBlur in=\"io\" stdDeviation=\"{Units.Css(blur * 0.35)}\"/>");
-            steps.Append($"<feOffset dx=\"{Units.Css(-distance * Math.Cos(direction))}\" dy=\"{Units.Css(-distance * Math.Sin(direction))}\" result=\"ib\"/>");
-            steps.Append($"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>");
-            steps.Append("<feComposite in2=\"ib\" operator=\"in\"/>");
-            steps.Append("<feComposite in2=\"SourceAlpha\" operator=\"in\" result=\"inner\"/>");
-            merge.Add("inner");
+            model = model with { InnerShadow = (-distance * Math.Cos(direction), -distance * Math.Sin(direction), blur * 0.35, color) };
             // The outside that casts the shadow must lie within the filter's region.
             extent = Math.Max(extent, distance + blur * 1.2 + 1);
         }
-
-        var (rx, ry, rw, rh) = region ?? (0, 0, width, height);
-        defs.Append(boundingBox
-            ? $"<filter id=\"{id}\" x=\"-0.5\" y=\"-1\" width=\"2\" height=\"3\" color-interpolation-filters=\"sRGB\">"
-            : $"<filter id=\"{id}\" filterUnits=\"userSpaceOnUse\" x=\"{Units.Css(rx - extent)}\" y=\"{Units.Css(ry - extent)}\" " +
-              $"width=\"{Units.Css(rw + 2 * extent)}\" height=\"{Units.Css(rh + 2 * extent)}\" color-interpolation-filters=\"sRGB\">");
-        defs.Append(steps);
-        defs.Append("<feMerge>").Append(string.Concat(merge.Select(m => $"<feMergeNode in=\"{m}\"/>"))).Append("</feMerge></filter>");
-        return id;
+        return (model, extent);
     }
 
-    /// <summary>A shadow drawn as a copy of the shape: the filter that blurs and colors it and the copy's transform.</summary>
-    public sealed record ShadowCopy(string Filter, Matrix Transform);
+    /// <summary>A shadow drawn as a copy of the shape: the filter that blurs and colors it, the copy's transform and what the filter draws.</summary>
+    public sealed record ShadowCopy(string Filter, Matrix Transform, EffectModel Model);
 
     /// <summary>Whether an outer shadow scales, skews or flips the shape.</summary>
     static bool Transformed(XElement shadow) =>
@@ -224,7 +262,7 @@ public static class SvgEffects
                     $"<feGaussianBlur in=\"SourceAlpha\" stdDeviation=\"{Units.Css(blur * 0.35)}\" result=\"sb\"/>" +
                     $"<feFlood flood-color=\"{color.ToHex()}\" flood-opacity=\"{Units.Css4(color.A)}\"/>" +
                     "<feComposite in2=\"sb\" operator=\"in\"/></filter>");
-        return new ShadowCopy(id, transform);
+        return new ShadowCopy(id, transform, new EffectModel { Shadow = (0, 0, blur * 0.35, color), Source = false });
     }
 
     /// <summary>
@@ -242,20 +280,20 @@ public static class SvgEffects
     {
         if (effectLst?.Element(Ns.A + "reflection") == null || markup.Length == 0)
             return markup;
-        var (n, transform, blurred) = ReflectionOf(effectLst, box, defs, frame, distanceScale, blurScale)!.Value;
-        var reflected = Reflected(n, transform, blurred);
+        var reflection = ReflectionOf(effectLst, box, defs, frame, distanceScale, blurScale)!;
+        var reflected = Reflected(reflection.Id, reflection.Transform, reflection.Blurred);
         if (original)
-            return $"<g id=\"rf{n}\">{markup}</g>{reflected}";
-        defs.Append($"<g id=\"rf{n}\">{markup}</g>");
+            return $"<g id=\"rf{reflection.Id}\">{markup}</g>{reflected}";
+        defs.Append($"<g id=\"rf{reflection.Id}\">{markup}</g>");
         return reflected;
     }
 
     /// <summary>
     /// A reflection's definitions (see <see cref="Reflection"/>), appended to <paramref name="defs"/>: its fade as a
-    /// mask and its blur; returns their number, the copy's transform and whether it is blurred, or null without a
-    /// reflection. What is reflected is the group rf + number (see <see cref="Reflected"/>).
+    /// mask and its blur; returns the reflection with their number, or null without a reflection. What is reflected
+    /// is the group rf + number (see <see cref="Reflected"/>).
     /// </summary>
-    public static (int Id, Matrix Transform, bool Blurred)? ReflectionOf(XElement? effectLst, (double X, double Y, double W, double H) box, StringBuilder defs,
+    public static ReflectionModel? ReflectionOf(XElement? effectLst, (double X, double Y, double W, double H) box, StringBuilder defs,
         Matrix? frame = null, double distanceScale = 1, double blurScale = 1)
     {
         var reflection = effectLst?.Element(Ns.A + "reflection");
@@ -303,7 +341,7 @@ public static class SvgEffects
                     $"<rect x=\"{Units.Css(box.X - margin)}\" y=\"{Units.Css(box.Y - margin)}\" width=\"{Units.Css(box.W + 2 * margin)}\" height=\"{Units.Css(box.H + 2 * margin)}\" fill=\"url(#rg{n})\"/></mask>");
         if (blur > 0)
             defs.Append($"<filter id=\"rb{n}\" x=\"-0.2\" y=\"-0.2\" width=\"1.4\" height=\"1.4\"><feGaussianBlur stdDeviation=\"{Units.Css(blur * 0.35)}\"/></filter>");
-        return (n, transform, blur > 0);
+        return new ReflectionModel(n, transform, blur > 0, blur * 0.35, (fx * start, fy * start), (fx * end, fy * end), stA, endA);
     }
 
     /// <summary>The reflected copy of the group rf + number, through its definitions (see <see cref="ReflectionOf"/>).</summary>

@@ -1984,13 +1984,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // as a picture, its outline lighter than Word's vector text (LibreOffice's extras-ooxmlexport/
         // tdf166325_scheme_color: a 0.5 pt text outline with a shadow). Effects on the text itself filter it.
         if (Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, new StringBuilder(), boundingBox: true, text: scale, parts: Html.SvgEffects.Parts.Shape) == null
-            && Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale, parts: Html.SvgEffects.Parts.Outer) is { } outer)
+            && Html.SvgEffects.FilterOf(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale, parts: Html.SvgEffects.Parts.Outer) is { } outer)
         {
             // The copy refers to the text, which so stands in the page once (to select, search and read).
-            text = new FilterCopyItem($"tx{++effectCopies}", outer, effects, [text]);
+            text = new FilterCopyItem($"tx{++effectCopies}", outer.Id, outer.Model, [text]);
         }
-        else if (Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale) is { } filter)
-            text = new FilterItem(filter, effects, [text]);
+        else if (Html.SvgEffects.FilterOf(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale) is { } filter)
+            text = new FilterItem(filter.Id, filter.Model, [text]);
         // Text reflects about its baseline, the box reaching up to the font's ascent (as PowerPoint draws it).
         if (effects.Element(Ns.A + "reflection") is { } reflection)
         {
@@ -1999,7 +1999,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             var height = style.Size * PxPerPt * style.Font.Data.Ascent + distance;
             if (Html.SvgEffects.ReflectionOf(effects, (x * PxPerPt, bottom - height, piece.Width * PxPerPt, height), defs,
                     distanceScale: 0, blurScale: scale.ReflectionBlur) is { } reflected)
-                text = new ReflectionItem(reflected.Id, reflected.Transform, reflected.Blurred, [text]);
+                text = new ReflectionItem(reflected, [text]);
         }
         items.Add(text);
     }

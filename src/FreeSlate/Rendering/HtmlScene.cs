@@ -186,9 +186,9 @@ public static class HtmlScene
                     html.Append("</g>");
                     break;
                 case ReflectionItem reflected:
-                    html.Append($"<g id=\"rf{reflected.Id}\">");
+                    html.Append($"<g id=\"rf{reflected.Reflection.Id}\">");
                     Write(reflected.Items, html);
-                    html.Append("</g>").Append(Html.SvgEffects.Reflected(reflected.Id, reflected.Transform, reflected.Blurred));
+                    html.Append("</g>").Append(Html.SvgEffects.Reflected(reflected.Reflection.Id, reflected.Reflection.Transform, reflected.Reflection.Blurred));
                     break;
                 case AltTextItem alt:
                     html.Append($"<div class=\"alt\" role=\"img\" aria-label=\"{WebUtility.HtmlEncode(alt.Text)}\" style=\"left:{Px(alt.X)}px;top:{Px(alt.Y)}px;width:{Px(alt.Width)}px;height:{Px(alt.Height)}px\"></div>");
