@@ -1009,21 +1009,22 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var content = Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading);
                 if (!Rotated(cell) && cell.Blocks.Any(b => b is TableBlock))
                 {
-                    // Laid out again in the state of the layout it was first laid out in.
-                    var (inside, nested, state, cellLeft) = (cellInside, inCell, paragraphs.Settings, textLeft);
+                    // Laid out again in the state of the layout it was first laid out in, under all of its settings: the
+                    // paginator cuts the row under the section's (a cell's lines keep off the line grid where the table
+                    // turned it off; measured with docx/local/nfg-*: lines of a cell 13.8 pt apart under a grid of 18 pt
+                    // on both sides of a cut through its nested table, modes 11 and 15).
+                    var (inside, nested, settings, cellLeft) = (cellInside, inCell, paragraphs.Settings, textLeft);
                     laidAgain[cell] = cuts =>
                     {
                         var was = (cellInside, inCell, paragraphs.Settings);
-                        (cellInside, inCell) = (inside, nested);
-                        paragraphs.Settings = paragraphs.Settings with { Vertical = state.Vertical, TurnEastAsian = state.TurnEastAsian, Unaligned = state.Unaligned };
+                        (cellInside, inCell, paragraphs.Settings) = (inside, nested, settings);
                         try
                         {
                             return Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading, cuts) with { Left = cellLeft, Width = cellWidth };
                         }
                         finally
                         {
-                            (cellInside, inCell) = (was.cellInside, was.inCell);
-                            paragraphs.Settings = paragraphs.Settings with { Vertical = was.Settings.Vertical, TurnEastAsian = was.Settings.TurnEastAsian, Unaligned = was.Settings.Unaligned };
+                            (cellInside, inCell, paragraphs.Settings) = was;
                         }
                     };
                 }

@@ -1830,7 +1830,8 @@ areas:
           docx/external/libreoffice/extras-ooxmlexport/tdf107359-char-pitch 70.4 → 100 %). Lines in table cells snap
           to the line grid only where the document says w:adjustLineHeightInTable (docx/local/ygc-12, -15: 11 pt Yu
           Gothic lines 18.4 pt apart in a cell under an 18 pt grid, two pitches in the body; ygc-12-adj, -15-adj: two
-          pitches in the cell too; tdf128375). Under a grid that snaps characters the cells fill the width the text is
+          pitches in the cell too; tdf128375; docx/local/nfg-*: on both sides of a page break through a nested table,
+          its cell laid out again for the cut under the settings of its first layout). Under a grid that snaps characters the cells fill the width the text is
           laid out in, as many whole ones as fit stretched to it, and a paragraph's last line of Latin text stands
           centered in the whole cells it needs from its start, however the paragraph is aligned and with w:snapToGrid
           off too (docx/local/cglc-snap0: left and right aligned and centered lines of Calibri 11 on 11 pt cells
