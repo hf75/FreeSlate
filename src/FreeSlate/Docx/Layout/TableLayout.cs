@@ -680,14 +680,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>The paragraph layout the cells' text is laid out with.</summary>
     public ParagraphLayout Paragraphs => paragraphs;
 
-    /// <summary>Whether a table nested in a cell is being laid out.</summary>
-    bool inCell;
-
-    /// <summary>The settings the paragraphs of the table or blocks being laid out are laid out under (see Layout, Blocks).</summary>
-    TextSettings settings = new();
-
-    /// <summary>Whether a table cell's blocks are being laid out (not a text box's in it).</summary>
-    bool cellBlocks;
+    /// <summary>
+    /// What the table or blocks being laid out stand in, which the layout passes down instead of keeping it, so that
+    /// what it lays out again later (see CellPart.Cuts, CellPart.Along) is laid out as it was first.
+    /// </summary>
+    /// <param name="Settings">The settings their paragraphs are laid out under (see Layout, Blocks).</param>
+    /// <param name="Nested">Whether the table is nested in a cell.</param>
+    /// <param name="OfCell">Whether the blocks are a table cell's (not a text box's in it).</param>
+    /// <param name="CellInside">The inside of the cell being laid out, between the inner edges of its side lines,
+    /// relative to its text's left: drawings that text goes around stay within it across (see <see cref="CellExclusion"/>).</param>
+    readonly record struct Scope(TextSettings Settings, bool Nested = false, bool OfCell = false, (double Left, double Right)? CellInside = null);
 
     /// <summary>
     /// Whether the table being laid out has its first cell's text at its indent and its percentage width with its
@@ -697,7 +699,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// so the tables of text boxes (core-text/fly-minimal-wrap: a table in a text box in mode 14 has its text at the
     /// box's text).
     /// </summary>
-    bool Legacy => context.Profile.TablesIndentedByText && !inCell;
+    bool Legacy(Scope scope) => context.Profile.TablesIndentedByText && !scope.Nested;
 
     /// <summary>Stands for no paragraph where contextual spacing compares paragraph styles.</summary>
     public const string NoParagraph = "\0";
@@ -750,23 +752,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <param name="before">The style of the paragraph before the table (<see cref="NoParagraph"/> for none), which contextual spacing compares its first paragraph with.</param>
     /// <param name="joined">The bottom lines of a table right before this one (<see cref="TableBox.BottomEdges"/>), which it continues.</param>
     public TableBox Layout(TableModel table, double available, TextSettings settings, PageFields? fields = null, string? before = NoParagraph,
+        IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null) =>
+        Layout(new Scope(settings), table, available, fields, before, joined);
+
+    TableBox Layout(Scope scope, TableModel table, double available, PageFields? fields = null, string? before = NoParagraph,
         IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
         // Lines in table cells snap to the line grid only where the document says w:adjustLineHeightInTable (measured
         // with docx/local/ygc-12, -15: 11 pt Yu Gothic lines 18.4 pt apart in a cell under an 18 pt grid, two pitches
         // in the body; ygc-12-adj, -15-adj: two pitches in the cell too; docx/external/libreoffice/extras-uiwriter/
         // tdf128375).
-        var outer = this.settings;
-        this.settings = context.Profile.AdjustsLineHeightInTables ? settings : settings with { LinePitch = null };
-        TableBox box;
-        try
-        {
-            box = Laid(table, available, fields, before, joined);
-        }
-        finally
-        {
-            this.settings = outer;
-        }
+        var settings = context.Profile.AdjustsLineHeightInTables ? scope.Settings : scope.Settings with { LinePitch = null };
+        var box = Laid(scope with { Settings = settings }, table, available, fields, before, joined);
         // The markup view marks every line of a table whose formatting changed; the balloon hangs from its first line.
         if (table.Change is { } change)
         {
@@ -779,7 +776,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return box;
     }
 
-    TableBox Laid(TableModel table, double available, PageFields? fields, string? before,
+    TableBox Laid(Scope scope, TableModel table, double available, PageFields? fields, string? before,
         IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
         var format = table.Format;
@@ -823,7 +820,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var spacingSet = rows.Count > 0 ? rows[0].Format.CellSpacing ?? format.CellSpacing : format.CellSpacing;
         var spacing = spacingSet ?? 0;
         if (spacingSet != null)
-            return Spaced(table, rows, columns, at, available, spacing, fields, neighbors, origin, span);
+            return Spaced(scope, table, rows, columns, at, available, spacing, fields, neighbors, origin, span);
 
         // Borders: for each row boundary (0 … rows) and grid column the horizontal line, for each row and grid line
         // the vertical one; a cell's own border wins over the table's, two cells' borders are resolved by weight.
@@ -886,7 +883,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // docx/local/tw-12-*, tw-14-*: margins of 0.5 and 8.5 pt reach 0.5 and 8.5 pt past the right margin, in mode 15
         // none; docx/external/libreoffice/core-ooxml-pass/fdo78904_fileHang: 432 pt between the margins, 440.7 pt).
         var reach = 0.0;
-        if (Legacy && format.Justification is not ("center" or "right" or "end") && rows.Count > 0 && rows[0].Cells.Count > 0)
+        if (Legacy(scope) && format.Justification is not ("center" or "right" or "end") && rows.Count > 0 && rows[0].Cells.Count > 0)
         {
             var firstLeft = Margins(rows[0], rows[0].Cells[0], format).Left;
             reach = allowance + Margins(rows[0], rows[0].Cells[^1], format).Right
@@ -897,12 +894,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // twips centered or right aligned span the column and both margins of 5.4 or 10 pt, tac-15 the column;
         // docx/external/libreoffice/extras-ooxmlexport/tdf79329); one of 100 % stays the column's width
         // (extras-ooxmlexport/sdt-company-multipara).
-        else if (Legacy && !format.BidiVisual && format.Justification is "center" or "right" or "end" && format.Width is not { Type: "dxa" or "pct", Value: > 0 }
+        else if (Legacy(scope) && !format.BidiVisual && format.Justification is "center" or "right" or "end" && format.Width is not { Type: "dxa" or "pct", Value: > 0 }
             && rows.Count > 0 && rows[0].Cells.Count > 0)
             reach = allowance + Margins(rows[0], rows[0].Cells[0], format).Left + Margins(rows[0], rows[0].Cells[^1], format).Right;
         // A percentage width is of the column's width, whatever the indent (measured with docx/local/tpi-1 to tpi-6:
         // 100 % indented -15.9 or 36 pt is 450.8 pt wide, in modes 14 and 15; docx/external/poi/bug65649).
-        var grid = Grid(table, rows, columns, available - (format.Justification is "center" or "right" or "end" ? 0 : format.Indent ?? 0), allowance, fields,
+        var grid = Grid(scope, table, rows, columns, available - (format.Justification is "center" or "right" or "end" ? 0 : format.Indent ?? 0), allowance, fields,
             widthBase: available, lines: vertical, reach: reach);
         var x = new double[grid.Length + 1];
         for (var k = 0; k < grid.Length; k++)
@@ -928,18 +925,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // 11 to 14). A right-to-left table does so from the right (docx/local/btv-12, btv-14: tblInd 84 pt with cell
         // margins of 5.4 and 10 pt puts the right line 78.6 and 74 pt from the right margin, without tblInd at it;
         // btv-15 84 pt and at it; docx/external/libreoffice/core-ooxml-pass/FDO76312).
-        var startOffset = indent - (!Legacy ? 0 : format.Indent == null ? shift : shift + Math.Max(firstMargin, shift));
+        var startOffset = indent - (!Legacy(scope) ? 0 : format.Indent == null ? shift : shift + Math.Max(firstMargin, shift));
         double origin0 = justification switch
         {
             "center" => (available - tableWidth) / 2,
             // Older modes end the last cell's text at the column's right edge, the table out by its margin and half its
             // line (measured with docx/local/tal-12, tal-14: tables of 200, 451.3 and 500 pt with cell margins of 5.4
             // and 10 pt end their right lines that far past the margin, within 0.12 pt; tal-15 at it).
-            "right" or "end" => available - tableWidth + (rtl ? -startOffset : Legacy ? lastTextInset : 0),
+            "right" or "end" => available - tableWidth + (rtl ? -startOffset : Legacy(scope) ? lastTextInset : 0),
             // A right-to-left one aligned to its end, at the left, likewise ends its last cell's text at the column's
             // left edge (btv-12, btv-14: jc right with cell margins of 5.4 and 10 pt puts the left line that far left
             // of the left margin; btv-15 at it).
-            _ => rtl ? indent - (Legacy ? lastTextInset : 0) : startOffset,
+            _ => rtl ? indent - (Legacy(scope) ? lastTextInset : 0) : startOffset,
         };
         var lastMargin = rows.Count > 0 && rows[0].Cells.Count > 0 ? Margins(rows[0], rows[0].Cells[^1], format).Right : format.Styled ? 0 : DefaultMargin;
         var box = new TableBox
@@ -1005,33 +1002,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var rightLine = Width(vertical[r, c1]);
                 var textLeft = x[c0] + shift + Math.Max(margins.Left, leftLine / 2);
                 var textRight = x[c1] + shift - Math.Max(margins.Right, rightLine / 2);
-                var outerInside = cellInside;
-                cellInside = (x[c0] + shift + leftLine / 2 - textLeft, x[c1] + shift - rightLine / 2 - textLeft);
+                var cellScope = scope with { CellInside = (x[c0] + shift + leftLine / 2 - textLeft, x[c1] + shift - rightLine / 2 - textLeft) };
                 var (cellWidth, cellEdge, cellShading, cellNeighbors) = (Math.Max(1, textRight - textLeft), textLeft - x[c0] - shift, CellShading(cell, rows[r]),
                     neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)));
-                var content = Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading);
+                var content = Content(cellScope, cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading);
+                // Laid out again in the scope it was first laid out in, under all of its settings: the paginator cuts the
+                // row under the section's (a cell's lines keep off the line grid where the table turned it off; measured
+                // with docx/local/nfg-*: lines of a cell 13.8 pt apart under a grid of 18 pt on both sides of a cut
+                // through its nested table, modes 11 and 15).
                 if (!Rotated(cell) && cell.Blocks.Any(b => b is TableBlock))
-                {
-                    // Laid out again in the state of the layout it was first laid out in, under all of its settings: the
-                    // paginator cuts the row under the section's (a cell's lines keep off the line grid where the table
-                    // turned it off; measured with docx/local/nfg-*: lines of a cell 13.8 pt apart under a grid of 18 pt
-                    // on both sides of a cut through its nested table, modes 11 and 15).
-                    var (inside, nested, first, cellLeft) = (cellInside, inCell, settings, textLeft);
-                    laidAgain[cell] = cuts =>
-                    {
-                        var was = (cellInside, inCell, settings);
-                        (cellInside, inCell, settings) = (inside, nested, first);
-                        try
-                        {
-                            return Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading, cuts) with { Left = cellLeft, Width = cellWidth };
-                        }
-                        finally
-                        {
-                            (cellInside, inCell, settings) = was;
-                        }
-                    };
-                }
-                cellInside = outerInside;
+                    laidAgain[cell] = cuts => Content(cellScope, cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading, cuts) with { Left = textLeft, Width = cellWidth };
                 laid[cell] = content with { Left = textLeft, Width = cellWidth };
                 if (!span.ContainsKey(cell) && !(Rotated(cell) && TurnsInRow(rows[r])))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
@@ -1190,7 +1170,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         var fromLeft = cell.Format.TextDirection == "tbLrV";
                         var pivotX = down ? textFrom + laidOut.Width : textFrom;
                         var pivotY = down ? top : topWidths[cellRow] + total - margins.Bottom;
-                        var turned = RotatedLines(cell, laidOut, total - margins.Top - margins.Bottom, fields).ToList();
+                        var turned = RotatedLines(scope, cell, laidOut, total - margins.Top - margins.Bottom, fields).ToList();
                         // Vertical alignment moves the lines across the cell, towards its right for btLr and its left for
                         // tbRl, by the room the cell's width leaves beside its lines and side lines, its margins not
                         // counted (measured with docx/local/rcv-*: 20, 40 and 80 pt cells of one and two lines of Calibri
@@ -1354,7 +1334,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// the spacing, then the cells, each with its own borders, twice the spacing apart; text starts after a cell's
     /// whole border and its margin.
     /// </summary>
-    TableBox Spaced(TableModel table, List<RowModel> rows, int columns, CellModel?[,] at, double available, double spacing, PageFields? fields,
+    TableBox Spaced(Scope scope, TableModel table, List<RowModel> rows, int columns, CellModel?[,] at, double available, double spacing, PageFields? fields,
         Dictionary<CellModel, (string? Before, string? After)> neighbors, Dictionary<CellModel, (int Row, CellModel Cell)> origin,
         Dictionary<CellModel, int> span)
     {
@@ -1385,7 +1365,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                                          + Width(cell.CellBorders.Right ?? (k == columns - 1 ? outer.Right : inside)));
             }
         }
-        var grid = Grid(table, rows, columns, available - extras - (edges?.Sum() ?? 0), sized ? (Width(outer.Left) + Width(outer.Right)) / 2 : 0, fields,
+        var grid = Grid(scope, table, rows, columns, available - extras - (edges?.Sum() ?? 0), sized ? (Width(outer.Left) + Width(outer.Right)) / 2 : 0, fields,
             gaps: sized ? gap * (columns + 1) : 0, widthBase: available);
         if (edges != null)
         {
@@ -1415,7 +1395,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         {
             "center" => (available - tableWidth) / 2,
             "right" or "end" => available - tableWidth,
-            _ when Legacy => format.Indent is { } legacyIndent ? legacyIndent - legacyInset : -Width(outer.Left) / 2,
+            _ when Legacy(scope) => format.Indent is { } legacyIndent ? legacyIndent - legacyInset : -Width(outer.Left) / 2,
             _ => format.Indent ?? 0,
         };
         var frameTop = Width(outer.Top) + gap;
@@ -1453,11 +1433,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var lineShare = gap > 0 ? 1 : 0.5;
                 var textLeft = left + Width(borders.Left) * lineShare + margins.Left;
                 var textRight = right - Width(borders.Right) * lineShare - margins.Right;
-                var outerInside = cellInside;
-                cellInside = (-margins.Left, textRight - textLeft + margins.Right);
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left,
-                    Shading.Color(cell.Format.Shading));
-                cellInside = outerInside;
+                var content = Content(scope with { CellInside = (-margins.Left, textRight - textLeft + margins.Right) }, cell, Math.Max(1, textRight - textLeft), fields,
+                    neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - left, Shading.Color(cell.Format.Shading));
                 parts.Add((cell, content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) }, left, right, borders, margins));
                 cellHeights[cell] = Width(borders.Top) + margins.Top + content.Height + margins.Bottom + Width(borders.Bottom);
                 if (!span.ContainsKey(cell))
@@ -1712,7 +1689,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <param name="widthBase">What a percentage width is of, where not the available width.</param>
     /// <param name="lines">The vertical lines of the rows (row, grid line), whose halves count where they are wider
     /// than the cells' margins beside them; none for tables with cell spacing.</param>
-    double[] Grid(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields,
+    double[] Grid(Scope scope, TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields,
         double gaps = 0, double? widthBase = null, BorderLine?[,]? lines = null, double reach = 0)
     {
         var grid = new double[columns];
@@ -1728,7 +1705,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             && Edges(table, columns, available) is { } edges)
             return Scaled(edges);
         if (table.Format.Layout != "fixed" && columns > 0 && rows.Count > 0)
-            return Autofit(table, rows, columns, available + reach, allowance, fields, Target(table, rows, widthBase ?? available, allowance, gaps, lines), lines);
+            return Autofit(scope, table, rows, columns, available + reach, allowance, fields, Target(scope, table, rows, widthBase ?? available, allowance, gaps, lines), lines);
         if (grid.All(w => w > 0))
         {
             // Grid columns that no row reaches take nothing of a width of the table's own (measured with docx/local/
@@ -1736,7 +1713,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             // all three keeps the grid; docx/external/libreoffice/extras-mailmerge/grabbagtest).
             var reached = rows.Count == 0 ? columns
                 : rows.Max(r => (r.Cells.Count == 0 ? r.Format.GridBefore : r.Cells.Max(c => c.Column + c.Format.GridSpan)) + r.Format.GridAfter);
-            if (reached > 0 && reached < columns && Target(table, rows, widthBase ?? available, allowance, gaps, lines) != null)
+            if (reached > 0 && reached < columns && Target(scope, table, rows, widthBase ?? available, allowance, gaps, lines) != null)
             {
                 for (var k = reached; k < columns; k++)
                     grid[k] = 0;
@@ -1795,9 +1772,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         double[] Scaled(double[] widths)
         {
             var sum = widths.Sum();
-            if (Target(table, rows, widthBase ?? available, allowance, gaps, lines) is { } target && sum > 0)
+            if (Target(scope, table, rows, widthBase ?? available, allowance, gaps, lines) is { } target && sum > 0)
                 return widths.Select(w => w * target / sum).ToArray();
-            if (inCell && sum > 0 && sum + allowance > available + 0.01 && available - allowance > 0)
+            if (scope.Nested && sum > 0 && sum + allowance > available + 0.01 && available - allowance > 0)
                 return widths.Select(w => w * (available - allowance) / sum).ToArray();
             return widths;
         }
@@ -1856,7 +1833,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// width and the first cell's and the last cell's margins together (measured with docx/local/tblwidth-15, -14,
     /// tblwidth2-15, -14 and compat14-tables).
     /// </summary>
-    double? Target(TableModel table, List<RowModel> rows, double available, double allowance, double gaps, BorderLine?[,]? lines = null)
+    double? Target(Scope scope, TableModel table, List<RowModel> rows, double available, double allowance, double gaps, BorderLine?[,]? lines = null)
     {
         var format = table.Format;
         if (format.Width is not { Type: "dxa" or "pct" } w || w.Resolve(available) is not { } tw || tw <= 0)
@@ -1868,7 +1845,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // (measured with docx/local/tpw-15: 40 % and 50 % of 451.3 pt with outer lines of 0.5, 3 and 6 pt are 180.87,
         // 182.31, 184.11, 225.87, 227.07 and 228.63 pt between their outer edges; LibreOffice's core-unocore/
         // floattable-split, core-frmedt/floating-table-caption: 40 % with 3 pt lines).
-        if (!Legacy)
+        if (!Legacy(scope))
             return (w.Resolve(available - allowance) ?? tw) - gaps;
         // Before Word 2013 the percentage is of the available width and those margins together (measured with
         // docx/local/tblwidth-14: 50 % of 451.3 pt with margins of 5.4 pt is 231.0 pt wide, not 236.4; pandoc/
@@ -1902,12 +1879,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// that prefers more than is available keeps its contents' minima, however wide it becomes (700 pt of pictures in
     /// a table preferring 500 pt; docx/external/poi/bug59058). Preferred cell widths give way to the table's width.
     /// </summary>
-    double[] Autofit(TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields, double? target,
+    double[] Autofit(Scope scope, TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields, double? target,
         BorderLine?[,]? lines = null)
     {
         var format = table.Format;
         var space = (target ?? available - allowance);
-        var (min, max, margins, preferred, natural, spans) = Ranges(table, rows, columns, space, fields, lines);
+        var (min, max, margins, preferred, natural, spans) = Ranges(scope, table, rows, columns, space, fields, lines);
         if (target is { } wanted && Needed(natural, spans) is var needed && needed > wanted + 0.01)
             space = wanted > available - allowance + 0.01 ? needed : Math.Min(needed, available - allowance);
         var sumMin = min.Sum();
@@ -2094,7 +2071,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// spread evenly, a merged cell's nested table would make a narrow column keep more than Word gives it, docx/
     /// external/libreoffice/extras-ooxmlexport/tdf158349_SDTstreamStateStack).
     /// </summary>
-    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural, List<(int From, int To, double Min)> Spans) Ranges(TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields,
+    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural, List<(int From, int To, double Min)> Spans) Ranges(Scope scope, TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields,
         BorderLine?[,]? lines = null)
     {
         var format = table.Format;
@@ -2119,7 +2096,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var m = Margins(row, cell, format);
                 if (lines != null && r < lines.GetLength(0))
                     m = (m.Top, Math.Max(m.Left, Width(lines[r, c0]) / 2), m.Bottom, Math.Max(m.Right, Width(lines[r, c1]) / 2));
-                var (cmin, cmax) = Rotated(cell) ? RotatedWidths(cell, fields) : Directed(cell, () => CellWidths(cell.Blocks, fields));
+                var (cmin, cmax) = Rotated(cell) ? RotatedWidths(scope, cell, fields) : Directed(scope, cell, s => CellWidths(s, cell.Blocks, fields));
                 // A cell that may not wrap (w:noWrap) needs its whole width, unless it prefers a width in points
                 // (measured with docx/local/nowrap: such a cell wraps as if it could, one preferring a percentage not).
                 if (cell.Format.NoWrap && cell.Format.Width is not { Type: "dxa", Value: > 0 })
@@ -2194,7 +2171,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     }
 
     /// <summary>The narrowest and widest a cell's content can be: of its paragraphs and nested tables.</summary>
-    (double Min, double Max) CellWidths(List<Block> blocks, PageFields? fields)
+    (double Min, double Max) CellWidths(Scope scope, List<Block> blocks, PageFields? fields)
     {
         double min = 0, max = 0;
         foreach (var block in blocks)
@@ -2205,7 +2182,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 {
                     // Tracked deleted text counts, shown or not (measured in Word's PDF of LibreOffice's extras-ooxmlexport/
                     // testTrackChangesDeletedTableCell: the columns where its deleted "ABCD" puts them in the markup view).
-                    var (pmin, pmax) = paragraphs.Widths(paragraph, settings, fields, pictures: true, empty: false, deleted: true);
+                    var (pmin, pmax) = paragraphs.Widths(paragraph, scope.Settings, fields, pictures: true, empty: false, deleted: true);
                     min = Math.Max(min, pmin);
                     max = Math.Max(max, pmax);
                     // Floating drawings that text goes around count with their width and effect extents, not their
@@ -2234,7 +2211,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     var columns = Math.Max(nested.Table.Grid.Count, rows.Count == 0 ? 0 : rows.Max(r => r.Cells.Count == 0 ? 0 : r.Cells.Max(c => c.Column + c.Format.GridSpan)));
                     if (columns > 0)
                     {
-                        var (_, nmax, _, _, natural, _) = Ranges(nested.Table, rows, columns, 100000, fields);
+                        var (_, nmax, _, _, natural, _) = Ranges(scope, nested.Table, rows, columns, 100000, fields);
                         var own = nested.Table.Format.Width is { Type: "dxa", Value: > 0 } preferred ? preferred.Value : 0;
                         // Its outer lines take their halves beside the columns, as where it is laid out (docx/external/
                         // libreoffice/filter-ascii/tdf162180: nested columns of 24.23, 43.23 and 54.58 pt between 0.5 pt
@@ -2262,21 +2239,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, TextSettings settings,
         PageFields? fields, bool unaligned = false, (bool Vertical, bool Turn)? direction = null)
     {
-        var (wasCell, wasInCell, outer) = (cellBlocks, inCell, this.settings);
-        (cellBlocks, inCell) = (false, false);
-        this.settings = settings with { Unaligned = settings.Unaligned | unaligned };
+        settings = settings with { Unaligned = settings.Unaligned | unaligned };
         if (direction is { } turned)
-            this.settings = this.settings with { Vertical = turned.Vertical, TurnEastAsian = turned.Turn };
-        try
-        {
-            var content = Content(blocks, width, fields);
-            LastShading = content.LastShading;
-            return (content.Lines, content.Fills, content.Strokes, content.Height);
-        }
-        finally
-        {
-            (cellBlocks, inCell, this.settings) = (wasCell, wasInCell, outer);
-        }
+            settings = settings with { Vertical = turned.Vertical, TurnEastAsian = turned.Turn };
+        var content = Content(new Scope(settings), blocks, width, fields);
+        LastShading = content.LastShading;
+        return (content.Lines, content.Fills, content.Strokes, content.Height);
     }
 
     /// <summary>A cell's content laid out: lines, fills and strokes relative to its text's top left, its height, its place.</summary>
@@ -2317,12 +2285,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// distance below (docx/external/powertools/WC/WC049-Text-Box-in-Cell: a row ending 0.9 and 3.6 pt below its text
     /// box), and whether text goes around it.
     /// </summary>
-    (double Bottom, bool Wraps)? Reach(AnchorInline anchor, double paragraphTop, double lineTop, PageFields? fields)
+    (double Bottom, bool Wraps)? Reach(Scope scope, AnchorInline anchor, double paragraphTop, double lineTop, PageFields? fields)
     {
         var element = anchor.Anchor;
         if (CellTop(element, paragraphTop, lineTop) is not { } top)
             return null;
-        var (_, height) = CellDrawingSize(anchor, fields);
+        var (_, height) = CellDrawingSize(scope, anchor, fields);
         var box = new DrawingBox(element);
         var wraps = box.Wraps;
         return (top + height + DrawingBox.Outward(box.Effect).Bottom + (wraps ? DrawingBox.Outward(box.Distance).Bottom : 0), wraps);
@@ -2368,7 +2336,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// docx/local/cdr-pct, cdr-auto: 40 % of a 451.3 pt margin with 1.8 pt of effect extent right 178.7 pt wide, one
     /// line of text 19.4 pt high instead of the saved 110.6 pt; docx/external/powertools/WC/WC048-Text-Box-in-Cell).
     /// </summary>
-    (double Width, double Height) CellDrawingSize(AnchorInline anchor, PageFields? fields)
+    (double Width, double Height) CellDrawingSize(Scope scope, AnchorInline anchor, PageFields? fields)
     {
         var element = anchor.Anchor;
         var box = new DrawingBox(element);
@@ -2397,7 +2365,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             && (string?)body.Attribute("vert") is null or "horz")
         {
             var (l, t, r, b) = PageRenderer.Insets(body, shape, w, h, context.Theme);
-            var (_, _, _, height) = Blocks(text, Math.Max(1, w - l - r), settings, fields);
+            var (_, _, _, height) = Blocks(text, Math.Max(1, w - l - r), scope.Settings, fields);
             h = height + t + b;
         }
         return (w, h);
@@ -2412,12 +2380,6 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         !context.Profile.HonorsLayoutInCell || (string?)anchor.Attribute("layoutInCell") is not ("0" or "false");
 
     /// <summary>
-    /// The inside of the cell being laid out, between the inner edges of its side lines, relative to its text's left:
-    /// drawings that text goes around stay within it across (see <see cref="CellExclusion"/>).
-    /// </summary>
-    (double Left, double Right)? cellInside;
-
-    /// <summary>
     /// The area a floating drawing in a cell keeps text from, relative to the content's top left: its box with its
     /// effect extents and distances, placed down as in <see cref="Reach"/> and across by an offset from the text's left
     /// (the page's from the cell's edge), aligned in the text with its effect extents (measured with docx/local/cdr-pct:
@@ -2425,7 +2387,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// edge where it is aligned or placed by a percentage from the page or the margins (cdr-pagec, cdr-pager); null for
     /// drawings text does not go around or placed otherwise.
     /// </summary>
-    Paginator.Exclusion? CellExclusion(AnchorInline anchor, double paragraphTop, double width, double edge, PageFields? fields)
+    Paginator.Exclusion? CellExclusion(Scope scope, AnchorInline anchor, double paragraphTop, double width, double edge, PageFields? fields)
     {
         var element = anchor.Anchor;
         var box = new DrawingBox(element);
@@ -2436,7 +2398,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var horizontal = element.Element(Docx.Drawings.Wp + "positionH");
         if ((string?)vertical?.Attribute("relativeFrom") is "line" or "character" || CellTop(element, paragraphTop, paragraphTop) is not { } top)
             return null;
-        var (w, h) = CellDrawingSize(anchor, fields);
+        var (w, h) = CellDrawingSize(scope, anchor, fields);
         var from = (string?)horizontal?.Attribute("relativeFrom");
         var (before, after) = (effect.Left, effect.Right);
         double x;
@@ -2448,7 +2410,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             x = align switch { "right" => width - w - after, "center" => before + (width - before - w - after) / 2, _ => before };
         else
             return null;
-        if (cellInside is { } inside)
+        if (scope.CellInside is { } inside)
             x = Math.Max(inside.Left, Math.Min(x, inside.Right - w));
         return new Paginator.Exclusion(x - before - distance.Left, top - effect.Top - distance.Top,
             x + w + after + distance.Right, top + h + effect.Bottom + distance.Bottom, box.TopAndBottom, box.Side);
@@ -2461,26 +2423,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// </remarks>
     /// <param name="edge">How far the cell's text begins right of its left edge.</param>
     /// <param name="cuts">Cuts through the cell's nested tables to lay it out for (see CellPart.Cuts).</param>
-    CellContent Content(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge = 0,
+    CellContent Content(Scope scope, CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge = 0,
         RgbColor? shading = null, IReadOnlyList<CellCut>? cuts = null)
     {
-        var was = cellBlocks;
-        var behind = settings.Background;
-        cellBlocks = true;
         // The cell's shading is behind its text, else what is behind the table (catalog: run.basic, automatic color).
-        settings = settings with { Background = shading ?? behind };
-        try
-        {
-            return CellBlocks(cell, width, fields, neighbors, edge, cuts);
-        }
-        finally
-        {
-            cellBlocks = was;
-            settings = settings with { Background = behind };
-        }
+        var settings = scope.Settings with { Background = shading ?? scope.Settings.Background };
+        return CellBlocks(scope with { OfCell = true, Settings = settings }, cell, width, fields, neighbors, edge, cuts);
     }
 
-    CellContent CellBlocks(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge, IReadOnlyList<CellCut>? cuts)
+    CellContent CellBlocks(Scope scope, CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge,
+        IReadOnlyList<CellCut>? cuts)
     {
         // An empty cell whose end mark is hidden (w:hideMark) takes no height for it, its last paragraph; its other
         // empty paragraphs keep their lines (docx/external/libreoffice/extras-ooxmlexport/tdf123104: four empty 9 pt
@@ -2490,45 +2442,28 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             if (cell.Blocks.Count <= 1)
                 return new CellContent([], [], [], 0);
             var kept = cell.Blocks.Take(cell.Blocks.Count - 1).ToList();
-            return Directed(cell, () => Content(kept, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
+            return Directed(scope, cell, s => Content(s, kept, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
         }
         if (!Rotated(cell))
         {
-            var wasInCell = settings.InCell;
-            settings = settings with { InCell = true };
-            try
+            var content = Directed(scope with { Settings = scope.Settings with { InCell = true } }, cell,
+                s => Content(s, cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
+            // A hidden end mark after a line break takes no line of its own either (docx/external/libreoffice/
+            // extras-ooxmlexport/fdo76316: cells ending in w:br, their 13.8 pt mark lines gone).
+            if (cell.Format.HideMark && cell.Blocks.LastOrDefault() is ParagraphBlock { Content: [.., BreakInline { Type: "textWrapping" or null }] }
+                && content.Lines.Count > 1 && content.Lines[^1].Line.Pieces.All(p => p.Text.Length == 0 && p.Drawing == null))
             {
-                var content = Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
-                // A hidden end mark after a line break takes no line of its own either (docx/external/libreoffice/
-                // extras-ooxmlexport/fdo76316: cells ending in w:br, their 13.8 pt mark lines gone).
-                if (cell.Format.HideMark && cell.Blocks.LastOrDefault() is ParagraphBlock { Content: [.., BreakInline { Type: "textWrapping" or null }] }
-                    && content.Lines.Count > 1 && content.Lines[^1].Line.Pieces.All(p => p.Text.Length == 0 && p.Drawing == null))
-                {
-                    var kept = content.Lines[^2];
-                    content = content with { Lines = content.Lines.Take(content.Lines.Count - 1).ToList(), Height = kept.Top + kept.Line.Height };
-                }
-                return content;
+                var kept = content.Lines[^2];
+                content = content with { Lines = content.Lines.Take(content.Lines.Count - 1).ToList(), Height = kept.Top + kept.Line.Height };
             }
-            finally
-            {
-                settings = settings with { InCell = wasInCell };
-            }
+            return content;
         }
         // Measured unaligned: a centered line's length is its text's, not its place in the unwrapped width (measured
         // with docx/external/powertools/HC008-Test-03: "notes" centered in a btLr cell of a row 72 pt high keeps the
         // row 72 pt high, not 810).
-        var unaligned = settings.Unaligned;
-        settings = settings with { Unaligned = true };
-        try
-        {
-            var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
-            var length = content.Lines.Count == 0 ? 0 : content.Lines.Max(l => LineLength(l.Line));
-            return content with { Height = length, Thickness = content.Height };
-        }
-        finally
-        {
-            settings = settings with { Unaligned = unaligned };
-        }
+        var unwrapped = Directed(scope with { Settings = scope.Settings with { Unaligned = true } }, cell, s => Content(s, cell.Blocks, Unwrapped, fields));
+        var length = unwrapped.Lines.Count == 0 ? 0 : unwrapped.Lines.Max(l => LineLength(l.Line));
+        return unwrapped with { Height = length, Thickness = unwrapped.Height };
     }
 
     /// <summary>
@@ -2538,8 +2473,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// 56.7 pt high in four lines, in rows of 20 pt at least or of one line beside a plain cell in pieces like "rota"
     /// and "ted"; docx/external/libreoffice/extras-ooxmlexport/cell-btlr, tblr-height).
     /// </summary>
-    List<PlacedLine> RotatedLines(CellModel cell, CellContent content, double length, PageFields? fields) =>
-        Directed(cell, () => Content(cell.Blocks, Math.Max(1, length), fields)).Lines;
+    List<PlacedLine> RotatedLines(Scope scope, CellModel cell, CellContent content, double length, PageFields? fields) =>
+        Directed(scope, cell, s => Content(s, cell.Blocks, Math.Max(1, length), fields)).Lines;
 
     /// <summary>
     /// Whether the rotated cells of a row take its height as given, by its own height or its other cells, not the
@@ -2552,21 +2487,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// where it turns them (tbRl, btLr, tbRlV, tbLrV), its East Asian characters turned against them in tbRlV, tbLrV
     /// (upright) and lrTbV (lying); a cell without a direction of its own keeps the one it stands in.
     /// </summary>
-    T Directed<T>(CellModel cell, Func<T> laid)
+    static T Directed<T>(Scope scope, CellModel cell, Func<Scope, T> laid)
     {
         var direction = cell.Format.TextDirection;
         if (direction is null or "lrTb")
-            return laid();
-        var (vertical, turn) = (settings.Vertical, settings.TurnEastAsian);
-        settings = settings with { Vertical = Rotated(cell), TurnEastAsian = direction is "tbRlV" or "tbLrV" or "lrTbV" };
-        try
-        {
-            return laid();
-        }
-        finally
-        {
-            settings = settings with { Vertical = vertical, TurnEastAsian = turn };
-        }
+            return laid(scope);
+        return laid(scope with { Settings = scope.Settings with { Vertical = Rotated(cell), TurnEastAsian = direction is "tbRlV" or "tbLrV" or "lrTbV" } });
     }
 
     /// <summary>
@@ -2595,9 +2521,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     }
 
     /// <summary>A rotated cell's width: the thickness of its lines.</summary>
-    (double Min, double Max) RotatedWidths(CellModel cell, PageFields? fields)
+    (double Min, double Max) RotatedWidths(Scope scope, CellModel cell, PageFields? fields)
     {
-        var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
+        var content = Directed(scope, cell, s => Content(s, cell.Blocks, Unwrapped, fields));
         return (content.Height, content.Height);
     }
 
@@ -2607,7 +2533,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// Contextual spacing works in cells as in the body, but not before Word 2013 where the document says
     /// w:allowSpaceOfSameStyleInTable (catalog: settings.compatibility, measured with docx/local/c5-cells).
     /// </remarks>
-    CellContent Content(List<Block> blocks, double width, PageFields? fields, string? previous = NoParagraph, string? next = NoParagraph, double edge = 0,
+    CellContent Content(Scope scope, List<Block> blocks, double width, PageFields? fields, string? previous = NoParagraph, string? next = NoParagraph, double edge = 0,
         bool floats = false, IReadOnlyList<CellCut>? cuts = null)
     {
         var lines = new List<PlacedLine>();
@@ -2646,7 +2572,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 // (measured with docx/local/nestedend-12, -14 and -15); a text box's does (docx/local/tbxtbl-a, -b: a
                 // table and an empty paragraph make a box as high as a table and a line, its space after included;
                 // docx/external/powertools/WC/WC050-Table-in-Text-Box).
-                case ParagraphBlock last when cellBlocks && b == blocks.Count - 1 && b > 0 && blocks[b - 1] is TableBlock && !last.Shows:
+                case ParagraphBlock last when scope.OfCell && b == blocks.Count - 1 && b > 0 && blocks[b - 1] is TableBlock && !last.Shows:
                     break;
                 case ParagraphBlock paragraph:
                 {
@@ -2701,13 +2627,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     {
                         foreach (var own in paragraph.Content.OfType<AnchorInline>())
                         {
-                            if (InCell(own.Anchor) && CellExclusion(own, paragraphTop, width, edge, fields) is { } area)
+                            if (InCell(own.Anchor) && CellExclusion(scope, own, paragraphTop, width, edge, fields) is { } area)
                                 around.Add(area);
                         }
                     }
                     var laid = around.Any(f => f.Bottom > linesTop)
-                        ? paragraphs.Layout(paragraph, width, settings, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width), from: paragraph.ResumeAt ?? 0)
-                        : paragraphs.Layout(paragraph, width, settings, fields, from: paragraph.ResumeAt ?? 0);
+                        ? paragraphs.Layout(paragraph, width, scope.Settings, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width), from: paragraph.ResumeAt ?? 0)
+                        : paragraphs.Layout(paragraph, width, scope.Settings, fields, from: paragraph.ResumeAt ?? 0);
                     foreach (var line in laid)
                     {
                         y += line.Skip;
@@ -2736,7 +2662,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     foreach (var anchor in paragraph.Content.OfType<AnchorInline>())
                     {
                         var (lineTop, x) = lineTops.GetValueOrDefault(anchor, (paragraphTop, 0));
-                        var reaches = floats && InCell(anchor.Anchor) ? Reach(anchor, paragraphTop, lineTop, fields) : null;
+                        var reaches = floats && InCell(anchor.Anchor) ? Reach(scope, anchor, paragraphTop, lineTop, fields) : null;
                         anchors.Add(new CellAnchor(anchor, paragraphTop, lineTop) { CharacterX = x, Reach = reaches is { Wraps: true } wrapped ? wrapped.Bottom : null });
                         // A cell's row grows down to its drawings that text goes around, whether or not they are laid
                         // out in the cell, not to those in front of or behind the text; vertical alignment moves the
@@ -2744,7 +2670,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         // and bottom from its paragraph, its line or the margin, layoutInCell 0 too, in modes 15 and 14;
                         // not wrapped the row keeps its line; a bottom-aligned cell's content ends with an unwrapped
                         // shape's bottom; docx/external/libreoffice/extras-ooxmlexport/tdf37153_considerWrapOnObjPos).
-                        if (floats && InCell(anchor.Anchor) && Reach(anchor, paragraphTop, lineTop, fields) is { } reach)
+                        if (floats && InCell(anchor.Anchor) && Reach(scope, anchor, paragraphTop, lineTop, fields) is { } reach)
                         {
                             extent = Math.Max(extent, reach.Bottom);
                             if (reach.Wraps)
@@ -2786,10 +2712,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // Laid out as a table nested in the cell, as the tables of the text there are (docx/external/
                     // libreoffice/writerfilter-dmapper/floattable-hidemark: a floating table in a cell in mode 12 keeps
                     // its cell's own margins, no shift or widening of the text's tables before Word 2013).
-                    var floatInCell = inCell;
-                    inCell = cellBlocks;
-                    var box = Layout(floating.Table, width, settings, fields, previous);
-                    inCell = floatInCell;
+                    var box = Layout(scope with { Nested = scope.OfCell }, floating.Table, width, fields, previous);
                     double Twips(string name) => position.Twips(name) ?? 0;
                     var x = position.Attr("tblpXSpec") switch
                     {
@@ -2801,7 +2724,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // It stays inside its cell's lines as drawings do, one wider than the cell at its left line (measured with
                     // docx/local/fic-14, fic-15: tblpX -426 at the left line, a table of 190 pt at 426 twips ending at the right
                     // one, of 250 pt at the left; docx/external/libreoffice/core-objectpositioning/floattable-overlap-cell).
-                    if (cellInside is { } inside)
+                    if (scope.CellInside is { } inside)
                         x = Math.Max(inside.Left, Math.Min(x, inside.Right - box.Width));
                     var top = Math.Max(0, ((position.Attr("vertAnchor") ?? "margin") is "page" or "margin" ? 0 : y + (first ? 0 : after)) + Twips("tblpY"));
                     // One that may not overlap others (w:tblOverlap never) goes below a floating table of the cell before it
@@ -2841,10 +2764,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 {
                     previousFrame = null;
                     y += first ? 0 : after;
-                    var wasInCell = inCell;
-                    inCell = cellBlocks;
-                    var box = Layout(nested.Table, width, settings, fields, previous);
-                    inCell = wasInCell;
+                    var box = Layout(scope with { Nested = scope.OfCell }, nested.Table, width, fields, previous);
                     (y, var tableTop) = Rows(box, 0, y, b);
                     Frame(box, 0, tableTop, y, fills);
                     after = 0;
