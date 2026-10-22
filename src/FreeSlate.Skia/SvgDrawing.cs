@@ -125,6 +125,7 @@ public sealed class SvgDrawing
         public bool Displayed { get; init; } = true;
         public string? ClipPath { get; init; }
         public string? Mask { get; init; }
+        public string? Filter { get; init; }
         public double StopOpacity { get; init; } = 1;
         public string StopColor { get; init; } = "black";
     }
@@ -213,7 +214,7 @@ public sealed class SvgDrawing
 
         Style Computed(XElement element, Style parent)
         {
-            var style = parent with { Opacity = 1, Displayed = true, ClipPath = null, Mask = null, StopOpacity = 1, StopColor = "black" };
+            var style = parent with { Opacity = 1, Displayed = true, ClipPath = null, Mask = null, Filter = null, StopOpacity = 1, StopColor = "black" };
             foreach (var (name, value) in Properties(element))
             {
                 if (value == "inherit")
@@ -246,6 +247,7 @@ public sealed class SvgDrawing
                     "display" => style with { Displayed = value != "none" },
                     "clip-path" => style with { ClipPath = value },
                     "mask" => style with { Mask = value },
+                    "filter" => style with { Filter = value },
                     "stop-opacity" => style with { StopOpacity = Fraction(value) },
                     "stop-color" => style with { StopColor = value },
                     "font" => Font(style, value),
@@ -338,8 +340,17 @@ public sealed class SvgDrawing
             if (style.ClipPath is { } clip && Reference(clip) is { Name.LocalName: "clipPath" } clipPath)
                 Clip(clipPath, element, canvas, style);
             var layer = style.Opacity < 1;
+            var layer2 = false;
             if (layer)
                 canvas.SaveLayer(new SKPaint { Color = SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(style.Opacity, 0, 1) * 255)) });
+            // A filter of one color matrix (a 3D face's light): the element drawn on a layer it colors; other filters are
+            // left out.
+            if (style.Filter is { } filterReference && Reference(filterReference) is { Name.LocalName: "filter" } filter
+                && filter.Elements().ToList() is [{ Name.LocalName: "feColorMatrix" } colorMatrix] && ColorMatrix(colorMatrix) is { } matrix)
+            {
+                canvas.SaveLayer(new SKPaint { ColorFilter = SKColorFilter.CreateColorMatrix(matrix) });
+                layer2 = true;
+            }
             // A mask: the element drawn on a layer of its own, which the mask's luminance then cuts.
             var mask = style.Mask is { } maskReference && Reference(maskReference) is { Name.LocalName: "mask" } masking ? masking : null;
             if (mask != null)
@@ -391,9 +402,32 @@ public sealed class SvgDrawing
                 }
                 canvas.Restore();
             }
+            if (layer2)
+                canvas.Restore();
             if (layer)
                 canvas.Restore();
             canvas.Restore();
+        }
+
+        /// <summary>An feColorMatrix's 4 × 5 matrix (type matrix, saturate or hueRotate as SVG defines them), or null.</summary>
+        static float[]? ColorMatrix(XElement primitive)
+        {
+            var type = primitive.Attribute("type")?.Value ?? "matrix";
+            var values = Numbers(primitive.Attribute("values")?.Value);
+            switch (type)
+            {
+                case "matrix":
+                    return values is { Length: 20 } ? [.. values.Select(v => (float)v)] : null;
+                case "saturate":
+                {
+                    var s = values is [var saturation, ..] ? saturation : 1;
+                    return [(float)(0.213 + 0.787 * s), (float)(0.715 - 0.715 * s), (float)(0.072 - 0.072 * s), 0, 0,
+                        (float)(0.213 - 0.213 * s), (float)(0.715 + 0.285 * s), (float)(0.072 - 0.072 * s), 0, 0,
+                        (float)(0.213 - 0.213 * s), (float)(0.715 - 0.715 * s), (float)(0.072 + 0.928 * s), 0, 0, 0, 0, 0, 1, 0];
+                }
+                default:
+                    return null;
+            }
         }
 
         XElement? Reference(string? value)

@@ -541,7 +541,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var faceOpacity = camera != null && dag == null ? lighting.OpacityAt((0, 0, 1), camera.View((0, 0, 0))) : 1;
         var frontShade = camera != null ? lighting.Shade((0, 0, 1), camera.View((0, 0, 0))) : default;
         if (faceOpacity < 1 && shapeItems.Count > 0)
-            shapeItems = [new SvgGroupItem($" opacity=\"{Units.Css4(faceOpacity)}\" filter=\"url(#{LitFilter(Lighting.Through(frontShade, faceOpacity), defs)})\"", shapeItems)];
+            shapeItems = [new SvgGroupItem($" opacity=\"{Units.Css4(faceOpacity)}\" filter=\"url(#{LitFilter(Lighting.Through(frontShade, faceOpacity), defs)})\"", shapeItems)
+                { ColorMatrix = LitMatrix(Lighting.Through(frontShade, faceOpacity)) }];
         // The shape's own drawing is a group of its own when it has text: animations can build the background and
         // the text separately (catalog: animation.build).
         var hasText = shape.Name.LocalName == "sp" && shape.Element(Ns.P + "txBody")?.Descendants(Ns.A + "t").Any() == true;
@@ -630,7 +631,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else
             {
                 if (faceOpacity < 1 && textItems.Count > 0)
-                    textItems = [new SvgGroupItem($" filter=\"url(#{LitFilter(frontShade, defs)})\"", textItems)];
+                    textItems = [new SvgGroupItem($" filter=\"url(#{LitFilter(frontShade, defs)})\"", textItems) { ColorMatrix = LitMatrix(frontShade) }];
                 if (effectFilterOf is { } textFilter && !opaque && textItems.Count > 0)
                     body.Add(new FilterItem(textFilter.Id, textFilter.Model, textItems));
                 else
@@ -667,7 +668,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // The front face is lit like the rest of the 3D shape (its normal faces the front); a translucent one has
         // lit its drawing and its text apart.
         if (camera != null && content.Count > 0 && faceOpacity >= 1)
-            content = [new SvgGroupItem($" filter=\"url(#{LitFilter(frontShade, defs)})\"", content)];
+            content = [new SvgGroupItem($" filter=\"url(#{LitFilter(frontShade, defs)})\"", content) { ColorMatrix = LitMatrix(frontShade) }];
         var drawn = new List<SceneItem>();
         if (defs.Length > 0)
             drawn.Add(new DefsItem(defs.ToString()));
@@ -777,6 +778,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     static int litFilters;
 
     /// <summary>A filter lighting its content with a shade (color · diffuse + specular per channel); returns its id.</summary>
+    /// <summary>The color matrix of a face's light (see LitFilter): its colors scaled by the diffuse light, the specular added.</summary>
+    static double[] LitMatrix(((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) shade) =>
+        [shade.Diffuse.R, 0, 0, 0, shade.Specular.R, 0, shade.Diffuse.G, 0, 0, shade.Specular.G, 0, 0, shade.Diffuse.B, 0, shade.Specular.B, 0, 0, 0, 1, 0];
+
     static string LitFilter(((double R, double G, double B) Diffuse, (double R, double G, double B) Specular) shade, StringBuilder defs)
     {
         var (diffuse, specular) = shade;

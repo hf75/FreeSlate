@@ -146,12 +146,68 @@ public static class SkiaScene
             var start = html.AsSpan().TrimStart();
             if (start.Length == 0)
                 return true;
+            if (start.StartsWith("<div class=\"sp\""))
+                return Boxes(html);
             if (!start.StartsWith("<") || start.StartsWith("<div") || start.StartsWith("<section") || start.StartsWith("<span"))
                 return false;
             using var picture = SvgDrawing.Fragment(html, Definition);
             if (picture == null)
                 return false;
             canvas.DrawPicture(picture);
+            return true;
+        }
+
+        static readonly Regex CssTransform = new(@"transform:\s*(matrix3d|matrix)\(([^)]*)\)", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Markup of boxes (a 3D body's: divs of class sp, placed by CSS transforms, 3D ones projected by matrix3d) with
+        /// SVG in them: every box's transform taken onto the canvas as the homography it gives its plane (whose points
+        /// have z 0), its SVG drawn through SvgDrawing; false where the markup is not such boxes.
+        /// </summary>
+        bool Boxes(string html)
+        {
+            System.Xml.Linq.XElement holder;
+            try
+            {
+                holder = System.Xml.Linq.XElement.Parse($"<boxes>{html}</boxes>");
+            }
+            catch (System.Xml.XmlException)
+            {
+                return false;
+            }
+            void Box(System.Xml.Linq.XElement element)
+            {
+                switch (element.Name.LocalName)
+                {
+                    case "div":
+                        canvas.Save();
+                        if (element.Attribute("style")?.Value is { } style && CssTransform.Match(style) is { Success: true } match)
+                        {
+                            var values = match.Groups[2].Value.Split(',').Select(v => double.Parse(v.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+                            if (match.Groups[1].Value == "matrix" && values.Length == 6)
+                                Concat(Matrix(new Html.Matrix(values[0], values[1], values[2], values[3], values[4], values[5])));
+                            else if (values.Length == 16)
+                            {
+                                // Column-major: a point (x, y, 0, 1) of the box's plane goes to columns 0, 1 and 3.
+                                Concat(new SKMatrix((float)values[0], (float)values[4], (float)values[12], (float)values[1], (float)values[5], (float)values[13],
+                                    (float)values[3], (float)values[7], (float)values[15]));
+                            }
+                        }
+                        foreach (var child in element.Elements())
+                            Box(child);
+                        canvas.Restore();
+                        break;
+                    case "svg":
+                        using (var picture = SvgDrawing.Fragment(element.ToString(System.Xml.Linq.SaveOptions.DisableFormatting), Definition))
+                        {
+                            if (picture != null)
+                                canvas.DrawPicture(picture);
+                        }
+                        break;
+                }
+            }
+            foreach (var element in holder.Elements())
+                Box(element);
             return true;
         }
 
@@ -973,6 +1029,15 @@ public static class SkiaScene
         /// <summary>A group: its opacity where it has one (a 3D face's), its other attributes not.</summary>
         void Group(SvgGroupItem group)
         {
+            if (group.ColorMatrix is { Length: 20 } matrix)
+            {
+                // A face's light: the group drawn on a layer its color matrix colors.
+                using var light = new SKPaint { ColorFilter = SKColorFilter.CreateColorMatrix([.. matrix.Select(v => (float)v)]) };
+                canvas.SaveLayer(light);
+                Group(group with { ColorMatrix = null });
+                canvas.Restore();
+                return;
+            }
             if (group.Transform != null || group.Effects != null)
             {
                 canvas.Save();

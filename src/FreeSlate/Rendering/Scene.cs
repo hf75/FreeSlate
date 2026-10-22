@@ -161,6 +161,12 @@ public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : Sc
 
     /// <summary>The effects the filter among its attributes draws (a run of text's), for other backends.</summary>
     public EffectModel? Effects { get; init; }
+
+    /// <summary>
+    /// The color matrix the filter among its attributes applies (a 3D face's light): 4 rows of 5, the last column added
+    /// in fractions of full intensity, for other backends.
+    /// </summary>
+    public double[]? ColorMatrix { get; init; }
 }
 
 /// <summary>Items inside markup not broken down yet (a shape's hyperlink, the hidden SVG that holds definitions).</summary>
