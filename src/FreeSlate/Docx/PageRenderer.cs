@@ -69,10 +69,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             {
                 Number = page.Number, Paper = paper, Width = MarkupWidth(page), Height = page.PaperHeight,
                 Sheet = (page.PaperWidth, scale, (paperHeight * PxPerPt - page.PaperHeight * PxPerPt * scale) / 2), Glyphs = context.Glyphs,
+                ExactDashes = true,
             };
         }
         else
-            scene = new PageScene { Number = page.Number, Paper = paper, Width = page.PaperWidth, Height = page.PaperHeight, Glyphs = context.Glyphs };
+            scene = new PageScene { Number = page.Number, Paper = paper, Width = page.PaperWidth, Height = page.PaperHeight, Glyphs = context.Glyphs, ExactDashes = true };
         paperSize = (page.PaperWidth, page.PaperHeight);
         var items = scene.Items;
         // A page of vertical text is laid out turned a quarter: its body is turned back onto the page, its drawings

@@ -49,7 +49,7 @@ public static class SkiaScene
     {
         using var paper = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
         canvas.DrawRect(0, 0, Px(scene.Width), Px(scene.Height), paper);
-        new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs).Draw(scene.Items);
+        new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes).Draw(scene.Items);
     }
 
     /// <summary>
@@ -126,8 +126,9 @@ public static class SkiaScene
     /// <param name="cache">The pictures decoded so far, shared with the drawer of the page.</param>
     /// <param name="glyphs">The glyph outlines markup names by id (see PageScene.Glyphs).</param>
     /// <param name="defined">The page's definitions so far, shared with the drawer of the page.</param>
+    /// <param name="exactDashes">Whether dash patterns repeat in the outline's exact width (see PageScene.ExactDashes).</param>
     sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null,
-        GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null)
+        GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null, bool exactDashes = false)
     {
         /// <summary>The elements the page's definitions (DefsItem) hold by id, which markup refers to.</summary>
         readonly Dictionary<string, System.Xml.Linq.XElement> definitions = defined ?? [];
@@ -686,9 +687,26 @@ public static class SkiaScene
             }
             if (item.Outline is { Visible: true } outline)
             {
-                using var pen = Pen(outline);
+                using var pen = Pen(outline, Closed(path));
                 canvas.DrawPath(path, pen);
             }
+        }
+
+        /// <summary>Whether every figure of a path is closed (see Dashes.Closed).</summary>
+        static bool Closed(SKPath path)
+        {
+            using var measure = new SKPathMeasure(path, false);
+            var any = false;
+            do
+            {
+                if (measure.Length <= 0)
+                    continue;
+                if (!measure.IsClosed)
+                    return false;
+                any = true;
+            }
+            while (measure.NextContour());
+            return any;
         }
 
         /// <summary>
@@ -829,7 +847,7 @@ public static class SkiaScene
             // The recording starts at this canvas's origin; patterns still align to the page.
             var at = page.TryInvert(out var inverse) ? inverse.PreConcat(canvas.TotalMatrix) : canvas.TotalMatrix;
             var origin = at.TryInvert(out var back) ? back : SKMatrix.Identity;
-            new Drawer(recording, statistics, origin, pictures, glyphs, definitions).Draw(items);
+            new Drawer(recording, statistics, origin, pictures, glyphs, definitions, exactDashes).Draw(items);
             return recorder.EndRecording();
         }
 
@@ -1024,25 +1042,36 @@ public static class SkiaScene
             }
         }
 
-        /// <summary>A DrawingML outline as a pen: its width, at least half a pixel, caps, joins and dashes.</summary>
-        static SKPaint Pen(Outline outline)
+        /// <summary>
+        /// A DrawingML outline as a pen, as SvgPaint.Stroke strokes it: its width, at least half a pixel, caps (none on
+        /// the dashes of a square-capped line, whose ends get theirs apart, see Dashes.SquareEnds), joins, and dashes in
+        /// units of its width (whole pixels unless exactDashes), round caps within them, on a closed figure from where
+        /// its pattern starts.
+        /// </summary>
+        SKPaint Pen(Outline outline, bool closed = false)
         {
             var width = Math.Max(Units.ToPx(outline.WidthEmu), 0.5);
             var pen = Pen(Fill.MainColor(outline.Fill) ?? RgbColor.Black, (float)width);
-            pen.StrokeCap = outline.Cap switch { "rnd" => SKStrokeCap.Round, "sq" => SKStrokeCap.Square, _ => SKStrokeCap.Butt };
+            var dash = Dashes.Pattern(outline);
+            pen.StrokeCap = outline.Cap switch { "rnd" => SKStrokeCap.Round, "sq" when dash is not { Length: > 0 } => SKStrokeCap.Square, _ => SKStrokeCap.Butt };
             pen.StrokeJoin = outline.Join switch { "round" => SKStrokeJoin.Round, "bevel" => SKStrokeJoin.Bevel, _ => SKStrokeJoin.Miter };
             pen.StrokeMiter = (float)Math.Max(1, outline.MiterLimit);
-            if (Dashes.Pattern(outline) is { Length: > 0 } dash)
+            if (dash is { Length: > 0 })
             {
                 var round = outline.Cap == "rnd";
+                var unit = exactDashes && outline.WidthEmu > 0 ? Units.ToPx(outline.WidthEmu) : Dashes.Unit(width);
                 var lengths = new float[dash.Length + dash.Length % 2];
                 for (var i = 0; i < dash.Length; i += 2)
                 {
                     var (d, space) = (dash[i], i + 1 < dash.Length ? dash[i + 1] : 0);
-                    (lengths[i], lengths[i + 1]) = round ? ((float)(Math.Max(0, d - 1) * width), (float)((space + 1) * width)) : ((float)(d * width), (float)(space * width));
+                    (lengths[i], lengths[i + 1]) = round ? ((float)(Math.Max(0, d - 1) * unit), (float)((space + 1) * unit)) : ((float)(d * unit), (float)(space * unit));
                 }
-                if (lengths.Sum() > 0)
-                    pen.PathEffect = SKPathEffect.CreateDash(lengths, 0);
+                var period = lengths.Sum();
+                if (period > 0)
+                {
+                    var offset = round && closed ? -unit / 2 : 0;
+                    pen.PathEffect = SKPathEffect.CreateDash(lengths, (float)(((offset % period) + period) % period));
+                }
             }
             return pen;
         }

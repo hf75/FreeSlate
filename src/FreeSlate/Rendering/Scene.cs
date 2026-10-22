@@ -31,6 +31,12 @@ public sealed class PageScene
     /// <summary>The outlines the glyph ids of the scene's items name (in HTML the document's definitions).</summary>
     public GlyphCache? Glyphs { get; init; }
 
+    /// <summary>
+    /// Whether outlines repeat their dash patterns in their exact width, as Word does, rather than in whole pixels, as
+    /// PowerPoint does (see SvgPaint.DashUnit).
+    /// </summary>
+    public bool ExactDashes { get; init; }
+
     public List<SceneItem> Items { get; } = [];
 }
 
