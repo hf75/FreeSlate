@@ -10,12 +10,15 @@ using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using FreeSlate.Opc;
+using FreeSlate.Rendering;
+using FreeSlate.Skia;
 
 namespace FreeSlate.Viewer;
 
 /// <summary>
-/// Opens a Word document and shows it as FreeSlate's HTML document in the platform's web view, its pages as Word prints
-/// them; on Windows with Word installed also Word's own pages, beside FreeSlate's, over them or against them.
+/// Opens a Word document and shows it as FreeSlate's HTML document in the platform's web view, or its pages drawn by
+/// Skia, as Word prints them; on Windows with Word installed also Word's own pages, beside FreeSlate's, over them or
+/// against them.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -51,8 +54,9 @@ public partial class MainWindow : Window
     FileSystemWatcher? watcher;
 
     /// <summary>A document as shown: the file, the file FreeSlate and Word read (a copy when another program holds
-    /// the document open), its password, whether with markup, and its version, which Word's renderings belong to.</summary>
-    sealed record View(string Path, string Source, string? Password, bool Markup, string Html, string Key);
+    /// the document open), its password, whether with markup, its HTML or its pages' scenes (as Skia draws them), and
+    /// its version, which Word's renderings belong to.</summary>
+    sealed record View(string Path, string Source, string? Password, bool Markup, string? Html, List<PageScene>? Scenes, string Key);
 
     public MainWindow()
     {
@@ -109,7 +113,13 @@ public partial class MainWindow : Window
         }
         BlendSlider.Value = Math.Clamp(settings.Blend, 0, 100);
         MarkupToggle.IsChecked = settings.Markup;
+        SkiaToggle.IsChecked = settings.Skia;
         WatchBox.IsChecked = settings.Watch;
+        ScenePages.PageChanged += n =>
+        {
+            if (!PageBox.IsFocused)
+                PageBox.Text = n.ToString(CultureInfo.CurrentCulture);
+        };
 
         Closing += (_, _) => settings.Save();
         Closed += (_, _) =>
@@ -171,7 +181,7 @@ public partial class MainWindow : Window
         else if (control && e.Key == Key.P && PrintButton.IsEnabled)
         {
             e.Handled = true;
-            Web.ShowPrintUI();
+            await PrintAsync();
         }
     }
 
@@ -229,6 +239,12 @@ public partial class MainWindow : Window
         await ReloadAsync();
     }
 
+    async void OnSkiaChanged(object? sender, RoutedEventArgs e)
+    {
+        settings.Skia = SkiaToggle.IsChecked == true;
+        await ReloadAsync();
+    }
+
     async void OnZoomChanged(object? sender, SelectionChangedEventArgs e)
     {
         settings.Zoom = Math.Max(0, ZoomBox.SelectedIndex);
@@ -245,6 +261,7 @@ public partial class MainWindow : Window
     async void OnBlendChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
         settings.Blend = BlendSlider.Value;
+        ScenePages.Blend = BlendSlider.Value / 100;
         if (scripted)
             await Web.InvokeScript($"freeSlateViewer.blend({(BlendSlider.Value / 100).ToString(CultureInfo.InvariantCulture)})");
     }
@@ -255,7 +272,63 @@ public partial class MainWindow : Window
         Watch(view?.Path);
     }
 
-    void OnPrintClick(object? sender, RoutedEventArgs e) => Web.ShowPrintUI();
+    async void OnPrintClick(object? sender, RoutedEventArgs e) => await PrintAsync();
+
+    /// <summary>Prints the document: the web view's print dialog, or the pages Skia draws as a PDF in the PDF program.</summary>
+    async Task PrintAsync()
+    {
+        if (view?.Scenes == null)
+        {
+            Web.ShowPrintUI();
+            return;
+        }
+        Directory.CreateDirectory(work);
+        var pdf = Path.Combine(work, Path.GetFileNameWithoutExtension(view.Path) + ".pdf");
+        try
+        {
+            await WritePdfAsync(view, pdf);
+            await Launcher.LaunchFileInfoAsync(new FileInfo(pdf));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            StatusText.Text = $"Das PDF lässt sich nicht schreiben: {error.Message}";
+        }
+    }
+
+    /// <summary>The document's pages as Skia draws them, written as a PDF (see PdfExport).</summary>
+    static Task WritePdfAsync(View shown, string target) => Task.Run(() =>
+    {
+        using var file = File.Create(target);
+        if (shown.Scenes is { } scenes)
+            SkiaScene.Pdf(scenes, file);
+        else
+            PdfExport.FromDocx(shown.Source, file, password: shown.Password, markup: shown.Markup);
+    });
+
+    async void OnPdfClick(object? sender, RoutedEventArgs e)
+    {
+        if (view == null)
+            return;
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Als PDF speichern",
+            SuggestedFileName = Path.GetFileNameWithoutExtension(view.Path) + ".pdf",
+            DefaultExtension = "pdf",
+            FileTypeChoices = [new FilePickerFileType("PDF-Dokument") { Patterns = ["*.pdf"] }],
+        });
+        if (file?.TryGetLocalPath() is not { } target)
+            return;
+        try
+        {
+            StatusText.Text = $"{Path.GetFileName(target)} wird geschrieben …";
+            await WritePdfAsync(view, target);
+            StatusText.Text = $"Gespeichert: {target}";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            StatusText.Text = $"{Path.GetFileName(target)} lässt sich nicht speichern: {error.Message}";
+        }
+    }
 
     async void OnSaveClick(object? sender, RoutedEventArgs e)
     {
@@ -272,7 +345,9 @@ public partial class MainWindow : Window
             return;
         try
         {
-            await File.WriteAllTextAsync(target, view.Html);
+            var shown = view;
+            var html = shown.Html ?? await Task.Run(() => DocxConverter.ToHtml(shown.Source, password: shown.Password, markup: shown.Markup));
+            await File.WriteAllTextAsync(target, html);
             StatusText.Text = $"Gespeichert: {target}";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -289,9 +364,16 @@ public partial class MainWindow : Window
 
     async void OnPageKey(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Enter || !scripted)
+        if (e.Key != Key.Enter || !scripted && view?.Scenes == null)
             return;
         e.Handled = true;
+        if (view?.Scenes != null)
+        {
+            if (int.TryParse(PageBox.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var page))
+                ScenePages.GoTo(page);
+            Dispatcher.UIThread.Post(() => SkiaScroll.Focus(), DispatcherPriority.Background);
+            return;
+        }
         if (int.TryParse(PageBox.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var n))
             await Web.InvokeScript($"freeSlateViewer.goTo({n})");
         Dispatcher.UIThread.Post(() => Web.Focus(), DispatcherPriority.Background);
@@ -315,29 +397,56 @@ public partial class MainWindow : Window
         position = again && scripted ? await Web.InvokeScript("freeSlateViewer.position()") : null;
         if (string.IsNullOrWhiteSpace(position) || position == "null")
             position = null;
+        var drawnAt = again && view?.Scenes != null ? ScenePages.Position() : default;
         OpenButton.IsEnabled = ReloadButton.IsEnabled = false;
         var markup = MarkupToggle.IsChecked == true;
         try
         {
             var clock = Stopwatch.StartNew();
             var (source, key) = await Task.Run(() => Readable(path, markup));
+            if (SkiaToggle.IsChecked == true)
+            {
+                // The pages drawn by Skia from their scenes, no web view.
+                var scenes = await Task.Run(() => DocxConverter.ToScenes(source, password: password, markup: markup));
+                seconds = clock.Elapsed.TotalSeconds;
+                view = new View(path, source, password, markup, null, scenes, key);
+                locked = failed = null;
+                retries = 0;
+                scripted = false;
+                PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = Web.IsVisible = false;
+                SkiaScroll.IsVisible = true;
+                ScenePages.Scenes = scenes;
+                ScenePages.Blend = BlendSlider.Value / 100;
+                await ApplyZoom();
+                Dispatcher.UIThread.Post(() => ScenePages.Restore(drawnAt), DispatcherPriority.Loaded);
+                pageCount = scenes.Count;
+                PageCount.Text = $"von {pageCount}";
+                Title = $"{name} – FreeSlate Viewer";
+                StatusText.Text = $"{name} · {Pages(pageCount)} · in {seconds.ToString("0.00", CultureInfo.CurrentCulture)} s umgesetzt (Skia)";
+                PrintButton.IsEnabled = SaveButton.IsEnabled = PdfButton.IsEnabled = true;
+                settings.Folder = Path.GetDirectoryName(path);
+                Watch(path);
+                await ApplyComparison();
+                return;
+            }
             var html = await Task.Run(() => DocxConverter.ToHtml(source, password: password, markup: markup));
             seconds = clock.Elapsed.TotalSeconds;
             // A file, not NavigateToString: the document carries its pictures and fonts and is often large.
             Directory.CreateDirectory(work);
             var document = Path.Combine(work, Path.GetFileNameWithoutExtension(path) + ".html");
             await File.WriteAllTextAsync(document, html);
-            view = new View(path, source, password, markup, html, key);
+            view = new View(path, source, password, markup, html, null, key);
             locked = failed = null;
             retries = 0;
             scripted = false;
             pageCount = 0;
-            PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = false;
+            PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = SkiaScroll.IsVisible = false;
+            ScenePages.Scenes = [];
             Web.IsVisible = true;
             Web.Navigate(server.Publish(document));
             Title = $"{name} – FreeSlate Viewer";
             StatusText.Text = name;
-            PrintButton.IsEnabled = SaveButton.IsEnabled = true;
+            PrintButton.IsEnabled = SaveButton.IsEnabled = PdfButton.IsEnabled = true;
             settings.Folder = Path.GetDirectoryName(path);
             Watch(path);
         }
@@ -399,8 +508,9 @@ public partial class MainWindow : Window
         locked = null;
         failed = path;
         scripted = false;
-        Web.IsVisible = Placeholder.IsVisible = PasswordPanel.IsVisible = false;
-        PrintButton.IsEnabled = SaveButton.IsEnabled = WordPdfButton.IsVisible = false;
+        Web.IsVisible = SkiaScroll.IsVisible = Placeholder.IsVisible = PasswordPanel.IsVisible = false;
+        ScenePages.Scenes = [];
+        PrintButton.IsEnabled = SaveButton.IsEnabled = PdfButton.IsEnabled = WordPdfButton.IsVisible = false;
         ErrorText.Text = error.ToString();
         ErrorPanel.IsVisible = true;
         StatusText.Text = $"{name} lässt sich nicht öffnen: {error.Message}";
@@ -441,19 +551,28 @@ public partial class MainWindow : Window
 
     async Task ApplyZoom()
     {
-        if (scripted)
+        if (view?.Scenes != null)
+        {
+            // The page script's zoom for the pages Skia draws: a fit by name or a factor.
+            var zoom = Zooms[Math.Max(0, ZoomBox.SelectedIndex)];
+            ScenePages.Zoom = double.TryParse(zoom, NumberStyles.Float, CultureInfo.InvariantCulture, out var factor) ? factor : zoom.Trim('\'');
+        }
+        else if (scripted)
             await Web.InvokeScript($"freeSlateViewer.zoom({Zooms[Math.Max(0, ZoomBox.SelectedIndex)]})");
     }
 
     /// <summary>Shows Word's pages as the compare box says, Word rendering them first when they are not there yet.</summary>
     async Task ApplyComparison()
     {
-        if (!scripted || view == null)
+        if (!scripted && view?.Scenes == null || view == null)
             return;
         var mode = Comparisons[Math.Max(0, CompareBox.SelectedIndex)];
         if (mode == "off" || !wordInstalled)
         {
-            await Web.InvokeScript("freeSlateViewer.compare('off', [])");
+            if (view.Scenes != null)
+                ScenePages.Compare("off", []);
+            else
+                await Web.InvokeScript("freeSlateViewer.compare('off', [])");
             WordPdfButton.IsVisible = false;
             ShowWordState();
             return;
@@ -461,6 +580,13 @@ public partial class MainWindow : Window
         if (!renderings.TryGetValue(view.Key, out var word))
         {
             await RenderWordAsync(view);
+            return;
+        }
+        if (view.Scenes != null)
+        {
+            ScenePages.Compare(mode, word.Pages.Select(p => new WordPicture(Path.Combine(word.Folder, p.File), p.Width, p.Height)).ToList());
+            WordPdfButton.IsVisible = true;
+            ShowWordState();
             return;
         }
         if (!published.TryGetValue(word, out var root))

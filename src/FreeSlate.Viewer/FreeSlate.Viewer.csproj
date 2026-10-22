@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FreeSlate\FreeSlate.csproj" />
+    <ProjectReference Include="..\FreeSlate.Skia\FreeSlate.Skia.csproj" />
   </ItemGroup>
 
 </Project>

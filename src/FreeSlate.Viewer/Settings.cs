@@ -9,6 +9,7 @@ sealed class Settings
     public int Compare { get; set; }
     public double Blend { get; set; } = 50;
     public bool Markup { get; set; }
+    public bool Skia { get; set; }
     public bool Watch { get; set; } = true;
     public string? Folder { get; set; }
 
