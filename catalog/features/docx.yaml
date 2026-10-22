@@ -2162,12 +2162,14 @@ areas:
           margins puts its text 5 pt down; docx/external/poi/60329). A row fits where it and the line that closes the
           table below it fit (docx/local/tblbottom-*). Rows that do not fit split at a line of each cell, a
           paragraph's last line fitting with its space after, before Word 2013 with its cell's bottom margin too
-          (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes on), and with the bottom
-          margins of the nested tables' cells it stands in, which the rest ends with in every mode (LibreOffice's
-          writerfilter-dmapper/floattable-hidemark: a line of a floating table's cell with 6.75 pt at the bottom whose
-          bottom is 1.6 pt above the page's goes on in mode 12, the paragraph after the table 6.75 pt below the rest's
-          last line, 71.0 → 92.6 %; docx/local/sr-3: the rest of a nested row cut in two ends 11.5 pt lower, as
-          in Word); header rows, rows of
+          (rowmar-11, -12, -14: a line ending 5 pt above the cut over a 10 pt margin goes on), and in every mode with
+          the bottom margins of the nested tables' cells it stands in and the lines below their rows, which each part
+          ends with (docx/local/nft-*-c*, -m*: a nested line whose 3 pt bottom line or 10 pt bottom margin would reach
+          past the page's bottom goes on in modes 11 and 15, the part before the cut ending 10 pt below its last line;
+          LibreOffice's writerfilter-dmapper/floattable-hidemark: a line of a floating table's cell with 6.75 pt at the
+          bottom whose bottom is 1.6 pt above the page's goes on in mode 12, the paragraph after the table 6.75 pt
+          below the rest's last line, 71.0 → 92.6 %; docx/local/sr-3: the rest of a nested row cut in two ends 11.5 pt
+          lower, as in Word); header rows, rows of
           exact height, rows that may not split (w:cantSplit), rows whose at-least height does not fit and rows with a
           cell whose first line does not fit move on whole (a picture line that fits without its space after too, and
           from Word 2013 on a paragraph that widow control keeps whole: two lines on each side of the cut or none,
@@ -2243,10 +2245,16 @@ areas:
           below the rows above it too to close their part (extras-layout/tdf170381-split-float-table-in-normal-table:
           an empty centered inner row goes on on page 2 with its line, which also ends page 1's rows, 88.9 → 100 %;
           floattable-bad-fly-pos → 100 %); a nested table's lines and shading that reach past the cut are cut there
-          and go on in the next part (core-text/floattable-anchor-height: the middle and inner tables' sides on every
-          page, 75.5 → 82.9 %; writerfilter-dmapper/floattable-nested-3tables 91.5 → 98.8 %, writerfilter-ooxml/
-          floattable-multi-nested 90.7 → 96.4 %). Known deviation: Word also closes and reopens a nested table's
-          borders at every cut. In tables with cell
+          and go on in the next part (writerfilter-dmapper/floattable-nested-3tables 91.5 → 98.8 %, writerfilter-ooxml/
+          floattable-multi-nested 90.7 → 96.4 %); a cut through a nested table breaks it as a table of the text: the
+          nested row it goes through splits as such a row does, each cell at its own line, the rest at least as high
+          as the row's at-least height, the part before ending with the line below its last row and the part after
+          beginning with the table's top line, the cells' margins kept on both sides of the cut, at every level of
+          nesting (docx/local/nft-*: a nested row of at least 169.6 pt going on with three lines 169.6 pt high, the
+          0.5 pt lines below and above the cut, in modes 11 and 15; core-text/floattable-anchor-height: three tables
+          over four pages, 82.9 → 100 %; writerfilter-dmapper/floattable-nested 93.9 → 100 %, floattable-nested-3tables
+          → 100 %, writerfilter-ooxml/floattable-multi-nested → 100 %, extras-layout/tdf170620 97.3 → 100 %). In tables
+          with cell
           spacing an at-least height lies between the row's largest top and bottom margins as in other tables, and a
           fixed table's grid columns hold the gaps between its cells (tdf123104: a row of 49.5 pt at least with
           margins of 3.75 pt 57 pt high, cells 1.5 pt narrower than their grid columns, 65.0 → 100 %). Drawings in
@@ -2481,8 +2489,11 @@ areas:
           twips, widths of 2000 to 5000 in cells of 4000; core-objectpositioning/floattable-overlap-cell 89.6 → 93.3
           %, extras-layout/tdf170477 97.7 → 99.8 %); the cell is as high as it reaches
           (docx/ local/nf-1 to nf-7, ng-1, ng-2 in modes 12 and 15; core-layout/floattable-del-empty, extras-layout/
-          tdf170477, writerfilter-dmapper/floattable-nested-layout); without vertAnchor tblpY counts from the
-          content's top, and one without a vertical position not anchored to the text stands in the text as other
+          tdf170477, writerfilter-dmapper/floattable-nested-layout); where its row breaks through it, the cell's text
+          after it begins beside its last part, at that part's top, the parts before without it (docx/local/nft-*-f,
+          -lf, -ft: three rows over two pages, the paragraph after them of one line or five beside the second part in
+          modes 11 and 15; core-text/floattable-anchor-height: at the top of the fourth page); without vertAnchor
+          tblpY counts from the content's top, and one without a vertical position not anchored to the text stands in the text as other
           tables there, the text below it (docx/local/nh-*, ni-* in modes 14 and 15); in notes it stays in the text
           (writerfilter-dmapper/floattable-footnote-redline). A table with w:tblOverlap never moves off a floating
           table before it on the page that it would overlap: right of it where it fits in its horizontal anchor's

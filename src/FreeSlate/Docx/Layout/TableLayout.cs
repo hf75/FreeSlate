@@ -60,6 +60,24 @@ public sealed record CellAnchor(AnchorInline Anchor, double ParagraphTop, double
     };
 }
 
+/// <summary>
+/// A cut through a cell's content where its row breaks, down from the top of the content as first laid out: the top of
+/// the first line that goes on, where the part after the cut begins, the room above the cut, and the nested table (its
+/// block, from 1) the cut goes through, 0 where it goes between lines of the cell's own text.
+/// </summary>
+public readonly record struct CellCut(int Table, double Top, double At, double Room);
+
+/// <summary>
+/// The content of a cell that holds nested tables as laid out again for the cuts made through it (see RowBox.Split):
+/// the parts between the cuts, each with where it begins down the content as first laid out, for the content top they
+/// were built for; the cuts made before the part that holds it and where that part begins.
+/// </summary>
+public sealed record CellCuts(Func<IReadOnlyList<CellCut>, List<(CellPart Part, double Origin)>?> Parts, double ContentTop)
+{
+    public IReadOnlyList<CellCut> Made { get; init; } = [];
+    public double Origin { get; init; }
+}
+
 /// <summary>The content of one cell in a row: lines, nested tables' fills and strokes, relative to the row's top.</summary>
 public sealed class CellPart
 {
@@ -94,6 +112,9 @@ public sealed class CellPart
     /// </summary>
     public (int Rows, Func<double, CellPart> Part)? Along { get; init; }
 
+    /// <summary>For a cell that holds nested tables: its content laid out again for cuts through them (RowBox.Split).</summary>
+    public CellCuts? Cuts { get; init; }
+
     /// <summary>The part as it stands, its content no longer lowered by an alignment.</summary>
     public CellPart Settled()
     {
@@ -105,13 +126,16 @@ public sealed class CellPart
         return settled;
     }
 
-    /// <summary>The part with its content <paramref name="dy"/> points further down, below a thicker top line.</summary>
-    public CellPart Lower(double dy)
+    /// <summary>
+    /// The part with its content <paramref name="dy"/> points further down, below a thicker top line (and with other
+    /// cuts to lay it out again for, where given).
+    /// </summary>
+    public CellPart Lower(double dy, CellCuts? cuts = null)
     {
         var moved = new CellPart
         {
             ContentTop = ContentTop + dy, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered, Carried = Carried, Span = Span,
-            Along = Along is { } along ? (along.Rows, height => along.Part(height).Lower(dy)) : null,
+            Along = Along is { } along ? (along.Rows, height => along.Part(height).Lower(dy)) : null, Cuts = cuts ?? Cuts,
         };
         moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
         moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
@@ -120,10 +144,90 @@ public sealed class CellPart
         return moved;
     }
 
+    /// <summary>
+    /// The part cut before the line at <paramref name="restTop"/> (null: all of it stays), the lines from it on, and
+    /// the fills, strokes and drawings below the cut, moved up by <paramref name="offset"/> into the part after the cut;
+    /// <paramref name="carry"/> is the room above the nested cell's content that line stands in (see RowBox.Split).
+    /// </summary>
+    public (CellPart Head, CellPart Tail) Partition(double? restTop, double carry, double offset, bool cut, CellCuts? cuts = null)
+    {
+        // Content cut in two goes on at the top of the continuation, whatever the cell's alignment (measured with
+        // docx/local/vs-7 to vs-10: the second of two centered or bottom-aligned lines; docx/external/poi/bug65649);
+        // content that stands whole in one part aligns there (vs-1 to vs-6).
+        var headPart = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered, Carried = Carried, Span = Span };
+        var tailPart = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = cut ? null : Align, Carried = Carried, Span = Span, Cuts = cuts };
+        foreach (var line in Lines)
+        {
+            if (restTop == null || line.Top < restTop)
+                headPart.Lines.Add(line);
+            else
+                tailPart.Lines.Add(line with { Top = line.Top - offset });
+        }
+        // The lines and fills of a nested row that goes on in the continuation go with it, from its top (measured
+        // with docx/external/libreoffice/core-text/floattable-bad-fly-pos: nested rows of 306 and 363 pt each at the
+        // top of the next part, their lines with them; core-layout/floattable-in-inlinetable).
+        var cutTop = restTop - carry ?? 0;
+        // A nested table's line or shading reaching past the cut goes on on the other side of it, cut there
+        // (LibreOffice's core-text/floattable-anchor-height: the middle and the inner table's sides on every page they
+        // go on to, not one line through them past the first page's end).
+        foreach (var fill in Fills)
+        {
+            if (restTop != null && fill.Y < cutTop - 0.01 && fill.Y + fill.Height > cutTop + 0.01)
+            {
+                headPart.Fills.Add(fill with { Height = cutTop - fill.Y });
+                tailPart.Fills.Add(fill with { Y = cutTop - offset, Height = fill.Y + fill.Height - cutTop });
+            }
+            else if (restTop == null || fill.Y < cutTop - 0.01)
+                headPart.Fills.Add(fill);
+            else
+            {
+                tailPart.Fills.Add(fill with { Y = fill.Y - offset });
+                // The line at the top of the nested row the cut is at closes the rows above it too, as a table's
+                // own line does where it breaks (LibreOffice's extras-layout/tdf170381-split-float-table-in-normal-table:
+                // the inner line under the page's last inner row and over the next page's first).
+                if (carry > 0 && fill.Y < cutTop + 0.01 && fill.Height <= carry + 0.01)
+                    headPart.Fills.Add(fill);
+            }
+        }
+        foreach (var stroke in Strokes)
+        {
+            var (from, to) = (Math.Min(stroke.Y1, stroke.Y2), Math.Max(stroke.Y1, stroke.Y2));
+            if (restTop != null && Math.Abs(stroke.X1 - stroke.X2) < 0.01 && from < cutTop - 0.01 && to > cutTop + 0.01)
+            {
+                headPart.Strokes.Add(stroke with { Y1 = from, Y2 = cutTop });
+                tailPart.Strokes.Add(stroke with { Y1 = cutTop - offset, Y2 = to - offset });
+            }
+            else if (restTop == null || from < cutTop - 0.01)
+                headPart.Strokes.Add(stroke);
+            else
+                tailPart.Strokes.Add(stroke.Offset(0, -offset));
+        }
+        foreach (var anchor in Anchors)
+        {
+            if (restTop == null || anchor.LineTop < restTop)
+                headPart.Anchors.Add(anchor);
+            else
+                tailPart.Anchors.Add(anchor.Moved(-offset) with { Content = anchor.Content is { } v ? (ContentTop, v.Height) : null });
+        }
+        return (headPart, tailPart);
+    }
+
+    /// <summary>
+    /// The part before and the part after a cut through a table nested in the cell, its content laid out again with
+    /// the cuts made through it so far and this one (see Cuts), at the part's own content top; null where that fails.
+    /// </summary>
+    public (CellPart Head, CellPart Tail)? Relaid(CellCut cut)
+    {
+        if (Cuts is not { } cuts || cuts.Parts([.. cuts.Made, cut]) is not { Count: > 1 } parts)
+            return null;
+        var dy = ContentTop - cuts.ContentTop;
+        return (parts[^2].Part.Lower(dy), parts[^1].Part.Lower(dy, cuts with { Made = [.. cuts.Made, cut], Origin = parts[^1].Origin }));
+    }
+
     /// <summary>The part moved down by <paramref name="dy"/> points.</summary>
     public CellPart Shifted(double dy)
     {
-        var moved = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered + dy, Carried = Carried, Span = Span };
+        var moved = new CellPart { ContentTop = ContentTop, BottomMargin = BottomMargin, Diagonals = Diagonals, Align = Align, Lowered = Lowered + dy, Carried = Carried, Span = Span, Cuts = Cuts };
         moved.Lines.AddRange(Lines.Select(l => l with { Top = l.Top + dy }));
         moved.Fills.AddRange(Fills.Select(f => f with { Y = f.Y + dy }));
         moved.Strokes.AddRange(Strokes.Select(s => s.Offset(0, dy)));
@@ -248,11 +352,14 @@ public sealed class RowBox
             // A row of a nested table goes on whole where its at-least height does not fit (measured with docx/external/
             // libreoffice/writerfilter-dmapper/floattable-nested: an inner row of 85 pt with a line of text moves to the
             // next page, as rows of the table itself do).
-            // So do the cells of the nested tables a line stands in (LibreOffice's writerfilter-dmapper/
-            // floattable-hidemark: a line of a floating table's cell with a 6.75 pt bottom margin, its bottom 1.6 pt
-            // above the page's, goes on to the next page in mode 12).
+            // A line of a nested table needs room for the bottom margins of the nested cells it stands in and the lines
+            // below their rows, in every mode (measured with docx/local/nft-*-c*, -m*: a line of a nested cell whose
+            // 3 pt bottom line or 10 pt bottom margin would reach past the page's bottom goes on to the next page in
+            // modes 11 and 15, without them it stays; LibreOffice's writerfilter-dmapper/floattable-hidemark: a line
+            // of a floating table's cell with a 6.75 pt bottom margin, its bottom 1.6 pt above the page's, goes on in
+            // mode 12; core-text/floattable-anchor-height: the last line of page 3 in three tables goes on).
             var margin = MarginBelowCut ? cell.BottomMargin : 0;
-            var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) + margin + (MarginBelowCut ? l.CarryBelow : 0) > available + 0.01)
+            var rest = cell.Lines.Where(l => l.Top - cell.Lowered + Math.Max(l.Line.Height + l.After, l.UnitHeight) + margin + l.CarryBelow > available + 0.01)
                 .MinBy(l => l.Top);
             // Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole,
             // from Word 2013 on (measured with docx/local/rs3-*: three lines with two above the cut, or one, go on, four
@@ -306,12 +413,7 @@ public sealed class RowBox
             }
             if (!force && rest != null && ReferenceEquals(rest, cell.Lines[0]))
                 return null;
-            // Content cut in two goes on at the top of the continuation, whatever the cell's alignment (measured with
-            // docx/local/vs-7 to vs-10: the second of two centered or bottom-aligned lines; docx/external/poi/bug65649);
-            // content that stands whole in one part aligns there (vs-1 to vs-6).
             var cut = rest != null && !ReferenceEquals(rest, cell.Lines[0]);
-            var headPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cell.Align, Lowered = cell.Lowered, Carried = cell.Carried, Span = cell.Span };
-            var tailPart = new CellPart { ContentTop = cell.ContentTop, BottomMargin = cell.BottomMargin, Diagonals = cell.Diagonals, Align = cut ? null : cell.Align, Carried = cell.Carried, Span = cell.Span };
             // A nested row cut in two goes on below its line and its cell's margin again (measured with docx/local/sr-3,
             // sr-5: 6.15 pt lower than the line of a row of the table itself, in modes 11 and 15; docx/external/
             // libreoffice/core-text/floattable-anchor-height).
@@ -320,65 +422,22 @@ public sealed class RowBox
             // spgf-15: 12 pt before after 0, 6 and 18 pt after keep 12, 6 and 0 pt, in inline and floating tables;
             // docx/external/libreoffice/core-layout/floattable-deleted-anchor).
             var offset = rest != null ? rest.Top - cell.ContentTop - rest.Carry - rest.Lead : 0;
-            foreach (var line in cell.Lines)
-            {
-                if (rest == null || line.Top < rest.Top)
-                {
-                    headPart.Lines.Add(line);
-                    any = true;
-                }
-                else
-                {
-                    tailPart.Lines.Add(line with { Top = line.Top - offset });
-                    continues = true;
-                }
-            }
-            // The lines and fills of a nested row that goes on in the continuation go with it, from its top (measured
-            // with docx/external/libreoffice/core-text/floattable-bad-fly-pos: nested rows of 306 and 363 pt each at the
-            // top of the next part, their lines with them; core-layout/floattable-in-inlinetable).
-            var cutTop = rest != null ? rest.Top - rest.Carry : 0;
-            // A nested table's line or shading reaching past the cut goes on on the other side of it, cut there
-            // (LibreOffice's core-text/floattable-anchor-height: the middle and the inner table's sides on every page they
-            // go on to, not one line through them past the first page's end).
-            foreach (var fill in cell.Fills)
-            {
-                if (rest != null && fill.Y < cutTop - 0.01 && fill.Y + fill.Height > cutTop + 0.01)
-                {
-                    headPart.Fills.Add(fill with { Height = cutTop - fill.Y });
-                    tailPart.Fills.Add(fill with { Y = cutTop - offset, Height = fill.Y + fill.Height - cutTop });
-                }
-                else if (rest == null || fill.Y < cutTop - 0.01)
-                    headPart.Fills.Add(fill);
-                else
-                {
-                    tailPart.Fills.Add(fill with { Y = fill.Y - offset });
-                    // The line at the top of the nested row the cut is at closes the rows above it too, as a table's
-                    // own line does where it breaks (LibreOffice's extras-layout/tdf170381-split-float-table-in-normal-table:
-                    // the inner line under the page's last inner row and over the next page's first).
-                    if (rest.Carry > 0 && fill.Y < cutTop + 0.01 && fill.Height <= rest.Carry + 0.01)
-                        headPart.Fills.Add(fill);
-                }
-            }
-            foreach (var stroke in cell.Strokes)
-            {
-                var (from, to) = (Math.Min(stroke.Y1, stroke.Y2), Math.Max(stroke.Y1, stroke.Y2));
-                if (rest != null && Math.Abs(stroke.X1 - stroke.X2) < 0.01 && from < cutTop - 0.01 && to > cutTop + 0.01)
-                {
-                    headPart.Strokes.Add(stroke with { Y1 = from, Y2 = cutTop });
-                    tailPart.Strokes.Add(stroke with { Y1 = cutTop - offset, Y2 = to - offset });
-                }
-                else if (rest == null || from < cutTop - 0.01)
-                    headPart.Strokes.Add(stroke);
-                else
-                    tailPart.Strokes.Add(stroke.Offset(0, -offset));
-            }
-            foreach (var anchor in cell.Anchors)
-            {
-                if (rest == null || anchor.LineTop < rest.Top)
-                    headPart.Anchors.Add(anchor);
-                else
-                    tailPart.Anchors.Add(anchor.Moved(-offset) with { Content = anchor.Content is { } v ? (cell.ContentTop, v.Height) : null });
-            }
+            CellPart headPart, tailPart;
+            // A cut through a table nested in the cell breaks it as a table: the cell's content is laid out again for the
+            // cut (see TableLayout.Content), the nested row it goes through cut as a row of the table itself; one through a
+            // floating table also where the cell's own text after it is what goes on first. A cut between lines of the
+            // cell's own text keeps the lines as they stand, the cell's later cuts laying the content out again with it.
+            var spec = rest == null || cell.Cuts is not { } cuts ? (CellCut?)null
+                : new CellCut(!cut ? 0 : rest.Nest > 0 ? rest.Nest
+                        : cell.Lines.Where(l => l.Nest > 0 && l.Top >= rest.Top && cell.Lines.Any(o => o.Nest == l.Nest && o.Top < rest.Top)).Select(l => l.Nest).FirstOrDefault(),
+                    cuts.Origin + rest.Top - cell.ContentTop - cell.Lowered, cuts.Origin + offset - cell.Lowered, cuts.Origin + available - cell.ContentTop - margin);
+            if (spec is { Table: > 0 } through && cell.Relaid(through) is { } relaid)
+                (headPart, tailPart) = relaid;
+            else
+                (headPart, tailPart) = cell.Partition(rest?.Top, rest?.Carry ?? 0, offset, cut,
+                    cell.Cuts is { } kept && spec is { } plain ? cut ? kept with { Made = [.. kept.Made, plain with { Table = 0 }], Origin = plain.At } : kept with { Origin = plain.At } : null);
+            any |= headPart.Lines.Count > 0;
+            continues |= tailPart.Lines.Count > 0;
             // The continuation holds its nested rows whole, as high as their fills reach, so that it splits again where
             // its page cannot hold them (floattable-bad-fly-pos: four pages).
             // It grows down to the drawings that went on with it that text goes around, as the row does (tpq-tbl-15-*:
@@ -398,10 +457,12 @@ public sealed class RowBox
         // The part before the cut ends below its cells' content, a paragraph's last line with its space after, and
         // their bottom margin where the page has room for it, not at the page's end (spg-*, spgf-*: the line below a
         // cell's last line on the page with 0, 6 and 18 pt after is that far below it, 25 pt above the page's end;
-        // docx/external/libreoffice/extras-ooxmlexport/tdf170381).
+        // docx/external/libreoffice/extras-ooxmlexport/tdf170381), below a nested table's line the bottom margins of
+        // its cells (docx/local/nft-*-m*: a nested cell's 10 pt margin below its last line on the page, the row's
+        // line below it).
         if (continues && head.Cells.All(c => c.Anchors.Count == 0))
         {
-            var bottom = head.Cells.Max(c => Math.Max(c.Lines.Count == 0 ? 0 : c.Lines.Max(l => l.Top + l.Line.Height + l.After) - c.Lowered,
+            var bottom = head.Cells.Max(c => Math.Max(c.Lines.Count == 0 ? 0 : c.Lines.Max(l => l.Top + l.Line.Height + l.After + l.CarryBelow) - c.Lowered,
                 c.Fills.Count == 0 ? 0 : c.Fills.Max(f => f.Y + f.Height)) + c.BottomMargin);
             head.Height = Math.Min(available, Math.Max(bottom, TopWidth + Least));
         }
@@ -928,6 +989,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
         }
         var laid = new Dictionary<CellModel, CellContent>();
+        // The content of cells that hold nested tables laid out again, as first, for cuts through those (CellPart.Cuts).
+        var laidAgain = new Dictionary<CellModel, Func<IReadOnlyList<CellCut>, CellContent>>();
         var contentHeights = new double[rows.Count];
         for (var r = 0; r < rows.Count; r++)
         {
@@ -944,10 +1007,29 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 var textRight = x[c1] + shift - Math.Max(margins.Right, rightLine / 2);
                 var outerInside = cellInside;
                 cellInside = (x[c0] + shift + leftLine / 2 - textLeft, x[c1] + shift - rightLine / 2 - textLeft);
-                var content = Content(cell, Math.Max(1, textRight - textLeft), fields, neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)), textLeft - x[c0] - shift,
-                    CellShading(cell, rows[r]));
+                var (cellWidth, cellEdge, cellShading, cellNeighbors) = (Math.Max(1, textRight - textLeft), textLeft - x[c0] - shift, CellShading(cell, rows[r]),
+                    neighbors.GetValueOrDefault(cell, (NoParagraph, NoParagraph)));
+                var content = Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading);
+                if (!Rotated(cell) && cell.Blocks.Any(b => b is TableBlock))
+                {
+                    // Laid out again in the state of the layout it was first laid out in.
+                    var (inside, nested, state, cellLeft) = (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned), textLeft);
+                    laidAgain[cell] = cuts =>
+                    {
+                        var was = (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned));
+                        (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned)) = (inside, nested, state);
+                        try
+                        {
+                            return Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading, cuts) with { Left = cellLeft, Width = cellWidth };
+                        }
+                        finally
+                        {
+                            (cellInside, inCell, (paragraphs.Vertical, paragraphs.TurnEastAsian, paragraphs.Unaligned)) = was;
+                        }
+                    };
+                }
                 cellInside = outerInside;
-                laid[cell] = content with { Left = textLeft, Width = Math.Max(1, textRight - textLeft) };
+                laid[cell] = content with { Left = textLeft, Width = cellWidth };
                 if (!span.ContainsKey(cell) && !(Rotated(cell) && TurnsInRow(rows[r])))
                     contentHeights[r] = Math.Max(contentHeights[r], margins.Top + content.Height + margins.Bottom);
             }
@@ -989,7 +1071,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r],
                 Exact = specified > 0 && row.Format.HeightRule == "exact",
                 Least = row.Format.HeightRule == "exact" || specified <= 0 ? 0 : rowEdges[r].Top + specified + rowEdges[r].Bottom,
-                MarginBelowCut = context.Profile.CellMarginBelowCut,
+                // A nested table's row needs it in every mode (measured with docx/local/nft-15-m*: a line of a nested
+                // cell whose 10 pt bottom margin would reach past the page's bottom goes on to the next page).
+                MarginBelowCut = context.Profile.CellMarginBelowCut || inCell,
                 AnchorsReach = context.Profile.AnchorsReachPastCut,
             };
             // Shading of every cell the row passes through, also cells merged from above.
@@ -1020,6 +1104,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 // The cell's part laid out for a height of the rows it spans: all of them, or where a page or column
                 // break cuts the cell, its part before the break (see CellPart.Along).
                 var cellRow = r;
+                var relayout = laidAgain.GetValueOrDefault(cell);
+                var rowsTotal = total;
                 CellPart Part(double total)
                 {
                     var free = total - margins.Top - (Rotated(cell) ? content.Height : content.Reach ?? content.Height) - margins.Bottom;
@@ -1029,7 +1115,59 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         "bottom" => Math.Max(0, free),
                         _ => 0,
                     };
-                    var (textFrom, _) = Range(content.Left, content.Left + content.Width);
+                    return Build(content, total, lowered, Rotated(cell) ? null : cell.Format.VerticalAlign,
+                        rowsSpanned > 1 && (Rotated(cell) || cell.Format.VerticalAlign is "center" or "bottom") ? (rowsSpanned, Part) : null,
+                        relayout != null ? new CellCuts(Parts, topWidths[cellRow] + margins.Top) : null);
+                }
+                // The parts of the content between cuts through it, each with where it begins down the content as first
+                // laid out: laid out again for the cuts through its nested tables, the others made in the parts as they
+                // stand (see CellPart.Cuts); null where the content does not break so again.
+                List<(CellPart Part, double Origin)>? Parts(IReadOnlyList<CellCut> cuts)
+                {
+                    var through = cuts.Where(c => c.Table > 0).ToList();
+                    var redone = through.Count == 0 ? content : relayout!(through);
+                    if (redone.Boundaries.Count != through.Count)
+                        return null;
+                    var top = topWidths[cellRow] + margins.Top;
+                    var ends = redone.Boundaries.Append(new CellBoundary(redone.Lines.Count, redone.Fills.Count, redone.Strokes.Count, redone.Anchors.Count, 0)).ToList();
+                    var from = new CellBoundary(0, 0, 0, 0, 0);
+                    CellPart Piece(CellBoundary end, bool first)
+                    {
+                        var o = from.Origin;
+                        var piece = new CellContent(redone.Lines.Take(end.Lines).Skip(from.Lines).Select(l => l with { Top = l.Top - o }).ToList(),
+                            redone.Fills.Take(end.Fills).Skip(from.Fills).Select(f => f with { Y = f.Y - o }).ToList(),
+                            redone.Strokes.Take(end.Strokes).Skip(from.Strokes).Select(s => s.Offset(0, -o)).ToList(), 0, redone.Left, redone.Width)
+                        {
+                            Anchors = redone.Anchors.Take(end.Anchors).Skip(from.Anchors).Select(a => a.Offset(0, -o)).ToList(),
+                        };
+                        var reach = piece.Lines.Select(l => l.Top + l.Line.Height).Concat(piece.Fills.Select(f => f.Y + f.Height)).DefaultIfEmpty(0).Max();
+                        from = end;
+                        return Build(piece, Math.Max(rowsTotal, top + reach + margins.Bottom), 0, first ? cell.Format.VerticalAlign : null, null, null);
+                    }
+                    var parts = new List<(CellPart Part, double Origin)>();
+                    var (current, origin) = (Piece(ends[0], true), 0.0);
+                    var next = 1;
+                    foreach (var cut in cuts)
+                    {
+                        if (cut.Table > 0)
+                        {
+                            parts.Add((current, origin));
+                            origin = from.Origin;
+                            current = Piece(ends[next++], false);
+                        }
+                        else
+                        {
+                            var (head, tail) = current.Partition(top + cut.Top - origin, 0, cut.At - origin, cut: true);
+                            parts.Add((head, origin));
+                            (current, origin) = (tail, cut.At);
+                        }
+                    }
+                    parts.Add((current, origin));
+                    return parts;
+                }
+                CellPart Build(CellContent laidOut, double total, double lowered, string? align, (int Rows, Func<double, CellPart> Part)? along, CellCuts? cuts)
+                {
+                    var (textFrom, _) = Range(laidOut.Left, laidOut.Left + laidOut.Width);
                     var top = topWidths[cellRow] + margins.Top;
                     var (cellFrom, cellWidth) = Range(x[c0] + shift, x[c1] + shift);
                     var part = new CellPart
@@ -1037,10 +1175,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         ContentTop = top,
                         BottomMargin = margins.Bottom,
                         Diagonals = (cellFrom, cellFrom + cellWidth, cell.CellBorders.TopLeftToBottomRight, cell.CellBorders.TopRightToBottomLeft),
-                        Align = Rotated(cell) ? null : cell.Format.VerticalAlign,
+                        Align = align,
                         Lowered = Rotated(cell) ? 0 : lowered,
                         Span = Rotated(cell) ? 1 : rowsSpanned,
-                        Along = rowsSpanned > 1 && (Rotated(cell) || cell.Format.VerticalAlign is "center" or "bottom") ? (rowsSpanned, Part) : null,
+                        Along = along,
+                        Cuts = cuts,
                     };
                     if (Rotated(cell))
                     {
@@ -1049,9 +1188,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         // tbRlV and tbLrV run down like tbRl, tbLrV's lines from the left (measured with docx/local/vertical5).
                         var down = cell.Format.TextDirection is "tbRl" or "tbRlV" or "tbLrV";
                         var fromLeft = cell.Format.TextDirection == "tbLrV";
-                        var pivotX = down ? textFrom + content.Width : textFrom;
+                        var pivotX = down ? textFrom + laidOut.Width : textFrom;
                         var pivotY = down ? top : topWidths[cellRow] + total - margins.Bottom;
-                        var turned = RotatedLines(cell, content, total - margins.Top - margins.Bottom, fields).ToList();
+                        var turned = RotatedLines(cell, laidOut, total - margins.Top - margins.Bottom, fields).ToList();
                         // Vertical alignment moves the lines across the cell, towards its right for btLr and its left for
                         // tbRl, by the room the cell's width leaves beside its lines and side lines, its margins not
                         // counted (measured with docx/local/rcv-*: 20, 40 and 80 pt cells of one and two lines of Calibri
@@ -1064,34 +1203,34 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         }
                         foreach (var line in turned)
                         {
-                            var lineTop = fromLeft ? content.Width - line.Top - line.Line.Height : line.Top;
+                            var lineTop = fromLeft ? laidOut.Width - line.Top - line.Line.Height : line.Top;
                             part.Lines.Add(line with { Line = fromLeft ? line.Line.Flipped() : line.Line, Left = pivotX + line.Left, Top = pivotY + lineTop, Angle = down ? 90 : -90, PivotX = -line.Left, PivotY = -lineTop });
                         }
                     }
                     else
                     {
-                        foreach (var line in content.Lines)
-                            part.Lines.Add(line with { Left = textFrom + line.Left, Top = top + content.Lowering(line, lowered) + line.Top });
+                        foreach (var line in laidOut.Lines)
+                            part.Lines.Add(line with { Left = textFrom + line.Left, Top = top + laidOut.Lowering(line, lowered) + line.Top });
                     }
                     // What the cell holds is cut at its inside: between its side lines, from below the row's top line
                     // to its bottom (measured with docx/external/libreoffice/core-layout/para-border-in-cell-clip: Word
                     // clips a paragraph's borders past its lines and below a row of exact height away).
                     var (insideLeft, insideRight) = (cellFrom + Width(vertical[cellRow, rtl ? c1 : c0]) / 2, cellFrom + cellWidth - Width(vertical[cellRow, rtl ? c0 : c1]) / 2);
-                    foreach (var fill in content.Fills)
+                    foreach (var fill in laidOut.Fills)
                     {
-                        var (fx, fy) = (textFrom + fill.X, top + content.Lowering(fill, lowered) + fill.Y);
+                        var (fx, fy) = (textFrom + fill.X, top + laidOut.Lowering(fill, lowered) + fill.Y);
                         var (l, t, rgt, b) = (Math.Max(fx, insideLeft), Math.Max(fy, topWidths[cellRow]), Math.Min(fx + fill.Width, insideRight), Math.Min(fy + fill.Height, topWidths[cellRow] + total));
                         if (rgt > l + 0.001 && b > t + 0.001)
                             part.Fills.Add(fill with { X = l, Y = t, Width = rgt - l, Height = b - t });
                     }
-                    foreach (var stroke in content.Strokes)
-                        part.Strokes.Add(stroke.Offset(textFrom, top + content.Lowering(stroke, lowered)));
+                    foreach (var stroke in laidOut.Strokes)
+                        part.Strokes.Add(stroke.Offset(textFrom, top + laidOut.Lowering(stroke, lowered)));
                     if (!Rotated(cell))
                     {
                         // Drawings in the cell: across from its text area or from the inner edge of its left line, down from
                         // its content's top (measured with docx/local/cell-anchor).
                         var inner = vertical[cellRow, c0] is { Visible: true } edge ? edge.Total / 2 : 0;
-                        foreach (var anchor in content.Anchors)
+                        foreach (var anchor in laidOut.Anchors)
                         {
                             var moved = anchor.Offset(textFrom, top + lowered);
                             // Before Word 2013 a drawing of layoutInCell 0 placed by offsets is placed as one of the text
@@ -1121,7 +1260,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                             }
                             part.Anchors.Add(moved with
                             {
-                                Text = moved.Text ?? (textFrom, content.Width),
+                                Text = moved.Text ?? (textFrom, laidOut.Width),
                                 Cell = moved.Cell ?? (cellFrom + inner, cellWidth - inner),
                                 Content = moved.Content ?? (top, Math.Max(0, total - top - margins.Bottom)),
                                 Inside = moved.Inside ?? (insideLeft, insideRight),
@@ -2160,7 +2299,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
         /// <summary>The shading of the content's last paragraph, where it is the last block and shaded (one of the fills).</summary>
         public FillRect? LastShading { get; init; }
+
+        /// <summary>Where the parts after the cuts through the content's nested tables begin (see Content's cuts).</summary>
+        public List<CellBoundary> Boundaries { get; init; } = [];
     }
+
+    /// <summary>
+    /// Where the part after a cut through a cell's nested table begins: its first line, fill, stroke and drawing in the
+    /// content's lists and how far down the content it begins.
+    /// </summary>
+    readonly record struct CellBoundary(int Lines, int Fills, int Strokes, int Anchors, double Origin);
 
     /// <summary>
     /// How far down a floating drawing in a cell reaches from the content's top, placed from its paragraph, its line or
@@ -2311,8 +2459,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// line, its lines are turned when the row is built.
     /// </remarks>
     /// <param name="edge">How far the cell's text begins right of its left edge.</param>
+    /// <param name="cuts">Cuts through the cell's nested tables to lay it out for (see CellPart.Cuts).</param>
     CellContent Content(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge = 0,
-        RgbColor? shading = null)
+        RgbColor? shading = null, IReadOnlyList<CellCut>? cuts = null)
     {
         var was = cellBlocks;
         var behind = paragraphs.Background;
@@ -2321,7 +2470,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         paragraphs.Background = shading ?? behind;
         try
         {
-            return CellBlocks(cell, width, fields, neighbors, edge);
+            return CellBlocks(cell, width, fields, neighbors, edge, cuts);
         }
         finally
         {
@@ -2330,7 +2479,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
     }
 
-    CellContent CellBlocks(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge)
+    CellContent CellBlocks(CellModel cell, double width, PageFields? fields, (string? Before, string? After) neighbors, double edge, IReadOnlyList<CellCut>? cuts)
     {
         // An empty cell whose end mark is hidden (w:hideMark) takes no height for it, its last paragraph; its other
         // empty paragraphs keep their lines (docx/external/libreoffice/extras-ooxmlexport/tdf123104: four empty 9 pt
@@ -2340,7 +2489,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             if (cell.Blocks.Count <= 1)
                 return new CellContent([], [], [], 0);
             var kept = cell.Blocks.Take(cell.Blocks.Count - 1).ToList();
-            return Directed(cell, () => Content(kept, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
+            return Directed(cell, () => Content(kept, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
         }
         if (!Rotated(cell))
         {
@@ -2348,7 +2497,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             paragraphs.InCell = true;
             try
             {
-                var content = Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true));
+                var content = Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
                 // A hidden end mark after a line break takes no line of its own either (docx/external/libreoffice/
                 // extras-ooxmlexport/fdo76316: cells ending in w:br, their 13.8 pt mark lines gone).
                 if (cell.Format.HideMark && cell.Blocks.LastOrDefault() is ParagraphBlock { Content: [.., BreakInline { Type: "textWrapping" or null }] }
@@ -2458,7 +2607,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// w:allowSpaceOfSameStyleInTable (catalog: settings.compatibility, measured with docx/local/c5-cells).
     /// </remarks>
     CellContent Content(List<Block> blocks, double width, PageFields? fields, string? previous = NoParagraph, string? next = NoParagraph, double edge = 0,
-        bool floats = false)
+        bool floats = false, IReadOnlyList<CellCut>? cuts = null)
     {
         var lines = new List<PlacedLine>();
         var fills = new List<FillRect>();
@@ -2481,6 +2630,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         Paginator.Frame? previousFrame = null;
         var boxTop = 0.0;
         FillRect? lastShading = null;
+        // With cuts through the nested tables: where each part after one begins, the next cut to make, where the part
+        // being laid out begins and whether the text goes on at the top of a part after a floating table's cut.
+        var boundaries = new List<CellBoundary>();
+        var cutAt = 0;
+        var partTop = 0.0;
+        var resumed = false;
         for (var b = 0; b < blocks.Count; b++)
         {
             var block = blocks[b];
@@ -2510,9 +2665,11 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                             _ => NoParagraph,
                         }
                         : next;
-                    // Drawings count from the paragraph's top above its own space before, as in the body.
-                    var paragraphTop = y + (first ? 0 : after);
-                    y += first ? before : context.Between(after, before, ownAfter);
+                    // Drawings count from the paragraph's top above its own space before, as in the body. One that goes
+                    // on at the top of a part keeps what its space before has more than the space after above (RowBox.Split).
+                    var paragraphTop = y + (first || resumed ? 0 : after);
+                    y += first ? before : resumed ? Math.Max(0, before - flowAfter) : context.Between(after, before, ownAfter);
+                    resumed = false;
                     // Paragraph borders and shading as in the body: their top and bottom lines with their space take room
                     // (measured with docx/external/libreoffice/extras-layout/fdo48718-1: bordered paragraphs in a cell 3 pt
                     // taller each, their lines drawn).
@@ -2661,22 +2818,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                             top = other.Bottom + Twips("topFromText");
                         }
                     }
-                    var tableTop = top;
-                    var (linesFrom, fillsFrom, strokesFrom) = (lines.Count, fills.Count, strokes.Count);
-                    foreach (var row in box.Rows)
-                    {
-                        var drawn = lines.Count;
-                        Draw(row, row.Height, x - box.Left, top, lines, fills, fills, strokes, anchors);
-                        Unit(drawn, row, top);
-                        top += row.Height;
-                    }
-                    if (box.Rows.Count > 0)
-                    {
-                        var last = box.Rows[^1];
-                        fills.AddRange(last.BottomBorders.Select(f => f with { X = x - box.Left + f.X, Y = top + f.Y }));
-                        strokes.AddRange(last.BottomStrokes.Select(s => s.Offset(x - box.Left, top)));
-                        top += last.BottomBorderWidth;
-                    }
+                    var (linesFrom, fillsFrom, strokesFrom, cutsFrom) = (lines.Count, fills.Count, strokes.Count, boundaries.Count);
+                    (top, var tableTop) = Rows(box, x - box.Left, top, b);
                     Frame(box, x - box.Left, tableTop, top, fills);
                     floated.UnionWith(lines.Skip(linesFrom));
                     floated.UnionWith(fills.Skip(fillsFrom));
@@ -2685,6 +2828,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         top + Twips("bottomFromText"), false, "bothSides"));
                     cellTables.Add(around[^1]);
                     floatBottom = Math.Max(floatBottom, top);
+                    // Where a cut goes through it the text after it begins beside its last part, at that part's top, the
+                    // parts before without it (measured with docx/local/nft-*-f, -lf, -ft: a table of three rows over two
+                    // pages, the paragraph after it, one line or five beside the table, at the top of page 2 in modes 11
+                    // and 15; LibreOffice's core-text/floattable-anchor-height: at the top of page 4 of three).
+                    if (boundaries.Count > cutsFrom)
+                        (y, after, resumed) = (tableTop, 0, true);
                     break;
                 }
                 case TableBlock nested:
@@ -2695,21 +2844,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     inCell = cellBlocks;
                     var box = Layout(nested.Table, width, fields, previous);
                     inCell = wasInCell;
-                    var tableTop = y;
-                    foreach (var row in box.Rows)
-                    {
-                        var drawn = lines.Count;
-                        Draw(row, row.Height, 0, y, lines, fills, fills, strokes, anchors);
-                        Unit(drawn, row, y);
-                        y += row.Height;
-                    }
-                    if (box.Rows.Count > 0)
-                    {
-                        var last = box.Rows[^1];
-                        fills.AddRange(last.BottomBorders.Select(f => f with { Y = y + f.Y }));
-                        strokes.AddRange(last.BottomStrokes.Select(s => s.Offset(0, y)));
-                        y += last.BottomBorderWidth;
-                    }
+                    (y, var tableTop) = Rows(box, 0, y, b);
                     Frame(box, 0, tableTop, y, fills);
                     after = 0;
                     ownAfter = 0;
@@ -2722,15 +2857,71 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return new CellContent(lines, fills, strokes, Math.Max(y + after, floatBottom))
         {
             Anchors = anchors, Reach = Math.Max(Math.Max(y + after, floatBottom), extent), Floated = floated.Count > 0 ? floated : null,
-            LastShading = lastShading,
+            LastShading = lastShading, Boundaries = boundaries,
         };
 
+        // The rows of a nested table (block b) from top down, left at left, and the line below the last: where the cuts
+        // go through the table, cut as the rows of a table in the text are, the part before ending with the line below
+        // its last row, the part after beginning with the table's top line, a row cut in two going on at least as high
+        // as its at-least height (measured with docx/local/nft-*: the line below and above the cut, the third row of at
+        // least 169.6 pt going on 169.6 pt high with three lines, in modes 11 and 15; LibreOffice's core-text/
+        // floattable-anchor-height). Returns how far down the table reaches and where its last part begins.
+        (double Bottom, double Top) Rows(TableBox box, double left, double top, int b)
+        {
+            var tableTop = top;
+            RowBox? placed = null;
+            for (var r = 0; r < box.Rows.Count; r++)
+            {
+                var row = box.Rows[r];
+                while (cuts != null && cutAt < cuts.Count && cuts[cutAt].Table == b + 1 && top + row.Height + row.BottomBorderWidth > cuts[cutAt].Room + 0.01)
+                {
+                    var room = cuts[cutAt++].Room;
+                    if (row.Split(room - top - row.BottomBorderWidth, force: top <= partTop + 0.01) is { } parts)
+                    {
+                        var drawn = lines.Count;
+                        Draw(parts.Head, parts.Head.Height, left, top, lines, fills, fills, strokes, anchors);
+                        Unit(drawn, parts.Head, top, b);
+                        top += parts.Head.Height;
+                        placed = parts.Head;
+                        row = parts.Tail.AtPageTop();
+                    }
+                    else
+                        row = row.AtPageTop();
+                    if (placed != null)
+                    {
+                        Close(placed, left, top);
+                        top += placed.BottomBorderWidth;
+                    }
+                    boundaries.Add(new CellBoundary(lines.Count, fills.Count, strokes.Count, anchors.Count, top));
+                    tableTop = partTop = top;
+                    placed = null;
+                }
+                var at = lines.Count;
+                Draw(row, row.Height, left, top, lines, fills, fills, strokes, anchors);
+                Unit(at, row, top, b);
+                top += row.Height;
+                placed = row;
+            }
+            if (placed != null)
+            {
+                Close(placed, left, top);
+                top += placed.BottomBorderWidth;
+            }
+            return (top, tableTop);
+        }
+
+        void Close(RowBox row, double left, double top)
+        {
+            fills.AddRange(row.BottomBorders.Select(f => f with { X = left + f.X, Y = top + f.Y }));
+            strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(left, top)));
+        }
+
         // The lines of a nested table's row go with what of the row has to stand together.
-        void Unit(int from, RowBox row, double rowTop)
+        void Unit(int from, RowBox row, double rowTop, int b)
         {
             var bottom = rowTop + (row.CantSplit ? row.Height : row.TopWidth + row.Least);
             for (var k = from; k < lines.Count; k++)
-                lines[k] = lines[k] with { UnitHeight = Math.Max(lines[k].UnitHeight, bottom - lines[k].Top) };
+                lines[k] = lines[k] with { UnitHeight = Math.Max(lines[k].UnitHeight, bottom - lines[k].Top), Nest = b + 1 };
         }
     }
 
@@ -2770,7 +2961,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 lines.Add(line with
                 {
                     Left = left + line.Left, Top = top + line.Top, Carry = cell.ContentTop + cell.Lowered + line.Carry,
-                    CarryBelow = cell.BottomMargin + line.CarryBelow,
+                    CarryBelow = cell.BottomMargin + row.BottomBorderWidth + line.CarryBelow,
                 });
             foreach (var fill in cell.Fills)
                 borders.Add(fill with { X = left + fill.X, Y = top + fill.Y });
