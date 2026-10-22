@@ -1,4 +1,6 @@
+using System.Xml.Linq;
 using FreeSlate.Drawing;
+using FreeSlate.Html;
 using FreeSlate.Text;
 
 namespace FreeSlate.Rendering;
@@ -173,3 +175,21 @@ public sealed record AcrossItem(double X, double Y, List<SceneItem> Items) : Sce
 
 /// <summary>Items drawn but neither selected nor read as text: the copies of a text that emboss, imprint and shadow lay behind it.</summary>
 public sealed record DecorationItem(List<SceneItem> Items) : SceneItem;
+
+/// <summary>
+/// Items drawn with the effects of a DrawingML effect list on them (blur, soft edges, inner shadows, glow and shadow), in
+/// HTML through the filter of the page's definitions named Filter.
+/// </summary>
+public sealed record FilterItem(string Filter, XElement Effects, List<SceneItem> Items) : SceneItem;
+
+/// <summary>
+/// Items drawn first through the filter of a DrawingML effect list's outer effects (glow and shadow, see FilterItem), then
+/// as they are over it: in HTML a copy of the group named Id, which so stands in the page once (text's glow and shadow).
+/// </summary>
+public sealed record FilterCopyItem(string Id, string Filter, XElement Effects, List<SceneItem> Items) : SceneItem;
+
+/// <summary>
+/// Items with their reflection (a:reflection): a copy of them turned, scaled and skewed by Transform (in pixels), faded
+/// and, where Blurred, blurred by the page's definitions numbered Id (see SvgEffects.ReflectionOf).
+/// </summary>
+public sealed record ReflectionItem(int Id, Matrix Transform, bool Blurred, List<SceneItem> Items) : SceneItem;

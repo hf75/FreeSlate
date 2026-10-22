@@ -240,9 +240,27 @@ public static class SvgEffects
     public static string Reflection(XElement? effectLst, string markup, (double X, double Y, double W, double H) box, StringBuilder defs, Matrix? frame = null,
         bool original = true, double distanceScale = 1, double blurScale = 1)
     {
-        var reflection = effectLst?.Element(Ns.A + "reflection");
-        if (reflection == null || markup.Length == 0)
+        if (effectLst?.Element(Ns.A + "reflection") == null || markup.Length == 0)
             return markup;
+        var (n, transform, blurred) = ReflectionOf(effectLst, box, defs, frame, distanceScale, blurScale)!.Value;
+        var reflected = Reflected(n, transform, blurred);
+        if (original)
+            return $"<g id=\"rf{n}\">{markup}</g>{reflected}";
+        defs.Append($"<g id=\"rf{n}\">{markup}</g>");
+        return reflected;
+    }
+
+    /// <summary>
+    /// A reflection's definitions (see <see cref="Reflection"/>), appended to <paramref name="defs"/>: its fade as a
+    /// mask and its blur; returns their number, the copy's transform and whether it is blurred, or null without a
+    /// reflection. What is reflected is the group rf + number (see <see cref="Reflected"/>).
+    /// </summary>
+    public static (int Id, Matrix Transform, bool Blurred)? ReflectionOf(XElement? effectLst, (double X, double Y, double W, double H) box, StringBuilder defs,
+        Matrix? frame = null, double distanceScale = 1, double blurScale = 1)
+    {
+        var reflection = effectLst?.Element(Ns.A + "reflection");
+        if (reflection == null)
+            return null;
         var n = Interlocked.Increment(ref nextId);
         double Fraction(string name, double fallback) => (reflection.Long(name) ?? fallback * 100000) / 100000.0;
         double Angle(string name, double fallback) => (reflection.Long(name) ?? fallback * 60000) / 60000.0 * Math.PI / 180;
@@ -283,16 +301,12 @@ public static class SvgEffects
                     $"<stop offset=\"0\" stop-color=\"#fff\" stop-opacity=\"{Units.Css4(stA)}\"/><stop offset=\"1\" stop-color=\"#fff\" stop-opacity=\"{Units.Css4(endA)}\"/></linearGradient>");
         defs.Append($"<mask id=\"rm{n}\" maskUnits=\"userSpaceOnUse\" x=\"{Units.Css(box.X - margin)}\" y=\"{Units.Css(box.Y - margin)}\" width=\"{Units.Css(box.W + 2 * margin)}\" height=\"{Units.Css(box.H + 2 * margin)}\">" +
                     $"<rect x=\"{Units.Css(box.X - margin)}\" y=\"{Units.Css(box.Y - margin)}\" width=\"{Units.Css(box.W + 2 * margin)}\" height=\"{Units.Css(box.H + 2 * margin)}\" fill=\"url(#rg{n})\"/></mask>");
-        var filter = "";
         if (blur > 0)
-        {
             defs.Append($"<filter id=\"rb{n}\" x=\"-0.2\" y=\"-0.2\" width=\"1.4\" height=\"1.4\"><feGaussianBlur stdDeviation=\"{Units.Css(blur * 0.35)}\"/></filter>");
-            filter = $" filter=\"url(#rb{n})\"";
-        }
-        var reflected = $"<g mask=\"url(#rm{n})\"><g{filter}><g transform=\"{transform.Css()}\"><use href=\"#rf{n}\"/></g></g></g>";
-        if (original)
-            return $"<g id=\"rf{n}\">{markup}</g>{reflected}";
-        defs.Append($"<g id=\"rf{n}\">{markup}</g>");
-        return reflected;
+        return (n, transform, blur > 0);
     }
+
+    /// <summary>The reflected copy of the group rf + number, through its definitions (see <see cref="ReflectionOf"/>).</summary>
+    public static string Reflected(int n, Matrix transform, bool blurred) =>
+        $"<g mask=\"url(#rm{n})\"><g{(blurred ? $" filter=\"url(#rb{n})\"" : "")}><g transform=\"{transform.Css()}\"><use href=\"#rf{n}\"/></g></g></g>";
 }

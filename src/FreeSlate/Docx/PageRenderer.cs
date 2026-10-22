@@ -1978,7 +1978,6 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             items.Add(text);
             return;
         }
-        var markup = HtmlScene.Markup(text);
         var scale = Html.SvgEffects.TextScale.Of(style.Size);
         // Shadows and glow lie behind a copy of the text, the text itself unfiltered on top: a filtered group is printed
         // as a picture, its outline lighter than Word's vector text (LibreOffice's extras-ooxmlexport/
@@ -1987,21 +1986,21 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             && Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale, parts: Html.SvgEffects.Parts.Outer) is { } outer)
         {
             // The copy refers to the text, which so stands in the page once (to select, search and read).
-            var id = $"tx{++effectCopies}";
-            markup = $"<use href=\"#{id}\" filter=\"url(#{outer})\"/><g id=\"{id}\">{markup}</g>";
+            text = new FilterCopyItem($"tx{++effectCopies}", outer, effects, [text]);
         }
         else if (Html.SvgEffects.Filter(effects, drawings.Colors, 0, 0, defs, boundingBox: true, text: scale) is { } filter)
-            markup = $"<g filter=\"url(#{filter})\">{markup}</g>";
+            text = new FilterItem(filter, effects, [text]);
         // Text reflects about its baseline, the box reaching up to the font's ascent (as PowerPoint draws it).
         if (effects.Element(Ns.A + "reflection") is { } reflection)
         {
             var distance = Units.ToPx(reflection.Long("dist") ?? 0) * scale.ReflectionDistance / 2;
             var bottom = baseline * PxPerPt + distance;
             var height = style.Size * PxPerPt * style.Font.Data.Ascent + distance;
-            markup = Html.SvgEffects.Reflection(effects, markup, (x * PxPerPt, bottom - height, piece.Width * PxPerPt, height), defs,
-                distanceScale: 0, blurScale: scale.ReflectionBlur);
+            if (Html.SvgEffects.ReflectionOf(effects, (x * PxPerPt, bottom - height, piece.Width * PxPerPt, height), defs,
+                    distanceScale: 0, blurScale: scale.ReflectionBlur) is { } reflected)
+                text = new ReflectionItem(reflected.Id, reflected.Transform, reflected.Blurred, [text]);
         }
-        items.Add(new MarkupItem(markup));
+        items.Add(text);
     }
 
     /// <summary>

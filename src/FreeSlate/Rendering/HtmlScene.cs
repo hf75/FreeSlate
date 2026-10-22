@@ -115,6 +115,21 @@ public static class HtmlScene
                         html.Append($"C{Px(first.X)} {Px(first.Y)} {Px(second.X)} {Px(second.Y)} {Px(end.X)} {Px(end.Y)}");
                     html.Append($"\" fill=\"none\" stroke=\"{curve.Color.ToHex()}\" stroke-width=\"{Px(curve.Width)}\"/>");
                     break;
+                case FilterItem filtered:
+                    html.Append($"<g filter=\"url(#{filtered.Filter})\">");
+                    Write(filtered.Items, html);
+                    html.Append("</g>");
+                    break;
+                case FilterCopyItem copied:
+                    html.Append($"<use href=\"#{copied.Id}\" filter=\"url(#{copied.Filter})\"/><g id=\"{copied.Id}\">");
+                    Write(copied.Items, html);
+                    html.Append("</g>");
+                    break;
+                case ReflectionItem reflected:
+                    html.Append($"<g id=\"rf{reflected.Id}\">");
+                    Write(reflected.Items, html);
+                    html.Append("</g>").Append(Html.SvgEffects.Reflected(reflected.Id, reflected.Transform, reflected.Blurred));
+                    break;
                 case AltTextItem alt:
                     html.Append($"<div class=\"alt\" role=\"img\" aria-label=\"{WebUtility.HtmlEncode(alt.Text)}\" style=\"left:{Px(alt.X)}px;top:{Px(alt.Y)}px;width:{Px(alt.Width)}px;height:{Px(alt.Height)}px\"></div>");
                     break;
