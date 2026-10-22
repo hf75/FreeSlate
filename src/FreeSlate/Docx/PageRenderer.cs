@@ -959,7 +959,6 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     void Lines(IEnumerable<PlacedLine> lines, List<SceneItem> scene, List<SceneItem> selection, List<PlacedDrawing> front, bool onPage = false)
     {
-        var outer = onDevice;
         foreach (var line in lines)
         {
             var grows = onPage && line.Angle == 0;
@@ -975,7 +974,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // up the distance counts from there the other way.
             var down = placed.Angle > 0;
             var first = placed.Line.Pieces.Count > 0 ? placed.Line.Pieces.Min(p => p.X) : 0;
-            onDevice = grows && DevicePlaced ? DevicePositions(placed)
+            var device = grows && DevicePlaced ? DevicePositions(placed)
                 : turnedBox ? DevicePositions(placed with { Left = down ? placed.Top : placed.Top - 2 * first }, turned: true) : null;
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
@@ -1005,16 +1004,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             // Run borders behind the text; underlines and strikethrough end with the line's content.
             AddMarkup(items, RunBorders(placed.Line, placed.Left, baseline));
-            var contentEnd = placed.Left + ContentEnd(placed.Line);
+            var contentEnd = placed.Left + ContentEnd(placed.Line, device);
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;
                 // A run of text moves by where its first glyph stands on the device.
                 if (grows)
-                    x += Grow(x + (onDevice != null && onDevice.TryGetValue(piece, out var device) ? device[0] : 0), paperSize.Width);
+                    x += Grow(x + (device != null && device.TryGetValue(piece, out var pieceDevice) ? pieceDevice[0] : 0), paperSize.Width);
                 else if (turnedBox)
                 {
-                    var along = piece.X + (onDevice != null && onDevice.TryGetValue(piece, out var turnedDevice) ? turnedDevice[0] : 0);
+                    var along = piece.X + (device != null && device.TryGetValue(piece, out var turnedDevice) ? turnedDevice[0] : 0);
                     x += down ? Grow(placed.Top + along, paperSize.Height) : -Grow(placed.Top - along, paperSize.Height);
                 }
                 // Highlight and shading lie behind the text over the line's natural height, as far as the line's
@@ -1156,35 +1155,32 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 {
                     context.Text3DBudget -= cost;
                     front.Add(drawings.Text3D(piece.Text, piece.Style, x, textBaseline, piece.Width));
-                    AddItem(selection, SelectionText(piece, x, textBaseline));
+                    AddItem(selection, SelectionText(piece, x, textBaseline, device));
                 }
                 else if (browser)
-                    AddWithEffects(drawnText, piece, BrowserText(piece, x + moveX, textBaseline + moveY), x + moveX, textBaseline + moveY);
+                    AddWithEffects(drawnText, piece, BrowserText(piece, x + moveX, textBaseline + moveY, device), x + moveX, textBaseline + moveY);
                 else
                 {
-                    AddItem(drawnText, Glyphs(piece, x + moveX, textBaseline + moveY, turned));
-                    AddItem(selection, SelectionText(piece, x + moveX, textBaseline + moveY));
+                    AddItem(drawnText, Glyphs(piece, x + moveX, textBaseline + moveY, turned, device));
+                    AddItem(selection, SelectionText(piece, x + moveX, textBaseline + moveY, device));
                 }
                 AddMarkup(drawnText, Strikes(piece, x, textBaseline, contentEnd));
                 if (piece.Style.Emphasis is { } emphasis)
-                    EmphasisMarks(piece, emphasis, x, baseline - piece.Style.Raise - piece.Shift, drawnText);
+                    EmphasisMarks(piece, emphasis, x, baseline - piece.Style.Raise - piece.Shift, device, drawnText);
             }
             // w:ulTrailSpace underlines the spaces that end the line too (docx/external/libreoffice/extras-cjk/
             // UnderlineTrailingSpace: 70 and 80 underlined spaces drawn in mode 15).
-            AddMarkup(items, Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd));
+            AddMarkup(items, Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd, device));
         }
-        onDevice = outer;
     }
 
     /// <summary>
     /// The x position (points from the piece's start) of every UTF-16 unit, justification included: where Word's PDF
-    /// puts them in the line being drawn on the page (<see cref="DevicePositions"/>), otherwise by their advances.
+    /// puts them on the page (<paramref name="device"/>, the places of its line's pieces there; see DevicePositions),
+    /// otherwise by their advances.
     /// </summary>
-    static double[] Positions(Piece piece) =>
-        onDevice != null && onDevice.TryGetValue(piece, out var device) ? device : NominalPositions(piece);
-
-    /// <summary>The places Word's PDF gives the glyphs of the line being drawn on the page, by piece (see <see cref="Positions"/>).</summary>
-    [ThreadStatic] static Dictionary<Piece, double[]>? onDevice;
+    static double[] Positions(Piece piece, IReadOnlyDictionary<Piece, double[]>? device) =>
+        device != null && device.TryGetValue(piece, out var placed) ? placed : NominalPositions(piece);
 
     /// <summary>Whether glyphs stand where Word's device puts them; FS_DOCX_GLYPHS=nominal keeps their advances, for measuring.</summary>
     static readonly bool DevicePlaced = Environment.GetEnvironmentVariable("FS_DOCX_GLYPHS") != "nominal";
@@ -1382,14 +1378,15 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// middle of its em box (the font's, see <see cref="FontData.EmMiddle"/>), in their vertical forms (OpenType vert):
     /// upright in vertical lines (measured with docx/local/vertical, vertical2: Yu Mincho, MS Mincho, Meiryo).
     /// </param>
-    GlyphsItem? Glyphs(Piece piece, double x, double baseline, bool turnEastAsian = false)
+    /// <param name="device">The places of the line's pieces on Word's device (see Positions), null for a piece not on the page.</param>
+    GlyphsItem? Glyphs(Piece piece, double x, double baseline, bool turnEastAsian = false, IReadOnlyDictionary<Piece, double[]>? device = null)
     {
         var style = piece.Style;
         var data = style.Font.Data;
         if (data.IsColor)
             return null;
         var glyphs = data.GlyphsWithFeatures(piece.Text, turnEastAsian ? [.. style.Features, "vert"] : style.Features, language: style.Language);
-        var positions = Positions(piece);
+        var positions = Positions(piece, device);
         var scale = style.Size * PxPerPt / data.UnitsPerEm;
         var drawn = new List<GlyphItem>();
         // Glyphs of one cluster follow each other from the cluster's position.
@@ -1478,7 +1475,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     }
 
     /// <summary>Where a line's content ends (from the column's left edge): its last character but spaces, or tab.</summary>
-    static double ContentEnd(Line line)
+    static double ContentEnd(Line line, IReadOnlyDictionary<Piece, double[]>? device)
     {
         var end = double.NegativeInfinity;
         foreach (var piece in line.Pieces)
@@ -1491,7 +1488,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             var kept = piece.Text.TrimEnd(' ').Length;
             if (kept > 0)
-                end = Math.Max(end, piece.X + (kept == piece.Text.Length ? piece.Width : Positions(piece)[kept]));
+                end = Math.Max(end, piece.X + (kept == piece.Text.Length ? piece.Width : Positions(piece, device)[kept]));
         }
         return end;
     }
@@ -1562,7 +1559,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// The underlines of a line (catalog: run.decoration), as Word prints them (measured with docx/local/underlines,
     /// ulsizes and ulmixed): neighboring pieces with the same underline share one, its color changing with theirs.
     /// </summary>
-    string Underlines(Line line, double left, double baseline, double contentEnd)
+    string Underlines(Line line, double left, double baseline, double contentEnd, IReadOnlyDictionary<Piece, double[]>? device)
     {
         var sb = new StringBuilder();
         var pieces = line.Pieces;
@@ -1575,7 +1572,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             while (j + 1 < pieces.Count && pieces[j + 1].Style.Underline == kind && Underlined(pieces[j + 1])
                    && Math.Abs(pieces[j + 1].X - pieces[j].X - pieces[j].Width) < 0.01)
                 j++;
-            sb.Append(Underline(pieces.GetRange(i, j - i + 1), kind, left, baseline, contentEnd));
+            sb.Append(Underline(pieces.GetRange(i, j - i + 1), kind, left, baseline, contentEnd, device));
             i = j;
         }
         return sb.ToString();
@@ -1588,7 +1585,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// New, within a dot), to the end of the line's content. Dots and dashes have fixed lengths from the underline's
     /// start; waves are 2.4 pt long, their crests on the page's 2.4 pt grid. "words" leaves out spaces and tabs.
     /// </summary>
-    string Underline(List<Piece> segment, string kind, double left, double lineBaseline, double contentEnd)
+    string Underline(List<Piece> segment, string kind, double left, double lineBaseline, double contentEnd, IReadOnlyDictionary<Piece, double[]>? device)
     {
         double BaselineOf(Piece p) => lineBaseline - p.Style.Raise - p.Shift;
         var baseline = segment.Max(BaselineOf);
@@ -1625,7 +1622,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
             if (piece.IsTab)
                 continue;
-            var positions = Positions(piece);
+            var positions = Positions(piece, device);
             for (var k = 0; k < piece.Text.Length; k++)
             {
                 if (char.IsWhiteSpace(piece.Text[k]))
@@ -1807,12 +1804,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     }
 
     /// <summary>Text the browser draws (and selects), every character at its position, in the run's font and color.</summary>
-    TextItem? BrowserText(Piece piece, double x, double baseline)
+    /// <param name="device">The places of the line's pieces on Word's device (see Positions), null for a piece not on the page.</param>
+    TextItem? BrowserText(Piece piece, double x, double baseline, IReadOnlyDictionary<Piece, double[]>? device = null)
     {
         if (string.IsNullOrWhiteSpace(piece.Text))
             return null;
         var style = piece.Style;
-        var positions = Positions(piece);
+        var positions = Positions(piece, device);
         context.UsedFonts.Add(style.Font.Data.Family);
         return new TextItem(piece.Text, x, positions, baseline, style.Font.Data, style.Size, style.Color)
         {
@@ -1910,7 +1908,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// a dot below (U+FF0E, SimSun) 0.205 em before it and 0.38 em below (LibreOffice's extras-ooxmlexport/em: over
     /// Calibri 11 letters 2.53 to 8.82 pt wide as over ideographs).
     /// </summary>
-    void EmphasisMarks(Piece piece, string emphasis, double x, double baseline, List<SceneItem> items)
+    void EmphasisMarks(Piece piece, string emphasis, double x, double baseline, IReadOnlyDictionary<Piece, double[]>? device, List<SceneItem> items)
     {
         var style = piece.Style;
         var (mark, family, dx, dy) = emphasis switch
@@ -1921,7 +1919,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             _ => ("\uFF0E", null, -0.17, -1.01),
         };
         var markStyle = family != null && context.Fonts.TryResolveTypeface(family, false, false) is { } font ? style with { Font = font } : style;
-        var positions = Positions(piece);
+        var positions = Positions(piece, device);
         for (var k = 0; k < piece.Text.Length; k++)
         {
             if (char.IsLowSurrogate(piece.Text[k]) || char.IsWhiteSpace(piece.Text[k]) || piece.Advances[k] <= 0)
@@ -2020,11 +2018,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     }
 
     /// <summary>The piece's text, invisible, character by character where the glyphs are, for selection and search.</summary>
-    HiddenTextItem? SelectionText(Piece piece, double x, double baseline)
+    HiddenTextItem? SelectionText(Piece piece, double x, double baseline, IReadOnlyDictionary<Piece, double[]>? device)
     {
         if (string.IsNullOrWhiteSpace(piece.Text))
             return null;
-        var positions = Positions(piece);
+        var positions = Positions(piece, device);
         context.UsedFonts.Add(piece.Style.Font.Data.Family);
         return new HiddenTextItem(piece.Text, x, positions, baseline, piece.Style.Font.Data, piece.Style.Size);
     }

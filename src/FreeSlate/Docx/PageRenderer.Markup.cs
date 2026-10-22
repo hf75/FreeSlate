@@ -85,7 +85,7 @@ public sealed partial class PageRenderer
             var line = placed.Line;
             var (top, height) = (placed.Top, line.Height);
             var lineStart = placed.Left + (line.Pieces.Count > 0 ? line.Pieces[0].X : 0);
-            var lineEnd = placed.Left + Math.Max(0, ContentEnd(line));
+            var lineEnd = placed.Left + Math.Max(0, ContentEnd(line, null));
             var open = openComments.Keys.ToDictionary(id => id, _ => (Start: lineStart, Bracket: false));
             foreach (var (x, id, start) in (line.Comments ?? []).OrderBy(m => m.X))
             {

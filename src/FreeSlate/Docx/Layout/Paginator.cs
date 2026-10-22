@@ -1997,7 +1997,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var s = on.Section;
         // A footer's own drawings placed from the bottom margin push its lines where the footer reaches above the
-        // margin, whose top is then the footer's own (see storyMarginTop): laid out so first, kept where the footer
+        // margin, whose top is then the footer's own (see PlaceAnchor): laid out so first, kept where the footer
         // then does reach above it (measured with docx/local/fbq-6-square: a rule 20 pt below the top of a footer of six
         // lines over a margin of 56.7 pt, its text beside it; LibreOffice's extras-layout/tdf164905: the footer's text
         // below a rule wrapped square across its width 20.25 pt down, the footer 64.8 pt high, the body ending above it).
@@ -2242,19 +2242,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     if ((string?)own.Anchor.Element(Docx.Drawings.Wp + "positionV")?.Attribute("relativeFrom") == "paragraph"
                         && ExclusionOf(PlaceAnchor(own, on, paragraphTop, linesTop, left, width)) is { } area && area.Bottom > linesTop + 0.01)
                         around.Add(area);
-                    else if (marginInStory is { } storyMargin && MarginPushes(own))
-                    {
-                        storyMarginTop = storyMargin;
-                        try
-                        {
-                            if (ExclusionOf(PlaceAnchor(own, on, paragraphTop, linesTop, left, width)) is { } margined && margined.Bottom > linesTop + 0.01)
-                                around.Add(margined);
-                        }
-                        finally
-                        {
-                            storyMarginTop = null;
-                        }
-                    }
+                    else if (marginInStory is { } storyMargin && MarginPushes(own)
+                        && ExclusionOf(PlaceAnchor(own, on, paragraphTop, linesTop, left, width, marginTop: storyMargin)) is { } margined && margined.Bottom > linesTop + 0.01)
+                        around.Add(margined);
                 }
                 var laid = around.Count > 0
                     ? layout.Layout(paragraph, width, settings, fields, room: slot => Room(around, linesTop, slot, left, width))
@@ -2331,21 +2321,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A footer that reaches above the bottom margin moves the margin's top up to its own for its drawings (measured
         // with docx/local/fbq-6-*: a rule 20 pt below the bottom margin's top stands 20 pt below the top of a footer of six
         // lines over a margin of 56.7 pt, of one line 20 pt below the margin's; LibreOffice's extras-layout/tdf164905).
-        storyMarginTop = header ? null : Math.Min(s.PageHeight - s.Bottom, box.Top);
-        try
-        {
-            foreach (var anchor in anchors.Select(a => a.Offset(0, top)).Concat(fixedAnchors))
-                box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX, box.Drawings));
-        }
-        finally
-        {
-            storyMarginTop = null;
-        }
+        double? marginTop = header ? null : Math.Min(s.PageHeight - s.Bottom, box.Top);
+        foreach (var anchor in anchors.Select(a => a.Offset(0, top)).Concat(fixedAnchors))
+            box.Drawings.Add(PlaceAnchor(anchor.Anchor, on, anchor.ParagraphTop, anchor.LineTop, left, width, anchor, anchor.CharacterX, box.Drawings, marginTop));
         return box;
     }
-
-    /// <summary>Where the bottom margin begins for the drawings of the footer being laid out (see StoryOf), else null.</summary>
-    [ThreadStatic] static double? storyMarginTop;
 
     /// <summary>Whether a drawing is placed from the bottom margin and text goes around it.</summary>
     static bool MarginPushes(AnchorInline anchor) =>
@@ -3131,9 +3111,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// pt with their text, one 20 % of the page high; openxml-sdk/Complex01: the object after a box saved 110.6 pt high
     /// stands 3.6 pt below its 30.4 pt).
     /// </summary>
+    /// <param name="marginTop">Where the bottom margin begins for the drawings of a footer that reaches above it (see StoryOf), else null.</param>
     PlacedDrawing PlaceAnchor(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
-        CellAnchor? cell = null, double? character = null, IReadOnlyList<PlacedDrawing>? before = null) =>
-        Clear(Placed(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character), before ?? page.Drawings, page.Section.PageWidth,
+        CellAnchor? cell = null, double? character = null, IReadOnlyList<PlacedDrawing>? before = null, double? marginTop = null) =>
+        Clear(Placed(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, marginTop), before ?? page.Drawings, page.Section.PageWidth,
             context.Profile.OverlapStepsDown ? (page.BodyBottom, page.Section.PageHeight) : null);
 
     /// <summary>
@@ -3188,18 +3169,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     PlacedDrawing Placed(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
-        CellAnchor? cell, double? character)
+        CellAnchor? cell, double? character, double? marginTop)
     {
-        var placed = Unpinned(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character);
+        var placed = Unpinned(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, marginTop);
         if (heldInTable.TryGetValue(anchor.Anchor, out var held) && held.Page == page.Number)
             return placed with { X = held.X, Y = held.Y };
         return settled.Pins.TryGetValue(anchor.Anchor, out var pin) && pin.Page == page.Number ? placed with { X = pin.X, Y = pin.Y } : placed;
     }
 
     PlacedDrawing Unpinned(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
-        CellAnchor? cell, double? character)
+        CellAnchor? cell, double? character, double? marginTop)
     {
-        var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, context.Profile.AnchorsAsWord2010);
+        var placed = Anchored(anchor, page, paragraphTop, lineTop, columnLeft, columnWidth, cell, character, context.Profile.AnchorsAsWord2010, marginTop);
         placed = placed with { Order = context.StackingOrder(anchor.Anchor) };
         // From Word 2013 on the shapes of a drawing in a cell that text goes around are cut at the cell's inside, between
         // the inner edges of its side lines and from its content's top to its bottom, its text box's text not (measured
@@ -3257,7 +3238,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     static PlacedDrawing Anchored(AnchorInline anchor, PageBox page, double paragraphTop, double lineTop, double columnLeft, double columnWidth,
-        CellAnchor? cell = null, double? character = null, bool legacy = false)
+        CellAnchor? cell = null, double? character = null, bool legacy = false, double? marginTop = null)
     {
         var element = anchor.Anchor;
         var alignedAcross = false;
@@ -3394,7 +3375,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 "paragraph" => (paragraphTop, 0.0),
                 "line" => (lineTop, 0.0),
                 "topMargin" => (0.0, s.Top),
-                "bottomMargin" => storyMarginTop is { } marginTop ? (marginTop, s.PageHeight - marginTop) : (s.PageHeight - s.Bottom, s.Bottom),
+                "bottomMargin" => marginTop is { } footerMargin ? (footerMargin, s.PageHeight - footerMargin) : (s.PageHeight - s.Bottom, s.Bottom),
                 "insideMargin" => odd ? (0.0, s.Top) : (s.PageHeight - s.Bottom, s.Bottom),
                 "outsideMargin" => odd ? (s.PageHeight - s.Bottom, s.Bottom) : (0.0, s.Top),
                 _ => (s.Top, s.PageHeight - s.Top - s.Bottom),
