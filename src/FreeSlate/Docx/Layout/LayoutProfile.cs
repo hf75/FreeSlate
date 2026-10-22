@@ -381,6 +381,12 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool LowKashidaStretchesShaped { get; } = mode >= 15;
 
     /// <summary>
+    /// Whether a floating table that may not overlap others moves up off a drawing of the header or footer that its part
+    /// on a page reaches: from Word 2013 on (see Paginator.PlaceFloatingTable).
+    /// </summary>
+    public bool FloatingTablesClearStoryDrawings { get; } = mode >= 15;
+
+    /// <summary>
     /// Whether a floating drawing in a table cell of layoutInCell 0 stands outside the cell, from the column: before
     /// Word 2013; from then on every one is laid out in its cell (see TableLayout.InCell).
     /// </summary>

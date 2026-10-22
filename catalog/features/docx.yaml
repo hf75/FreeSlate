@@ -2489,7 +2489,14 @@ areas:
           span, both distances kept, else below it, its distance left then counting from its place (docx/local/tc-5,
           td-*; core-objectpositioning/floattable-tbl-overlap); in a cell below it, at its own place across
           (writerfilter-dmapper/floattable-nested-cellstart 85.4 → 99.8 %, writerfilter-ooxml/floattable-leak
-          85.4 → 99.3 %). A floating table in a cell is laid out as the tables
+          85.4 → 99.3 %); from Word 2013 on it moves up off a drawing of the header or footer that text goes around
+          and that its part on a page reaches below the part's top, the part then ending at the drawing's top, where
+          it still begins on the page, else it stays (docx/local/fto-*: five rows of exactly 55 pt on each page below a
+          footer's rectangle at 281.25 pt behind the text, in front of it or wrapped square, 66 pt higher on every page;
+          one at 240 pt staying; not wrapped, without tblOverlap never or in mode 14 staying;
+          extras-layout/floattable-footer-object 86.0 → 100 %; known deviation: fto-320, a rectangle at 320 pt that
+          reaches into the footer's line, takes the fifth row of every page to the next in Word, ours moves the part
+          up). A floating table in a cell is laid out as the tables
           nested there, keeping its cells' margins in older modes as well
           (docx/external/libreoffice/writerfilter-dmapper/floattable-hidemark, mode 12: 43.8 → 71.4 %). Before Word
           2013 the first cell's text stands at the position whether the table has an indent of 0 or none, and the

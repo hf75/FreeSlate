@@ -608,6 +608,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // docx/external/libreoffice/core-layout/floattable, floattable-3pages, floattable-compat14 and fdo68607).
         var rowTop = top;
         var partTop = top;
+        // Where the part on the page began among the page's lines, fills, strokes and drawings, which move with it where
+        // it moves off a drawing of the footer (see Close).
+        var partFrom = PartFrom();
+        (int Lines, int Shading, int Borders, int Strokes, int Drawings) PartFrom() =>
+            (page!.Lines.Count, page.Shading.Count, page.Borders.Count, page.Strokes.Count, page.Drawings.Count);
         var onPage = 0;
         RowBox? last = null;
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
@@ -635,6 +640,38 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         void Close(RowBox row)
         {
+            // From Word 2013 on a table that may not overlap others moves up off a drawing of the header or footer that
+            // text goes around and that its part on the page reaches below the part's top, the part then ending at the
+            // drawing's top, where it still begins on the page; else it stays (measured with docx/local/fto-*: a table
+            // at tblpY 1 below the text's top with rows of exactly 55 pt, five on each page of a body of 275.5 pt, below a
+            // footer's rectangle at 281.25 pt behind the text, in front of it or wrapped square, 66 pt higher on every
+            // page, one at 240 pt where it would leave the page staying, not wrapped, without tblOverlap never or in mode
+            // 14 staying; LibreOffice's extras-layout/floattable-footer-object).
+            var (partLeft, partRight) = (x - Twips("leftFromText"), x + tableWidth + Twips("rightFromText"));
+            var partBottom = rowTop + row.BottomBorderWidth + Twips("bottomFromText");
+            if (((TableBlock)blocks[index]).Table.Format.NoOverlap && context.Profile.FloatingTablesClearStoryDrawings
+                && page!.FloatingTables.Where(e => e.Story && e.Source != null && e.Top > partTop - Twips("topFromText") + 0.01 && e.Top < partBottom - 0.01
+                    && e.Left < partRight - 0.01 && e.Right > partLeft + 0.01).Select(e => partBottom - e.Top).DefaultIfEmpty(0).Max() is var lift and > 0.01
+                && partTop - Twips("topFromText") - lift > -0.01)
+            {
+                for (var k = partFrom.Lines; k < page.Lines.Count; k++)
+                {
+                    var moved = page.Lines[k] with { Top = page.Lines[k].Top - lift };
+                    if (frameLines.Remove(page.Lines[k]))
+                        frameLines.Add(moved);
+                    page.Lines[k] = moved;
+                }
+                for (var k = partFrom.Shading; k < page.Shading.Count; k++)
+                    page.Shading[k] = page.Shading[k] with { Y = page.Shading[k].Y - lift };
+                for (var k = partFrom.Borders; k < page.Borders.Count; k++)
+                    page.Borders[k] = page.Borders[k] with { Y = page.Borders[k].Y - lift };
+                for (var k = partFrom.Strokes; k < page.Strokes.Count; k++)
+                    page.Strokes[k] = page.Strokes[k].Offset(0, -lift);
+                for (var k = partFrom.Drawings; k < page.Drawings.Count; k++)
+                    page.Drawings[k] = page.Drawings[k] with { Y = page.Drawings[k].Y - lift };
+                rowTop -= lift;
+                partTop -= lift;
+            }
             foreach (var fill in row.BottomBorders)
                 page!.Borders.Add(fill with { X = x - box.Left + fill.X, Y = rowTop + fill.Y });
             page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
@@ -735,6 +772,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         floatingRests.Enqueue(() =>
                         {
                             rowTop = partTop = page!.BodyTop;
+                            partFrom = PartFrom();
                             Rows(at, rest);
                         });
                         waited = true;
@@ -742,6 +780,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     }
                     NewPage(section);
                     rowTop = partTop = samePlace ? top : page!.BodyTop + (withText ? top - textTop : 0);
+                    partFrom = PartFrom();
                     row = Continue(row);
                 }
                 Draw(row);
