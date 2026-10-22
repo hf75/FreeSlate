@@ -106,6 +106,9 @@ public sealed class FieldEvaluator
     /// <summary>Whether a field came out empty for the first time in the layout in progress: another one follows.</summary>
     bool newlyEmptied;
 
+    /// <summary>Whether another layout follows: a header's STYLEREF guessed, or a field came out empty for the first time.</summary>
+    internal bool Pending => guessed || newlyEmptied;
+
     /// <summary>Notes that a header's or footer's field came out empty on a page.</summary>
     public void Empty(FieldInline field) => newlyEmptied |= emptied.Add(field);
 
@@ -130,6 +133,19 @@ public sealed class FieldEvaluator
         return new(pages, same ? before!.BookmarkPages : new(bookmarkPages, StringComparer.Ordinal), same ? before!.ParagraphPages : new(paragraphPages),
             new(emptied, ReferenceEqualityComparer.Instance), guessed, newlyEmptied);
     }
+
+    /// <summary>
+    /// Whether fields read in these blocks what they read in another evaluator's (edited) blocks: the same bookmarks
+    /// with the same text and notes, and the same sequence numbers; what depends on pages aside.
+    /// </summary>
+    internal bool ReadsAs(FieldEvaluator other) =>
+        bookmarks.Count == other.bookmarks.Count
+        && bookmarks.All(b => other.bookmarks.TryGetValue(b.Key, out var o) && o.Text.ToString() == b.Value.Text.ToString())
+        && noteMarks.Count == other.noteMarks.Count && noteMarks.All(n => other.noteMarks.TryGetValue(n.Key, out var o) && ReferenceEquals(o, n.Value))
+        && sequences.Count == other.sequences.Count && sequences.All(s => other.sequences.TryGetValue(s.Key, out var o) && o == s.Value);
+
+    /// <summary>Whether the fields know what a snapshot of the same layout knew: those that came out empty and whether another layout follows.</summary>
+    internal bool Knows(Snapshot snapshot) => emptied.SetEquals(snapshot.Emptied) && guessed == snapshot.Guessed && newlyEmptied == snapshot.NewlyEmptied;
 
     /// <summary>Goes back to a snapshot's state.</summary>
     internal void Restore(Snapshot snapshot)
