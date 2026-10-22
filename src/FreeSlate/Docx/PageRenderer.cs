@@ -77,7 +77,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // their layers draw them in: the boxes of a chain on the page are made in that order first (docx/external/
         // libreoffice/extras-layout/tdf152983-1-min: a footer's linked box behind the text shows the picture its
         // story's first box, in front of the text, has no room for).
-        var made = new Dictionary<PlacedDrawing, string>(ReferenceEqualityComparer.Instance);
+        var made = new Dictionary<PlacedDrawing, List<SceneItem>>(ReferenceEqualityComparer.Instance);
         if (drawings != null && blocks != null)
         {
             foreach (var drawing in ChainOrder(drawn))
@@ -87,7 +87,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             items.Add(new MarkupItem(drawings.Background(page.PaperWidth, page.PaperHeight)));
             foreach (var drawing in drawn.Where(d => d.Behind).OrderBy(d => d.Order))
-                items.Add(new MarkupItem(made.Remove(drawing, out var html) ? html : Drawing(drawing, page)));
+                items.AddRange(made.Remove(drawing, out var behind) ? behind : Drawing(drawing, page));
         }
         var canvas = new CanvasItem(scene.Width, scene.Height, []);
         var canvasAt = items.Count;
@@ -119,7 +119,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         Lines(page.Lines.Where(l => l.Story), body, selection, storyInline, onPage: true);
         Lines(page.Lines.Where(l => !l.Story), body, selection, inline, onPage: true);
         if (drawings != null && storyInline.Count > 0)
-            items.Insert(canvasAt, new MarkupItem(string.Concat((!turned ? storyInline : storyInline.Select(d => Upright(d, page.PaperWidth))).Select(d => Drawing(d, page)))));
+            items.InsertRange(canvasAt, (!turned ? storyInline : storyInline.Select(d => Upright(d, page.PaperWidth))).SelectMany(d => Drawing(d, page)).ToList());
         front.AddRange(!turned ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
         // Line numbers, right-aligned at their place (catalog: section.lineNumbers).
         foreach (var (number, style, right, baseline) in page.LineNumbers)
@@ -142,7 +142,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (drawings != null)
         {
             foreach (var drawing in front.Concat(drawn.Where(d => !d.Behind).OrderBy(d => d.Order)))
-                items.Add(new MarkupItem(made.Remove(drawing, out var html) ? html : Drawing(drawing, page)));
+                items.AddRange(made.Remove(drawing, out var inFront) ? inFront : Drawing(drawing, page));
         }
         foreach (var (text, x, y, w, h) in page.Alternatives)
             items.Add(new AltTextItem(text, x, y, w, h));
@@ -255,7 +255,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             $"<rect width=\"{w}\" height=\"{edge}\" fill=\"#A0A0A0\"/><rect y=\"{bottom}\" width=\"{w}\" height=\"{edge}\" fill=\"#E3E3E3\"/></svg></div>";
     }
 
-    string Drawing(PlacedDrawing drawing, PageBox page)
+    /// <summary>A drawing as it is drawn on the page: its shape, then its text boxes (see ShapeOf).</summary>
+    List<SceneItem> Drawing(PlacedDrawing drawing, PageBox page)
     {
         // The text boxes of headers and footers keep off the body's grid, as their stories do (measured with docx/local/
         // gbx-*: a footer box's line at its top inset and ascent, at its left inset, under pitches of 18 pt of type
@@ -281,9 +282,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// <summary>The page whose header or footer drawing is being drawn, for its text boxes' fields (PageFields.On).</summary>
     PageBox? storyPage;
 
-    string ShapeOf(PlacedDrawing drawing, PageBox page)
+    List<SceneItem> ShapeOf(PlacedDrawing drawing, PageBox page)
     {
         var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
+        var items = new List<SceneItem>();
         // WordArt: a text box whose body has a text warp bends its text as PowerPoint does, so the slide renderer
         // draws it, in its runs' fonts, fills, outlines and effects, instead of the text box's layout; the warp fills
         // the shape less the body's insets and half its own outline (measured with docx/local/wordartbox: an H in
@@ -294,20 +296,24 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             && WordArt(words, warped) is { } art)
         {
             var (l, t, r, b) = WarpInsets(warped, shape, context.Theme);
-            return drawings!.Render(drawing with { Text = null }) + drawings.Render(drawings.WordArtText(art, drawing, l, t, r, b));
+            AddMarkup(items, drawings!.Render(drawing with { Text = null }));
+            AddMarkup(items, drawings.Render(drawings.WordArtText(art, drawing, l, t, r, b)));
+            return items;
         }
         if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
             drawing = Fitted(drawing, content, bodyPr, shape, page);
         if (blocks != null && drawing.ChildText is { Count: > 0 })
             drawing = FittedChildren(drawing, page);
-        var html = drawings!.Render(drawing);
+        var drawn = new List<SceneItem>();
+        AddMarkup(drawn, drawings!.Render(drawing));
         if (drawing.Drawing.Attribute(Vml.RuleBevel) != null)
-            html += Bevel(drawing);
+            AddMarkup(drawn, Bevel(drawing));
         if (drawing.Clip is { } clip)
-            html = $"<div style=\"position:absolute;overflow:hidden;left:{Px(clip.X)}px;top:{Px(clip.Y)}px;width:{Px(clip.Width)}px;height:{Px(clip.Height)}px\">"
-                + $"<div style=\"position:absolute;left:{Px(-clip.X)}px;top:{Px(-clip.Y)}px\">{html}</div></div>";
+            items.Add(new ClipItem(clip.X, clip.Y, clip.Width, clip.Height, drawn));
+        else
+            items.AddRange(drawn);
         if (blocks == null)
-            return html;
+            return items;
         // A turned shape turns its text with it, unless the text stands upright or the shape is flipped (docx/external/
         // libreoffice/extras-ooxmlexport/TextFrameRotation: a VML text box turned by −90° reads upwards;
         // core-exportdata-ooxml-pass/sdt-in-shape-with-textbox: one turned by 180° and flipped, which mirrors it top
@@ -317,7 +323,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                    && (string?)shapeXfrm!.Attribute("flipH") is not ("1" or "true") && (string?)shapeXfrm.Attribute("flipV") is not ("1" or "true")
             ? rot / 60000.0 : 0;
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
-            html += TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, deviceShift: drawing.DeviceShift);
+            TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, items, deviceShift: drawing.DeviceShift);
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         // Groups of DrawingML (wpg), not those of VML (docx/external/libreoffice/extras-ooxmlexport/tdf164065: a v:group's
         // text box's table borders lines in Word's PDF).
@@ -334,12 +340,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 var (l, t, r, b) = WarpInsets(childWarp, child, context.Theme);
                 var box = new PlacedDrawing(new XElement(Drawings.Wp + "anchor", new XElement(Ns.A + "graphic", new XElement(Ns.A + "graphicData", new XElement(child)))),
                     drawing.Part, rect.X, rect.Y, rect.W, rect.H) { Behind = drawing.Behind, Order = drawing.Order };
-                html += drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b));
+                AddMarkup(items, drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b)));
                 continue;
             }
-            html += TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, grouped);
+            TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, items, grouped);
         }
-        return html;
+        return items;
     }
 
     /// <summary>
@@ -665,8 +671,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// </summary>
     /// <param name="grouped">Whether the box is a shape's in a group (wpg), whose shading and borders Word's PDF holds as a bitmap.</param>
     /// <param name="deviceShift">How far an inline box moved with its line onto Word's device (PlacedDrawing.DeviceShift).</param>
-    string TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page,
-        bool grouped = false, double deviceShift = 0)
+    void TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page,
+        List<SceneItem> items, bool grouped = false, double deviceShift = 0)
     {
         var (l, t, r, b) = Insets(body, shape, w, h, context.Theme);
         var vert = Vertical(body) ? (string?)body!.Attribute("vert") : null;
@@ -716,7 +722,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
         }
         else
-            return "";
+            return;
         // Lines of a linked story beyond the box continue in the next one; a box keeps its first line, however far it
         // reaches past the box's room (measured with docx/local/lkb-1-*: a first line 0.5 to 5 pt taller than the room
         // stays, lkb-2-*: the second line 0.5 pt past the bottom inset goes on; docx/external/libreoffice/extras-layout/
@@ -753,11 +759,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // testWPGZOrder: a line of 15.5 pt with 10 pt after in a box of 19.5 pt shaded 15.5 pt).
         if (lastShading is { } shade && free > 0.01 && fills.IndexOf(shade) is >= 0 and var at)
             fills[at] = shade with { Height = Math.Max(shade.Height, areaHeight - offset - shade.Y) };
-        var width = page.PaperWidth * PxPerPt;
-        var heightPx = page.PaperHeight * PxPerPt;
-        var svg = new StringBuilder($"<svg width=\"{Units.Css(width)}\" height=\"{Units.Css(heightPx)}\" viewBox=\"0 0 {Units.Css(width)} {Units.Css(heightPx)}\">");
+        var canvas = new CanvasItem(page.PaperWidth, page.PaperHeight, []);
+        var drawn = canvas.Items;
         if (rotation != 0)
-            svg.Append($"<g transform=\"rotate({Units.Css(rotation)} {Px(x + w / 2)} {Px(y + h / 2)})\">");
+        {
+            var rotated = new RotatedItem(rotation, x + w / 2, y + h / 2, []);
+            canvas.Items.Add(rotated);
+            drawn = rotated.Items;
+        }
         var selection = new List<SceneItem>();
         // Pictures and shapes in the box's lines, drawn over it (an unturned box's).
         var inner = new List<PlacedDrawing>();
@@ -773,16 +782,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // soft in the reference's raster).
             if (grouped && rotation == 0 && placed.Count > 0 && h - t - b > 0)
             {
-                svg.Append(FillBitmap(placed, x, y + t, w, h - t - b));
+                drawn.Add(FillBitmap(placed, x, y + t, w, h - t - b));
                 placed.Clear();
             }
-            Fills(placed, strokes.Select(s => s.Offset(left, top)), svg);
+            Fills(placed, strokes.Select(s => s.Offset(left, top)), drawn);
             // An unturned box's lines stand on Word's device as the body's do (docx/external/libreoffice/
             // extras-ooxmlexport/tdf103573: Word's text box glyphs on whole dots with the PDF writer's adjustments), an
             // inline box's counted from where it stood before its line moved onto the device, edge and inset rounded
             // together (docx/local/tbi-1417: a box at 1417 twips, 590.4 dots, on 590 has its text with unfilled lines of
             // 1, 1.5 and 2 pt on 595, 597 and 599, not 594, 596 and 598).
-            Lines(lines.Select(p => p with { Left = left - deviceShift + p.Left, Top = top + p.Top, BoxInset = l }), svg, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
+            Lines(lines.Select(p => p with { Left = left - deviceShift + p.Left, Top = top + p.Top, BoxInset = l }), drawn, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
         }
         else
         {
@@ -795,16 +804,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             });
             // An unturned box's turned lines stand on Word's device too (see TurnedOnDots).
             var device = rotation == 0 && vert is "vert" or "vert270" && DevicePlaced;
-            Lines(device ? turnedLines.Select(p => TurnedOnDots(p, x, w, y, h, t, b, context.Profile.TurnedLinesAsWord2010)) : turnedLines, svg, selection, [],
+            Lines(device ? turnedLines.Select(p => TurnedOnDots(p, x, w, y, h, t, b, context.Profile.TurnedLinesAsWord2010)) : turnedLines, drawn, selection, [],
                 onPage: device);
         }
-        HtmlScene.Write(selection, svg);
-        if (rotation != 0)
-            svg.Append("</g>");
-        svg.Append("</svg>");
+        drawn.AddRange(selection);
+        items.Add(canvas);
         foreach (var drawing in inner)
-            svg.Append(Drawing(drawing, page));
-        return svg.ToString();
+            items.AddRange(Drawing(drawing, page));
     }
 
     /// <summary>
@@ -812,7 +818,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// points) as Word's PDF holds the shading and borders of a grouped text box (see <see cref="TextBox"/>): each pixel
     /// covered as far as the fill's area covers it.
     /// </summary>
-    static string FillBitmap(List<FillRect> fills, double x, double y, double w, double h)
+    static BitmapItem FillBitmap(List<FillRect> fills, double x, double y, double w, double h)
     {
         var (width, height) = (Math.Max(1, (int)Math.Round(w * 200 / 72)), Math.Max(1, (int)Math.Round(h * 200 / 72)));
         var (sx, sy) = (width / w, height / h);
@@ -848,7 +854,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 rgba[i + c] = (byte)Math.Round(Math.Clamp(color[i + c] / alpha, 0, 1) * 255);
             rgba[i + 3] = (byte)Math.Round(Math.Clamp(alpha, 0, 1) * 255);
         }
-        return $"<image x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(w)}\" height=\"{Px(h)}\" preserveAspectRatio=\"none\" href=\"{FreeSlate.Metafiles.Png.DataUri(width, height, rgba)}\"/>";
+        return new BitmapItem(x, y, w, h, width, height, rgba);
     }
 
     /// <summary>
@@ -932,7 +938,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     }
 
     /// <param name="onPage">Whether the lines stand on the page itself, where Word starts them on whole dots.</param>
-    /// <summary>Lines as SVG (in text boxes and balloons, which are not broken down into scene items yet).</summary>
+    /// <summary>Lines as SVG (in balloons, which are not broken down into scene items yet).</summary>
     void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, List<SceneItem> selection, List<PlacedDrawing> front, bool onPage = false)
     {
         var items = new List<SceneItem>();

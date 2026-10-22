@@ -56,6 +56,15 @@ public sealed record LinkItem(string Target, List<SceneItem> Items) : SceneItem;
 /// <summary>A check box form field's square from its top left, crossed when checked, in 0.48 pt black lines.</summary>
 public sealed record CheckBoxItem(double X, double Y, double Side, double Bottom, bool Checked) : SceneItem;
 
+/// <summary>Items cut at a rectangle in points (a drawing in a table cell, at the cell's inside).</summary>
+public sealed record ClipItem(double X, double Y, double Width, double Height, List<SceneItem> Items) : SceneItem;
+
+/// <summary>
+/// A bitmap stretched over a rectangle in points: its pixels' red, green, blue and alpha bytes, row by row (the shading
+/// and borders of a grouped text box, as Word's PDF holds them).
+/// </summary>
+public sealed record BitmapItem(double X, double Y, double Width, double Height, int PixelWidth, int PixelHeight, byte[] Rgba) : SceneItem;
+
 /// <summary>A solid straight line.</summary>
 public sealed record LineItem(double X1, double Y1, double X2, double Y2, double Width, RgbColor Color) : SceneItem;
 

@@ -63,6 +63,15 @@ public static class HtmlScene
                     Write(turned.Items, html);
                     html.Append("</g>");
                     break;
+                case ClipItem clip:
+                    html.Append($"<div style=\"position:absolute;overflow:hidden;left:{Px(clip.X)}px;top:{Px(clip.Y)}px;width:{Px(clip.Width)}px;height:{Px(clip.Height)}px\">"
+                        + $"<div style=\"position:absolute;left:{Px(-clip.X)}px;top:{Px(-clip.Y)}px\">");
+                    Write(clip.Items, html);
+                    html.Append("</div></div>");
+                    break;
+                case BitmapItem bitmap:
+                    html.Append($"<image x=\"{Px(bitmap.X)}\" y=\"{Px(bitmap.Y)}\" width=\"{Px(bitmap.Width)}\" height=\"{Px(bitmap.Height)}\" preserveAspectRatio=\"none\" href=\"{Metafiles.Png.DataUri(bitmap.PixelWidth, bitmap.PixelHeight, bitmap.Rgba)}\"/>");
+                    break;
                 case RectItem rect:
                     html.Append($"<rect x=\"{Px(rect.X)}\" y=\"{Px(rect.Y)}\" width=\"{Px(rect.Width)}\" height=\"{Px(rect.Height)}\" fill=\"{rect.Color.ToHex()}\"/>");
                     break;
