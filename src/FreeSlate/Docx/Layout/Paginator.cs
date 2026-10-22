@@ -1400,17 +1400,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     public sealed record Relaid(List<PageBox> Pages, int From, int Until);
 
     /// <summary>
-    /// Lays out the blocks Paginate was given again with some of them replaced (edited): from the last checkpoint
-    /// before the first one replaced, until a page begins as it began before (SameFlow), from where the pages laid out
-    /// before follow. That stands where the run settles as the run before it did: its floating objects, the room its
-    /// notes took, the fields that depend on pages and the numbers of notes counted per page are those it was laid out
-    /// with. Otherwise, and where blocks were added or taken away, the blocks are paginated anew (Paginate). It keeps
-    /// the checkpoints for the next edit.
+    /// Lays out the blocks Paginate was given again with some of them replaced, added or taken away (edited; new blocks
+    /// with ids of their own): from the last checkpoint before the first block that differs, until a page after the
+    /// last one begins as it began before (SameFlow), from where the pages laid out before follow. That stands where
+    /// the run settles as the run before it did: its floating objects, the room its notes took, the fields that depend
+    /// on pages, the headers and footers that hold fields and the numbers of notes counted per page are those it was
+    /// laid out with. Otherwise the blocks are paginated anew (Paginate). It keeps the checkpoints for the next edit.
     /// </summary>
     public Relaid Relayout(List<Block> blocks)
     {
         var (given, lastSection, footnotes, endnotes, endnoteSeparator) = input ?? throw new InvalidOperationException("Relayout needs a pagination.");
-        var (from, last) = settledRun && laid != null && checkpoints is { Count: > 0 } && given.Count == blocks.Count ? Changed(given, blocks) : (null, (0, 0));
+        var (from, after) = settledRun && laid != null && checkpoints is { Count: > 0 } ? Changed(given, blocks) : (null, []);
         if (from != null)
         {
             // The fields read the edited blocks (bookmarks' text, sequences) and know of the pages what the checkpoint's did.
@@ -1422,11 +1422,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var run = new Paginator(context, layout, reader)
             {
                 EndnoteContinuation = EndnoteContinuation, checkpoints = [], settledCopy = from.State.settled, stopPages = laid, stopSettings = settings,
-                // The run stops only after the last block replaced, and not where the fields of the pages after it may
-                // read otherwise (the text of a bookmark, a sequence's numbers) or headers look back over the pages
+                // The run stops only after the last block that differs, and not where the fields of the pages after it
+                // may read otherwise (the text of a bookmark, a sequence's numbers) or headers look back over the pages
                 // before theirs (STYLEREF).
-                stops = StoriesLookBack() || before == null || !fields.ReadsAs(before) ? null
-                    : checkpoints!.Where(c => c.Section > last.Section || c.Section == last.Section && c.Block > last.Block).ToDictionary(c => (c.Section, c.Block)),
+                stops = StoriesLookBack() || before == null || !fields.ReadsAs(before) ? null : after.ToDictionary(c => (c.Section, c.Block)),
             };
             run.Take(from.State, laid!.Take(from.Page - 1));
             var pages = run.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator, from);
@@ -1441,7 +1440,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 input = (blocks, lastSection, footnotes, endnotes, endnoteSeparator);
                 laid = run.pages;
-                checkpoints = [.. checkpoints!.TakeWhile(c => c != from), .. run.checkpoints!, .. run.stoppedAt is { } stop ? checkpoints!.SkipWhile(c => c != stop) : []];
+                checkpoints = [.. checkpoints!.TakeWhile(c => c != from), .. run.checkpoints!, .. run.stoppedAt is { } stop ? after.SkipWhile(c => c != stop) : []];
                 settings = run.settings;
                 NumberLines(pages);
                 return new Relaid(pages, from.Page, run.stoppedAt?.Page ?? 0);
@@ -1455,30 +1454,51 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     }
 
     /// <summary>
-    /// Where <paramref name="blocks"/> are not <paramref name="given"/>'s: the last checkpoint before the first block
-    /// replaced (or null), and the section and place of the last one replaced.
+    /// Where <paramref name="blocks"/> differ from <paramref name="given"/> (the same blocks at the beginning and the
+    /// end, some replaced, added or taken away between): the last checkpoint before the first block that differs (or
+    /// null), and the checkpoints at the blocks after the last one, at the sections and places those blocks have in
+    /// <paramref name="blocks"/>.
     /// </summary>
-    (Checkpoint? From, (int Section, int Block) Last) Changed(List<Block> given, List<Block> blocks)
+    (Checkpoint? From, List<Checkpoint> After) Changed(List<Block> given, List<Block> blocks)
     {
-        var (section, index) = (0, 0);
-        (int Section, int Block)? first = null, last = null;
-        for (var k = 0; k < blocks.Count; k++)
-        {
-            if (!ReferenceEquals(given[k], blocks[k]))
-            {
-                first ??= (section, index);
-                last = (section, index);
-            }
-            index++;
-            if (blocks[k] is ParagraphBlock { EndsSection: not null })
-                (section, index) = (section + 1, 0);
-        }
-        if (first is not { } at)
-            return (checkpoints![^1], (section, index));
+        var head = 0;
+        while (head < given.Count && head < blocks.Count && ReferenceEquals(given[head], blocks[head]))
+            head++;
+        if (head == given.Count && head == blocks.Count)
+            return (checkpoints![^1], []);
+        var tail = 0;
+        while (tail < given.Count - head && tail < blocks.Count - head && ReferenceEquals(given[^(tail + 1)], blocks[^(tail + 1)]))
+            tail++;
+        var (was, now) = (Places(given), Places(blocks));
         // The first checkpoint, before any block, knows nothing of the blocks; the others may know the block they
         // stand before (the one before looked ahead at it).
-        return (checkpoints!.LastOrDefault(c => c.Section < at.Section || c.Section == at.Section && c.Block < at.Block)
-            ?? (checkpoints![0] is { Section: 0, Block: 0 } start ? start : null), last!.Value);
+        var at = head < given.Count ? was[head] : (Section: int.MaxValue, Block: 0);
+        var from = checkpoints!.LastOrDefault(c => c.Section < at.Section || c.Section == at.Section && c.Block < at.Block)
+            ?? (checkpoints![0] is { Section: 0, Block: 0 } start ? start : null);
+        var index = Enumerable.Range(0, was.Count).ToDictionary(k => was[k]);
+        var after = new List<Checkpoint>();
+        foreach (var c in checkpoints!)
+        {
+            if (!index.TryGetValue((c.Section, c.Block), out var k) || k < given.Count - tail)
+                continue;
+            var moved = now[k + blocks.Count - given.Count];
+            after.Add(moved == (c.Section, c.Block) ? c : new Checkpoint(c.Page, moved.Section, moved.Block, c.Id, c.State, c.Fields));
+        }
+        return (from, after);
+    }
+
+    /// <summary>The section and the place in it of each block (sections end with the paragraph that holds their break, see PaginateRun).</summary>
+    static List<(int Section, int Block)> Places(List<Block> blocks)
+    {
+        var places = new List<(int Section, int Block)>(blocks.Count);
+        var (section, index) = (0, 0);
+        foreach (var block in blocks)
+        {
+            places.Add((section, index++));
+            if (block is ParagraphBlock { EndsSection: not null })
+                (section, index) = (section + 1, 0);
+        }
+        return places;
     }
 
     /// <summary>
@@ -1549,12 +1569,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (!LayoutValues.Same(field.GetValue(this), field.GetValue(state)))
                 return false;
         }
+        // Paragraphs are numbered from the document's beginning: the flow's lines count from the paragraph in hand, so
+        // that blocks added or taken away before do not count.
+        if ((paragraphNumber == 0) != (state.paragraphNumber == 0) || flow.Count != state.flow.Count
+            || flow.Zip(state.flow).Any(f => !LayoutValues.Same(f.First with { Paragraph = paragraphNumber - f.First.Paragraph },
+                f.Second with { Paragraph = state.paragraphNumber - f.Second.Paragraph })))
+            return false;
         return layout.Evaluator is not { } fields || old.Fields is not { } then || fields.Knows(then);
     }
 
-    /// <summary>The fields SameFlow compares: the flow's, not the pages, what a run keeps laid out, its bookkeeping and its inputs.</summary>
+    /// <summary>
+    /// The fields SameFlow compares as they are: the flow's, not the pages, the lines of the flow and the paragraphs'
+    /// count (compared apart), what a run keeps laid out, its bookkeeping and its inputs.
+    /// </summary>
     static readonly FieldInfo[] flowFields = typeof(Paginator).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-        .Where(f => !f.Name.StartsWith('<') && f.Name is not (nameof(pages) or nameof(page) or nameof(tables) or nameof(keptLines) or nameof(laidTables)
+        .Where(f => !f.Name.StartsWith('<') && f.Name is not (nameof(pages) or nameof(page) or nameof(flow) or nameof(paragraphNumber) or nameof(tables)
+            or nameof(keptLines) or nameof(laidTables)
             or nameof(noteBoxes) or nameof(storyOwners) or nameof(checkpoints) or nameof(checkpointPage) or nameof(settledCopy) or nameof(fieldsCopy)
             or nameof(input) or nameof(laid) or nameof(settledRun) or nameof(lookBack) or nameof(reads) or nameof(stops) or nameof(stopPages)
             or nameof(stopSettings) or nameof(stoppedAt)))
@@ -1988,7 +2018,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var emptyEnd = due is { Count: > 0 } && sectionBlocks.Count > 0 && sectionBlocks[^1] is ParagraphBlock { EndsSection: not null } end
                 && end.Content.All(c => c is BookmarkInline or PermissionInline);
             documentEnd = s == sections.Count - 1 && due is not { Count: > 0 } && sectionBlocks.Count > 0 ? sectionBlocks[^1] : null;
-            if (from != null && s == from.Section && (from.Block >= sectionBlocks.Count || sectionBlocks[from.Block].Id != from.Id))
+            // A checkpoint knows the block it stands before (the one before looked ahead at it), but for the first, which
+            // stands before all of them.
+            if (from != null && s == from.Section && (from.Section, from.Block) != (0, 0) && (from.Block >= sectionBlocks.Count || sectionBlocks[from.Block].Id != from.Id))
                 throw new ArgumentException("The checkpoint's block is not where the blocks have it.", nameof(from));
             for (var i = from != null && s == from.Section ? from.Block : 0; i < sectionBlocks.Count - (emptyEnd ? 1 : 0); i++)
             {
