@@ -87,9 +87,9 @@ public sealed class FieldEvaluator
     /// <summary>The first note reference in every bookmark (NOTEREF).</summary>
     readonly Dictionary<string, NoteReferenceInline> noteMarks = new(StringComparer.Ordinal);
 
-    /// <summary>The body's paragraphs in their order, and the place of each.</summary>
+    /// <summary>The body's paragraphs in their order, and the place of each (by Block.Id).</summary>
     readonly List<ParagraphBlock> paragraphs = [];
-    readonly Dictionary<ParagraphBlock, int> order = new(ReferenceEqualityComparer.Instance);
+    readonly Dictionary<int, int> order = [];
 
     // What the pages of the last layout tell.
     List<PageBox> pages = [];
@@ -142,7 +142,8 @@ public sealed class FieldEvaluator
             yield return list[p];
     }
     readonly Dictionary<string, PageBox> bookmarkPages = new(StringComparer.Ordinal);
-    readonly Dictionary<ParagraphBlock, PageBox> paragraphPages = new(ReferenceEqualityComparer.Instance);
+    /// <summary>The page each paragraph of the last layout began on, by Block.Id (its copies' too).</summary>
+    readonly Dictionary<int, PageBox> paragraphPages = [];
 
     /// <summary>The time the fields' dates and times show: when the document is printed.</summary>
     readonly DateTime now;
@@ -195,7 +196,7 @@ public sealed class FieldEvaluator
                 switch (block)
                 {
                     case ParagraphBlock paragraph:
-                        order[paragraph] = paragraphs.Count;
+                        order[paragraph.Id] = paragraphs.Count;
                         paragraphs.Add(paragraph);
                         // A heading resets the sequences that restart at its level (SEQ \s).
                         if (paragraph.Format.OutlineLevel is { } level and < 9)
@@ -239,7 +240,7 @@ public sealed class FieldEvaluator
             foreach (var (name, _, _) in page.Bookmarks)
                 bookmarkPages.TryAdd(name, page);
             foreach (var paragraph in page.Paragraphs)
-                paragraphPages.TryAdd(paragraph, page);
+                paragraphPages.TryAdd(paragraph.Id, page);
         }
         return again || before.Any(f => Value(f.Key, null) != f.Value);
 
@@ -260,7 +261,7 @@ public sealed class FieldEvaluator
         var words = Words(field.Instruction);
         var format = NumberText.FieldFormat(field.NumberFormat);
         var paragraph = paragraphOf.GetValueOrDefault(field);
-        var page = on ?? (paragraph != null ? paragraphPages.GetValueOrDefault(paragraph) : null);
+        var page = on ?? (paragraph != null ? paragraphPages.GetValueOrDefault(paragraph.Id) : null);
         switch (field.Type)
         {
             case "PAGE" when page != null:
@@ -373,7 +374,7 @@ public sealed class FieldEvaluator
     bool Above(string bookmark, ParagraphBlock paragraph)
     {
         var at = paragraphs.FindIndex(p => p.Content.OfType<BookmarkInline>().Any(b => b.Name == bookmark));
-        return at >= 0 && at < order.GetValueOrDefault(paragraph);
+        return at >= 0 && at < order.GetValueOrDefault(paragraph.Id);
     }
 
     /// <summary>
@@ -455,7 +456,7 @@ public sealed class FieldEvaluator
         }
         else if (paragraphOf.TryGetValue(field, out var paragraph))
         {
-            var at = order.GetValueOrDefault(paragraph);
+            var at = order.GetValueOrDefault(paragraph.Id);
             found = paragraphs.Take(at + 1).LastOrDefault(Matches) ?? paragraphs.Skip(at + 1).FirstOrDefault(Matches);
         }
         // A heading level that no paragraph has gives an error of its own (docx/external/libreoffice/
@@ -550,7 +551,7 @@ public sealed class FieldEvaluator
         }
         else if (paragraphOf.TryGetValue(field, out var paragraph))
         {
-            var at = order.GetValueOrDefault(paragraph);
+            var at = order.GetValueOrDefault(paragraph.Id);
             found = paragraphs.Take(at + 1).SelectMany(Groups).LastOrDefault() ?? paragraphs.Skip(at + 1).SelectMany(Groups).FirstOrDefault();
         }
         return found?.Trim() ?? T($"Error! Use the Home tab to apply {name} to the text that you want to appear here.",

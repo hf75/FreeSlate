@@ -130,8 +130,15 @@ public sealed record FieldInline(string Instruction, RunFormat Format, List<Inli
     public static bool IsAutoNumber(string instruction) => TypeOf(instruction) is "AUTONUM" or "AUTONUMLGL" or "AUTONUMOUT" or "BIDIOUTLINE";
 }
 
-/// <summary>A block of the body: a paragraph or a table.</summary>
-public abstract record Block;
+/// <summary>
+/// A block of the body: a paragraph or a table. Id names it within its document as the reader numbered it (0 for a block
+/// made elsewhere, a markup balloon's); a copy of it (with) keeps it, so that what a layout keeps of a block finds the copy
+/// it laid out (a paragraph set without its leading break) and does not hang on the object.
+/// </summary>
+public abstract record Block
+{
+    public int Id { get; init; }
+}
 
 /// <summary>A paragraph with its resolved paragraph formatting, its content and the format of its mark.</summary>
 public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, List<Inline> Content, RunFormat MarkFormat) : Block
@@ -329,6 +336,9 @@ public sealed class SectionProperties
 /// </summary>
 public sealed partial class ModelReader(DocumentContext context)
 {
+    /// <summary>The blocks read so far, which number them (Block.Id; not in their document's order: a table's cells come first).</summary>
+    int blocksRead;
+
     /// <summary>The tracked change whose content is being read, in the markup view (catalog: review.revisions), or null.</summary>
     RevisionMark? revision;
 
@@ -1256,6 +1266,7 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         return new ParagraphBlock(p, format, content, mark)
         {
+            Id = ++blocksRead,
             EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve, context.Culture) : null,
             Label = label,
             Deleted = deleted.Count > 0 ? deleted : null,

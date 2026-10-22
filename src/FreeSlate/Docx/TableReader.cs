@@ -202,7 +202,7 @@ public sealed partial class ModelReader
             && model.Rows.FirstOrDefault()?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is ParagraphBlock { Format.Frame: { } frame }
             && frame.Attr("yAlign") != "inline")
             (model.Format.Floating, model.Format.Framed) = (Floating(frame), true);
-        return new TableBlock(tbl, model);
+        return new TableBlock(tbl, model) { Id = ++blocksRead };
     }
 
     /// <summary>The floating table position (w:tblpPr) that frame properties (w:framePr) give a table in the frame.</summary>

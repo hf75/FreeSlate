@@ -367,7 +367,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     if (pages.Count < 3 || pages[^1] != pages[^3] || Math.Abs(pages[^1] - pages[^2]) != 1
                         || AnchorParagraph(blocks, source) is not { } anchorParagraph)
                         continue;
-                    settled.ForcedBreaks.Add(anchorParagraph);
+                    settled.ForcedBreaks.Add(anchorParagraph.Id);
                     var earlier = Math.Min(pages[^1], pages[^2]);
                     if (found.TryGetValue(earlier, out var stale))
                         stale.RemoveAll(e => ReferenceEquals(e.Source, source));
@@ -595,7 +595,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             var block = blocks[index];
             var reach = y + (context.Profile.SpaceAfterMeetsFloats ? pendingAfter : 0) - (top - Twips("topFromText"));
-            if (settled.Floats.TryGetValue(page!.Number, out var prior) && prior.FirstOrDefault(e => ReferenceEquals(e.Banded, block)) is { } kept)
+            if (settled.Floats.TryGetValue(page!.Number, out var prior) && prior.FirstOrDefault(e => e.Banded?.Id == block.Id) is { } kept)
             {
                 top = kept.Top + Twips("topFromText");
                 banded = block;
@@ -1220,10 +1220,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         public Dictionary<int, double> NoteBands { get; set; } = [];
 
         /// <summary>
-        /// Paragraphs that begin a new page: the anchors of objects that push their own paragraph off the page they
-        /// wrap text on, which Word leaves on the next page, the page before without them.
+        /// Paragraphs that begin a new page (by Block.Id): the anchors of objects that push their own paragraph off the
+        /// page they wrap text on, which Word leaves on the next page, the page before without them.
         /// </summary>
-        public HashSet<Block> ForcedBreaks { get; } = new(ReferenceEqualityComparer.Instance);
+        public HashSet<int> ForcedBreaks { get; } = [];
 
         /// <summary>Drawings held where they stood first on a page, the runs before going back and forth (see Placed).</summary>
         public Dictionary<XElement, (int Page, double X, double Y)> Pins { get; } = new(ReferenceEqualityComparer.Instance);
@@ -3773,7 +3773,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A paragraph pushed off the page its drawing goes back and forth on (see Paginate) begins the next column, a
         // new page in a section of one column (LibreOffice's extras-layout/fdo43573-2-min: two columns, the second of
         // the page filled as in Word, not left empty).
-        else if (settled.ForcedBreaks.Contains(blocks[index]) && (section.Columns > 1 ? !columnEmpty : !(columnEmpty && column == 0 && page!.Lines.Count == 0)))
+        else if (settled.ForcedBreaks.Contains(blocks[index].Id) && (section.Columns > 1 ? !columnEmpty : !(columnEmpty && column == 0 && page!.Lines.Count == 0)))
         {
             NextColumn(natural: true);
             (left, width) = Column(column);
@@ -3998,7 +3998,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             for (var i = 0; i < exclusions.Count; i++)
             {
                 if (!exclusions[i].Frame && !exclusions[i].Story
-                    && (ReferenceEquals(exclusions[i].Anchor, paragraph) || exclusions[i].Source != null && exclusions[i].TopAndBottom))
+                    && (exclusions[i].Anchor?.Id == paragraph.Id || exclusions[i].Source != null && exclusions[i].TopAndBottom))
                 {
                     exclusions[i] = exclusions[i] with { Top = exclusions[i].Top - spaceAfter };
                     raisedAfter = spaceAfter;
@@ -4006,7 +4006,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // So does the space after of the paragraph right before a table whose distance above it the lines before it
                 // go around, for its last line (docx/local/ftb-12-narrow: 8 pt after the last line reaching 43 twips above
                 // the table put that line beside it, the line before it not).
-                else if (exclusions[i].Banded is { } table && index + 1 < blocks.Count && ReferenceEquals(blocks[index + 1], table)
+                else if (exclusions[i].Banded is { } table && index + 1 < blocks.Count && blocks[index + 1].Id == table.Id
                          && y + lines.Sum(l => l.Height) is var linesBottom && exclusions[i].Top >= linesBottom - 0.01
                          && exclusions[i].Top < linesBottom + spaceAfter - 1)
                     exclusions[i] = exclusions[i] with { Top = linesBottom - 0.1 };
@@ -4020,7 +4020,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // fwa-h-14: a frame inside the column, fwa-g-15: in mode 15, beside it; LibreOffice's extras-ooxmlexport/
         // tdf164500_framePrBeforeTable2, found by agent CC).
         if (context.Profile.FramesLowerTableParagraphs && lines.Count > 0
-            && exclusions.Any(e => !e.Frame && !e.Story && ReferenceEquals(e.Anchor, paragraph) && e.Top < y + lines[0].Height - 0.01))
+            && exclusions.Any(e => !e.Frame && !e.Story && e.Anchor?.Id == paragraph.Id && e.Top < y + lines[0].Height - 0.01))
         {
             for (var i = 0; i < exclusions.Count; i++)
             {
