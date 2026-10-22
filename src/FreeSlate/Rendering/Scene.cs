@@ -43,6 +43,18 @@ public sealed record TurnedItem(double Width, List<SceneItem> Items) : SceneItem
 /// <summary>A filled rectangle.</summary>
 public sealed record RectItem(double X, double Y, double Width, double Height, RgbColor Color) : SceneItem;
 
+/// <summary>A black rule as Word's device draws it: a line between columns, a bar tab, a note separator.</summary>
+public sealed record RuleItem(double X, double Y, double Width, double Height) : SceneItem;
+
+/// <summary>Items turned clockwise by an angle (degrees) about a point: a line of turned text.</summary>
+public sealed record RotatedItem(double Angle, double PivotX, double PivotY, List<SceneItem> Items) : SceneItem;
+
+/// <summary>Items that link to a target (a hyperlink's text).</summary>
+public sealed record LinkItem(string Target, List<SceneItem> Items) : SceneItem;
+
+/// <summary>A check box form field's square from its top left, crossed when checked, in 0.48 pt black lines.</summary>
+public sealed record CheckBoxItem(double X, double Y, double Side, double Bottom, bool Checked) : SceneItem;
+
 /// <summary>A solid straight line.</summary>
 public sealed record LineItem(double X1, double Y1, double X2, double Y2, double Width, RgbColor Color) : SceneItem;
 

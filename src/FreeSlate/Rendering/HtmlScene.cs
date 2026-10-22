@@ -57,6 +57,24 @@ public static class HtmlScene
                 case RectItem rect:
                     html.Append($"<rect x=\"{Px(rect.X)}\" y=\"{Px(rect.Y)}\" width=\"{Px(rect.Width)}\" height=\"{Px(rect.Height)}\" fill=\"{rect.Color.ToHex()}\"/>");
                     break;
+                case RuleItem rule:
+                    html.Append($"<rect x=\"{Px(rule.X)}\" y=\"{Px(rule.Y)}\" width=\"{Px(rule.Width)}\" height=\"{Px(rule.Height)}\" fill=\"#000\"/>");
+                    break;
+                case RotatedItem rotated:
+                    html.Append($"<g transform=\"rotate({Units.Css(rotated.Angle)} {Px(rotated.PivotX)} {Px(rotated.PivotY)})\">");
+                    Write(rotated.Items, html);
+                    html.Append("</g>");
+                    break;
+                case LinkItem link:
+                    html.Append($"<a href=\"{WebUtility.HtmlEncode(link.Target)}\">");
+                    Write(link.Items, html);
+                    html.Append("</a>");
+                    break;
+                case CheckBoxItem box:
+                    html.Append($"<rect x=\"{Px(box.X)}\" y=\"{Px(box.Y)}\" width=\"{Px(box.Side)}\" height=\"{Px(box.Side)}\" fill=\"none\" stroke=\"#000\" stroke-width=\"{Px(0.48)}\"/>");
+                    if (box.Checked)
+                        html.Append($"<path d=\"M{Px(box.X)} {Px(box.Y)}L{Px(box.X + box.Side)} {Px(box.Bottom)}M{Px(box.X + box.Side)} {Px(box.Y)}L{Px(box.X)} {Px(box.Bottom)}\" stroke=\"#000\" stroke-width=\"{Px(0.48)}\"/>");
+                    break;
                 case LineItem line:
                     html.Append($"<line x1=\"{Px(line.X1)}\" y1=\"{Px(line.Y1)}\" x2=\"{Px(line.X2)}\" y2=\"{Px(line.Y2)}\" stroke=\"{line.Color.ToHex()}\" stroke-width=\"{Px(line.Width)}\"/>");
                     break;

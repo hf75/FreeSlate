@@ -105,17 +105,19 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         // Lines between columns, 0.75 pt wide (measured: 0.72 to 0.84 pt as Word's 600 dpi device rounds them).
         foreach (var (x, top, bottom) in page.ColumnLines)
-            body.Add(new MarkupItem($"<rect x=\"{Px(x - 0.375)}\" y=\"{Px(top)}\" width=\"{Px(0.75)}\" height=\"{Px(bottom - top)}\" fill=\"#000\"/>"));
+            body.Add(new RuleItem(x - 0.375, top, 0.75, bottom - top));
         Fills(page.Shading.Concat(page.Borders), page.Strokes, body);
         var svg = new StringBuilder();
         var commentAnchors = CommentRanges(page, svg);
+        AddMarkup(body, svg.ToString());
+        svg.Clear();
         var inline = new List<PlacedDrawing>();
         // The inline drawings of headers and footers lie behind the body's text, as Word draws their layer first
         // (scratch/triage/2026-10-14_agents/misc: docx/external/openxml-sdk/complex0, 2010: a header's picture
         // 546.75 pt wide over the body's lines).
         var storyInline = new List<PlacedDrawing>();
-        Lines(page.Lines.Where(l => l.Story), svg, selection, storyInline, onPage: true);
-        Lines(page.Lines.Where(l => !l.Story), svg, selection, inline, onPage: true);
+        Lines(page.Lines.Where(l => l.Story), body, selection, storyInline, onPage: true);
+        Lines(page.Lines.Where(l => !l.Story), body, selection, inline, onPage: true);
         if (drawings != null && storyInline.Count > 0)
             items.Insert(canvasAt, new MarkupItem(string.Concat((!turned ? storyInline : storyInline.Select(d => Upright(d, page.PaperWidth))).Select(d => Drawing(d, page)))));
         front.AddRange(!turned ? inline : inline.Select(d => Upright(d, page.PaperWidth)));
@@ -132,9 +134,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             body.Add(new MarkupItem(selection.ToString()));
             selection.Clear();
             Fills(page.Upright!.Shading.Concat(page.Upright.Borders), page.Upright.Strokes, canvas.Items);
-            var uprightLines = new StringBuilder();
-            Lines(page.Upright.Lines, uprightLines, selection, front);
-            canvas.Items.Add(new MarkupItem(uprightLines.ToString()));
+            Lines(page.Upright.Lines, canvas.Items, selection, front);
         }
         if (page.Border is { Front: true } border)
             Fills(border, canvas.Items);
@@ -932,7 +932,25 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     }
 
     /// <param name="onPage">Whether the lines stand on the page itself, where Word starts them on whole dots.</param>
+    /// <summary>Lines as SVG (in text boxes and balloons, which are not broken down into scene items yet).</summary>
     void Lines(IEnumerable<PlacedLine> lines, StringBuilder svg, StringBuilder selection, List<PlacedDrawing> front, bool onPage = false)
+    {
+        var items = new List<SceneItem>();
+        Lines(lines, items, selection, front, onPage);
+        HtmlScene.Write(items, svg);
+    }
+
+    /// <summary>What is drawn as HTML or SVG (see MarkupItem), where it is not empty.</summary>
+    static void AddMarkup(List<SceneItem> items, string html)
+    {
+        if (html.Length > 0)
+            items.Add(new MarkupItem(html));
+    }
+
+    /// <summary>The gray of the brackets of editable ranges.</summary>
+    static readonly Drawing.RgbColor BracketGray = new(127 / 255.0, 127 / 255.0, 127 / 255.0);
+
+    void Lines(IEnumerable<PlacedLine> lines, List<SceneItem> scene, StringBuilder selection, List<PlacedDrawing> front, bool onPage = false)
     {
         var outer = onDevice;
         foreach (var line in lines)
@@ -954,27 +972,32 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 : turnedBox ? DevicePositions(placed with { Left = down ? placed.Top : placed.Top - 2 * first }, turned: true) : null;
             // Bar tabs: lines 0.75 pt wide from the line's top through its height (one device pixel in Word's raster).
             foreach (var bar in placed.Line.Bars ?? [])
-                svg.Append($"<rect x=\"{Px(placed.Left + bar - 0.375)}\" y=\"{Px(placed.Top)}\" width=\"{Px(0.75)}\" height=\"{Px(placed.Line.Height + placed.Line.BarExtension)}\" fill=\"#000\"/>");
+                scene.Add(new RuleItem(placed.Left + bar - 0.375, placed.Top, 0.75, placed.Line.Height + placed.Line.BarExtension));
             var baseline = placed.Top + placed.Line.Baseline;
             if (grows)
                 baseline += Grow(baseline, paperSize.Height);
             // A turned line's baseline grows across the page (its x there), its glyphs down or up it (their y).
             if (turnedBox)
                 baseline += down ? -Grow(placed.Left - placed.Line.Baseline, paperSize.Width) : Grow(placed.Left + placed.Line.Baseline, paperSize.Width);
+            var items = scene;
             if (placed.Angle != 0)
-                svg.Append($"<g transform=\"rotate({Units.Css(placed.Angle)} {Px(placed.Left + placed.PivotX)} {Px(placed.Top + placed.PivotY)})\">");
+            {
+                var rotated = new RotatedItem(placed.Angle, placed.Left + placed.PivotX, placed.Top + placed.PivotY, []);
+                scene.Add(rotated);
+                items = rotated.Items;
+            }
             // Editable ranges (w:permStart, w:permEnd): gray brackets 0.24 pt thin through the line (measured with
             // docx/local/misc-nothing).
             foreach (var (bracketX, start) in placed.Line.Brackets ?? [])
             {
                 var (bx, top, bottom) = (placed.Left + bracketX, placed.Top, placed.Top + placed.Line.Height);
                 var tick = start ? bx - 0.24 : bx - 0.36;
-                svg.Append($"<rect x=\"{Px(start ? bx - 0.24 : bx)}\" y=\"{Px(top + 0.38)}\" width=\"{Px(0.24)}\" height=\"{Px(bottom - top - 0.6)}\" fill=\"#7f7f7f\"/>");
-                svg.Append($"<rect x=\"{Px(tick)}\" y=\"{Px(top + 0.14)}\" width=\"{Px(0.6)}\" height=\"{Px(0.24)}\" fill=\"#7f7f7f\"/>");
-                svg.Append($"<rect x=\"{Px(tick)}\" y=\"{Px(bottom - 0.22)}\" width=\"{Px(0.6)}\" height=\"{Px(0.24)}\" fill=\"#7f7f7f\"/>");
+                items.Add(new RectItem(start ? bx - 0.24 : bx, top + 0.38, 0.24, bottom - top - 0.6, BracketGray));
+                items.Add(new RectItem(tick, top + 0.14, 0.6, 0.24, BracketGray));
+                items.Add(new RectItem(tick, bottom - 0.22, 0.6, 0.24, BracketGray));
             }
             // Run borders behind the text; underlines and strikethrough end with the line's content.
-            svg.Append(RunBorders(placed.Line, placed.Left, baseline));
+            AddMarkup(items, RunBorders(placed.Line, placed.Left, baseline));
             var contentEnd = placed.Left + ContentEnd(placed.Line);
             foreach (var piece in placed.Line.Pieces)
             {
@@ -994,11 +1017,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 // lowered text adds to it (docx/external/libreoffice/extras-ooxmlexport/tdf140572_docDefault_superscript:
                 // text raised 9 pt shaded from 9 pt above the ascent).
                 if ((piece.Style.Highlight ?? piece.Style.Shading) is { } back && Math.Min(x + piece.Width, contentEnd) - x is var shown && shown > 0)
-                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - placed.Line.Above - placed.Line.RaisedAbove)}\" width=\"{Px(shown)}\" height=\"{Px(placed.Line.Above + placed.Line.Below + placed.Line.RaisedAbove + placed.Line.LoweredBelow)}\" fill=\"{back.ToHex()}\"/>");
+                    items.Add(new RectItem(x, baseline - placed.Line.Above - placed.Line.RaisedAbove, shown,
+                        placed.Line.Above + placed.Line.Below + placed.Line.RaisedAbove + placed.Line.LoweredBelow, back));
                 if (piece.IsTab)
                 {
                     if (piece.Leader != null)
-                        svg.Append(LeaderText(piece, placed.Left + piece.X, x - placed.Left - piece.X, baseline - piece.Style.Raise - piece.Shift));
+                        AddMarkup(items, LeaderText(piece, placed.Left + piece.X, x - placed.Left - piece.X, baseline - piece.Style.Raise - piece.Shift));
                     continue;
                 }
                 // A note separator: its font's strikeout stroke, 144 pt long, on whole device dots as strikethrough
@@ -1010,13 +1034,13 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     var data = piece.Style.Font.Data;
                     var strikeTop = Dots(data.StrikeoutPosition * piece.Style.Size);
                     var strikeThickness = Math.Max(1, Dots(data.StrikeoutThickness * piece.Style.Size));
-                    svg.Append($"<rect x=\"{Px(x)}\" y=\"{Px(baseline - strikeTop * Dot)}\" width=\"{Px(piece.Width)}\" height=\"{Px(strikeThickness * Dot)}\" fill=\"#000\"/>");
+                    items.Add(new RuleItem(x, baseline - strikeTop * Dot, piece.Width, strikeThickness * Dot));
                     continue;
                 }
                 // Ruby: the base text and above it the phonetic text (catalog: run.ruby).
                 if (piece.Ruby is { } ruby)
                 {
-                    svg.Append(Ruby(ruby, x, baseline - piece.Style.Raise, piece.Width));
+                    AddMarkup(items, Ruby(ruby, x, baseline - piece.Style.Raise, piece.Width));
                     continue;
                 }
                 // Two lines in one: the halves of the text in half size above one another, between brackets.
@@ -1027,16 +1051,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     var at = x;
                     if (open.Length > 0)
                     {
-                        svg.Append(TextAt(open, full, at, baseline));
+                        AddMarkup(items, TextAt(open, full, at, baseline));
                         at += ParagraphLayout.Measure(open, full).Sum();
                     }
                     var lineWidth = Math.Max(ParagraphLayout.Measure(firstLine, half).Sum(), ParagraphLayout.Measure(secondLine, half).Sum());
                     // Measured: the first half 6.12 pt above the baseline, the second 1.8 pt below (12 pt text).
-                    svg.Append(TextAt(firstLine, half, at, baseline - 0.51 * full.Size));
-                    svg.Append(TextAt(secondLine, half, at, baseline + 0.15 * full.Size));
+                    AddMarkup(items, TextAt(firstLine, half, at, baseline - 0.51 * full.Size));
+                    AddMarkup(items, TextAt(secondLine, half, at, baseline + 0.15 * full.Size));
                     at += lineWidth;
                     if (close.Length > 0)
-                        svg.Append(TextAt(close, full, at, baseline));
+                        AddMarkup(items, TextAt(close, full, at, baseline));
                     continue;
                 }
                 // A check box form field: a square 2.28 pt smaller than its cell, 1.08 pt in from its left and bottom,
@@ -1047,16 +1071,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     var side = piece.Width - 2.28;
                     var bottom = baseline + boxBelow - 1.08;
                     var (bx, top) = (x + 1.08, bottom - side);
-                    svg.Append($"<rect x=\"{Px(bx)}\" y=\"{Px(top)}\" width=\"{Px(side)}\" height=\"{Px(side)}\" fill=\"none\" stroke=\"#000\" stroke-width=\"{Px(0.48)}\"/>");
-                    if (box.Checked)
-                        svg.Append($"<path d=\"M{Px(bx)} {Px(top)}L{Px(bx + side)} {Px(bottom)}M{Px(bx + side)} {Px(top)}L{Px(bx)} {Px(bottom)}\" stroke=\"#000\" stroke-width=\"{Px(0.48)}\"/>");
+                    items.Add(new CheckBoxItem(bx, top, side, bottom, box.Checked));
                     continue;
                 }
                 // An equation: its glyphs and rules, its characters transparent on top for selection.
                 if (piece.Equation is { } equation)
                 {
                     var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise - piece.Shift, context.Glyphs, PxPerPt, asText: true);
-                    svg.Append(drawn);
+                    AddMarkup(items, drawn);
                     if (mathText.Length > 0)
                         selection.Append($"<text class=\"sel\" x=\"{Px(x)}\" y=\"{Px(baseline - piece.Style.Raise - piece.Shift)}\" font-size=\"{Px(piece.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
                     continue;
@@ -1097,9 +1119,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     var (acrossStyle, length, _, ascent, middle) = layout.Across(across, placed.Line.Vertical);
                     var run = new Piece { Text = across.Text, Style = acrossStyle, Advances = ParagraphLayout.Measure(across.Text, acrossStyle) };
                     var (originX, originY) = (x + ascent, baseline - piece.Style.Raise - piece.Shift - middle + length / 2);
-                    svg.Append($"<g transform=\"translate({Px(originX)} {Px(originY)}) rotate(-90)\">");
-                    svg.Append(acrossStyle.Size * PxPerPt < HintedBelow || acrossStyle.Font.Data.IsColor ? BrowserText(run, 0, 0) : Glyphs(run, 0, 0));
-                    svg.Append("</g>");
+                    AddMarkup(items, $"<g transform=\"translate({Px(originX)} {Px(originY)}) rotate(-90)\">"
+                        + (acrossStyle.Size * PxPerPt < HintedBelow || acrossStyle.Font.Data.IsColor ? BrowserText(run, 0, 0) : Glyphs(run, 0, 0)) + "</g>");
                     continue;
                 }
                 // East Asian characters turned against the line are drawn from their outlines.
@@ -1110,12 +1131,17 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 var browser = !turned && !(piece.Style.Hollow && !piece.Style.Font.Data.IsColor)
                     && (piece.Style.Size * PxPerPt < HintedBelow || piece.Style.Font.Data.IsColor);
                 // Hyperlinks wrap their text (catalog: field.hyperlinks); bookmarks are anchors in the page.
+                var drawnText = items;
                 if (piece.Link != null)
-                    svg.Append($"<a href=\"{WebUtility.HtmlEncode(piece.Link)}\">");
+                {
+                    var link = new LinkItem(piece.Link, []);
+                    items.Add(link);
+                    drawnText = link.Items;
+                }
                 // Emboss, imprint and shadow lay copies of the text behind it; emboss and imprint move the text.
                 var textBaseline = baseline - piece.Style.Raise - piece.Shift;
                 var (copies, moveX, moveY) = Relief(piece, x, textBaseline);
-                svg.Append(copies);
+                AddMarkup(drawnText, copies);
                 // 3D text is drawn as PowerPoint draws it, above the page; the text stays selectable.
                 var cost = piece.Text.Length * Math.Max(1, piece.Style.Size / 12);
                 if (piece.Style.Solid != null && drawings != null && !string.IsNullOrWhiteSpace(piece.Text) && context.Text3DBudget >= cost)
@@ -1125,23 +1151,19 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     selection.Append(SelectionText(piece, x, textBaseline));
                 }
                 else if (browser)
-                    svg.Append(WithEffects(piece, BrowserText(piece, x + moveX, textBaseline + moveY), x + moveX, textBaseline + moveY));
+                    AddMarkup(drawnText, WithEffects(piece, BrowserText(piece, x + moveX, textBaseline + moveY), x + moveX, textBaseline + moveY));
                 else
                 {
-                    svg.Append(Glyphs(piece, x + moveX, textBaseline + moveY, turned));
+                    AddMarkup(drawnText, Glyphs(piece, x + moveX, textBaseline + moveY, turned));
                     selection.Append(SelectionText(piece, x + moveX, textBaseline + moveY));
                 }
-                svg.Append(Strikes(piece, x, textBaseline, contentEnd));
+                AddMarkup(drawnText, Strikes(piece, x, textBaseline, contentEnd));
                 if (piece.Style.Emphasis is { } emphasis)
-                    svg.Append(EmphasisMarks(piece, emphasis, x, baseline - piece.Style.Raise - piece.Shift));
-                if (piece.Link != null)
-                    svg.Append("</a>");
+                    AddMarkup(drawnText, EmphasisMarks(piece, emphasis, x, baseline - piece.Style.Raise - piece.Shift));
             }
             // w:ulTrailSpace underlines the spaces that end the line too (docx/external/libreoffice/extras-cjk/
             // UnderlineTrailingSpace: 70 and 80 underlined spaces drawn in mode 15).
-            svg.Append(Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd));
-            if (placed.Angle != 0)
-                svg.Append("</g>");
+            AddMarkup(items, Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd));
         }
         onDevice = outer;
     }
