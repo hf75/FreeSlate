@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>FreeSlate.Skia</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The version Avalonia draws with, so that the viewer can draw scenes on its own canvas. -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreeSlate\FreeSlate.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1828,6 +1828,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             Bold = style.Bold, StrokedBold = style.Bold && style.Font.SyntheticBold && !style.Hollow && style.TextFill == null && style.Outline == null,
             Italic = style.Italic, Features = style.Features, Language = style.Language, Scale = style.Scale,
             RightToLeft = piece.RightToLeft, Width = piece.Width, WordSpacing = piece.SpaceExtra, JoinsBefore = piece.JoinsBefore, JoinsAfter = piece.JoinsAfter,
+            Hollow = style.Hollow, Shadow = style.Shadow,
         };
     }
 

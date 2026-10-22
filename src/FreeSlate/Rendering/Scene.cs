@@ -174,6 +174,11 @@ public sealed record TextItem(string Text, double X, double[] Positions, double 
     public bool JoinsBefore { get; init; }
 
     public bool JoinsAfter { get; init; }
+
+    /// <summary>Whether the letters are outlined in the color (w:outline), filled white over a shadow, else hollow.</summary>
+    public bool Hollow { get; init; }
+
+    public bool Shadow { get; init; }
 }
 
 /// <summary>

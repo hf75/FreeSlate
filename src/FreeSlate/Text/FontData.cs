@@ -156,6 +156,17 @@ public sealed class FontData : IDisposable
     readonly Dictionary<string, int> tableLengths = new();
     readonly byte[]? memory;
 
+    /// <summary>The font's bytes where it is held in memory (a document's embedded font), else null: it is the file at Path.</summary>
+    public ReadOnlyMemory<byte>? Memory
+    {
+        get
+        {
+            if (memory == null)
+                return null;
+            return memory;
+        }
+    }
+
     /// <summary>The bytes of a font table (read from the file again), or null when the font has none.</summary>
     public byte[]? Table(string tag)
     {

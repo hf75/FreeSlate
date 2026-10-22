@@ -5,6 +5,7 @@ using FreeSlate.Docx;
 using FreeSlate.Docx.Layout;
 using FreeSlate.Fonts;
 using FreeSlate.Opc;
+using FreeSlate.Rendering;
 
 namespace FreeSlate;
 
@@ -60,35 +61,11 @@ public static class DocxConverter
         CultureInfo? culture = null, bool markup = false, DateTime? printed = null)
     {
         using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts) { Culture = culture ?? CultureInfo.CurrentCulture, Markup = markup, Printed = printed };
-        var reader = new ModelReader(context);
-        var blocks = reader.Body();
-        var styles = new RunStyles(context);
-        var layout = new ParagraphLayout(context, styles);
-        // Notes are read after the body: their numbers come from the order of their references.
-        var footnotes = reader.Notes(endnotes: false);
-        var endnoteParts = reader.Notes(endnotes: true);
-        var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
-            .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
-        var paginator = new Paginator(context, layout, reader) { EndnoteContinuation = endnoteParts.GetValueOrDefault("continuationSeparator") };
-        var pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
-        var drawings = new Drawings(context, culture ?? CultureInfo.CurrentCulture);
-        // The markup view's comments; its pages have the pane where the document has balloons.
-        var comments = markup ? reader.Comments() : [];
-        var pane = markup && (comments.Count > 0 || pages.Any(p => p.Lines.Any(l => l.Line.BlockChange != null || l.Line.Pieces.Any(x => x.Style.Change != null))));
-        var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout)) { Comments = comments, MarkupPane = pane, Settings = paginator.Settings };
+        var pages = new Pages(context, culture, markup);
         var body = new StringBuilder();
-        // One named @page per paper size: printed, every page keeps its own size and nothing is added around it.
-        var papers = new List<(double Width, double Height)>();
-        foreach (var page in pages)
-        {
-            var paper = papers.FindIndex(p => Math.Abs(p.Width - page.PaperWidth) < 0.01 && Math.Abs(p.Height - page.PaperHeight) < 0.01);
-            if (paper < 0)
-            {
-                papers.Add((page.PaperWidth, page.PaperHeight));
-                paper = papers.Count - 1;
-            }
-            body.Append(renderer.Render(page, $"paper{paper}"));
-        }
+        foreach (var scene in pages.Scenes())
+            body.Append(HtmlScene.Page(scene));
+        var (papers, drawings) = (pages.Papers, pages.Drawings!);
         var paperCss = new StringBuilder();
         for (var i = 0; i < papers.Count; i++)
             paperCss.Append($"@page paper{i}{{size:{Units.Css(papers[i].Width + paperExtra)}pt {Units.Css(papers[i].Height + paperExtra)}pt;margin:0}}.paper{i}{{page:paper{i}}}\n");
@@ -117,6 +94,58 @@ public static class DocxConverter
         html.Append(context.Glyphs.Svg());
         html.Append("<main class=\"document\">\n").Append(body).Append("</main>\n</body>\n</html>\n");
         return html.ToString();
+    }
+
+    /// <summary>
+    /// The pages of a Word document as they are drawn (see PageScene), for backends other than HTML; the parameters
+    /// are ToHtml's.
+    /// </summary>
+    public static List<PageScene> ToScenes(string docxPath, FontLocator? fonts = null, string? password = null, CultureInfo? culture = null,
+        bool markup = false, DateTime? printed = null)
+    {
+        using var context = new DocumentContext(OpcPackage.Open(docxPath, password), fonts) { Culture = culture ?? CultureInfo.CurrentCulture, Markup = markup, Printed = printed };
+        return [.. new Pages(context, culture, markup).Scenes()];
+    }
+
+    /// <summary>A document laid out into pages and drawn page by page (see Scenes), with the paper sizes they print on.</summary>
+    sealed class Pages(DocumentContext context, CultureInfo? culture, bool markup)
+    {
+        /// <summary>The paper sizes of the pages drawn so far, one named @page each (their scenes' Paper).</summary>
+        public List<(double Width, double Height)> Papers { get; } = [];
+
+        /// <summary>The drawings of the pages, set once they are laid out.</summary>
+        public Drawings? Drawings { get; private set; }
+
+        public IEnumerable<PageScene> Scenes()
+        {
+            var reader = new ModelReader(context);
+            var blocks = reader.Body();
+            var styles = new RunStyles(context);
+            var layout = new ParagraphLayout(context, styles);
+            // Notes are read after the body: their numbers come from the order of their references.
+            var footnotes = reader.Notes(endnotes: false);
+            var endnoteParts = reader.Notes(endnotes: true);
+            var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
+                .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
+            var paginator = new Paginator(context, layout, reader) { EndnoteContinuation = endnoteParts.GetValueOrDefault("continuationSeparator") };
+            var pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
+            Drawings = new Drawings(context, culture ?? CultureInfo.CurrentCulture);
+            // The markup view's comments; its pages have the pane where the document has balloons.
+            var comments = markup ? reader.Comments() : [];
+            var pane = markup && (comments.Count > 0 || pages.Any(p => p.Lines.Any(l => l.Line.BlockChange != null || l.Line.Pieces.Any(x => x.Style.Change != null))));
+            var renderer = new PageRenderer(context, Drawings, new TableLayout(context, layout)) { Comments = comments, MarkupPane = pane, Settings = paginator.Settings };
+            // One named @page per paper size: printed, every page keeps its own size and nothing is added around it.
+            foreach (var page in pages)
+            {
+                var paper = Papers.FindIndex(p => Math.Abs(p.Width - page.PaperWidth) < 0.01 && Math.Abs(p.Height - page.PaperHeight) < 0.01);
+                if (paper < 0)
+                {
+                    Papers.Add((page.PaperWidth, page.PaperHeight));
+                    paper = Papers.Count - 1;
+                }
+                yield return renderer.Scene(page, $"paper{paper}");
+            }
+        }
     }
 
     public static void ToFile(string docxPath, string htmlPath, FontLocator? fonts = null, string? password = null, double paperExtra = 0,
