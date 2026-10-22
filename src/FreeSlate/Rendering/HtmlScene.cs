@@ -130,7 +130,10 @@ public static class HtmlScene
                     html.Append(wrapped.After);
                     break;
                 case RectItem rect:
-                    html.Append($"<rect x=\"{Px(rect.X)}\" y=\"{Px(rect.Y)}\" width=\"{Px(rect.Width)}\" height=\"{Px(rect.Height)}\" fill=\"{rect.Color.ToHex()}\"/>");
+                    html.Append($"<rect x=\"{Px(rect.X)}\" y=\"{Px(rect.Y)}\" width=\"{Px(rect.Width)}\" height=\"{Px(rect.Height)}\" fill=\"{rect.Color.ToHex()}\"");
+                    if (rect.Color.A < 0.999)
+                        html.Append($" fill-opacity=\"{Fine(rect.Color.A)}\"");
+                    html.Append("/>");
                     break;
                 case RuleItem rule:
                     html.Append($"<rect x=\"{Px(rule.X)}\" y=\"{Px(rule.Y)}\" width=\"{Px(rule.Width)}\" height=\"{Px(rule.Height)}\" fill=\"#000\"/>");
@@ -198,6 +201,12 @@ public static class HtmlScene
                     break;
                 case GlyphsItem glyphs:
                     WriteGlyphs(glyphs, html);
+                    break;
+                case MathGlyphItem math:
+                    WriteMathGlyph(math, html);
+                    break;
+                case HiddenSpanItem span:
+                    html.Append($"<text class=\"sel\" x=\"{Px(span.X)}\" y=\"{Px(span.Y)}\" font-size=\"{Px(span.Size)}\" textLength=\"{Px(span.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(span.Text)}</text>");
                     break;
                 case HiddenTextItem hidden:
                 {
@@ -390,6 +399,39 @@ public static class HtmlScene
     }
 
     /// <summary>Glyphs from the document's paths of their outlines (see GlyphCache), placed in font units.</summary>
+    /// <summary>
+    /// An equation's glyph: as text in its font where it stands for its character (Word's PDFs hold the math as text,
+    /// which the rasterizer fits to the pixel grid), else as a use of its outline.
+    /// </summary>
+    static void WriteMathGlyph(MathGlyphItem glyph, StringBuilder html)
+    {
+        if (glyph.Character is { } character)
+        {
+            var family = glyph.Font.Family.Replace("'", "\\'");
+            // Drawn only: the equation's text to select is its own layer (HiddenSpanItem).
+            html.Append($"<text aria-hidden=\"true\" x=\"{Px(glyph.X)}\" y=\"{Px(glyph.Y)}\" font-family=\"'{WebUtility.HtmlEncode(family)}'\" font-size=\"{Fine(glyph.Size * PxPerPt)}\" fill=\"{glyph.Color.ToHex()}\"");
+            if (glyph.Color.A < 0.999)
+                html.Append($" fill-opacity=\"{Fine(glyph.Color.A)}\"");
+            // Math fonts have the ssty feature for the OpenType script math only (Cambria Math), which HarfBuzz shapes
+            // with where the language's private subtag asks for it; without it Chrome draws the plain forms (its PDFs
+            // of docx/local/mrd-inl: a subscript 2 and a script x as glyphs 2870 and 3051, Word's, with the tag, 884
+            // and 1876 without).
+            if (glyph.ScriptLevel > 0)
+                html.Append(" lang=\"und-x-hbscmath\"");
+            var features = glyph.ScriptLevel > 0 ? $";font-feature-settings:'ssty' {glyph.ScriptLevel}" : "";
+            html.Append($" style=\"font-kerning:none;user-select:none{features}\">{WebUtility.HtmlEncode(character)}</text>");
+            return;
+        }
+        var scale = glyph.Size * PxPerPt / glyph.Font.UnitsPerEm;
+        html.Append($"<use href=\"#{glyph.Id}\" transform=\"translate({Px(glyph.X)} {Px(glyph.Y)}) scale({Fine(scale)})\" fill=\"{glyph.Color.ToHex()}\"");
+        if (glyph.Color.A < 0.999)
+            html.Append($" fill-opacity=\"{Fine(glyph.Color.A)}\"");
+        html.Append("/>");
+    }
+
+    /// <summary>A number with five decimals (an equation's glyph scales and opacities).</summary>
+    static string Fine(double value) => Math.Round(value, 5).ToString("0.#####", System.Globalization.CultureInfo.InvariantCulture);
+
     static void WriteGlyphs(GlyphsItem item, StringBuilder html)
     {
         var data = item.Font;

@@ -224,6 +224,24 @@ public readonly record struct GlyphItem(uint Id, string Outline, double X, doubl
 /// </summary>
 public sealed record HiddenTextItem(string Text, double X, double[] Positions, double Y, FontData Font, double Size) : SceneItem;
 
+/// <summary>
+/// Characters drawn invisibly in points, stretched over Width from X on the baseline Y at the font size Size, for
+/// selecting and searching them (an equation's).
+/// </summary>
+public sealed record HiddenSpanItem(string Text, double X, double Y, double Size, double Width) : SceneItem;
+
+/// <summary>
+/// A glyph of an equation in points: the glyph Glyph of Font at Size, its origin at (X, Y) on its baseline, in its color.
+/// HTML sets it as text in its font where it stands for a character (Character; a script form is the font's ssty
+/// alternate of ScriptLevel), else as the outline the page's definitions hold under Id.
+/// </summary>
+public sealed record MathGlyphItem(FontData Font, uint Glyph, double Size, double X, double Y, RgbColor Color) : SceneItem
+{
+    public string? Character { get; init; }
+    public int ScriptLevel { get; init; }
+    public string? Id { get; init; }
+}
+
 /// <summary>A short text in its font and color ending at the point X on the baseline Y: a line number.</summary>
 public sealed record LabelItem(string Text, double X, double Y, FontData Font, double Size, RgbColor Color, bool Bold, bool Italic) : SceneItem;
 

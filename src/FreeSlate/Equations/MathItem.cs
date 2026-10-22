@@ -1,6 +1,6 @@
-using System.Globalization;
 using System.Text;
 using FreeSlate.Drawing;
+using FreeSlate.Rendering;
 using FreeSlate.Text;
 
 namespace FreeSlate.Equations;
@@ -16,7 +16,7 @@ public abstract class MathItem
     public double Descent { get; set; }
     public double Italic { get; set; }
 
-    /// <summary>Appends the item's SVG with its origin at (x, y) points (y the baseline, down positive).</summary>
+    /// <summary>Draws the item with its origin at (x, y) points (y the baseline, down positive).</summary>
     public abstract void Draw(MathCanvas canvas, double x, double y);
 }
 
@@ -73,10 +73,10 @@ public sealed class SpaceItem : MathItem
     public override void Draw(MathCanvas canvas, double x, double y) { }
 }
 
-/// <summary>Collects an equation's SVG: glyphs as uses of the document's glyph outlines, rules as rectangles.</summary>
-public sealed class MathCanvas(Html.GlyphCache glyphs, double pxPerPt)
+/// <summary>Collects an equation's scene items in points: glyphs (as text or as the document's glyph outlines), rules as rectangles.</summary>
+public sealed class MathCanvas(Html.GlyphCache glyphs)
 {
-    readonly StringBuilder svg = new();
+    readonly List<SceneItem> items = [];
     readonly StringBuilder text = new();
 
     /// <summary>
@@ -92,30 +92,14 @@ public sealed class MathCanvas(Html.GlyphCache glyphs, double pxPerPt)
         if (AsText && glyph.Character is var (codepoint, level) && glyph.Glyph != 0 && glyph.Font.GlyphFor(codepoint) is var plain && plain != 0
             && (plain == glyph.Glyph || level > 0) && char.ConvertFromUtf32(codepoint) is var character)
         {
-            var family = glyph.Font.Family.Replace("'", "\\'");
-            // Drawn only: the equation's text to select is its own layer (Text).
-            svg.Append($"<text aria-hidden=\"true\" x=\"{N(x * pxPerPt)}\" y=\"{N(y * pxPerPt)}\" font-family=\"'{System.Net.WebUtility.HtmlEncode(family)}'\" font-size=\"{N4(glyph.Size * pxPerPt)}\" fill=\"{glyph.Color.ToHex()}\"");
-            if (glyph.Color.A < 0.999)
-                svg.Append($" fill-opacity=\"{N4(glyph.Color.A)}\"");
-            // A script form is the font's ssty alternate of the level. Math fonts have the feature for the OpenType
-            // script math only (Cambria Math), which HarfBuzz shapes with where the language's private subtag asks for
-            // it; without it Chrome draws the plain forms (its PDFs of docx/local/mrd-inl: a subscript 2 and a script
-            // x as glyphs 2870 and 3051, Word's, with the tag, 884 and 1876 without).
-            var script = plain != glyph.Glyph;
-            if (script)
-                svg.Append(" lang=\"und-x-hbscmath\"");
-            var features = script ? $";font-feature-settings:'ssty' {level}" : "";
-            svg.Append($" style=\"font-kerning:none;user-select:none{features}\">{System.Net.WebUtility.HtmlEncode(character)}</text>");
+            // A script form is the font's ssty alternate of the level.
+            items.Add(new MathGlyphItem(glyph.Font, glyph.Glyph, glyph.Size, x, y, glyph.Color) { Character = character, ScriptLevel = plain != glyph.Glyph ? level : 0 });
             text.Append(glyph.Text ?? character);
             return;
         }
         if (glyphs.Id(glyph.Font, glyph.Glyph) is not { } id)
             return;
-        var scale = glyph.Size * pxPerPt / glyph.Font.UnitsPerEm;
-        svg.Append($"<use href=\"#{id}\" transform=\"translate({N(x * pxPerPt)} {N(y * pxPerPt)}) scale({N4(scale)})\" fill=\"{glyph.Color.ToHex()}\"");
-        if (glyph.Color.A < 0.999)
-            svg.Append($" fill-opacity=\"{N4(glyph.Color.A)}\"");
-        svg.Append("/>");
+        items.Add(new MathGlyphItem(glyph.Font, glyph.Glyph, glyph.Size, x, y, glyph.Color) { Id = id });
         if (glyph.Text != null)
             text.Append(glyph.Text);
     }
@@ -124,17 +108,12 @@ public sealed class MathCanvas(Html.GlyphCache glyphs, double pxPerPt)
     {
         if (width <= 0 || height <= 0)
             return;
-        svg.Append($"<rect x=\"{N(x * pxPerPt)}\" y=\"{N(y * pxPerPt)}\" width=\"{N(width * pxPerPt)}\" height=\"{N(height * pxPerPt)}\" fill=\"{color.ToHex()}\"");
-        if (color.A < 0.999)
-            svg.Append($" fill-opacity=\"{N4(color.A)}\"");
-        svg.Append("/>");
+        items.Add(new RectItem(x, y, width, height, color));
     }
 
-    public string Svg => svg.ToString();
+    /// <summary>The items drawn, in order.</summary>
+    public List<SceneItem> Items => items;
 
     /// <summary>The characters drawn, in order (for the equation's selectable text).</summary>
     public string Text => text.ToString();
-
-    static string N(double v) => Math.Round(v, 2).ToString("0.##", CultureInfo.InvariantCulture);
-    static string N4(double v) => Math.Round(v, 5).ToString("0.#####", CultureInfo.InvariantCulture);
 }

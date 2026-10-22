@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Xml.Linq;
+using FreeSlate.Rendering;
 using FreeSlate.Text;
 
 namespace FreeSlate.Equations;
@@ -11,13 +12,13 @@ public sealed class Equation(MathItem item) : IInlineObject
     public double Ascent => item.Ascent;
     public double Descent => item.Descent;
 
-    /// <summary>The equation's SVG with its origin at (x, y) points on the baseline, and the characters it shows.</summary>
+    /// <summary>The equation's scene items in points with its origin at (x, y) on the baseline, and the characters it shows.</summary>
     /// <param name="asText">Whether glyphs of plain characters are drawn as text in the math font (MathCanvas).</param>
-    public (string Svg, string Text) Draw(double x, double y, Html.GlyphCache glyphs, double pxPerPt, bool asText = false)
+    public (List<SceneItem> Items, string Text) Draw(double x, double y, Html.GlyphCache glyphs, bool asText = false)
     {
-        var canvas = new MathCanvas(glyphs, pxPerPt) { AsText = asText };
+        var canvas = new MathCanvas(glyphs) { AsText = asText };
         item.Draw(canvas, x, y);
-        return (canvas.Svg, canvas.Text);
+        return (canvas.Items, canvas.Text);
     }
 
     public static readonly XNamespace A14 = "http://schemas.microsoft.com/office/drawing/2010/main";

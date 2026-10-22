@@ -664,8 +664,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 if (run.Style.Inline is Equations.Equation equation)
                 {
                     // An equation: its glyphs and rules, its characters transparent on top for selection.
-                    var (drawn, mathText) = equation.Draw(left + run.X, baseline - run.Lift, slide.Presentation.Glyphs, PxPerPt);
-                    svg.Append(drawn);
+                    var (drawn, mathText) = equation.Draw(left + run.X, baseline - run.Lift, slide.Presentation.Glyphs);
+                    svg.Append(FreeSlate.Rendering.HtmlScene.Markup(drawn));
                     if (mathText.Length > 0)
                         svg.Append($"<text class=\"sel\" x=\"{Px(left + run.X)}\" y=\"{Px(baseline - run.Lift)}\" font-size=\"{Px(run.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>");
                     continue;

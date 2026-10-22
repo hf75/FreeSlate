@@ -213,10 +213,13 @@ public static class SkiaScene
                     }
                     canvas.Restore();
                     break;
-                case AltTextItem or BookmarkItem or HiddenTextItem:
+                case AltTextItem or BookmarkItem or HiddenTextItem or HiddenSpanItem:
                     break;
                 case TextItem text:
                     Text(text);
+                    break;
+                case MathGlyphItem math:
+                    MathGlyph(math);
                     break;
                 case GlyphsItem glyphs:
                     Glyphs(glyphs);
@@ -441,6 +444,31 @@ public static class SkiaScene
                     canvas.DrawPath(path, stroke);
                 canvas.Restore();
             }
+            canvas.Restore();
+        }
+
+        /// <summary>A glyph of an equation, the one its layout chose (a script form, a stretched variant).</summary>
+        void MathGlyph(MathGlyphItem item)
+        {
+            using var fill = Brush(item.Color);
+            if (Typeface(item.Font) is { } typeface)
+            {
+                using var face = new SKFont(typeface, Px(item.Size)) { Subpixel = true, LinearMetrics = true, Hinting = SKFontHinting.None, Edging = SKFontEdging.Antialias };
+                using var builder = new SKTextBlobBuilder();
+                var run = builder.AllocatePositionedRun(face, 1);
+                run.GetGlyphSpan()[0] = (ushort)item.Glyph;
+                run.GetPositionSpan()[0] = new SKPoint(Px(item.X), Px(item.Y));
+                using var blob = builder.Build();
+                if (blob != null)
+                    canvas.DrawText(blob, 0, 0, fill);
+                return;
+            }
+            if (Outline(item.Font, item.Glyph) is not { } path)
+                return;
+            canvas.Save();
+            canvas.Translate(Px(item.X), Px(item.Y));
+            canvas.Scale((float)(item.Size * PxPerPt / item.Font.UnitsPerEm));
+            canvas.DrawPath(path, fill);
             canvas.Restore();
         }
 

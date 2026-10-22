@@ -1089,10 +1089,10 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 // An equation: its glyphs and rules, its characters transparent on top for selection.
                 if (piece.Equation is { } equation)
                 {
-                    var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise - piece.Shift, context.Glyphs, PxPerPt, asText: true);
-                    AddMarkup(items, drawn);
+                    var (drawn, mathText) = equation.Draw(x, baseline - piece.Style.Raise - piece.Shift, context.Glyphs, asText: true);
+                    items.AddRange(drawn);
                     if (mathText.Length > 0)
-                        selection.Add(new MarkupItem($"<text class=\"sel\" x=\"{Px(x)}\" y=\"{Px(baseline - piece.Style.Raise - piece.Shift)}\" font-size=\"{Px(piece.Style.Size)}\" textLength=\"{Px(equation.Width)}\" lengthAdjust=\"spacingAndGlyphs\">{WebUtility.HtmlEncode(mathText)}</text>"));
+                        selection.Add(new HiddenSpanItem(mathText, x, baseline - piece.Style.Raise - piece.Shift, piece.Style.Size, equation.Width));
                     continue;
                 }
                 // An inline drawing's box stands on the baseline, an inline VML shape's hangs from the line's top; its
