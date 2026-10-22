@@ -306,7 +306,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (background is not NoFill && path.Fill != "none")
                 paths.Add(new ShapePathItem(path.Data, background, null, $"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}"));
             var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
-            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin, Dashes.Closed(path)) : " stroke=\"none\"";
+            var closed = Dashes.Closed(path);
+            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin, closed) : " stroke=\"none\"";
             // A dashed outline starts its pattern where PowerPoint does, in a Word document where Word does (catalog:
             // line.dash).
             var dashed = stroke != " stroke=\"none\"" && Dashes.IsDashed(outline);
@@ -322,7 +323,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     new ShapePathItem(path.Data, overlayPaint, null, $"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}"),
                 ]));
                 if (stroke != " stroke=\"none\"")
-                    strokeTarget.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}"));
+                    strokeTarget.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
             }
             else if (strokesLast)
             {
@@ -331,19 +332,19 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 else if (pathFill is not NoFill)
                     paths.Add(new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}"));
                 if (stroke != " stroke=\"none\"")
-                    strokes.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}"));
+                    strokes.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
             }
             else if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
             {
                 // A picture prints at its own resolution as an image clipped to the path, the outline over it.
                 paths.Add(new PictureItem(image.Image, image.X, image.Y, image.Width, image.Height, path.Data, image.Clip, image.Filter));
                 if (stroke != " stroke=\"none\"")
-                    paths.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}"));
+                    paths.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
             }
             else
             {
                 paths.Add(new ShapePathItem(strokeData, pathFill, stroke != " stroke=\"none\"" ? outline : null,
-                    $"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}"));
+                    $"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}") { DashesClosed = closed });
             }
             if (dashed && outline!.Cap == "sq")
                 strokeTarget.AddRange(Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
@@ -362,7 +363,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 ? $"M{Units.Css(-half)} {Units.Css(ph + half)}H{Units.Css(pw + half)}V{Units.Css(-half)}H{Units.Css(-half)}Z"
                 : $"M{Units.Css(-half)} {Units.Css(ph + half)}V{Units.Css(-half)}H{Units.Css(pw + half)}V{Units.Css(ph + half)}Z";
             var mitered = outline with { Join = "miter" };
-            paths.Add(new ShapePathItem(outset, Fill.None, mitered, $" fill=\"none\"{paint.Stroke(mitered, pw, ph, defs, origin, closed: true)}{crisp}"));
+            paths.Add(new ShapePathItem(outset, Fill.None, mitered, $" fill=\"none\"{paint.Stroke(mitered, pw, ph, defs, origin, closed: true)}{crisp}") { DashesClosed = true });
         }
 
         // A 3D camera (catalog: effect.scene3d) turns the drawn shape about its center: the outer div keeps the

@@ -687,30 +687,13 @@ public static class SkiaScene
             }
             if (item.Outline is { Visible: true } outline)
             {
-                using var pen = Pen(outline, Closed(path));
+                using var pen = Pen(outline, item.DashesClosed);
                 // A gradient or a pattern along the outline, over the path's bounds as its fill would lie.
                 using var paint = outline.Fill is GradientFill or PatternFill ? Paint(outline.Fill, path.Bounds) : null;
                 if (paint?.Shader is { } shader)
                     pen.Shader = shader;
                 canvas.DrawPath(path, pen);
             }
-        }
-
-        /// <summary>Whether every figure of a path is closed (see Dashes.Closed).</summary>
-        static bool Closed(SKPath path)
-        {
-            using var measure = new SKPathMeasure(path, false);
-            var any = false;
-            do
-            {
-                if (measure.Length <= 0)
-                    continue;
-                if (!measure.IsClosed)
-                    return false;
-                any = true;
-            }
-            while (measure.NextContour());
-            return any;
         }
 
         /// <summary>

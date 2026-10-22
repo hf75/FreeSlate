@@ -105,6 +105,12 @@ public sealed record ShapePathItem(string Data, Fill Fill, Outline? Outline, str
 
     /// <summary>The effects the filter among its attributes draws (warped text's).</summary>
     public EffectModel? Effects { get; init; }
+
+    /// <summary>
+    /// Whether the outline's dash pattern runs on closed figures, as its attributes stroke it (SvgPaint.Stroke): round
+    /// caps then start half a width back.
+    /// </summary>
+    public bool DashesClosed { get; init; }
 }
 
 /// <summary>
