@@ -372,12 +372,15 @@ public sealed class SvgPaint
     }
 
     /// <summary>
-    /// A stretched picture fill as an image clipped to the path it fills, or null for other fills and tiled pictures.
-    /// Browsers print a pattern of a picture as a bitmap at 72 dpi of the whole page, an image at its own resolution
-    /// (measured with tools/Fidelity on docx/external/powertools/WC/WC067-Textbox-Image and pandoc/image: Word's PDF
-    /// holds the picture, the browser's a 596 × 843 bitmap of the page); on screen both look alike.
+    /// A stretched picture fill as an image clipped to the path it fills: the clip's id and the filter's attribute
+    /// (their definitions appended to <paramref name="defs"/>), the image and its place and size in the shape; null
+    /// for other fills and tiled pictures. Browsers print a pattern of a picture as a bitmap at 72 dpi of the whole
+    /// page, an image at its own resolution (measured with tools/Fidelity on docx/external/powertools/WC/
+    /// WC067-Textbox-Image and pandoc/image: Word's PDF holds the picture, the browser's a 596 × 843 bitmap of the
+    /// page); on screen both look alike.
     /// </summary>
-    public string? PictureImage(Fill fill, double w, double h, string clipData, StringBuilder defs, string crisp = "")
+    public (string Clip, string Image, double X, double Y, double Width, double Height, string Filter)? PictureImage(Fill fill, double w, double h, string clipData,
+        StringBuilder defs, string crisp = "")
     {
         if (!PrintedPictures || fill is not PictureFill p || p.Tiling is not null && p.NaturalSize.W > 0 && p.NaturalSize.H > 0)
             return null;
@@ -397,8 +400,7 @@ public sealed class SvgPaint
         var (x, y) = (w * fl - sl * fullW, h * ft - st * fullH);
         var clip = NewId("pc");
         defs.Append($"<clipPath id=\"{clip}\"><path d=\"{clipData}\"{crisp}/></clipPath>");
-        return $"<g clip-path=\"url(#{clip})\"><image href=\"{p.Image}\" x=\"{Units.Css(x)}\" y=\"{Units.Css(y)}\" " +
-               $"width=\"{Units.Css(fullW)}\" height=\"{Units.Css(fullH)}\" preserveAspectRatio=\"none\"{filter}/></g>";
+        return (clip, p.Image, x, y, fullW, fullH, filter);
     }
 
     string Picture(PictureFill p, double w, double h, StringBuilder defs)

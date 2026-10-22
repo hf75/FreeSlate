@@ -103,6 +103,10 @@ public static class HtmlScene
                 case ShapePathItem shapePath:
                     html.Append($"<path d=\"{shapePath.Data}\"{shapePath.Attributes}/>");
                     break;
+                case PictureItem picture:
+                    html.Append($"<g clip-path=\"url(#{picture.Clip})\"><image href=\"{picture.Source}\" x=\"{Units.Css(picture.X)}\" y=\"{Units.Css(picture.Y)}\" "
+                        + $"width=\"{Units.Css(picture.Width)}\" height=\"{Units.Css(picture.Height)}\" preserveAspectRatio=\"none\"{picture.Filter}/></g>");
+                    break;
                 case TransformItem transformed:
                     html.Append($"<g transform=\"{transformed.Transform.Css()}\">");
                     Write(transformed.Items, html);

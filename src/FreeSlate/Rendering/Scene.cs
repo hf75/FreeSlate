@@ -88,6 +88,13 @@ public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : Sc
 /// </summary>
 public sealed record ShapePathItem(string Data, Fill Fill, Outline? Outline, string Attributes) : SceneItem;
 
+/// <summary>
+/// A picture filling a path of a shape, stretched over a rectangle in CSS pixels (its crop and fill rectangle
+/// applied) and cut at the path (SVG path data); in HTML an image clipped by the shape's definition named Clip, with
+/// the attribute of its filter (recoloring, its effects) where it has one. Source is the picture as a URI.
+/// </summary>
+public sealed record PictureItem(string Source, double X, double Y, double Width, double Height, string ClipPath, string Clip, string Filter) : SceneItem;
+
 /// <summary>Items drawn transformed (in CSS pixels): a scaled, skewed or flipped shadow's copy of its shape.</summary>
 public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem;
 

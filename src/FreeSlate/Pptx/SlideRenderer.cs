@@ -319,7 +319,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else if (strokesLast)
             {
                 if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
-                    AddMarkup(paths, image);
+                    paths.Add(new PictureItem(image.Image, image.X, image.Y, image.Width, image.Height, path.Data, image.Clip, image.Filter));
                 else if (pathFill is not NoFill)
                     paths.Add(new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}"));
                 if (stroke != " stroke=\"none\"")
@@ -328,7 +328,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
             {
                 // A picture prints at its own resolution as an image clipped to the path, the outline over it.
-                AddMarkup(paths, image);
+                paths.Add(new PictureItem(image.Image, image.X, image.Y, image.Width, image.Height, path.Data, image.Clip, image.Filter));
                 if (stroke != " stroke=\"none\"")
                     paths.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}"));
             }
