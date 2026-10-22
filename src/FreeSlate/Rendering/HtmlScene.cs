@@ -106,6 +106,12 @@ public static class HtmlScene
                 case ShapeRectItem shapeRect:
                     html.Append($"<rect x=\"{Units.Css(shapeRect.X)}\" y=\"{Units.Css(shapeRect.Y)}\" width=\"{Units.Css(shapeRect.Width)}\" height=\"{Units.Css(shapeRect.Height)}\"{shapeRect.Attributes}/>");
                     break;
+                case BackgroundItem background:
+                    html.Append($"<svg class=\"bg\" width=\"{Units.Css(background.Width)}\" height=\"{Units.Css(background.Height)}\">");
+                    if (background.Defs.Length > 0)
+                        html.Append("<defs>").Append(background.Defs).Append("</defs>");
+                    html.Append($"<rect width=\"{Units.Css(background.Width)}\" height=\"{Units.Css(background.Height)}\"{background.Paint}/></svg>");
+                    break;
                 case ImageItem image:
                     html.Append($"<image href=\"{image.Source}\" x=\"{Units.Css(image.X)}\" y=\"{Units.Css(image.Y)}\" width=\"{Units.Css(image.Width)}\" height=\"{Units.Css(image.Height)}\" preserveAspectRatio=\"none\"/>");
                     break;

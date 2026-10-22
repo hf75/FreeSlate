@@ -116,6 +116,12 @@ public sealed record DefsItem(string Markup) : SceneItem;
 /// </summary>
 public sealed record ShapeRectItem(double X, double Y, double Width, double Height, Fill Fill, Outline? Outline, string Attributes) : SceneItem;
 
+/// <summary>
+/// A slide's background in CSS pixels: its fill over Width by Height; in HTML an SVG of class bg with the fill's
+/// definitions and paint attributes.
+/// </summary>
+public sealed record BackgroundItem(double Width, double Height, Fill Fill, string Defs, string Paint) : SceneItem;
+
 /// <summary>A picture stretched over a rectangle in CSS pixels (a picture in text); Source is a URI.</summary>
 public sealed record ImageItem(string Source, double X, double Y, double Width, double Height) : SceneItem;
 

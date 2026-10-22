@@ -74,10 +74,11 @@ public static class SkiaScene
     /// Pages as a PDF document (catalog: engine.output): every page of its size, its text in the fonts it is set in
     /// (their subsets embedded), the rest as vectors and pictures.
     /// </summary>
-    public static void Pdf(IEnumerable<PageScene> scenes, Stream output, SkiaStatistics? statistics = null)
+    /// <param name="metadata">The document's title, author and so on; by default none, its producer FreeSlate.</param>
+    public static void Pdf(IEnumerable<PageScene> scenes, Stream output, SkiaStatistics? statistics = null, SKDocumentPdfMetadata? metadata = null)
     {
         using var stream = new SKManagedWStream(output);
-        using var document = SKDocument.CreatePdf(stream, new SKDocumentPdfMetadata { Producer = "FreeSlate", RasterDpi = 300 });
+        using var document = SKDocument.CreatePdf(stream, metadata ?? new SKDocumentPdfMetadata { Producer = "FreeSlate", RasterDpi = 300 });
         foreach (var scene in scenes)
         {
             var canvas = document.BeginPage((float)scene.Width, (float)scene.Height);
@@ -319,6 +320,18 @@ public static class SkiaScene
                     {
                         using var pen = Pen(outline);
                         canvas.DrawRect(bounds, pen);
+                    }
+                    break;
+                }
+                case BackgroundItem background:
+                {
+                    var bounds = SKRect.Create((float)background.Width, (float)background.Height);
+                    if (background.Fill is PictureFill { Tiling: null } stretched)
+                        Picture(stretched.Image, bounds, null);
+                    else if (Paint(background.Fill, bounds) is { } fill)
+                    {
+                        canvas.DrawRect(bounds, fill);
+                        fill.Dispose();
                     }
                     break;
                 }

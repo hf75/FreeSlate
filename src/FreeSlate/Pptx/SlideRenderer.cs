@@ -74,12 +74,23 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// <summary>The slide as a section element; <paramref name="attributes"/> and <paramref name="appendix"/> (notes) are added as given.</summary>
     public string Render(string attributes = "", string appendix = "")
     {
-        var width = Units.ToPx(slide.Presentation.SlideWidth);
-        var height = Units.ToPx(slide.Presentation.SlideHeight);
+        var (width, height, items) = Scene();
         var html = new StringBuilder();
         html.Append($"<section class=\"slide\" id=\"slide-{slide.Number}\"{attributes} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px\">");
-        html.Append(Background(width, height));
-        var items = new List<SceneItem>();
+        HtmlScene.Write(items, html);
+        html.Append(appendix).Append("</section>");
+        return html.ToString();
+    }
+
+    /// <summary>
+    /// The slide as it is drawn (catalog: engine.output): its size in CSS pixels and its items from back to front, its
+    /// background first, then the master's and the layout's shapes where it shows them, then its own.
+    /// </summary>
+    public (double Width, double Height, List<SceneItem> Items) Scene()
+    {
+        var width = Units.ToPx(slide.Presentation.SlideWidth);
+        var height = Units.ToPx(slide.Presentation.SlideHeight);
+        var items = new List<SceneItem> { Background(width, height) };
 
         var showMaster = slide.Slide.Root.Bool("showMasterSp") ?? true;
         if (showMaster && (slide.Layout?.Root.Bool("showMasterSp") ?? true) && slide.Master != null)
@@ -97,10 +108,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else if (LegacyDrawing.Find(slide.Presentation, slide.SlidePart, control.Str("spid")) is { Box: { } box } legacy)
                 RenderShape(LegacyDrawing.Element(legacy, "0", control.Str("name") ?? "", box), legacy.Part, items, Placement.Root, isSlide: true);
         }
-
-        HtmlScene.Write(items, html);
-        html.Append(appendix).Append("</section>");
-        return html.ToString();
+        return (width, height, items);
     }
 
     static XElement? Tree(XDocument document) => document.Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "spTree");
@@ -1836,14 +1844,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         return maxX - minX > 1e-6 && maxY - minY > 1e-6 ? (minX, minY, maxX - minX, maxY - minY) : null;
     }
 
-    string Background(double width, double height)
+    BackgroundItem Background(double width, double height)
     {
         var fill = SlideBackground();
         var defs = new StringBuilder();
         var paintAttributes = paint.Fill(fill, width, height, defs);
-        return $"<svg class=\"bg\" width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\">" +
-               (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") +
-               $"<rect width=\"{Units.Css(width)}\" height=\"{Units.Css(height)}\"{paintAttributes}/></svg>";
+        return new BackgroundItem(width, height, fill, defs.ToString(), paintAttributes);
     }
 
     /// <summary>

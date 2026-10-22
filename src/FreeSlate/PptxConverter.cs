@@ -94,6 +94,34 @@ public static class PptxConverter
     /// PowerPoint when null.
     /// </param>
     /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
+    /// <summary>
+    /// The presentation's slides as scenes (catalog: engine.output), each its size in points and its items as the HTML
+    /// draws them; the slides the slide show leaves out only where <paramref name="hidden"/> asks for them.
+    /// </summary>
+    /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
+    public static List<Rendering.PageScene> ToScenes(string pptxPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false,
+        CultureInfo? culture = null, bool hidden = false)
+    {
+        using var context = new PresentationContext(OpcPackage.Open(pptxPath, password), fonts, embeddedFontsFirst)
+        {
+            Culture = culture ?? CultureInfo.CurrentCulture,
+        };
+        var deck = new DeckInfo(context);
+        var paint = new SvgPaint();
+        var scenes = new List<Rendering.PageScene>();
+        for (var i = 0; i < context.SlideParts.Count; i++)
+        {
+            var part = context.SlideParts[i];
+            if (!hidden && deck.IsHidden(part))
+                continue;
+            var (width, height, items) = new SlideRenderer(new SlideContext(context, part, i + 1), paint).Scene();
+            var scene = new Rendering.PageScene { Number = i + 1, Paper = "", Width = width * 72 / 96, Height = height * 72 / 96 };
+            scene.Items.AddRange(items);
+            scenes.Add(scene);
+        }
+        return scenes;
+    }
+
     public static string ToHtml(string pptxPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false,
         CultureInfo? culture = null)
     {
