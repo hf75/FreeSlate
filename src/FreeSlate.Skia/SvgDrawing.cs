@@ -11,7 +11,8 @@ namespace FreeSlate.Skia;
 /// converter writes them (see Metafiles.SvgWriter). It reads SVG 1.1's structure and painting (svg, g, a, switch, use,
 /// defs, symbol; path, rect, circle, ellipse, line, polyline, polygon; text and tspan with lists of places; image;
 /// clipPath; linear and radial gradients; patterns), presentation attributes, style attributes and style sheets of
-/// simple selectors (element, class, id); filters, masks and markers are left out, what they apply to drawn as it is.
+/// simple selectors (element, class, id); masks by luminance; filters of the primitives Office's effects are made of
+/// (see Painter.Graph). Markers and other filters are left out, what they apply to drawn as it is.
 /// </summary>
 public sealed class SvgDrawing
 {
@@ -343,13 +344,20 @@ public sealed class SvgDrawing
             var layer2 = false;
             if (layer)
                 canvas.SaveLayer(new SKPaint { Color = SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(style.Opacity, 0, 1) * 255)) });
-            // A filter of one color matrix (a 3D face's light): the element drawn on a layer it colors; other filters are
-            // left out.
-            if (style.Filter is { } filterReference && Reference(filterReference) is { Name.LocalName: "filter" } filter
-                && filter.Elements().ToList() is [{ Name.LocalName: "feColorMatrix" } colorMatrix] && ColorMatrix(colorMatrix) is { } matrix)
+            // A filter of one color matrix (a 3D face's light): the element drawn on a layer it colors; other filters the
+            // element is drawn through as an image filter graph, those with primitives it lacks left out.
+            if (style.Filter is { } filterReference && Reference(filterReference) is { Name.LocalName: "filter" } filter)
             {
-                canvas.SaveLayer(new SKPaint { ColorFilter = SKColorFilter.CreateColorMatrix(matrix) });
-                layer2 = true;
+                if (filter.Elements().ToList() is [{ Name.LocalName: "feColorMatrix" } colorMatrix] && ColorMatrix(colorMatrix) is { } matrix)
+                {
+                    canvas.SaveLayer(new SKPaint { ColorFilter = SKColorFilter.CreateColorMatrix(matrix) });
+                    layer2 = true;
+                }
+                else if (Graph(filter) is { } graph)
+                {
+                    canvas.SaveLayer(new SKPaint { ImageFilter = graph });
+                    layer2 = true;
+                }
             }
             // A mask: the element drawn on a layer of its own, which the mask's luminance then cuts.
             var mask = style.Mask is { } maskReference && Reference(maskReference) is { Name.LocalName: "mask" } masking ? masking : null;
@@ -407,6 +415,137 @@ public sealed class SvgDrawing
             if (layer)
                 canvas.Restore();
             canvas.Restore();
+        }
+
+        /// <summary>
+        /// A filter's primitives as an image filter graph (SVG 1.1 chapter 15; those Office's effects are made of:
+        /// feColorMatrix, feComponentTransfer, feMorphology, feGaussianBlur, feOffset, feFlood, feMerge, feComposite and
+        /// feBlend), each taking SourceGraphic, SourceAlpha, a result named before or the one before it; in user space,
+        /// a flood cut at the filter's region. Null for another primitive or other units.
+        /// </summary>
+        SKImageFilter? Graph(XElement filter)
+        {
+            if (filter.Attribute("primitiveUnits")?.Value == "objectBoundingBox")
+                return null;
+            SKRect? region = filter.Attribute("filterUnits")?.Value == "userSpaceOnUse" && filter.Attribute("width") != null && filter.Attribute("height") != null
+                ? SKRect.Create((float)Length(filter.Attribute("x")?.Value, 0), (float)Length(filter.Attribute("y")?.Value, 0),
+                    (float)Length(filter.Attribute("width")?.Value, 0), (float)Length(filter.Attribute("height")?.Value, 0))
+                : null;
+            var results = new Dictionary<string, SKImageFilter?>(StringComparer.Ordinal);
+            SKImageFilter? last = null;
+            // Null is the source graphic: what the filtered element draws.
+            SKImageFilter? Input(string? name) => name switch
+            {
+                null or "" => last,
+                "SourceGraphic" => null,
+                "SourceAlpha" => SKImageFilter.CreateColorFilter(SKColorFilter.CreateColorMatrix([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0])),
+                _ => results.TryGetValue(name, out var result) ? result : last,
+            };
+            double Attribute(XElement primitive, string name, double fallback) => Number(primitive.Attribute(name)?.Value, fallback);
+            foreach (var primitive in filter.Elements())
+            {
+                var input = Input(primitive.Attribute("in")?.Value);
+                SKImageFilter? made;
+                switch (primitive.Name.LocalName)
+                {
+                    case "feColorMatrix":
+                        if (ColorMatrix(primitive) is not { } matrix)
+                            return null;
+                        made = SKImageFilter.CreateColorFilter(SKColorFilter.CreateColorMatrix(matrix), input);
+                        break;
+                    case "feComponentTransfer":
+                    {
+                        byte[] Table(string channel) => Transfer(primitive.Elements().LastOrDefault(e => e.Name.LocalName == "feFunc" + channel));
+                        made = SKImageFilter.CreateColorFilter(SKColorFilter.CreateTable(Table("A"), Table("R"), Table("G"), Table("B")), input);
+                        break;
+                    }
+                    case "feMorphology":
+                    {
+                        var radius = Numbers(primitive.Attribute("radius")?.Value) ?? [0];
+                        var (rx, ry) = ((float)radius[0], (float)(radius.Length > 1 ? radius[1] : radius[0]));
+                        made = primitive.Attribute("operator")?.Value == "dilate" ? SKImageFilter.CreateDilate(rx, ry, input) : SKImageFilter.CreateErode(rx, ry, input);
+                        break;
+                    }
+                    case "feGaussianBlur":
+                    {
+                        var deviation = Numbers(primitive.Attribute("stdDeviation")?.Value) ?? [0];
+                        made = SKImageFilter.CreateBlur((float)deviation[0], (float)(deviation.Length > 1 ? deviation[1] : deviation[0]), input);
+                        break;
+                    }
+                    case "feOffset":
+                        made = SKImageFilter.CreateOffset((float)Attribute(primitive, "dx", 0), (float)Attribute(primitive, "dy", 0), input);
+                        break;
+                    case "feFlood":
+                    {
+                        var color = ParseColor(primitive.Attribute("flood-color")?.Value ?? "black") ?? SKColors.Black;
+                        var opacity = Math.Clamp(Attribute(primitive, "flood-opacity", 1), 0, 1) * color.Alpha / 255;
+                        var flood = SKShader.CreateColor(color.WithAlpha((byte)Math.Round(opacity * 255)));
+                        made = region is { } cut ? SKImageFilter.CreateShader(flood, false, cut) : SKImageFilter.CreateShader(flood);
+                        break;
+                    }
+                    case "feMerge":
+                        made = SKImageFilter.CreateMerge([.. primitive.Elements().Where(e => e.Name.LocalName == "feMergeNode").Select(e => Input(e.Attribute("in")?.Value))]);
+                        break;
+                    case "feComposite":
+                    {
+                        var behind = Input(primitive.Attribute("in2")?.Value);
+                        var mode = primitive.Attribute("operator")?.Value ?? "over";
+                        made = mode == "arithmetic"
+                            ? SKImageFilter.CreateArithmetic((float)Attribute(primitive, "k1", 0), (float)Attribute(primitive, "k2", 0), (float)Attribute(primitive, "k3", 0),
+                                (float)Attribute(primitive, "k4", 0), true, behind, input)
+                            : SKImageFilter.CreateBlendMode(mode switch
+                            {
+                                "in" => SKBlendMode.SrcIn, "out" => SKBlendMode.SrcOut, "atop" => SKBlendMode.SrcATop, "xor" => SKBlendMode.Xor, _ => SKBlendMode.SrcOver,
+                            }, behind, input);
+                        break;
+                    }
+                    case "feBlend":
+                        made = SKImageFilter.CreateBlendMode((primitive.Attribute("mode")?.Value ?? "normal") switch
+                        {
+                            "multiply" => SKBlendMode.Multiply, "screen" => SKBlendMode.Screen, "darken" => SKBlendMode.Darken, "lighten" => SKBlendMode.Lighten,
+                            "overlay" => SKBlendMode.Overlay, _ => SKBlendMode.SrcOver,
+                        }, Input(primitive.Attribute("in2")?.Value), input);
+                        break;
+                    default:
+                        return null;
+                }
+                if (primitive.Attribute("result")?.Value is { Length: > 0 } name)
+                    results[name] = made;
+                last = made;
+            }
+            return last;
+        }
+
+        /// <summary>
+        /// An feFuncR/G/B/A's transfer as a table of the 256 values of its channel (SVG 1.1 15.11: identity, table, discrete,
+        /// linear, gamma); the identity without one.
+        /// </summary>
+        static byte[] Transfer(XElement? function)
+        {
+            var values = Numbers(function?.Attribute("tableValues")?.Value) ?? [];
+            double Get(string name, double fallback) => Number(function?.Attribute(name)?.Value, fallback);
+            var table = new byte[256];
+            for (var k = 0; k < 256; k++)
+            {
+                var c = k / 255.0;
+                var transferred = (function?.Attribute("type")?.Value) switch
+                {
+                    "linear" => Get("slope", 1) * c + Get("intercept", 0),
+                    "gamma" => Get("amplitude", 1) * Math.Pow(c, Get("exponent", 1)) + Get("offset", 0),
+                    "table" when values.Length > 1 => Interpolated(c),
+                    "discrete" when values.Length > 0 => values[Math.Min(values.Length - 1, (int)Math.Floor(c * values.Length))],
+                    _ => c,
+                };
+                table[k] = (byte)Math.Round(Math.Clamp(transferred, 0, 1) * 255);
+            }
+            return table;
+
+            double Interpolated(double c)
+            {
+                var n = values.Length - 1;
+                var at = Math.Min(n - 1, (int)Math.Floor(c * n));
+                return values[at] + (c * n - at) * (values[at + 1] - values[at]);
+            }
         }
 
         /// <summary>An feColorMatrix's 4 × 5 matrix (type matrix, saturate or hueRotate as SVG defines them), or null.</summary>
