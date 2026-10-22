@@ -116,6 +116,37 @@ public sealed class FieldEvaluator
     public PageBox? Laying { get; set; }
 
     /// <summary>
+    /// What the fields know at a point of a layout in progress (see Paginator.Checkpoint): the last layout's pages and
+    /// the pages its bookmarks and paragraphs stood on, the fields that came out empty, and whether another layout
+    /// follows.
+    /// </summary>
+    internal sealed record Snapshot(List<PageBox> Pages, Dictionary<string, PageBox> BookmarkPages, Dictionary<int, PageBox> ParagraphPages,
+        HashSet<FieldInline> Emptied, bool Guessed, bool NewlyEmptied);
+
+    /// <summary>The fields' state now, the last layout's shared with <paramref name="before"/> where it is the same layout.</summary>
+    internal Snapshot Take(Snapshot? before)
+    {
+        var same = before != null && ReferenceEquals(before.Pages, pages);
+        return new(pages, same ? before!.BookmarkPages : new(bookmarkPages, StringComparer.Ordinal), same ? before!.ParagraphPages : new(paragraphPages),
+            new(emptied, ReferenceEqualityComparer.Instance), guessed, newlyEmptied);
+    }
+
+    /// <summary>Goes back to a snapshot's state.</summary>
+    internal void Restore(Snapshot snapshot)
+    {
+        pages = snapshot.Pages;
+        bookmarkPages.Clear();
+        foreach (var (name, page) in snapshot.BookmarkPages)
+            bookmarkPages[name] = page;
+        paragraphPages.Clear();
+        foreach (var (id, page) in snapshot.ParagraphPages)
+            paragraphPages[id] = page;
+        emptied.Clear();
+        emptied.UnionWith(snapshot.Emptied);
+        (guessed, newlyEmptied) = (snapshot.Guessed, snapshot.NewlyEmptied);
+    }
+
+    /// <summary>
     /// The body paragraphs of a page whose header is laid out: while the layout in progress lays the page out, those
     /// of the same page of the last layout (a header's height decides where the page's text begins).
     /// </summary>
