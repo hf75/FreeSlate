@@ -284,8 +284,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var lastStood = new Dictionary<XElement, (int Run, int Page, double X, double Y)>(ReferenceEqualityComparer.Instance);
             for (var run = 0; run < 5; run++)
             {
-                var paginator = new Paginator(context, layout, reader) { settled = settled, EndnoteContinuation = EndnoteContinuation };
+                var paginator = new Paginator(context, layout, reader) { settled = settled, EndnoteContinuation = EndnoteContinuation, settings = settings };
                 result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
+                settings = paginator.settings;
                 // Text frames on the page too push aside the lines above them (measured with docx/external/libreoffice/
                 // extras-ooxmlexport/special_styles: the paragraphs before an envelope address framed at the page's
                 // bottom stand beside it); those standing with the text move the lines they reach themselves (Lower).
@@ -892,7 +893,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // paragraphs is as wide as its column (docx/external/libreoffice/extras-layout/tdf124423: two empty paragraphs
         // framed across the column, an empty paragraph 6.4 pt wide, Calibri 11's ¶; tdf135035: 127.6 pt in a column of
         // three; poi/checkboxes).
-        double OwnWidth(ParagraphBlock p) => layout.Widths(p, pictures: true).Max is var max && max > 0 ? max
+        double OwnWidth(ParagraphBlock p) => layout.Widths(p, settings, pictures: true).Max is var max && max > 0 ? max
             : layout.Styles.Mark(p.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
         // A frame of one paragraph without a width is as wide as its text, at most its column (docx/external/
         // libreoffice/extras-layout/tdf135035: a frame in a column 127.6 pt wide in four lines).
@@ -902,7 +903,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // running up from the bottom, as text boxes turn theirs (docx/external/libreoffice/writerfilter-dmapper/
         // frame-direction: frames 44.35 pt wide and 820 pt high).
         var turn = first.Format.TextDirection is "tbRl" or "btLr" && properties.Twips("h") is { } along && along > 0 ? first.Format.TextDirection : null;
-        var laid = Turned(turn != null, () => group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth)).ToList());
+        var laid = Turned(turn != null, () => group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth, settings)).ToList());
         var content = 0.0;
         for (var k = 0; k < group.Count; k++)
             content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
@@ -1122,15 +1123,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     T Turned<T>(bool turned, Func<T> lay)
     {
-        var vertical = layout.Settings.Vertical;
-        layout.Settings = layout.Settings with { Vertical = vertical || turned };
+        var vertical = settings.Vertical;
+        settings = settings with { Vertical = vertical || turned };
         try
         {
             return lay();
         }
         finally
         {
-            layout.Settings = layout.Settings with { Vertical = vertical };
+            settings = settings with { Vertical = vertical };
         }
     }
 
@@ -1230,6 +1231,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>What the runs before settled; nothing before the first.</summary>
     Settled settled = new();
+
+    /// <summary>
+    /// The settings its paragraphs are laid out under (the section's document grid, the frame they stand in), each run
+    /// going on from those the run before ended with.
+    /// </summary>
+    TextSettings settings = new();
+
+    /// <summary>The settings the pagination ended with, which the text boxes drawn later are laid out under (PageRenderer).</summary>
+    public TextSettings Settings => settings;
 
     /// <summary>Whether a drawing is placed above its paragraph or line, a negative offset from it.</summary>
     static bool Above(XElement anchor) =>
@@ -1516,15 +1526,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         // The paragraphs this run lays out ask it whether their page breaks go unseen (a story's run in between asks
         // its own).
-        var outer = layout.Settings.BreakUnseen;
-        layout.Settings = layout.Settings with { BreakUnseen = BreakUnseen };
+        var outer = settings.BreakUnseen;
+        settings = settings with { BreakUnseen = BreakUnseen };
         try
         {
             return PaginateRun(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
         }
         finally
         {
-            layout.Settings = layout.Settings with { BreakUnseen = outer };
+            settings = settings with { BreakUnseen = outer };
         }
     }
 
@@ -1606,11 +1616,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 trailing.AddRange(endnoteSeparator ?? []);
                 foreach (var note in due)
                     trailing.AddRange(note.Blocks);
-                var pitch = layout.Settings.LinePitch;
+                var pitch = settings.LinePitch;
                 for (var i = 0; i < trailing.Count; i++)
                 {
                     // The separator's paragraphs keep off the line grid (see Note).
-                    layout.Settings = layout.Settings with { LinePitch = i < (endnoteSeparator?.Count ?? 0) ? null : pitch };
+                    settings = settings with { LinePitch = i < (endnoteSeparator?.Count ?? 0) ? null : pitch };
                     continuedEndnotes = i < (endnoteSeparator?.Count ?? 0) ? null : EndnoteContinuation;
                     if (trailing[i] is TableBlock)
                         PlaceTable(trailing, i);
@@ -1618,7 +1628,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         Place(trailing, i);
                 }
                 continuedEndnotes = null;
-                layout.Settings = layout.Settings with { LinePitch = pitch };
+                settings = settings with { LinePitch = pitch };
             }
             if (emptyEnd)
                 Place(sectionBlocks, sectionBlocks.Count - 1);
@@ -1729,7 +1739,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             columnsRightToLeft = properties.Element?.Child("bidi").OnOff() == true;
         tables.PageArea = (properties.PageWidth - properties.Left - properties.Right - properties.Gutter, properties.PageHeight - properties.Top - properties.Bottom,
             properties.PageWidth, properties.PageHeight);
-        layout.Settings = layout.Settings with
+        settings = settings with
         {
             Vertical = properties.Upright != null,
             TurnEastAsian = properties.TurnEastAsian,
@@ -1836,7 +1846,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page.Passed.AddRange(passedOver);
             passedOver.Clear();
         }
-        layout.Settings = layout.Settings with { ColumnWidth = () => Column(column).Width };
+        settings = settings with { ColumnWidth = () => Column(column).Width };
         // A header that reaches below the top margin pushes the body down, a footer above the bottom margin pushes
         // its end up, each with the space before and after its paragraphs, unless the margin is negative (fixed;
         // measured with docx/local/hf-tall, hf-short).
@@ -1895,10 +1905,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // mark high).
         if (!blank && continuedEndnotes is { Count: > 0 } continuation)
         {
-            var pitch = layout.Settings.LinePitch;
-            layout.Settings = layout.Settings with { LinePitch = null };
-            var (lines, fills, strokes, height) = tables.Blocks(continuation, page.TextWidth, null);
-            layout.Settings = layout.Settings with { LinePitch = pitch };
+            var pitch = settings.LinePitch;
+            settings = settings with { LinePitch = null };
+            var (lines, fills, strokes, height) = tables.Blocks(continuation, page.TextWidth, settings, null);
+            settings = settings with { LinePitch = pitch };
             foreach (var line in lines)
                 page.Lines.Add(line with { Left = page.TextLeft + line.Left, Top = y + line.Top });
             foreach (var fill in fills)
@@ -1962,15 +1972,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     StoryBox Story(string part, PageBox on, PageFields? fields, bool header)
     {
         // Headers and footers do not snap to the body's grid, and their text runs across the page.
-        var body = layout.Settings;
-        layout.Settings = body with { LinePitch = null, CharacterExtra = 0, Vertical = false, TurnEastAsian = false, GridCell = null, SnapCell = null };
+        var body = settings;
+        settings = body with { LinePitch = null, CharacterExtra = 0, Vertical = false, TurnEastAsian = false, GridCell = null, SnapCell = null };
         try
         {
             return StoryOf(part, on, fields, header);
         }
         finally
         {
-            layout.Settings = layout.Settings with
+            settings = settings with
             {
                 LinePitch = body.LinePitch, CharacterExtra = body.CharacterExtra, Vertical = body.Vertical, TurnEastAsian = body.TurnEastAsian,
                 GridCell = body.GridCell, SnapCell = body.SnapCell,
@@ -2038,13 +2048,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 double Twips(string name) => properties.Twips(name) ?? 0;
                 // As wide as its paragraph, an empty one as its mark, or as its column with several (see PlaceFrame).
                 var frameWidth = properties.Twips("w") is { } w && w > 0 ? w : group.Count > 1 ? width
-                    : layout.Widths(framed, fields, pictures: true).Max is var max && max > 0 ? Math.Min(max, width)
+                    : layout.Widths(framed, settings, fields, pictures: true).Max is var max && max > 0 ? Math.Min(max, width)
                     : layout.Styles.Mark(framed.MarkFormat) is var mark ? mark.Font.Data.Width("¶", false) * mark.Size : 0;
                 // Turned text, the paragraphs' borders and shading and the first paragraph's space before as in the body
                 // (see PlaceFrame; docx/external/libreoffice/extras-ooxmlexport/fdo76979: a header's frame of btLr text
                 // 42.55 by 85 pt, bordered and shaded black, beside the body).
                 var turn = framed.Format.TextDirection is "tbRl" or "btLr" && properties.Twips("h") is { } along && along > 0 ? framed.Format.TextDirection : null;
-                var laid = Turned(turn != null, () => group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth, fields)).ToList());
+                var laid = Turned(turn != null, () => group.Select(p => layout.Layout(p, turn != null ? properties.Twips("h")!.Value : frameWidth, settings, fields)).ToList());
                 var content = 0.0;
                 for (var k = 0; k < group.Count; k++)
                     content += (k > 0 ? Between(group[k - 1], group[k]) : 0) + laid[k].Sum(l => l.Height);
@@ -2133,7 +2143,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (block is TableBlock { Table.Format.Floating: { } position } floating)
             {
                 double Twips(string name) => position.Twips(name) ?? 0;
-                var laid = tables.Layout(floating.Table, tableWidth, fields);
+                var laid = tables.Layout(floating.Table, tableWidth, settings, fields);
                 var height = laid.Rows.Sum(r => r.Height) + (laid.Rows.Count > 0 ? laid.Rows[^1].BottomBorderWidth : 0);
                 var (spanLeft, span) = position.Attr("horzAnchor") switch
                 {
@@ -2247,8 +2257,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     }
                 }
                 var laid = around.Count > 0
-                    ? layout.Layout(paragraph, width, fields, room: slot => Room(around, linesTop, slot, left, width))
-                    : layout.Layout(paragraph, width, fields);
+                    ? layout.Layout(paragraph, width, settings, fields, room: slot => Room(around, linesTop, slot, left, width))
+                    : layout.Layout(paragraph, width, settings, fields);
                 foreach (var line in laid)
                 {
                     y += line.Skip;
@@ -2276,7 +2286,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             else if (block is TableBlock table)
             {
                 y += first ? 0 : after;
-                var laid = tables.Layout(table.Table, tableWidth, fields);
+                var laid = tables.Layout(table.Table, tableWidth, settings, fields);
                 var tableTop = y;
                 foreach (var row in laid.Rows)
                 {
@@ -2534,11 +2544,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var blocks = footnotes != null && footnotes.TryGetValue(id, out var found) ? found : null;
         // Separators keep off the section's line grid (LibreOffice's extras-ooxmlexport/tdf143399: lines of 15.6 pt,
         // the separator's paragraph 12.07 pt high in Word).
-        var pitch = layout.Settings.LinePitch;
+        var pitch = settings.LinePitch;
         if (id is "separator" or "continuationSeparator")
-            layout.Settings = layout.Settings with { LinePitch = null };
-        var (lines, fills, strokes, height) = blocks != null ? tables.Blocks(blocks, width, null) : ([], [], [], 0);
-        layout.Settings = layout.Settings with { LinePitch = pitch };
+            settings = settings with { LinePitch = null };
+        var (lines, fills, strokes, height) = blocks != null ? tables.Blocks(blocks, width, settings, null) : ([], [], [], 0);
+        settings = settings with { LinePitch = pitch };
         // A note's last paragraph keeps its HTML auto space after below it, the separator's too (measured with
         // docx/local/fau-both, fau-after: notes 14 pt apart, the last 14 pt above the bottom margin, the first 14 pt
         // below the separator's paragraph; fau-note: the separator's own paragraph without it; docx/external/
@@ -3202,7 +3212,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (anchor.Text is not { Count: > 0 } text || placed.Body is not { } body)
             return Held(placed);
         var shape = placed.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Docx.Drawings.Wps + "wsp");
-        var fitted = PageRenderer.FitToText(placed, text, body, shape, page, tables, context.Theme);
+        var fitted = PageRenderer.FitToText(placed, text, body, shape, page, tables, settings, context.Theme);
         // A box that grows or shrinks to its text is aligned as it then is (LibreOffice's core-doc/
         // text-box-word-wrap: a header box without wrapping saved 34.95 pt wide, 103.1 pt with its text, ends at the
         // page's right edge).
@@ -3756,7 +3766,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 var (bareLeft, bareWidth) = Column(column);
                 var bareTop = y + (columnEmpty ? 0 : pendingAfter);
-                bareFrame.DrawBare(page!, bareLeft + Mirror(paragraph.Format), bareWidth, bareTop, bareTop + layout.Layout(paragraph, bareWidth)[0].Height);
+                bareFrame.DrawBare(page!, bareLeft + Mirror(paragraph.Format), bareWidth, bareTop, bareTop + layout.Layout(paragraph, bareWidth, settings)[0].Height);
             }
             led = true;
             if (leading.Type == "page")
@@ -3769,7 +3779,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var next = index + 1 < blocks.Count ? blocks[index + 1] as ParagraphBlock : null;
         var format = paragraph.Format;
         var (left, width) = Column(column);
-        var lines = layout.Layout(paragraph, width);
+        var lines = layout.Layout(paragraph, width, settings);
 
         var brokeBefore = false;
         if (format.PageBreakBefore == true && !(columnEmpty && column == 0 && page!.Lines.Count == 0))
@@ -3833,7 +3843,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // column, needs four in the 132 pt one beside it and goes to the next page; in one 216 pt wide, cc-equal,
             // or shortened to a word, cc-short, it stays in that column).
             if (Math.Abs(width - laid) > 0.01)
-                lines = layout.Layout(paragraph, width);
+                lines = layout.Layout(paragraph, width, settings);
             gap = 0;
         }
 
@@ -4065,12 +4075,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // framepr-pagebreak-style, extras-layout/tdf170846_1, _2: below frames).
                 var dropped = SpaceAbove(before, brokeBefore).Dropped && lines.Count > 0
                               && owned.Values.Any(e => e.Top < linesTop + lines[0].Height - 0.01 && e.Bottom > linesTop + 0.01);
-                layout.Settings = layout.Settings with { PushedSpace = (dropped ? spacing.Between : ownBefore) + opening };
+                settings = settings with { PushedSpace = (dropped ? spacing.Between : ownBefore) + opening };
                 try
                 {
                     double? firstOffset = null;
                     var untall = tall.Count > 0 ? exclusions.Where(e => !tall.Contains(e)).ToList() : exclusions;
-                    lines = layout.Layout(paragraph, width, room: slot =>
+                    lines = layout.Layout(paragraph, width, settings, room: slot =>
                     {
                         firstOffset ??= slot.Offset;
                         return Room(slot.Offset <= firstOffset.Value + 0.01 ? untall : exclusions, linesTop, slot, columnLeft, columnWidth);
@@ -4079,7 +4089,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 finally
                 {
-                    layout.Settings = layout.Settings with { PushedSpace = 0 };
+                    settings = settings with { PushedSpace = 0 };
                 }
                 // So does its shading, drawn line by line, which leaves the room the line skipped white (measured with
                 // docx/local/psk-15, psk-14: a yellow paragraph below a rectangle wrapped top and bottom, shaded from
@@ -4108,7 +4118,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     exclusions.Remove(owned[anchor]);
                     tall.Remove(owned[anchor]);
                 }
-                lines = layout.Layout(paragraph, width);
+                lines = layout.Layout(paragraph, width, settings);
                 laidAround = false;
                 LayAround();
             }
@@ -4139,8 +4149,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 return false;
             laidAround = around.Count > 0;
             lines = [.. lines.Take(k), .. around.Count > 0
-                ? layout.Layout(paragraph, width, room: slot => Room(around, linesTop, slot, columnLeft, columnWidth), from: lines[k].TextStart)
-                : layout.Layout(paragraph, width, from: lines[k].TextStart)];
+                ? layout.Layout(paragraph, width, settings, room: slot => Room(around, linesTop, slot, columnLeft, columnWidth), from: lines[k].TextStart)
+                : layout.Layout(paragraph, width, settings, from: lines[k].TextStart)];
             laidWidth = width;
             return around.Count > 0;
         }
@@ -4150,8 +4160,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var (columnLeft, columnWidth, linesTop) = (left, width, y);
             var around = PageExclusions().Where(e => e.Left < columnLeft + columnWidth - 0.01 && e.Right > columnLeft + 0.01 && e.Bottom > linesTop + 0.01).ToList();
             return around.Count > 0
-                ? layout.Layout(paragraph, width, room: slot => Room(around, linesTop, slot, columnLeft, columnWidth), from: lines[k].TextStart, unhyphenated: true)
-                : layout.Layout(paragraph, width, from: lines[k].TextStart, unhyphenated: true);
+                ? layout.Layout(paragraph, width, settings, room: slot => Room(around, linesTop, slot, columnLeft, columnWidth), from: lines[k].TextStart, unhyphenated: true)
+                : layout.Layout(paragraph, width, settings, from: lines[k].TextStart, unhyphenated: true);
         }
         // Lines no page break may come before (Bound) or after (Binds), which form units with their neighbours
         // (keptNotes), on pages of one column: a paragraph's lines where it keeps them together, its second and last
@@ -4348,7 +4358,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     tall.Clear();
                     owned.Clear();
                     Own();
-                    lines = layout.Layout(paragraph, width);
+                    lines = layout.Layout(paragraph, width, settings);
                     laidAround = false;
                     LayAround();
                     if (pushedBox)
@@ -4795,7 +4805,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (steps > 10000)
                     return null;
                 var group = groups[g];
-                var lines = layout.Layout(group.Block, Column(c).Width, from: from);
+                var lines = layout.Layout(group.Block, Column(c).Width, settings, from: from);
                 var number = group.Before + placed.Count(p => p.Group == g);
                 var count = number + lines.Count;
                 var broke = false;
@@ -4841,7 +4851,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (unit <= 0.01)
             return;
         var widest = Enumerable.Range(0, columns).Max(c => Column(c).Width);
-        var least = groups.Sum(group => layout.Layout(group.Block, widest, from: group.From).Sum(l => l.Height)) / columns;
+        var least = groups.Sum(group => layout.Layout(group.Block, widest, settings, from: group.From).Sum(l => l.Height)) / columns;
         var room = Bottom - columnTop;
         List<(int Group, Line Line, int Column, double Top, int Number, int Count)>? result = null;
         for (var k = Math.Max(1, (int)Math.Floor(Math.Max(least, flow.Max(f => page!.Lines[f.Index].Line.FitHeight)) / unit)); result == null && (k - 1) * unit <= room; k++)
@@ -5035,7 +5045,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 laidTables[table] = laid;
             return laid.Box;
         }
-        var box = tables.Layout(table.Table, width, before: before, joined: joined);
+        var box = tables.Layout(table.Table, width, settings, before: before, joined: joined);
         if (keep && joined == null)
             laidTables[table] = (width, before, box);
         return box;
@@ -5145,7 +5155,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     List<Line> KeptLines(ParagraphBlock paragraph, double width)
     {
         if (!keptLines.TryGetValue(paragraph, out var kept) || kept.Width != width)
-            keptLines[paragraph] = kept = (width, layout.Layout(paragraph, width));
+            keptLines[paragraph] = kept = (width, layout.Layout(paragraph, width, settings));
         return kept.Lines;
     }
 
@@ -5168,7 +5178,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return line.Baseline - 9.6;
         if (context.Profile.SuppressTopSpacing && rule is "atLeast")
             return (format.Line ?? 240) / 20 - 9.6;
-        if (context.Profile.SuppressSpacingAtTop && (rule is "atLeast" || rule is "auto" && layout.Settings.LinePitch != null && format.SnapToGrid != false))
+        if (context.Profile.SuppressSpacingAtTop && (rule is "atLeast" || rule is "auto" && settings.LinePitch != null && format.SnapToGrid != false))
             return line.Baseline - line.Above - line.RaisedAbove;
         return 0;
     }

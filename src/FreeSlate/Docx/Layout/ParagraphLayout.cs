@@ -317,8 +317,8 @@ public sealed record PageFields(int Page, string PageFormat, int Pages, int Sect
 /// breaks between characters.
 /// </summary>
 /// <summary>
-/// The settings paragraphs are laid out under (ParagraphLayout.Settings): the section's document grid and the frame they
-/// stand in (a table cell, a text box, vertical text), set by whoever lays them out.
+/// The settings paragraphs are laid out under (ParagraphLayout.Layout, Widths): the section's document grid and the frame
+/// they stand in (a table cell, a text box, vertical text), which whoever lays them out passes.
 /// </summary>
 public sealed record TextSettings
 {
@@ -410,11 +410,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>Whether a character trails a line's content at its end.</summary>
     bool Trails(char c) => c == ' ' || context.Profile.IdeographicTrails && c == (char)0x3000;
 
-    /// <summary>
-    /// The settings the paragraphs are laid out under: the section's document grid and the frame they stand in, which
-    /// whoever lays them out sets (see TextSettings).
-    /// </summary>
-    public TextSettings Settings { get; set; } = new();
+    /// <summary>The settings of the paragraph being laid out or measured (see Layout, Widths).</summary>
+    TextSettings settings = new();
 
     /// <summary>Whether the paragraph being laid out has its page breaks unseen.</summary>
     bool unseenBreak;
@@ -897,8 +894,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </param>
     /// <param name="from">Where in the paragraph's text the lines begin (Line.TextStart): its rest in another column.</param>
     /// <param name="unhyphenated">Whether the first line breaks before a word it would hyphenate automatically.</param>
-    public List<Line> Layout(ParagraphBlock paragraph, double width, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null, int from = 0,
-        bool unhyphenated = false)
+    /// <param name="settings">The settings the paragraph is laid out under (see TextSettings).</param>
+    public List<Line> Layout(ParagraphBlock paragraph, double width, TextSettings settings, PageFields? fields = null, Func<LineSlot, LineRoom>? room = null,
+        int from = 0, bool unhyphenated = false)
+    {
+        var outer = this.settings;
+        this.settings = settings;
+        try
+        {
+            return LaidOut(paragraph, width, fields, room, from, unhyphenated);
+        }
+        finally
+        {
+            this.settings = outer;
+        }
+    }
+
+    List<Line> LaidOut(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room, int from, bool unhyphenated)
     {
         var laid = LayoutLines(paragraph, width, fields, room, from, unhyphenated);
         foreach (var line in laid)
@@ -923,7 +935,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </summary>
     void VerticalQuotes(string text, List<RunStyle> charStyles, double[] advances)
     {
-        if (!Settings.Vertical)
+        if (!settings.Vertical)
             return;
         for (var i = 0; i < text.Length; i++)
         {
@@ -936,17 +948,17 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         bool unhyphenated = false)
     {
         var format = paragraph.Format;
-        if (Settings.GridCell is { } cell && cell > 0.01 && format.SnapToGrid != false)
+        if (settings.GridCell is { } cell && cell > 0.01 && format.SnapToGrid != false)
             width = Math.Max(cell, Math.Floor(width / cell + 1e-6) * cell);
-        double? snapCell = Settings.SnapCell is { } nominal && nominal > 0.01 ? width / Math.Max(1, Math.Floor(width / nominal + 1e-6)) : null;
+        double? snapCell = settings.SnapCell is { } nominal && nominal > 0.01 ? width / Math.Max(1, Math.Floor(width / nominal + 1e-6)) : null;
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
-        unseenBreak = Settings.BreakUnseen?.Invoke(paragraph) == true;
+        unseenBreak = settings.BreakUnseen?.Invoke(paragraph) == true;
         var (text, charStyles, labelLength) = Flatten(paragraph, fields);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         legacyLabel = paragraph.Label?.Level.Legacy;
         levels = BidiLevels(text, charStyles, format.Bidi == true, labelLength);
-        var advances = Advances(text, charStyles, Settings.CharacterExtra + (Settings.CharacterExtraEastAsian && snapCell != null ? snapCell.Value - Settings.SnapCell!.Value : 0),
-            Settings.CharacterExtraEastAsian);
+        var advances = Advances(text, charStyles, settings.CharacterExtra + (settings.CharacterExtraEastAsian && snapCell != null ? snapCell.Value - settings.SnapCell!.Value : 0),
+            settings.CharacterExtraEastAsian);
         SuffixSpace(paragraph, labelLength, advances);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
@@ -959,7 +971,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         VerticalQuotes(text, charStyles, advances);
         // A horizontal rule of a share of the width takes the width it is drawn with (Vml.Rule).
         foreach (var (index, drawing) in objects)
-            advances[index] = RuleShare(drawing) is > 0 and var share ? share * (Settings.ColumnWidth?.Invoke() ?? width - (format.Left ?? 0) - (format.Right ?? 0)) : drawing.Box.Width;
+            advances[index] = RuleShare(drawing) is > 0 and var share ? share * (settings.ColumnWidth?.Invoke() ?? width - (format.Left ?? 0) - (format.Right ?? 0)) : drawing.Box.Width;
         foreach (var (index, (equation, _)) in equations)
             advances[index] = equation.Width;
         foreach (var (index, box) in boxes)
@@ -975,7 +987,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         foreach (var (index, run) in combined)
             advances[index] = Combination(run).Width;
         foreach (var (index, run) in across)
-            advances[index] = Across(run, Settings.Vertical).Slot;
+            advances[index] = Across(run, settings.Vertical).Slot;
         foreach (var (index, continuation) in separators)
             advances[index] = continuation ? width - (format.Left ?? 0) - (format.Right ?? 0) : Math.Min(separatorWidth, width);
         // A number aligned right or centered ends or centers at the first line's indent (w:lvlJc).
@@ -1149,7 +1161,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     // A first line pushed below objects keeps its paragraph's space before below them (measured with
                     // docx/local/fsb-*: 14 pt below a floating table anchored to the page or the text, in modes 14
                     // and 15; docx/external/powertools/RP/RP051).
-                    skip = r.SkipTo - offset + (first ? Settings.PushedSpace : 0);
+                    skip = r.SkipTo - offset + (first ? settings.PushedSpace : 0);
                 }
                 if (segments.Count > 0)
                 {
@@ -1512,7 +1524,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // in its own, justified ones all but the paragraph's last (measured with docx/local/jf-*: justified lines
             // beside a frame and beside rectangles wrapped square or tight end each segment at its room's end, centred
             // and right aligned ones centre or end each; docx/external/libreoffice/extras-ooxmlexport/tdf133701).
-            if (line.Jumped && !Settings.Unaligned && line.Cut is { Count: > 1 } cut)
+            if (line.Jumped && !settings.Unaligned && line.Cut is { Count: > 1 } cut)
             {
                 var groups = new List<List<Piece>> { new() };
                 foreach (var piece in line.Pieces)
@@ -1530,7 +1542,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     var x0 = groups[g][0].X;
                     var k = Math.Max(0, cut.FindLastIndex(s => s.Start <= x0 + 0.01));
                     var segmentStart = g == 0 ? line.Start ?? left + (line.First ? firstLine - labelShift : 0) : cut[k].Start;
-                    var segmentEnd = k == cut.Count - 1 ? line.Limit ?? (Settings.AlignIn is { } inBox && Math.Abs(width - inBox.Laid) < 1e-6 ? inBox.Area : width) - right
+                    var segmentEnd = k == cut.Count - 1 ? line.Limit ?? (settings.AlignIn is { } inBox && Math.Abs(width - inBox.Laid) < 1e-6 ? inBox.Area : width) - right
                         : cut[k].End;
                     var part = new Line { First = line.First && g == 0, Last = line.Last && g == lastGroup, Natural = line.Natural,
                         EndBreak = g == lastGroup ? line.EndBreak : null, Hanging = g == lastGroup ? line.Hanging : 0 };
@@ -1541,7 +1553,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 }
                 continue;
             }
-            if (line.Jumped || Settings.Unaligned)
+            if (line.Jumped || settings.Unaligned)
                 continue;
             // A display equation's line stands where its justification puts it, from the left indent.
             if (line.Pieces.FirstOrDefault(p => p.DisplayX != null) is { DisplayX: { } displayX } displayed)
@@ -1549,7 +1561,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 displayed.X = left + displayX;
                 continue;
             }
-            var alignEnd = (Settings.AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
+            var alignEnd = (settings.AlignIn is { } box && Math.Abs(width - box.Laid) < 1e-6 ? box.Area : width) - right;
             Align(line, format, line.Limit ?? alignEnd, line.Start ?? left + (line.First ? firstLine - labelShift : 0), expandBreaks, Doubled, characters, alignEnd,
                 context.Profile.IdeographicTrails, context.Profile.DistributedSpaceShare, snapCell, context.Profile.PhasedDistribution,
                 context.Profile.LowKashidaStretchesShaped);
@@ -1557,7 +1569,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             foreach (var piece in line.Pieces.Where(p => p.Drawing?.Drawing.Attribute(Vml.Rule) != null))
             {
                 var share = RuleShare(piece.Drawing!) ?? 1;
-                var ruleWidth = share > 0 ? share * (Settings.ColumnWidth?.Invoke() ?? width - right - left) : piece.Drawing.Box.Width;
+                var ruleWidth = share > 0 ? share * (settings.ColumnWidth?.Invoke() ?? width - right - left) : piece.Drawing.Box.Width;
                 piece.Rule = (ruleWidth, piece.Rule?.Bottom ?? 0);
                 piece.X = (string?)piece.Drawing.Drawing.Attribute(Vml.RuleAlign) switch
                 {
@@ -1639,7 +1651,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <param name="empty">Whether a paragraph without content needs its indents; in table cells it needs nothing
     /// (measured with docx/local/agr-text, agr-firsttext: an empty paragraph indented 144 pt from the left or by 14.4 pt
     /// on its first line beside "x" leaves both columns as without the indents).</param>
-    public (double Min, double Max) Widths(ParagraphBlock paragraph, PageFields? fields = null, bool pictures = false, bool empty = true, bool deleted = false)
+    /// <param name="settings">The settings the paragraph is laid out under (see TextSettings).</param>
+    public (double Min, double Max) Widths(ParagraphBlock paragraph, TextSettings settings, PageFields? fields = null, bool pictures = false, bool empty = true,
+        bool deleted = false)
+    {
+        var outer = this.settings;
+        this.settings = settings;
+        try
+        {
+            return Measured(paragraph, fields, pictures, empty, deleted);
+        }
+        finally
+        {
+            this.settings = outer;
+        }
+    }
+
+    (double Min, double Max) Measured(ParagraphBlock paragraph, PageFields? fields, bool pictures, bool empty, bool deleted)
     {
         var format = paragraph.Format;
         displayWidth = double.MaxValue;
@@ -1648,7 +1676,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         measuringDeleted = false;
         if (!empty && text.Length == 0)
             return (0, 0);
-        var advances = Advances(text, charStyles, Settings.CharacterExtra, Settings.CharacterExtraEastAsian);
+        var advances = Advances(text, charStyles, settings.CharacterExtra, settings.CharacterExtraEastAsian);
         SuffixSpace(paragraph, labelLength, advances);
         if (balanced.Count > 0)
             Balance(text, charStyles, advances, balanced);
@@ -1771,7 +1799,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var arial = label.Format.Clone();
         (arial.Ascii, arial.HAnsi, arial.EastAsia, arial.ComplexScript) = ("Arial", "Arial", "Arial", "Arial");
         (arial.AsciiTheme, arial.HAnsiTheme, arial.EastAsiaTheme, arial.ComplexScriptTheme) = (null, null, null, null);
-        advances[labelLength] = Advances(" ", [styles.Style(arial, WordSlot.Ascii)], Settings.CharacterExtra, Settings.CharacterExtraEastAsian)[0];
+        advances[labelLength] = Advances(" ", [styles.Style(arial, WordSlot.Ascii)], settings.CharacterExtra, settings.CharacterExtraEastAsian)[0];
     }
 
     (string Text, List<RunStyle> Styles, int LabelLength) Flatten(ParagraphBlock paragraph, PageFields? fields)
@@ -2057,7 +2085,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // In a table cell a decimal tab stop aligns a paragraph without tabs at its decimal point, as if a tab began it
         // (docx/external/libreoffice/extras-odfexport/table_number_format_3: numbers at a stop of 1884 twips without tab
         // characters; openxml-sdk/complex0, complex2010).
-        if (Settings.InCell && paragraph.Format.Tabs?.Any(t => t.Align == "decimal") == true && !paragraph.Content.Any(i => i is TabInline)
+        if (settings.InCell && paragraph.Format.Tabs?.Any(t => t.Align == "decimal") == true && !paragraph.Content.Any(i => i is TabInline)
             && paragraph.Content.OfType<TextInline>().FirstOrDefault(t => t.Text.Length > 0) is { } firstText)
         {
             text.Append('\t');
@@ -2078,7 +2106,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             foreach (var deleted in paragraph.Deleted ?? [])
                 AddText(text.Length > 0 ? " " + deleted.Text : deleted.Text, deleted.Format);
         }
-        var behind = Shading.Color(paragraph.Format.Shading) ?? Settings.Background;
+        var behind = Shading.Color(paragraph.Format.Shading) ?? settings.Background;
         for (var k = 0; k < list.Count; k++)
         {
             if (!list[k].AutoColor)
@@ -2088,7 +2116,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 if ((0.30 * shade.R + 0.59 * shade.G + 0.11 * shade.B) * 255 < 60)
                     list[k] = whitened.GetOrAdd(list[k], s => s with { Color = FreeSlate.Drawing.RgbColor.White });
             }
-            else if (Settings.TextColor is { } color)
+            else if (settings.TextColor is { } color)
                 list[k] = colored.GetOrAdd((list[k], color), s => s.Item1 with { Color = s.Item2 });
         }
         return (text.ToString(), list, labelLength);
@@ -2417,7 +2445,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     Line BuildLine(string text, List<RunStyle> charStyles, double[] advances, int start, int end, double startX,
         ParagraphFormat format, double left, double firstLine, RunStyle mark, int labelEnd, double limit, Dictionary<int, double>? jumps = null)
     {
-        var line = new Line { First = start == 0, TextStart = start, Vertical = Settings.Vertical, TurnEastAsian = Settings.TurnEastAsian };
+        var line = new Line { First = start == 0, TextStart = start, Vertical = settings.Vertical, TurnEastAsian = settings.TurnEastAsian };
         foreach (var (index, id) in notes)
         {
             if (index >= start && (index < end || index == end && end == text.Length))
@@ -2588,7 +2616,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // itself, whatever the spacing (Vml.Rule).
             if (piece.Drawing is { } rule && rule.Drawing.Attribute(Vml.Rule) != null)
             {
-                var (markAbove, markBelow) = Metrics(mark, Settings.Vertical);
+                var (markAbove, markBelow) = Metrics(mark, settings.Vertical);
                 if (context.Profile.RulesSizeTheirLines && end < text.Length)
                 {
                     above = Math.Max(above, rule.Box.Height + 2.52);
@@ -2633,8 +2661,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // Text set across the line reaches as far beyond its middle as it is long; the line's spacing is its font's.
             if (piece.Across is { } turned)
             {
-                var (_, length, _, _, middle) = Across(turned, Settings.Vertical);
-                var (fontAbove, fontBelow) = Metrics(piece.Style, Settings.Vertical);
+                var (_, length, _, _, middle) = Across(turned, settings.Vertical);
+                var (fontAbove, fontBelow) = Metrics(piece.Style, settings.Vertical);
                 above = Math.Max(above, Math.Max(fontAbove, middle + length / 2));
                 below = Math.Max(below, Math.Max(fontBelow, length / 2 - middle));
                 raised = Math.Max(raised, Math.Max(fontAbove, middle + length / 2));
@@ -2644,7 +2672,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 continue;
             }
             // Super- and subscripts stand within the line of the size they belong to; w:position moves them on.
-            var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase, piece.Style.LineHeights) : Metrics(piece.Style, Settings.Vertical);
+            var (a, b) = piece.Style.ScriptBase is { } scriptBase ? WordFonts.LineMetrics(piece.Style.Font.Data, scriptBase, piece.Style.LineHeights) : Metrics(piece.Style, settings.Vertical);
             var lift = TopLift(piece, format);
             // Lowered text takes as much less of the ascent, raised text of the descent (measured with
             // docx/local/lowr-*: "Base" in 12 pt Arial with 48 pt lowered 12 pt has its baseline 33 pt below the line's
@@ -2691,7 +2719,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             if (end > start && text[end - 1] is '\n' or '\v' && end - 1 < charStyles.Count)
             {
-                var (a, b) = Metrics(charStyles[end - 1], Settings.Vertical);
+                var (a, b) = Metrics(charStyles[end - 1], settings.Vertical);
                 above = Math.Max(above, a);
                 raised = Math.Max(raised, a);
                 below = Math.Max(below, b);
@@ -2706,7 +2734,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // smaller than the mark's line still take its whole height (measured with docx/local/smallpic-single and
             // -115: pictures of 2 to 12 pt beside an 11 pt Calibri mark stand 13.43 pt high, larger ones their own);
             // beside nothing but a list number too (lt-8, lt-10: a bullet and a 40 pt shape make the line 40 pt high).
-            var (a, b) = Metrics(mark, Settings.Vertical);
+            var (a, b) = Metrics(mark, settings.Vertical);
             largest = a + b;
             if (pictures)
             {
@@ -2720,7 +2748,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // Only a number on the line: the paragraph mark gives the rest, its ascent too where it is the larger
             // (docx/external/libreoffice/core-text/redline-bullet: an item whose text is all deleted keeps a Courier New
             // 10 pt bullet with the baseline the mark's Aptos 12 pt ascent below the line's top; poi/delins).
-            var (a, b) = Metrics(mark, Settings.Vertical);
+            var (a, b) = Metrics(mark, settings.Vertical);
             above = Math.Max(above, a);
             raised = Math.Max(raised, a);
             below = b;
@@ -2738,10 +2766,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             // spaces of 72 pt wrapped before the paragraph's last line make a line 72 pt high, the last one the mark's).
             if (spacesOnly && end < text.Length && end > start && start < charStyles.Count)
                 style = Enumerable.Range(start, Math.Min(end, charStyles.Count) - start).Select(k => charStyles[k])
-                    .MaxBy(s => { var (a, b) = Metrics(s, Settings.Vertical); return a + b; }) ?? style;
+                    .MaxBy(s => { var (a, b) = Metrics(s, settings.Vertical); return a + b; }) ?? style;
             // A raised or lowered mark of its own takes its unscaled size's line (docx/external/libreoffice/core-text/
             // empty-superscript: an empty paragraph with a superscript 10 pt mark 12.2 pt high).
-            (above, below) = style.ScriptBase is { } markBase ? WordFonts.LineMetrics(style.Font.Data, markBase, style.LineHeights) : Metrics(style, Settings.Vertical);
+            (above, below) = style.ScriptBase is { } markBase ? WordFonts.LineMetrics(style.Font.Data, markBase, style.LineHeights) : Metrics(style, settings.Vertical);
             largest = above + below;
             // A mark raised or lowered (w:position) moves its line as such text does, a superscript or subscript one not
             // (docx/external/powertools/HC061-Hyperlink-in-Field: empty cells of a table style raising its text 3 pt as
@@ -2847,7 +2875,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// higher, not 6.95 pt).
     /// </summary>
     /// <summary>The line pitch a paragraph's lines snap to: the section's, unless the paragraph does not snap (w:snapToGrid).</summary>
-    double? Pitch(ParagraphFormat format) => format.SnapToGrid == false ? null : Settings.LinePitch;
+    double? Pitch(ParagraphFormat format) => format.SnapToGrid == false ? null : settings.LinePitch;
 
     /// <param name="pitch">
     /// The document grid's line pitch (measured with docx/local/docgrid: 18 and 15 pt grids, Arial 10 to 30 pt): a

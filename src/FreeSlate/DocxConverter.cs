@@ -69,13 +69,13 @@ public static class DocxConverter
         var endnoteParts = reader.Notes(endnotes: true);
         var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
             .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
-        var pages = new Paginator(context, layout, reader) { EndnoteContinuation = endnoteParts.GetValueOrDefault("continuationSeparator") }
-            .Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
+        var paginator = new Paginator(context, layout, reader) { EndnoteContinuation = endnoteParts.GetValueOrDefault("continuationSeparator") };
+        var pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
         var drawings = new Drawings(context, culture ?? CultureInfo.CurrentCulture);
         // The markup view's comments; its pages have the pane where the document has balloons.
         var comments = markup ? reader.Comments() : [];
         var pane = markup && (comments.Count > 0 || pages.Any(p => p.Lines.Any(l => l.Line.BlockChange != null || l.Line.Pieces.Any(x => x.Style.Change != null))));
-        var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout)) { Comments = comments, MarkupPane = pane };
+        var renderer = new PageRenderer(context, drawings, new TableLayout(context, layout)) { Comments = comments, MarkupPane = pane, Settings = paginator.Settings };
         var body = new StringBuilder();
         // One named @page per paper size: printed, every page keeps its own size and nothing is added around it.
         var papers = new List<(double Width, double Height)>();

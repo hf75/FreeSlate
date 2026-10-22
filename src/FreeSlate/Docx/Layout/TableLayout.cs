@@ -683,6 +683,9 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>Whether a table nested in a cell is being laid out.</summary>
     bool inCell;
 
+    /// <summary>The settings the paragraphs of the table or blocks being laid out are laid out under (see Layout, Blocks).</summary>
+    TextSettings settings = new();
+
     /// <summary>Whether a table cell's blocks are being laid out (not a text box's in it).</summary>
     bool cellBlocks;
 
@@ -743,18 +746,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return result;
     }
 
+    /// <param name="settings">The settings the cells' paragraphs are laid out under (see TextSettings).</param>
     /// <param name="before">The style of the paragraph before the table (<see cref="NoParagraph"/> for none), which contextual spacing compares its first paragraph with.</param>
     /// <param name="joined">The bottom lines of a table right before this one (<see cref="TableBox.BottomEdges"/>), which it continues.</param>
-    public TableBox Layout(TableModel table, double available, PageFields? fields = null, string? before = NoParagraph,
+    public TableBox Layout(TableModel table, double available, TextSettings settings, PageFields? fields = null, string? before = NoParagraph,
         IReadOnlyList<(double From, double To, BorderLine? Line)>? joined = null)
     {
         // Lines in table cells snap to the line grid only where the document says w:adjustLineHeightInTable (measured
         // with docx/local/ygc-12, -15: 11 pt Yu Gothic lines 18.4 pt apart in a cell under an 18 pt grid, two pitches
         // in the body; ygc-12-adj, -15-adj: two pitches in the cell too; docx/external/libreoffice/extras-uiwriter/
         // tdf128375).
-        var pitch = paragraphs.Settings.LinePitch;
-        if (!context.Profile.AdjustsLineHeightInTables)
-            paragraphs.Settings = paragraphs.Settings with { LinePitch = null };
+        var outer = this.settings;
+        this.settings = context.Profile.AdjustsLineHeightInTables ? settings : settings with { LinePitch = null };
         TableBox box;
         try
         {
@@ -762,7 +765,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            paragraphs.Settings = paragraphs.Settings with { LinePitch = pitch };
+            this.settings = outer;
         }
         // The markup view marks every line of a table whose formatting changed; the balloon hangs from its first line.
         if (table.Change is { } change)
@@ -1013,18 +1016,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // paginator cuts the row under the section's (a cell's lines keep off the line grid where the table
                     // turned it off; measured with docx/local/nfg-*: lines of a cell 13.8 pt apart under a grid of 18 pt
                     // on both sides of a cut through its nested table, modes 11 and 15).
-                    var (inside, nested, settings, cellLeft) = (cellInside, inCell, paragraphs.Settings, textLeft);
+                    var (inside, nested, first, cellLeft) = (cellInside, inCell, settings, textLeft);
                     laidAgain[cell] = cuts =>
                     {
-                        var was = (cellInside, inCell, paragraphs.Settings);
-                        (cellInside, inCell, paragraphs.Settings) = (inside, nested, settings);
+                        var was = (cellInside, inCell, settings);
+                        (cellInside, inCell, settings) = (inside, nested, first);
                         try
                         {
                             return Content(cell, cellWidth, fields, cellNeighbors, cellEdge, cellShading, cuts) with { Left = cellLeft, Width = cellWidth };
                         }
                         finally
                         {
-                            (cellInside, inCell, paragraphs.Settings) = was;
+                            (cellInside, inCell, settings) = was;
                         }
                     };
                 }
@@ -2202,7 +2205,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 {
                     // Tracked deleted text counts, shown or not (measured in Word's PDF of LibreOffice's extras-ooxmlexport/
                     // testTrackChangesDeletedTableCell: the columns where its deleted "ABCD" puts them in the markup view).
-                    var (pmin, pmax) = paragraphs.Widths(paragraph, fields, pictures: true, empty: false, deleted: true);
+                    var (pmin, pmax) = paragraphs.Widths(paragraph, settings, fields, pictures: true, empty: false, deleted: true);
                     min = Math.Max(min, pmin);
                     max = Math.Max(max, pmax);
                     // Floating drawings that text goes around count with their width and effect extents, not their
@@ -2254,15 +2257,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// Blocks laid out in a width as in a table cell or a text box: lines, fills and strokes relative to their top
     /// left, and their height; <paramref name="unaligned"/> leaves the lines where they begin, for measuring them.
     /// </summary>
+    /// <param name="settings">The settings the blocks' paragraphs are laid out under (see TextSettings).</param>
     /// <param name="direction">Vertical lines and upright East Asian characters, as a text box of such text has them.</param>
-    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, PageFields? fields, bool unaligned = false,
-        (bool Vertical, bool Turn)? direction = null)
+    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height) Blocks(List<Block> blocks, double width, TextSettings settings,
+        PageFields? fields, bool unaligned = false, (bool Vertical, bool Turn)? direction = null)
     {
-        var (wasCell, wasInCell, was) = (cellBlocks, inCell, paragraphs.Settings);
+        var (wasCell, wasInCell, outer) = (cellBlocks, inCell, this.settings);
         (cellBlocks, inCell) = (false, false);
-        paragraphs.Settings = paragraphs.Settings with { Unaligned = paragraphs.Settings.Unaligned | unaligned };
+        this.settings = settings with { Unaligned = settings.Unaligned | unaligned };
         if (direction is { } turned)
-            paragraphs.Settings = paragraphs.Settings with { Vertical = turned.Vertical, TurnEastAsian = turned.Turn };
+            this.settings = this.settings with { Vertical = turned.Vertical, TurnEastAsian = turned.Turn };
         try
         {
             var content = Content(blocks, width, fields);
@@ -2271,8 +2275,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            (cellBlocks, inCell) = (wasCell, wasInCell);
-            paragraphs.Settings = paragraphs.Settings with { Unaligned = was.Unaligned, Vertical = was.Vertical, TurnEastAsian = was.TurnEastAsian };
+            (cellBlocks, inCell, this.settings) = (wasCell, wasInCell, outer);
         }
     }
 
@@ -2394,7 +2397,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             && (string?)body.Attribute("vert") is null or "horz")
         {
             var (l, t, r, b) = PageRenderer.Insets(body, shape, w, h, context.Theme);
-            var (_, _, _, height) = Blocks(text, Math.Max(1, w - l - r), fields);
+            var (_, _, _, height) = Blocks(text, Math.Max(1, w - l - r), settings, fields);
             h = height + t + b;
         }
         return (w, h);
@@ -2462,10 +2465,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         RgbColor? shading = null, IReadOnlyList<CellCut>? cuts = null)
     {
         var was = cellBlocks;
-        var behind = paragraphs.Settings.Background;
+        var behind = settings.Background;
         cellBlocks = true;
         // The cell's shading is behind its text, else what is behind the table (catalog: run.basic, automatic color).
-        paragraphs.Settings = paragraphs.Settings with { Background = shading ?? behind };
+        settings = settings with { Background = shading ?? behind };
         try
         {
             return CellBlocks(cell, width, fields, neighbors, edge, cuts);
@@ -2473,7 +2476,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         finally
         {
             cellBlocks = was;
-            paragraphs.Settings = paragraphs.Settings with { Background = behind };
+            settings = settings with { Background = behind };
         }
     }
 
@@ -2491,8 +2494,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         if (!Rotated(cell))
         {
-            var wasInCell = paragraphs.Settings.InCell;
-            paragraphs.Settings = paragraphs.Settings with { InCell = true };
+            var wasInCell = settings.InCell;
+            settings = settings with { InCell = true };
             try
             {
                 var content = Directed(cell, () => Content(cell.Blocks, width, fields, neighbors.Before, neighbors.After, edge, floats: true, cuts: cuts));
@@ -2508,14 +2511,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
             finally
             {
-                paragraphs.Settings = paragraphs.Settings with { InCell = wasInCell };
+                settings = settings with { InCell = wasInCell };
             }
         }
         // Measured unaligned: a centered line's length is its text's, not its place in the unwrapped width (measured
         // with docx/external/powertools/HC008-Test-03: "notes" centered in a btLr cell of a row 72 pt high keeps the
         // row 72 pt high, not 810).
-        var unaligned = paragraphs.Settings.Unaligned;
-        paragraphs.Settings = paragraphs.Settings with { Unaligned = true };
+        var unaligned = settings.Unaligned;
+        settings = settings with { Unaligned = true };
         try
         {
             var content = Directed(cell, () => Content(cell.Blocks, Unwrapped, fields));
@@ -2524,7 +2527,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         }
         finally
         {
-            paragraphs.Settings = paragraphs.Settings with { Unaligned = unaligned };
+            settings = settings with { Unaligned = unaligned };
         }
     }
 
@@ -2554,15 +2557,15 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var direction = cell.Format.TextDirection;
         if (direction is null or "lrTb")
             return laid();
-        var (vertical, turn) = (paragraphs.Settings.Vertical, paragraphs.Settings.TurnEastAsian);
-        paragraphs.Settings = paragraphs.Settings with { Vertical = Rotated(cell), TurnEastAsian = direction is "tbRlV" or "tbLrV" or "lrTbV" };
+        var (vertical, turn) = (settings.Vertical, settings.TurnEastAsian);
+        settings = settings with { Vertical = Rotated(cell), TurnEastAsian = direction is "tbRlV" or "tbLrV" or "lrTbV" };
         try
         {
             return laid();
         }
         finally
         {
-            paragraphs.Settings = paragraphs.Settings with { Vertical = vertical, TurnEastAsian = turn };
+            settings = settings with { Vertical = vertical, TurnEastAsian = turn };
         }
     }
 
@@ -2703,8 +2706,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         }
                     }
                     var laid = around.Any(f => f.Bottom > linesTop)
-                        ? paragraphs.Layout(paragraph, width, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width), from: paragraph.ResumeAt ?? 0)
-                        : paragraphs.Layout(paragraph, width, fields, from: paragraph.ResumeAt ?? 0);
+                        ? paragraphs.Layout(paragraph, width, settings, fields, room: slot => Paginator.Room(around, linesTop, slot, 0, width), from: paragraph.ResumeAt ?? 0)
+                        : paragraphs.Layout(paragraph, width, settings, fields, from: paragraph.ResumeAt ?? 0);
                     foreach (var line in laid)
                     {
                         y += line.Skip;
@@ -2785,7 +2788,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     // its cell's own margins, no shift or widening of the text's tables before Word 2013).
                     var floatInCell = inCell;
                     inCell = cellBlocks;
-                    var box = Layout(floating.Table, width, fields, previous);
+                    var box = Layout(floating.Table, width, settings, fields, previous);
                     inCell = floatInCell;
                     double Twips(string name) => position.Twips(name) ?? 0;
                     var x = position.Attr("tblpXSpec") switch
@@ -2840,7 +2843,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     y += first ? 0 : after;
                     var wasInCell = inCell;
                     inCell = cellBlocks;
-                    var box = Layout(nested.Table, width, fields, previous);
+                    var box = Layout(nested.Table, width, settings, fields, previous);
                     inCell = wasInCell;
                     (y, var tableTop) = Rows(box, 0, y, b);
                     Frame(box, 0, tableTop, y, fills);

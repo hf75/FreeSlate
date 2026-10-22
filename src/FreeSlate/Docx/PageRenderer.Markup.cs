@@ -176,7 +176,7 @@ public sealed partial class PageRenderer
         var y = double.NegativeInfinity;
         foreach (var (_, anchor) in anchors.OrderBy(a => a.Line).ThenBy(a => a.Anchor.X))
         {
-            var (lines, fills, strokes, height) = blocks!.Blocks(anchor.Content, BalloonWidth - 2 * BalloonInsetX, fields);
+            var (lines, fills, strokes, height) = blocks!.Blocks(anchor.Content, BalloonWidth - 2 * BalloonInsetX, Settings, fields);
             var balloonTop = Math.Max(anchor.LineTop, y + BalloonGap);
             var balloonHeight = BalloonInsetTop + height + BalloonInsetBottom;
             var left = pane + BalloonLeft;
