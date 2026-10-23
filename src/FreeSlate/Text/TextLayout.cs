@@ -62,7 +62,17 @@ public interface IInlineObject
 public sealed record TextLink(string? Href, string? Action, string? Tooltip, string? Zoom = null);
 
 /// <summary>A piece of text with one style; Text "\n" is a line break (a:br).</summary>
-public sealed record TextRun(string Text, TextStyle Style);
+public sealed record TextRun(string Text, TextStyle Style)
+{
+    /// <summary>
+    /// The offset of its first character in its paragraph's own text (Pptx.SlideText), which its places carry (see
+    /// PlacesItem); -1 where it has none.
+    /// </summary>
+    public int Source { get; init; } = -1;
+
+    /// <summary>Whether all its characters stand for the one character at Source: a field's text, an equation.</summary>
+    public bool Atomic { get; init; }
+}
 
 /// <summary>Line spacing: a multiple of single spacing (1.0 = 100 %) or an exact height in points.</summary>
 public readonly record struct LineSpacing(bool Exact, double Value)
@@ -124,6 +134,12 @@ public sealed class ParagraphInput
 
     /// <summary>Commas and full stops may hang past the end of a line (a:pPr/@hangingPunct, with the kinsoku rules).</summary>
     public bool HangingPunctuation { get; init; }
+
+    /// <summary>The paragraph's id in its document, which the places of its lines carry (see PlacesItem); null for none.</summary>
+    public int? Id { get; init; }
+
+    /// <summary>The offset of the paragraph's mark in its own text (see TextRun.Source): the text's length.</summary>
+    public int Mark { get; init; }
 }
 
 /// <summary>A run placed on a line: X from the left edge of the text area, in points.</summary>
@@ -145,6 +161,9 @@ public sealed record PlacedRun(string Text, TextStyle Style, double X, double Wi
 
     /// <summary>Where the run's text starts in its paragraph's text; -1 for bullets.</summary>
     public int Start { get; init; } = -1;
+
+    /// <summary>Whether its last character is an ellipsis the layout added (bodyPr vertOverflow ellipsis).</summary>
+    public bool Ellipsis { get; init; }
 }
 
 public sealed class LaidOutLine
@@ -168,6 +187,60 @@ public sealed class LaidOutLine
     public double Start { get; init; }
 
     public List<PlacedRun> Runs { get; } = [];
+
+    /// <summary>The paragraph's id that its places carry (see ParagraphInput.Id), null for none.</summary>
+    public int? Id { get; set; }
+
+    /// <summary>
+    /// For every character of ParagraphText the offset in its paragraph's own text that it shows (see TextRun.Source), -1
+    /// for one that shows none.
+    /// </summary>
+    public int[] Sources { get; set; } = [];
+
+    /// <summary>Whether the line is its paragraph's last, which ends with the paragraph's mark (at Mark in its own text).</summary>
+    public bool Last { get; set; }
+
+    public int Mark { get; set; }
+
+    /// <summary>The index in ParagraphText of the line break (a:br) that ends the line, -1 where none does.</summary>
+    public int Break { get; set; } = -1;
+
+    /// <summary>
+    /// The line's tabs, which draw nothing: each one's index in ParagraphText and where it reaches from and to, from the
+    /// left of the text area (points), in reading order.
+    /// </summary>
+    public List<(int Index, double From, double To)> Tabs { get; } = [];
+
+    /// <summary>
+    /// Where the line's text begins in reading order with its alignment, from the left of the text area (points): where
+    /// the cursor of an empty line stands.
+    /// </summary>
+    public double Origin { get; set; }
+
+    /// <summary>Moves what the line places across by <paramref name="dx"/> points: its runs, its tabs and its origin.</summary>
+    public void Shift(double dx)
+    {
+        var runs = Runs.Select(r => r with { X = r.X + dx }).ToList();
+        Runs.Clear();
+        Runs.AddRange(runs);
+        for (var i = 0; i < Tabs.Count; i++)
+            Tabs[i] = (Tabs[i].Index, Tabs[i].From + dx, Tabs[i].To + dx);
+        Origin += dx;
+    }
+
+    /// <summary>A copy of the line at another baseline, its runs moved across by <paramref name="dx"/> points (see Shift).</summary>
+    public LaidOutLine Moved(double dx, double baseline)
+    {
+        var moved = new LaidOutLine
+        {
+            Paragraph = Paragraph, ParagraphText = ParagraphText, Baseline = baseline, Ascent = Ascent, Descent = Descent, Width = Width, Align = Align,
+            Start = Start, Id = Id, Sources = Sources, Last = Last, Mark = Mark, Break = Break, Origin = Origin,
+        };
+        moved.Runs.AddRange(Runs);
+        moved.Tabs.AddRange(Tabs);
+        moved.Shift(dx);
+        return moved;
+    }
 }
 
 public sealed class LaidOutText
@@ -212,6 +285,7 @@ public static class TextLayout
             foreach (var line in BreakLines(paragraph, width, wrap))
             {
                 line.Paragraph = p;
+                line.Id = paragraph.Id;
                 line.Baseline = cursor + line.Ascent;
                 cursor = line.Baseline + line.Descent;
                 result.Lines.Add(line);
@@ -246,16 +320,21 @@ public static class TextLayout
 
     static List<LaidOutLine> BreakLines(ParagraphInput paragraph, double width, bool wrap)
     {
-        // Flatten the runs into one string with a style per character (caps applied).
+        // Flatten the runs into one string with a style per character (caps applied, which keeps the length) and the
+        // offset each character shows in its paragraph's own text.
         var chars = new System.Text.StringBuilder();
         var styles = new List<TextStyle>();
+        var sources = new List<int>();
         foreach (var run in paragraph.Runs)
         {
             var text = run.Style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
             chars.Append(text);
             styles.AddRange(Enumerable.Repeat(run.Style, text.Length));
+            for (var i = 0; i < text.Length; i++)
+                sources.Add(run.Source < 0 ? -1 : run.Atomic ? run.Source : run.Source + i);
         }
         var all = chars.ToString();
+        var offsets = sources.ToArray();
         var breaks = LineBreaker.Opportunities(all, paragraph.Kinsoku);
         // Bidi levels of the paragraph (catalog: text.rtl); neutrals the rules leave open follow their run's language.
         var levels = Bidi.Levels(all, paragraph.RightToLeft, i => i < styles.Count ? styles[i].RightToLeft : null);
@@ -297,20 +376,35 @@ public static class TextLayout
         var textStart = paragraph.Bullet != null ? Math.Max(Math.Max(marginLeft, firstStart), BulletAt(paragraph) + bulletWidth) : firstStart;
 
         var current = new List<(int Start, int End, double X)>();
+        // The tabs on the current line, where each reaches from and to before the line is aligned.
+        var lineTabs = new List<(int Index, double From, double To)>();
         var x = textStart;
         var lineStart = textStart;
         var lastContentEnd = textStart;
         var first = true;
         var endsWithBreak = false;
 
-        void Finish(bool lastOfParagraph)
+        void Finish(bool lastOfParagraph, int lineBreak = -1)
         {
-            var line = BuildLine(paragraph, all, styles, levels, current, lineStart, lastContentEnd, width, first, lastOfParagraph, bulletWidth);
+            var line = BuildLine(paragraph, all, styles, levels, current, lineStart, lastContentEnd, width, first, lastOfParagraph, bulletWidth, lineTabs);
             line.ParagraphText = all;
+            line.Sources = offsets;
+            line.Last = lastOfParagraph;
+            line.Mark = paragraph.Mark;
+            line.Break = lineBreak;
             lines.Add(line);
             current = [];
+            lineTabs = [];
             first = false;
             x = lineStart = lastContentEnd = marginLeft;
+        }
+
+        // A tab from the position it stands at to its stop.
+        void Tab(Segment tab)
+        {
+            var from = x;
+            x = TabStop(paragraph, all, styles, tab.End, x);
+            lineTabs.Add((tab.Start, from, x));
         }
 
         // A word longer than the room left, broken between characters. Its trailing spaces hang at the end of its last
@@ -349,7 +443,7 @@ public static class TextLayout
             if (segment.IsBreak)
             {
                 current.Add((segment.Start, segment.Start, x));   // keeps the break's style for empty lines
-                Finish(false);
+                Finish(false, segment.Start);
                 endsWithBreak = true;
                 tabs.Clear();
                 continue;
@@ -357,7 +451,7 @@ public static class TextLayout
             if (segment.IsTab)
             {
                 tabs.Add(segment);
-                x = TabStop(paragraph, all, styles, segment.End, x);
+                Tab(segment);
                 continue;
             }
 
@@ -373,9 +467,10 @@ public static class TextLayout
             {
                 if (current.Count > 0)
                 {
+                    lineTabs.RemoveRange(lineTabs.Count - tabs.Count, tabs.Count);
                     Finish(false);
                     foreach (var tab in tabs)
-                        x = TabStop(paragraph, all, styles, tab.End, x);
+                        Tab(tab);
                 }
                 if (x + content - hanging > limit + 0.01)
                 {
@@ -405,9 +500,10 @@ public static class TextLayout
         return lines;
     }
 
+    /// <param name="tabs">The line's tabs, where each reaches from and to before the line is aligned (see LaidOutLine.Tabs).</param>
     static LaidOutLine BuildLine(ParagraphInput paragraph, string all, List<TextStyle> styles, byte[] levels,
         List<(int Start, int End, double X)> pieces, double lineStart, double contentEnd, double width,
-        bool first, bool last, double bulletWidth)
+        bool first, bool last, double bulletWidth, List<(int Index, double From, double To)> tabs)
     {
         // Vertical metrics: the largest ascent and descent of the line's runs. The line break ending it counts only
         // on an otherwise empty line (measured: a 60 pt break after 20 pt text leaves the line 24 pt high, a 60 pt
@@ -448,7 +544,7 @@ public static class TextLayout
         if (justify && available > lineWidth && CountInnerSpaces(all, pieces) is var spaces and > 0)
             spaceExtra = (available - lineWidth) / spaces;
 
-        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth, Align = paragraph.Align, Start = lineStart };
+        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth, Align = paragraph.Align, Start = lineStart, Origin = lineStart + offset };
         if (first && paragraph.Bullet is { } bullet)
             line.Runs.Add(new PlacedRun(bullet.Text, bullet.Style, BulletAt(paragraph) + offset, bulletWidth)
             {
@@ -475,6 +571,12 @@ public static class TextLayout
                 runStart = i;
             }
             shift += spaceExtra * all[start..end].Count(c => c == ' ');
+        }
+        // A tab moves with the line's alignment and with the room justification gave the spaces before it.
+        foreach (var (index, from, to) in tabs)
+        {
+            var widened = spaceExtra * pieces.Where(p => p.End <= index).Sum(p => all[p.Start..p.End].Count(c => c == ' '));
+            line.Tabs.Add((index, from + offset + widened, to + offset + widened));
         }
         return line;
     }
@@ -539,7 +641,10 @@ public static class TextLayout
             x = lineStart + paragraph.Align switch { "ctr" => (available - used) / 2, "r" => available - used, _ => 0 };
         }
 
-        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = used, Align = paragraph.Align, Start = lineStart };
+        var line = new LaidOutLine
+        {
+            Ascent = ascent, Descent = descent, Width = used, Align = paragraph.Align, Start = lineStart, Origin = paragraph.RightToLeft ? x + used : x,
+        };
         if (first && paragraph.Bullet is { } bullet)
         {
             var bulletAt = BulletAt(paragraph);
@@ -621,7 +726,10 @@ public static class TextLayout
         // The shorter line keeps its paragraph's alignment.
         var shorter = line.Width - Width(cut + "\u2026");
         start += line.Align switch { "ctr" => shorter / 2, "r" => shorter, _ => 0 };
-        line.Runs.Add(new PlacedRun(cut + "\u2026", last.Style, start, Width(cut + "\u2026")) { Start = runs[0].Start });
+        line.Runs.Add(new PlacedRun(cut + "\u2026", last.Style, start, Width(cut + "\u2026")) { Start = runs[0].Start, Ellipsis = true });
+        line.Tabs.Clear();
+        line.Break = -1;
+        line.Origin = start;
     }
 
     /// <summary>
@@ -640,9 +748,7 @@ public static class TextLayout
             var shift = line.Align switch { "ctr" => 0, "r" => -free, _ => free };
             if (shift == 0)
                 continue;
-            var runs = line.Runs.Select(r => r with { X = r.X + shift }).ToList();
-            line.Runs.Clear();
-            line.Runs.AddRange(runs);
+            line.Shift(shift);
         }
     }
 

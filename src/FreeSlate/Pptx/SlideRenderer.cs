@@ -268,6 +268,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         Camera? textCamera = null;
         var flatText = false;
         var textLayer = "";
+        // The places of text drawn as markup (see PlacesOf), where it was laid out flat in the shape.
+        List<SceneItem> textPlaces = [];
         var backdropText = false;
         var overlay = effects?.Element(Ns.A + "fillOverlay") is { } fillOverlay && FillReader.FindFill(fillOverlay) is { } overlayFill
             ? (Fill: FillReader.Read(overlayFill, slide.Colors, slide.Images(part), slide.ImageSizes(part)), Blend: fillOverlay.Str("blend") ?? "over")
@@ -606,7 +608,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             // Text the slide show restyles is drawn in each formatting too (not 3D text).
             if (textCamera == null && shapeId != null && textItems.Count > 0 && Restyled.TryGetValue(shapeId, out var formattings))
                 textItems = [new MarkupItem(TextVariants.Merge(HtmlScene.Markup(textItems),
-                    formattings.Select(f => (f.Key, HtmlScene.Markup(text.Render(textChain.With(f), textGeometry, pw, flipH ^ flipV)))).ToList(), textChain.Units))];
+                    formattings.Select(f => (f.Key, HtmlScene.Markup(text.Render(textChain.With(f), textGeometry, pw, flipH ^ flipV)))).ToList(), textChain.Units)),
+                    .. PlacesOf(textItems)];
             if (upright && turn != 0 && textItems.Count > 0)
                 textItems = [TransformItem.Rotation(-turn, pw / 2, ph / 2, textItems)];
             if (Math.Abs(textTurn) > 1e-9 && textItems.Count > 0)
@@ -619,6 +622,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 html.Replace(BackdropTextToken, Silhouette(HtmlScene.Markup(textItems)));
                 backdropText = false;
             }
+            if (textCamera != null && glyphOutlines is { Count: > 0 } || flatText || dag != null || solidBody)
+                textPlaces = PlacesOf(textItems);
             if (textCamera != null && glyphOutlines is { Count: > 0 })
                 textLayer = Text3D(textCamera, Lighting.For(textScene, textShape3d, flat: (textShape3d.Long("extrusionH") ?? 0) <= 0 && textShape3d?.Element(Ns.A + "bevelT") == null
                                                                                       && textShape3d?.Element(Ns.A + "bevelB") == null && (textShape3d.Long("contourW") ?? 0) <= 0),
@@ -691,6 +696,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{bevelShading}</svg>");
             html.Append(textLayer).Append("</div>");
             items.Add(new MarkupItem(html.ToString()));
+            if (textPlaces.Count > 0)
+                items.Add(new BoxItem((pw, ph), ToPx(matrix), "", textPlaces));
             return;
         }
         var shapeCanvas = new SvgItem(sw, sh, canvas);
@@ -699,7 +706,38 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (missing != null)
             shapeBox.Items.Add(missing);
         AddMarkup(shapeBox.Items, textLayer);
+        shapeBox.Items.AddRange(textPlaces);
         items.Add(shapeBox);
+    }
+
+    /// <summary>
+    /// The places among text's scene items (see PlacesItem), in the transforms and groups they stand in, and nothing
+    /// else: what keeps them where the text was laid out where it is drawn as markup (3D text, flat text of a 3D body,
+    /// text the slide show restyles or an effect graph draws). Text being edited stands flat in its shape, as PowerPoint
+    /// shows it then.
+    /// </summary>
+    static List<SceneItem> PlacesOf(List<SceneItem> items)
+    {
+        var kept = new List<SceneItem>();
+        foreach (var item in items)
+        {
+            switch (item)
+            {
+                case PlacesItem places:
+                    kept.Add(places);
+                    break;
+                case TransformItem transformed when PlacesOf(transformed.Items) is { Count: > 0 } inner:
+                    kept.Add(transformed with { Items = inner });
+                    break;
+                case SvgGroupItem group when PlacesOf(group.Items) is { Count: > 0 } inner:
+                    kept.Add(new SvgGroupItem("", inner) { Transform = group.Transform });
+                    break;
+                case IHoldsItems holder and not (BoxItem or RotatedItem) when PlacesOf(holder.Items) is { Count: > 0 } inner:
+                    kept.AddRange(inner);   // links, filters, reflections, which move nothing
+                    break;
+            }
+        }
+        return kept;
     }
 
     /// <summary>

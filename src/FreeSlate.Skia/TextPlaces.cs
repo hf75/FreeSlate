@@ -6,8 +6,8 @@ namespace FreeSlate.Skia;
 /// <summary>
 /// The places of a page's text where its scene draws them (see PlacesItem; SkiaScene.Draw gathers them): which place a
 /// point hits, where the cursor of a place stands, and what a selection between two places covers, in the units the page
-/// was drawn in (CSS pixels from its top left). A place is a paragraph's Block.Id and an offset in its text
-/// (Docx.ParagraphText).
+/// was drawn in (CSS pixels from its top left). A place is a paragraph's id (Block.Id; a slide paragraph's in its
+/// PresentationDocument) and an offset in its text (Docx.ParagraphText, Pptx.SlideText).
 /// </summary>
 public sealed class TextPlaces(IReadOnlyList<(SKMatrix ToPage, PlacesItem Line)> lines)
 {

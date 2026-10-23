@@ -312,11 +312,12 @@ public sealed record HiddenTextItem(string Text, double X, double[] Positions, d
 
 /// <summary>
 /// The places of a laid out line, where a cursor stands and what a selection covers (not drawn): the paragraph (its
-/// Block.Id, unique in its document), the line's top and bottom, and for each character the line shows its offset in the
-/// paragraph's text (Docx.ParagraphText) and the x where it begins and ends in reading order (the end left of the start
-/// in right-to-left text), in the line's order; the paragraph's last line ends with its mark, of no width. All the
+/// Block.Id, unique in its document; a slide paragraph's id in its PresentationDocument), the line's top and bottom, and
+/// for each character the line shows its offset in the paragraph's text (Docx.ParagraphText, Pptx.SlideText) and the x
+/// where it begins and ends in reading order (the end left of the start in right-to-left text), in the line's order; the
+/// paragraph's last line ends with its mark, of no width (a slide's line that a line break ends, with the break). All the
 /// characters of a field's result or a note's mark have the field's or the reference's offset; what the layout added (a
-/// list number, a hyphen of automatic hyphenation) has none.
+/// list number, a bullet, a hyphen of automatic hyphenation, an ellipsis) has none.
 /// </summary>
 public sealed record PlacesItem(int Block, double Top, double Bottom, int[] Offsets, double[] Starts, double[] Ends) : SceneItem;
 

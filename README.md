@@ -214,7 +214,8 @@ draws its pages with Skia (*Browser* shows FreeSlate's HTML in the platform's we
 page width, whole page, 50 to 200 %), jumps to a page, follows links (to bookmarks of the document or to the web),
 puts a cursor where one clicks and selects by dragging or with Shift and the arrow keys (the status bar names the
 paragraph and the place), shows the document with its markup, prints it, saves it as PDF (or PDF/A for archiving) or
-HTML, and loads it again when it is saved (F5 does too). A document that cannot be converted shows the whole exception. On Windows with Word
+HTML, and loads it again when it is saved (F5 does too). A document that cannot be converted shows the whole exception.
+It opens presentations too, their slides drawn by Skia with a cursor and selections in their text. On Windows with Word
 installed, *Word daneben* puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with
 a slider between the two, and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM,
 as the fidelity tool renders its references, and Windows rasterizes the pages.
@@ -254,7 +255,7 @@ More in [docs/fidelity.md](docs/fidelity.md).
 | `src/FreeSlate/` | the rendering engine |
 | `src/FreeSlate.Skia/` | the Skia backend: pages and slides drawn from their scenes, PNG and PDF |
 | `src/FreeSlate.Presenter/` | the presenter app (Avalonia) |
-| `src/FreeSlate.Viewer/` | the viewer app for Word documents (Avalonia) |
+| `src/FreeSlate.Viewer/` | the viewer app for Word documents and presentations (Avalonia) |
 | `tools/Fidelity/` | builds the test decks through PowerPoint, renders references, measures fidelity |
 | `tools/SpecTools/` | downloads the specifications, builds the format catalog, checks the feature catalog |
 | `tools/SmartArtDecks/` | scripts that build SmartArt probe decks through PowerPoint |

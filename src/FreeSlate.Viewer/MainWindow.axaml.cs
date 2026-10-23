@@ -18,12 +18,13 @@ namespace FreeSlate.Viewer;
 /// <summary>
 /// Opens a Word document and shows its pages drawn by Skia, or FreeSlate's HTML document in the platform's web view, as
 /// Word prints them; on Windows with Word installed also Word's own pages, beside FreeSlate's, over them or against
-/// them.
+/// them. A PowerPoint presentation shows its slides drawn by Skia, as PowerPoint shows them.
 /// </summary>
 public partial class MainWindow : Window
 {
     static readonly string PageScript = Resource("viewer.js");
     static readonly string[] Extensions = [".docx", ".docm", ".dotx", ".dotm"];
+    static readonly string[] SlideExtensions = [".pptx", ".pptm", ".ppsx", ".ppsm", ".potx", ".potm"];
     // The zoom box's entries as the page script takes them: a fit or a factor.
     static readonly string[] Zooms = ["'auto'", "'width'", "'page'", "0.5", "0.75", "1", "1.25", "1.5", "2"];
     // The compare box's entries.
@@ -54,9 +55,9 @@ public partial class MainWindow : Window
     FileSystemWatcher? watcher;
 
     /// <summary>A document as shown: the file, the file FreeSlate and Word read (a copy when another program holds
-    /// the document open), its password, whether with markup, its HTML or its pages' scenes (as Skia draws them), and
-    /// its version, which Word's renderings belong to.</summary>
-    sealed record View(string Path, string Source, string? Password, bool Markup, string? Html, List<PageScene>? Scenes, string Key);
+    /// the document open), its password, whether with markup, its HTML or its pages' scenes (as Skia draws them), its
+    /// version, which Word's renderings belong to, and whether it is a presentation (its pages slides).</summary>
+    sealed record View(string Path, string Source, string? Password, bool Markup, string? Html, List<PageScene>? Scenes, string Key, bool Slides = false);
 
     public MainWindow()
     {
@@ -147,10 +148,14 @@ public partial class MainWindow : Window
 
     static bool IsWordFile(string path) => Extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
+    static bool IsPresentation(string path) => SlideExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
     static string? Dropped(DragEventArgs e) =>
-        e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).FirstOrDefault(p => p != null && IsWordFile(p));
+        e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).FirstOrDefault(p => p != null && (IsWordFile(p) || IsPresentation(p)));
 
     static string Pages(int n) => n == 1 ? "1 Seite" : $"{n} Seiten";
+
+    static string Slides(int n) => n == 1 ? "1 Folie" : $"{n} Folien";
 
     /// <summary>
     /// The web view goes nowhere but to this viewer's documents: a Word file dropped on it is opened, links to the web
@@ -161,7 +166,7 @@ public partial class MainWindow : Window
         if (e.Request is not { } uri || server.Serves(uri) || uri.Scheme is "about" or "data")
             return;
         e.Cancel = true;
-        if (uri.IsFile && IsWordFile(uri.LocalPath))
+        if (uri.IsFile && (IsWordFile(uri.LocalPath) || IsPresentation(uri.LocalPath)))
         {
             var file = uri.LocalPath;
             Dispatcher.UIThread.Post(async () => await LoadAsync(file));
@@ -221,10 +226,15 @@ public partial class MainWindow : Window
         var start = settings.Folder is { } folder && Directory.Exists(folder) ? await StorageProvider.TryGetFolderFromPathAsync(folder) : null;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Word-Dokument öffnen",
+            Title = "Dokument öffnen",
             AllowMultiple = false,
             SuggestedStartLocation = start,
-            FileTypeFilter = [new FilePickerFileType("Word-Dokumente") { Patterns = Extensions.Select(x => "*" + x).ToArray() }],
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Word-Dokumente und PowerPoint-Präsentationen") { Patterns = Extensions.Concat(SlideExtensions).Select(x => "*" + x).ToArray() },
+                new FilePickerFileType("Word-Dokumente") { Patterns = Extensions.Select(x => "*" + x).ToArray() },
+                new FilePickerFileType("PowerPoint-Präsentationen") { Patterns = SlideExtensions.Select(x => "*" + x).ToArray() },
+            ],
         });
         if (files is [var file] && file.TryGetLocalPath() is { } path)
             await LoadAsync(path);
@@ -388,7 +398,9 @@ public partial class MainWindow : Window
         try
         {
             var shown = view;
-            var html = shown.Html ?? await Task.Run(() => DocxConverter.ToHtml(shown.Source, password: shown.Password, markup: shown.Markup));
+            var html = shown.Html ?? await Task.Run(() => shown.Slides
+                ? PptxConverter.ToHtml(shown.Source, password: shown.Password)
+                : DocxConverter.ToHtml(shown.Source, password: shown.Password, markup: shown.Markup));
             await File.WriteAllTextAsync(target, html);
             StatusText.Text = $"Gespeichert: {target}";
         }
@@ -445,13 +457,21 @@ public partial class MainWindow : Window
         try
         {
             var clock = Stopwatch.StartNew();
+            var slides = IsPresentation(path);
             var (source, key) = await Task.Run(() => Readable(path, markup));
-            if (BrowserToggle.IsChecked != true)
+            if (BrowserToggle.IsChecked != true || slides)
             {
-                // The pages drawn by Skia from their scenes, no web view.
-                var scenes = await Task.Run(() => DocxConverter.ToScenes(source, password: password, markup: markup));
+                // The pages drawn by Skia from their scenes, no web view; a presentation's slides with the places of
+                // their text.
+                var scenes = await Task.Run(() =>
+                {
+                    if (!slides)
+                        return DocxConverter.ToScenes(source, password: password, markup: markup);
+                    using var presentation = PresentationDocument.Open(source, password);
+                    return presentation.Scenes().ToList();
+                });
                 seconds = clock.Elapsed.TotalSeconds;
-                view = new View(path, source, password, markup, null, scenes, key);
+                view = new View(path, source, password, markup, null, scenes, key, slides);
                 locked = failed = null;
                 retries = 0;
                 scripted = false;
@@ -464,7 +484,7 @@ public partial class MainWindow : Window
                 pageCount = scenes.Count;
                 PageCount.Text = $"von {pageCount}";
                 Title = $"{name} – FreeSlate Viewer";
-                StatusText.Text = $"{name} · {Pages(pageCount)} · in {seconds.ToString("0.00", CultureInfo.CurrentCulture)} s umgesetzt (Skia)";
+                StatusText.Text = $"{name} · {(slides ? Slides(pageCount) : Pages(pageCount))} · in {seconds.ToString("0.00", CultureInfo.CurrentCulture)} s umgesetzt (Skia)";
                 PrintButton.IsEnabled = SaveButton.IsEnabled = PdfButton.IsEnabled = true;
                 settings.Folder = Path.GetDirectoryName(path);
                 Watch(path);
@@ -609,7 +629,7 @@ public partial class MainWindow : Window
         if (!scripted && view?.Scenes == null || view == null)
             return;
         var mode = Comparisons[Math.Max(0, CompareBox.SelectedIndex)];
-        if (mode == "off" || !wordInstalled)
+        if (mode == "off" || !wordInstalled || view.Slides)
         {
             if (view.Scenes != null)
                 ScenePages.Compare("off", []);
@@ -679,7 +699,7 @@ public partial class MainWindow : Window
     {
         if (rendering != null && rendering == view?.Key)
             return;
-        if (view == null || Comparisons[Math.Max(0, CompareBox.SelectedIndex)] == "off" || !renderings.TryGetValue(view.Key, out var word))
+        if (view == null || view.Slides || Comparisons[Math.Max(0, CompareBox.SelectedIndex)] == "off" || !renderings.TryGetValue(view.Key, out var word))
         {
             WordText.Text = "";
             return;

@@ -15,9 +15,11 @@ public sealed class PresentationContext : IDisposable
 
     /// <param name="fonts">Where fonts are found; <see cref="FontLocator.Default"/> when null.</param>
     /// <param name="embeddedFontsFirst">Use the presentation's embedded fonts even where the family is installed.</param>
-    public PresentationContext(OpcPackage package, FontLocator? fonts = null, bool embeddedFontsFirst = false)
+    /// <param name="lines">Read the parts with line info, for finding their elements in their text (see Opc.PartText).</param>
+    public PresentationContext(OpcPackage package, FontLocator? fonts = null, bool embeddedFontsFirst = false, bool lines = false)
     {
         Package = package;
+        this.lines = lines;
         PresentationPart = package.FirstRelationship("/", "officeDocument")?.Target
                            ?? throw new InvalidDataException("No presentation part (officeDocument relationship) in the package.");
         Presentation = Load(PresentationPart);
@@ -95,6 +97,12 @@ public sealed class PresentationContext : IDisposable
     public bool Word { get; init; }
 
     /// <summary>
+    /// The ids of the paragraphs (a:p) whose places the slides' scenes carry (see PlacesItem), which a document gives them
+    /// (PresentationDocument); null where the scenes have none.
+    /// </summary>
+    public IReadOnlyDictionary<XElement, int>? Paragraphs { get; set; }
+
+    /// <summary>
     /// The major version of the application that saved the presentation (docProps/app.xml AppVersion: 12 Office 2007,
     /// 14 Office 2010 …), null where the package does not say; charts without style part look by it (catalog: chart.formatting).
     /// </summary>
@@ -153,16 +161,21 @@ public sealed class PresentationContext : IDisposable
     /// <summary>The glyph outlines the output uses; a Word document's drawings share the document's.</summary>
     public Html.GlyphCache Glyphs { get; init; } = new();
 
+    readonly bool lines;
+
     public XDocument Load(string part)
     {
         if (!documents.TryGetValue(part, out var document))
         {
-            document = Package.ReadXml(part);
+            document = Package.ReadXml(part, lines);
             MarkupCompatibility.Process(document);
             documents[part] = document;
         }
         return document;
     }
+
+    /// <summary>Forgets a part read before, which the next Load reads anew from the package (after it was given new bytes).</summary>
+    public void Changed(string part) => documents.Remove(part);
 
     public Theme ThemeOf(string masterPart)
     {

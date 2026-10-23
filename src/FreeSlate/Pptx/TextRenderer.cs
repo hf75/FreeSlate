@@ -128,7 +128,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     List<SceneItem> RenderText(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         var txBody = TxBody(chain.Shapes[0].Element);
-        if (txBody == null || !txBody.Elements(Ns.A + "p").Any(p => p.Elements().Any(e => e.Name.LocalName is "r" or "fld" || e.Name == Equations.Equation.A14 + "m")))
+        // A body without text draws nothing; where its paragraphs have places, they are laid out for them alone.
+        if (txBody == null || !txBody.Elements(Ns.A + "p").Any(p => p.Elements().Any(e => e.Name.LocalName is "r" or "fld" || e.Name == Equations.Equation.A14 + "m"))
+            && !(slide.Presentation.Paragraphs is { } ids && txBody.Elements(Ns.A + "p").Any(ids.ContainsKey)))
             return [];
 
         var bodies = chain.Shapes.Select(s => TxBody(s.Element)?.Element(Ns.A + "bodyPr")).ToList();
@@ -263,12 +265,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     if (i > start)
                     {
                         var w = advances[start..i].Sum();
-                        runs.Add(run with { Text = run.Text[start..i], X = x, Width = w });
+                        runs.Add(run with { Text = run.Text[start..i], X = x, Width = w, Start = run.Start < 0 ? -1 : run.Start + start });
                         x += w;
                     }
                     if (upright)
                     {
-                        runs.Add(run with { Text = run.Text[i].ToString(), X = x, Width = advances[i], Upright = true });
+                        runs.Add(run with { Text = run.Text[i].ToString(), X = x, Width = advances[i], Upright = true, Start = run.Start < 0 ? -1 : run.Start + i });
                         x += advances[i];
                     }
                     start = i + 1;
@@ -387,16 +389,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     end++;
             var dx = (rightToLeft ? columns - 1 - c : c) * (columnWidth + gap);
             for (var i = start; i < end; i++)
-            {
-                var line = lines[i];
-                var moved = new LaidOutLine
-                {
-                    Paragraph = line.Paragraph, Ascent = line.Ascent, Descent = line.Descent, Width = line.Width, Align = line.Align,
-                    Baseline = line.Baseline - columnTop, ParagraphText = line.ParagraphText,
-                };
-                moved.Runs.AddRange(line.Runs.Select(r => r with { X = r.X + dx }));
-                result.Lines.Add(moved);
-            }
+                result.Lines.Add(lines[i].Moved(dx, lines[i].Baseline - columnTop));
             height = Math.Max(height, lines[end - 1].Baseline + lines[end - 1].Descent - columnTop);
             start = end;
         }
@@ -649,6 +642,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var effectScale = SvgEffects.TextScale.Of(effectSize);
             TextStyle? formatStyle = null;
             double formatOrigin = 0, formatEnd = double.NaN;
+            // Where each run's format run starts, from which the places of its characters count (see Places).
+            var origins = line.Id != null ? new List<double>(line.Runs.Count) : null;
             foreach (var run in line.Runs)
             {
                 if (!ReferenceEquals(run.Style, formatStyle) || Math.Abs(run.X - formatEnd) > 1e-6)
@@ -657,6 +652,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     formatOrigin = run.X;
                 }
                 formatEnd = run.X + run.Width;
+                origins?.Add(formatOrigin);
                 if (run.Style.Highlight is { } highlight)
                 {
                     items.Add(new ShapeRectItem((left + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt,
@@ -725,8 +721,74 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 else
                     items.AddRange(drawnRun);
             }
+            if (line.Id is { } id)
+                items.Add(Places(id, line, left, baseline, origins!));
         }
         return defs.Length > 0 ? [new DefsItem(defs.ToString()), block] : [block];
+    }
+
+    /// <summary>
+    /// The places of a laid-out line (see PlacesItem), in points from where its text area's left is <paramref name="left"/>,
+    /// from its top to its bottom about its baseline: each character from where its glyphs start to where the next one's
+    /// do, as Text draws them (in whole pixels from the start of its format run, <paramref name="origins"/> each run's),
+    /// right-to-left text from the right; a tab across its room; a line break and the paragraph's mark after the
+    /// line's last character in reading order, or where an empty line's text would begin. Bullets and an ellipsis of
+    /// the layout have none.
+    /// </summary>
+    static PlacesItem Places(int id, LaidOutLine line, double left, double baseline, List<double> origins)
+    {
+        var placed = new List<(int Index, double Start, double End)>();
+        for (var k = 0; k < line.Runs.Count; k++)
+        {
+            var run = line.Runs[k];
+            if (run.Start < 0 || run.Picture != null)
+                continue;
+            var style = run.Style;
+            var origin = left + origins[k];
+            double At(double from) => origin + Math.Floor(from * PxPerPt + 0.5) / PxPerPt;
+            var advances = style.Inline != null ? [run.Width] : style.Font.Data.LayoutAdvances(run.Text, style.Size, style.Kerning, style.LetterSpacing);
+            var from = run.X - origins[k];
+            var before = 0.0;
+            for (var i = 0; i < run.Text.Length - (run.Ellipsis ? 1 : 0); i++)
+            {
+                var after = before + advances[i];
+                var (start, end) = run.RightToLeft ? (from + run.Width - before, from + run.Width - after) : (from + before, from + after);
+                placed.Add((run.Start + i, At(start), At(end)));
+                before = after;
+            }
+        }
+        // Tabs stand only on lines without right-to-left text, whose runs are in reading order.
+        if (line.Tabs.Count > 0)
+        {
+            placed.AddRange(line.Tabs.Select(t => (t.Index, left + t.From, left + t.To)));
+            placed.Sort((a, b) => a.Index.CompareTo(b.Index));
+        }
+        var offsets = new List<int>(placed.Count + 1);
+        var starts = new List<double>(placed.Count + 1);
+        var ends = new List<double>(placed.Count + 1);
+        var (last, at) = (-1, left + line.Origin);
+        foreach (var (index, start, end) in placed)
+        {
+            if (index >= line.Sources.Length || line.Sources[index] < 0)
+                continue;
+            offsets.Add(line.Sources[index]);
+            starts.Add(start);
+            ends.Add(end);
+            if (index > last)
+                (last, at) = (index, end);
+        }
+        var marks = new List<int>(2);
+        if (line.Break >= 0 && line.Break < line.Sources.Length && line.Sources[line.Break] >= 0)
+            marks.Add(line.Sources[line.Break]);
+        if (line.Last)
+            marks.Add(line.Mark);
+        foreach (var mark in marks)
+        {
+            offsets.Add(mark);
+            starts.Add(at);
+            ends.Add(at);
+        }
+        return new PlacesItem(id, baseline - line.Ascent, baseline + line.Descent, [.. offsets], [.. starts], [.. ends]);
     }
 
     /// <summary>
@@ -1341,29 +1403,39 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
         var runs = new List<TextRun>();
         string? displayAlign = null;
+        // Where each child begins in the paragraph's text (SlideText), which its runs' characters show.
+        var offset = 0;
         foreach (var element in p.Elements())
         {
+            var at = offset;
+            offset += SlideText.Length(element);
             switch (element.Name.LocalName)
             {
                 case "r" or "fld":
                     // Every piece of one font slot (Latin, East Asian, complex script) gets its own font.
-                    var t = element.Name.LocalName == "fld" ? FieldText(element) : element.Element(Ns.A + "t")?.Value ?? "";
+                    var field = element.Name.LocalName == "fld";
+                    var t = field ? FieldText(element) : element.Element(Ns.A + "t")?.Value ?? "";
                     var rPr = element.Element(Ns.A + "rPr");
                     // Characters of a symbol font (stored at U+F000 to U+F0FF) take the run's symbol font (a:sym).
                     var symbol = RunElement(rPr, sources, level, "sym")?.Str("typeface") is { Length: > 0 } sym ? sym : null;
+                    var inRun = 0;
                     foreach (var (part, symbolic) in symbol != null ? SymbolPieces(t) : [(t, false)])
                     {
                         if (symbolic)
                         {
-                            runs.Add(new TextRun(part, Style(rPr, sources, level, fontScale, part, symbolFont: symbol)));
+                            runs.Add(new TextRun(part, Style(rPr, sources, level, fontScale, part, symbolFont: symbol)) { Source = field ? at : at + inRun, Atomic = field });
+                            inRun += part.Length;
                             continue;
                         }
                         foreach (var (piece, slot, script) in Scripts.Split(part))
-                            runs.Add(new TextRun(piece, Style(rPr, sources, level, fontScale, piece, slot, script)));
+                        {
+                            runs.Add(new TextRun(piece, Style(rPr, sources, level, fontScale, piece, slot, script)) { Source = field ? at : at + inRun, Atomic = field });
+                            inRun += piece.Length;
+                        }
                     }
                     break;
                 case "br":
-                    runs.Add(new TextRun("\n", Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, null)));
+                    runs.Add(new TextRun("\n", Style(element.Element(Ns.A + "rPr"), sources, level, fontScale, null)) { Source = at });
                     break;
                 case "m" when element.Name.Namespace == Equations.Equation.A14:
                 {
@@ -1376,7 +1448,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     {
                         if (i > 0 || align != null && runs.Count > 0 && runs[^1].Text != "\n")
                             runs.Add(new TextRun("\n", lineStyle));
-                        runs.Add(new TextRun("￼", lineStyle with { Inline = equations[i] }));
+                        runs.Add(new TextRun("￼", lineStyle with { Inline = equations[i] }) { Source = at, Atomic = true });
                     }
                     displayAlign ??= align;
                     break;
@@ -1393,6 +1465,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
         return new ParagraphInput
         {
+            Id = slide.Presentation.Paragraphs is { } ids && ids.TryGetValue(p, out var id) ? id : null,
+            Mark = offset,
             Runs = runs,
             EndStyle = endStyle,
             Align = displayAlign ?? P("algn") ?? "l",
