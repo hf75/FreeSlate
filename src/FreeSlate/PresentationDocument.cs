@@ -33,12 +33,12 @@ public sealed record DeckText(uint Shape, (int Row, int Column)? Cell, IReadOnly
 /// bodies of their shapes and table cells with their paragraphs by ids unique in the document, which they keep through
 /// changes; text replaced at places of a paragraph's text (Pptx.SlideText), a paragraph split in two, joined with the next
 /// or taken away, text and paragraphs given direct formatting (TextFormatting, ParagraphFormatting), as PowerPoint makes
-/// these changes (see Pptx.SlideEdits); shapes placed, taken away and text boxes added (see Pptx.SlideShapes); each change
-/// undone and done again; its slides
-/// as scenes with the places of their text (see PlacesItem); and the presentation saved as PPTX: the paragraphs a change
-/// touched written anew in the XML they were read from, every other byte of the package as it was. A change is made in
-/// the XML of its slide's part, parsed afresh; the part is read again and the slide drawn anew, the unit of reading and
-/// drawing anew.
+/// these changes (see Pptx.SlideEdits); shapes placed, taken away and text boxes added (see Pptx.SlideShapes); slides
+/// duplicated, added from layouts, moved and taken away (see Pptx.SlideList); each change undone and done again; its
+/// slides as scenes with the places of their text (see PlacesItem); and the presentation saved as PPTX: what a change
+/// touched written anew in the XML it was read from, every other byte of the package as it was. A change is made in the
+/// XML of its parts, parsed afresh; the parts are read again and the slides drawn anew, the unit of reading and drawing
+/// anew.
 /// </summary>
 public sealed partial class PresentationDocument : IDisposable
 {
