@@ -43,14 +43,20 @@ public sealed class PageScene
 /// <summary>Something drawn on a page.</summary>
 public abstract record SceneItem;
 
+/// <summary>A scene item that holds items of its own (a box's, a group's, a canvas's), drawn within it.</summary>
+public interface IHoldsItems
+{
+    List<SceneItem> Items { get; }
+}
+
 /// <summary>What is drawn as the HTML or SVG it was written as: the parts not broken down into items yet.</summary>
 public sealed record MarkupItem(string Html) : SceneItem;
 
 /// <summary>The page's own drawing surface, the page's size, with what is drawn on it.</summary>
-public sealed record CanvasItem(double Width, double Height, List<SceneItem> Items) : SceneItem;
+public sealed record CanvasItem(double Width, double Height, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>What stands on a page of vertical text, turned a quarter clockwise about the page's top right corner.</summary>
-public sealed record TurnedItem(double Width, List<SceneItem> Items) : SceneItem;
+public sealed record TurnedItem(double Width, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>A filled rectangle.</summary>
 public sealed record RectItem(double X, double Y, double Width, double Height, RgbColor Color) : SceneItem;
@@ -59,16 +65,16 @@ public sealed record RectItem(double X, double Y, double Width, double Height, R
 public sealed record RuleItem(double X, double Y, double Width, double Height) : SceneItem;
 
 /// <summary>Items turned clockwise by an angle (degrees) about a point: a line of turned text.</summary>
-public sealed record RotatedItem(double Angle, double PivotX, double PivotY, List<SceneItem> Items) : SceneItem;
+public sealed record RotatedItem(double Angle, double PivotX, double PivotY, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>Items that link to a target (a hyperlink's text).</summary>
-public sealed record LinkItem(string Target, List<SceneItem> Items) : SceneItem;
+public sealed record LinkItem(string Target, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>A check box form field's square from its top left, crossed when checked, in 0.48 pt black lines.</summary>
 public sealed record CheckBoxItem(double X, double Y, double Side, double Bottom, bool Checked) : SceneItem;
 
 /// <summary>Items cut at a rectangle in points (a drawing in a table cell, at the cell's inside).</summary>
-public sealed record ClipItem(double X, double Y, double Width, double Height, List<SceneItem> Items) : SceneItem;
+public sealed record ClipItem(double X, double Y, double Width, double Height, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>
 /// A bitmap stretched over a rectangle in points: its pixels' red, green, blue and alpha bytes, row by row (the shading
@@ -82,13 +88,13 @@ public sealed record BitmapItem(double X, double Y, double Width, double Height,
 /// attributes (the player's shape id, accessibility). A shape's box holds its canvas (SvgItem), then what stands over
 /// it (a picture's media, text laid out flat).
 /// </summary>
-public sealed record BoxItem((double Width, double Height)? Size, Matrix? Transform, string Attributes, List<SceneItem> Items) : SceneItem;
+public sealed record BoxItem((double Width, double Height)? Size, Matrix? Transform, string Attributes, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>A drawing surface in CSS pixels, Width by Height, with what is drawn on it (a shape's geometry, a chart, a table).</summary>
-public sealed record SvgItem(double Width, double Height, List<SceneItem> Items) : SceneItem;
+public sealed record SvgItem(double Width, double Height, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>The shapes of a group (DrawingML grpSp), in HTML a div of class grp with the group's own attributes (in Word its effects' filter).</summary>
-public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : SceneItem;
+public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>
 /// A path of a shape's geometry, its SVG path data in CSS pixels, filled and outlined as DrawingML gives it (no fill,
@@ -147,8 +153,15 @@ public sealed record ImageItem(string Source, double X, double Y, double Width, 
 /// </summary>
 public sealed record PictureItem(string Source, double X, double Y, double Width, double Height, string ClipPath, string Clip, string Filter) : SceneItem;
 
+/// <summary>
+/// Office's sign over a picture of Width × Height CSS pixels that it cannot show: Word's with its Message (on white in a
+/// 0.14 pt black frame, the broken-picture icon and the message in 1.2 pt Tahoma), PowerPoint's without one (a grey
+/// frame, the icon and "The picture can't be displayed." in 11-pixel Tahoma); in HTML a div over the picture's box.
+/// </summary>
+public sealed record MissingPictureItem(double Width, double Height, string? Message) : SceneItem;
+
 /// <summary>Items drawn transformed (in CSS pixels): a scaled, skewed or flipped shadow's copy of its shape, turned text.</summary>
-public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem
+public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem, IHoldsItems
 {
     /// <summary>The transform as HTML writes it, where that is not its matrix (an SVG translate or rotate).</summary>
     public string? Css { get; init; }
@@ -166,7 +179,7 @@ public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : Sc
 /// light, the hooks by which animations build a shape's background apart from its text and text by paragraph, word or
 /// letter, an isolated blend, the fill a run's text and decorations share).
 /// </summary>
-public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : SceneItem
+public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : SceneItem, IHoldsItems
 {
     /// <summary>The transform its attributes hold (a block of text flipped back), for other backends.</summary>
     public Matrix? Transform { get; init; }
@@ -182,7 +195,7 @@ public sealed record SvgGroupItem(string Attributes, List<SceneItem> Items) : Sc
 }
 
 /// <summary>Items inside markup not broken down yet (a shape's hyperlink, the hidden SVG that holds definitions).</summary>
-public sealed record WrappedItem(string Before, List<SceneItem> Items, string After) : SceneItem;
+public sealed record WrappedItem(string Before, List<SceneItem> Items, string After) : SceneItem, IHoldsItems;
 
 /// <summary>A solid straight line.</summary>
 public sealed record LineItem(double X1, double Y1, double X2, double Y2, double Width, RgbColor Color) : SceneItem;
@@ -358,24 +371,24 @@ public sealed record SvgTextItem(string Text, double[] Positions, double Y, Font
 public sealed record LabelItem(string Text, double X, double Y, FontData Font, double Size, RgbColor Color, bool Bold, bool Italic) : SceneItem;
 
 /// <summary>Items drawn from a point, turned a quarter counterclockwise about it: text set across a vertical line.</summary>
-public sealed record AcrossItem(double X, double Y, List<SceneItem> Items) : SceneItem;
+public sealed record AcrossItem(double X, double Y, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>Items drawn but neither selected nor read as text: the copies of a text that emboss, imprint and shadow lay behind it.</summary>
-public sealed record DecorationItem(List<SceneItem> Items) : SceneItem;
+public sealed record DecorationItem(List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>
 /// Items drawn with the effects of a DrawingML effect list (blur, soft edges, inner shadows, glow and shadow, as Effects
 /// gives them; a shadow copy's, see SvgEffects.Shadow, only its shadow), in HTML through the filter of the page's
 /// definitions named Filter.
 /// </summary>
-public sealed record FilterItem(string Filter, EffectModel Effects, List<SceneItem> Items) : SceneItem;
+public sealed record FilterItem(string Filter, EffectModel Effects, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>
 /// Items drawn first with the outer effects of a DrawingML effect list (glow and shadow, see FilterItem), then as they
 /// are over them: in HTML a copy of the group named Id through the filter Filter, which so stands in the page once
 /// (text's glow and shadow).
 /// </summary>
-public sealed record FilterCopyItem(string Id, string Filter, EffectModel Effects, List<SceneItem> Items) : SceneItem
+public sealed record FilterCopyItem(string Id, string Filter, EffectModel Effects, List<SceneItem> Items) : SceneItem, IHoldsItems
 {
     /// <summary>Whether the copy refers to the one item itself, which carries the id (see ShapePathItem.Lead), not to a group.</summary>
     public bool Bare { get; init; }
@@ -385,4 +398,4 @@ public sealed record FilterCopyItem(string Id, string Filter, EffectModel Effect
 /// Items with their reflection (a:reflection): a copy of them turned, scaled and skewed by the reflection's transform (in
 /// pixels), faded and blurred, in HTML by the page's definitions numbered with the reflection (see SvgEffects.ReflectionOf).
 /// </summary>
-public sealed record ReflectionItem(ReflectionModel Reflection, List<SceneItem> Items) : SceneItem;
+public sealed record ReflectionItem(ReflectionModel Reflection, List<SceneItem> Items) : SceneItem, IHoldsItems;

@@ -11,8 +11,9 @@ namespace FreeSlate.Skia;
 /// converter writes them (see Metafiles.SvgWriter). It reads SVG 1.1's structure and painting (svg, g, a, switch, use,
 /// defs, symbol; path, rect, circle, ellipse, line, polyline, polygon; text and tspan with lists of places; image;
 /// clipPath; linear and radial gradients; patterns), presentation attributes, style attributes and style sheets of
-/// simple selectors (element, class, id); masks by luminance; filters of the primitives Office's effects are made of
-/// (see Painter.Graph). Markers and other filters are left out, what they apply to drawn as it is.
+/// simple selectors (element, class, id); masks by luminance; blending (mix-blend-mode, isolation); filters of the
+/// primitives Office's effects are made of (see Painter.Graph). Markers and other filters are left out, what they apply
+/// to drawn as it is.
 /// </summary>
 public sealed class SvgDrawing
 {
@@ -31,9 +32,10 @@ public sealed class SvgDrawing
     /// SVG markup that a scene still holds (see MarkupItem; a chart's, a table's) recorded in the coordinates it stands
     /// in, its text of class sel transparent as the HTML's style sheet has it; what it names by id and does not define
     /// itself comes from <paramref name="definitions"/> (the page's definitions, the document's glyph outlines). Null
-    /// for markup that is no SVG.
+    /// for markup that is no SVG. With <paramref name="pixels"/>, the matrix it is drawn under onto pixels (not into a
+    /// PDF): pictures squeezed far more along one axis than along the other are evened for it (see Evened).
     /// </summary>
-    public static SKPicture? Fragment(string markup, Func<string, XElement?>? definitions = null)
+    public static SKPicture? Fragment(string markup, Func<string, XElement?>? definitions = null, SKMatrix? pixels = null)
     {
         XDocument document;
         try
@@ -50,12 +52,151 @@ public sealed class SvgDrawing
             return null;
         using var recorder = new SKPictureRecorder();
         var canvas = recorder.BeginRecording(SKRect.Create(-1e6f, -1e6f, 2e6f, 2e6f), useRTree: true);
-        var painter = new Painter(document, definitions, "text.sel{fill-opacity:0}");
+        var painter = new Painter(document, definitions, "text.sel{fill-opacity:0}", pixels);
         painter.Children(document.Root!, canvas, Style.Initial);
         return recorder.EndRecording();
     }
 
     static readonly XNamespace Svg = "http://www.w3.org/2000/svg";
+
+    /// <summary>An SVG filter element as an image filter (see Painter.Graph), or null where it holds what that does not draw.</summary>
+    public static SKImageFilter? Filter(XElement filter) => Painter.Graph(filter);
+
+    /// <summary>
+    /// The shader of an SVG paint server (a gradient or a pattern) over a box, as it paints an element there, what it
+    /// refers to found among <paramref name="definitions"/>; null where it is none.
+    /// </summary>
+    public static SKShader? Shader(XElement server, SKRect bounds, double opacity, Func<string, XElement?> definitions) =>
+        new Painter(new XDocument(new XElement(Svg + "svg")), definitions, null).Server(server, bounds, opacity);
+
+    /// <summary>
+    /// The fill and the stroke that SVG presentation attributes give (the scene's paints of text: a color, a gradient or
+    /// a pattern among <paramref name="definitions"/>, opacities, a stroke's width, joins and dashes) over a box; null
+    /// for one that paints nothing. False where the attributes do not parse.
+    /// </summary>
+    public static bool Paints(string attributes, SKRect bounds, Func<string, XElement?> definitions, out SKPaint? fill, out SKPaint? stroke)
+    {
+        (fill, stroke) = (null, null);
+        XElement element;
+        try
+        {
+            element = XElement.Parse($"<text xmlns=\"http://www.w3.org/2000/svg\"{attributes}/>");
+        }
+        catch (XmlException)
+        {
+            return false;
+        }
+        (fill, stroke) = new Painter(new XDocument(new XElement(Svg + "svg")), definitions, null).Paints(element, bounds);
+        return true;
+    }
+
+    /// <summary>
+    /// A blend mode as CSS names it (mix-blend-mode, feBlend's mode) as Skia's, which blends as the W3C's compositing
+    /// defines it; null for one it does not name.
+    /// </summary>
+    internal static SKBlendMode? BlendMode(string? mode) => mode?.Trim() switch
+    {
+        "normal" => SKBlendMode.SrcOver,
+        "multiply" => SKBlendMode.Multiply,
+        "screen" => SKBlendMode.Screen,
+        "overlay" => SKBlendMode.Overlay,
+        "darken" => SKBlendMode.Darken,
+        "lighten" => SKBlendMode.Lighten,
+        "color-dodge" => SKBlendMode.ColorDodge,
+        "color-burn" => SKBlendMode.ColorBurn,
+        "hard-light" => SKBlendMode.HardLight,
+        "soft-light" => SKBlendMode.SoftLight,
+        "difference" => SKBlendMode.Difference,
+        "exclusion" => SKBlendMode.Exclusion,
+        "hue" => SKBlendMode.Hue,
+        "saturation" => SKBlendMode.Saturation,
+        "color" => SKBlendMode.Color,
+        "luminosity" => SKBlendMode.Luminosity,
+        "plus-lighter" => SKBlendMode.Plus,
+        _ => null,
+    };
+
+    /// <summary>
+    /// A raster picture as it is drawn onto pixels under <paramref name="pixels"/> (from its own pixels there), averaged
+    /// down along the axis it is squeezed more along where that one is squeezed to under half and over twice as much as
+    /// the other: Skia's mipmaps take their level from the axis squeezed most and so blur the other, which browsers keep
+    /// sharp. The squeezed axis then takes the other's scale, at most a pixel a pixel. Null where it is drawn as it is.
+    /// </summary>
+    internal static SKImage? Evened(SKImage image, SKMatrix pixels)
+    {
+        var (sx, sy) = Scales(pixels);
+        var (low, high) = (Math.Min(sx, sy), Math.Max(sx, sy));
+        if (!(low < 0.5 && low < high / 2) || pixels.Persp0 != 0 || pixels.Persp1 != 0)
+            return null;
+        var target = Math.Min(high, 1);
+        var (width, height) = ((int)Math.Ceiling(image.Width * Math.Min(1, sx / target)), (int)Math.Ceiling(image.Height * Math.Min(1, sy / target)));
+        return width < image.Width || height < image.Height ? Averaged(image, Math.Max(1, width), Math.Max(1, height)) : null;
+    }
+
+    /// <summary>The scales a matrix gives along the x and the y axis it maps: how long their units come out.</summary>
+    static (double X, double Y) Scales(SKMatrix m) =>
+        (Math.Sqrt((double)m.ScaleX * m.ScaleX + (double)m.SkewY * m.SkewY), Math.Sqrt((double)m.SkewX * m.SkewX + (double)m.ScaleY * m.ScaleY));
+
+    /// <summary>Dots of a 300-dpi PDF in a CSS pixel.</summary>
+    const double PdfDots = 300 / 96.0;
+
+    /// <summary>
+    /// A pattern's tile (a picture of <paramref name="size"/> units) as pixels, 300 dots an inch where its units stand
+    /// under <paramref name="matrix"/> in CSS pixels, at most 2048 a side; null where Skia makes no surface.
+    /// </summary>
+    static SKImage? Tile(SKPicture picture, SKSize size, SKMatrix matrix)
+    {
+        var (sx, sy) = Scales(matrix);
+        var (width, height) = ((int)Math.Clamp(Math.Ceiling(size.Width * sx * PdfDots), 1, 2048), (int)Math.Clamp(Math.Ceiling(size.Height * sy * PdfDots), 1, 2048));
+        using var surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
+        if (surface == null)
+            return null;
+        surface.Canvas.Scale(width / size.Width, height / size.Height);
+        surface.Canvas.DrawPicture(picture);
+        return surface.Snapshot();
+    }
+
+    /// <summary>A raster picture averaged down to a size no larger along either axis: a box filter on premultiplied color.</summary>
+    static SKImage? Averaged(SKImage image, int width, int height)
+    {
+        var info = new SKImageInfo(image.Width, image.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        using var source = new SKBitmap(info);
+        if (!image.ReadPixels(info, source.GetPixels(), info.RowBytes, 0, 0))
+            return null;
+        var pixels = source.GetPixelSpan();
+        var (fx, fy) = ((double)image.Width / width, (double)image.Height / height);
+        var sums = new double[width * height * 4];
+        var row = new double[width * 4];
+        for (var y = 0; y < image.Height; y++)
+        {
+            // Along the row every pixel goes to the columns it overlaps, by how much of each it covers.
+            Array.Clear(row);
+            var line = pixels.Slice(y * info.RowBytes, image.Width * 4);
+            for (var x = 0; x < image.Width; x++)
+            {
+                var (from, to) = (x / fx, (x + 1) / fx);
+                for (var column = (int)from; column < width && column < to; column++)
+                {
+                    var share = Math.Min(to, column + 1) - Math.Max(from, column);
+                    for (var c = 0; c < 4; c++)
+                        row[column * 4 + c] += share * line[x * 4 + c];
+                }
+            }
+            // Down the rows the same.
+            var (top, bottom) = (y / fy, (y + 1) / fy);
+            for (var r = (int)top; r < height && r < bottom; r++)
+            {
+                var share = Math.Min(bottom, r + 1) - Math.Max(top, r);
+                var at = r * width * 4;
+                for (var i = 0; i < row.Length; i++)
+                    sums[at + i] += share * row[i];
+            }
+        }
+        var bytes = new byte[sums.Length];
+        for (var i = 0; i < bytes.Length; i++)
+            bytes[i] = (byte)Math.Clamp(Math.Round(sums[i]), 0, 255);
+        return SKImage.FromPixelCopy(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul), bytes, width * 4);
+    }
 
     /// <summary>Reads and records an SVG picture, or null where it is not one.</summary>
     public static SvgDrawing? Load(byte[] data)
@@ -127,6 +268,8 @@ public sealed class SvgDrawing
         public string? ClipPath { get; init; }
         public string? Mask { get; init; }
         public string? Filter { get; init; }
+        public SKBlendMode Blend { get; init; } = SKBlendMode.SrcOver;
+        public bool Isolated { get; init; }
         public double StopOpacity { get; init; } = 1;
         public string StopColor { get; init; } = "black";
     }
@@ -137,11 +280,22 @@ public sealed class SvgDrawing
         readonly List<(string Selector, int Specificity, int Order, List<(string Name, string Value)> Declarations)> rules = [];
         readonly Func<string, XElement?>? definitions;
 
+        /// <summary>
+        /// The matrix under which what the canvas in hand records lands on pixels (a pattern's tile in turn under its
+        /// element's and its own), or null where it lands in a PDF.
+        /// </summary>
+        SKMatrix? outer;
+
+        /// <summary>How many patterns' tiles are being recorded within one another.</summary>
+        int patterns;
+
         /// <param name="definitions">What the document names by id and does not define itself.</param>
         /// <param name="sheet">A style sheet the document is drawn with before its own.</param>
-        public Painter(XDocument document, Func<string, XElement?>? definitions, string? sheet)
+        /// <param name="pixels">The matrix the drawing lands on pixels under (see Fragment), or null.</param>
+        public Painter(XDocument document, Func<string, XElement?>? definitions, string? sheet, SKMatrix? pixels = null)
         {
             this.definitions = definitions;
+            outer = pixels;
             var order = 0;
             if (sheet != null)
                 Sheet(sheet, ref order);
@@ -215,7 +369,11 @@ public sealed class SvgDrawing
 
         Style Computed(XElement element, Style parent)
         {
-            var style = parent with { Opacity = 1, Displayed = true, ClipPath = null, Mask = null, Filter = null, StopOpacity = 1, StopColor = "black" };
+            var style = parent with
+            {
+                Opacity = 1, Displayed = true, ClipPath = null, Mask = null, Filter = null, Blend = SKBlendMode.SrcOver, Isolated = false, StopOpacity = 1,
+                StopColor = "black",
+            };
             foreach (var (name, value) in Properties(element))
             {
                 if (value == "inherit")
@@ -249,6 +407,8 @@ public sealed class SvgDrawing
                     "clip-path" => style with { ClipPath = value },
                     "mask" => style with { Mask = value },
                     "filter" => style with { Filter = value },
+                    "mix-blend-mode" => style with { Blend = BlendMode(value) ?? SKBlendMode.SrcOver },
+                    "isolation" => style with { Isolated = value == "isolate" },
                     "stop-opacity" => style with { StopOpacity = Fraction(value) },
                     "stop-color" => style with { StopColor = value },
                     "font" => Font(style, value),
@@ -340,10 +500,12 @@ public sealed class SvgDrawing
                 canvas.Concat(transform);
             if (style.ClipPath is { } clip && Reference(clip) is { Name.LocalName: "clipPath" } clipPath)
                 Clip(clipPath, element, canvas, style);
-            var layer = style.Opacity < 1;
+            // Its opacity, its blending with what lies behind it and a group of its own (isolation) on a layer, which
+            // takes the element after its filter and its mask.
+            var layer = style.Opacity < 1 || style.Blend != SKBlendMode.SrcOver || style.Isolated;
             var layer2 = false;
             if (layer)
-                canvas.SaveLayer(new SKPaint { Color = SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(style.Opacity, 0, 1) * 255)) });
+                canvas.SaveLayer(new SKPaint { Color = SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(style.Opacity, 0, 1) * 255)), BlendMode = style.Blend });
             // A filter of one color matrix (a 3D face's light): the element drawn on a layer it colors; other filters the
             // element is drawn through as an image filter graph, those with primitives it lacks left out.
             if (style.Filter is { } filterReference && Reference(filterReference) is { Name.LocalName: "filter" } filter)
@@ -423,7 +585,7 @@ public sealed class SvgDrawing
         /// feBlend), each taking SourceGraphic, SourceAlpha, a result named before or the one before it; in user space,
         /// a flood cut at the filter's region. Null for another primitive or other units.
         /// </summary>
-        SKImageFilter? Graph(XElement filter)
+        internal static SKImageFilter? Graph(XElement filter)
         {
             if (filter.Attribute("primitiveUnits")?.Value == "objectBoundingBox")
                 return null;
@@ -500,11 +662,7 @@ public sealed class SvgDrawing
                         break;
                     }
                     case "feBlend":
-                        made = SKImageFilter.CreateBlendMode((primitive.Attribute("mode")?.Value ?? "normal") switch
-                        {
-                            "multiply" => SKBlendMode.Multiply, "screen" => SKBlendMode.Screen, "darken" => SKBlendMode.Darken, "lighten" => SKBlendMode.Lighten,
-                            "overlay" => SKBlendMode.Overlay, _ => SKBlendMode.SrcOver,
-                        }, Input(primitive.Attribute("in2")?.Value), input);
+                        made = SKImageFilter.CreateBlendMode(BlendMode(primitive.Attribute("mode")?.Value) ?? SKBlendMode.SrcOver, Input(primitive.Attribute("in2")?.Value), input);
                         break;
                     default:
                         return null;
@@ -657,25 +815,16 @@ public sealed class SvgDrawing
                 return;
             path.FillType = style.FillRule == "evenodd" ? SKPathFillType.EvenOdd : SKPathFillType.Winding;
             var bounds = path.Bounds;
-            if (Brush(style.Fill, style.FillOpacity, style, bounds) is { } fill)
+            if (Brush(style.Fill, style.FillOpacity, style, bounds, canvas.TotalMatrix) is { } fill)
             {
                 using (fill)
                     canvas.DrawPath(path, fill);
             }
-            if (style.StrokeWidth > 0 && Brush(style.Stroke, style.StrokeOpacity, style, bounds) is { } stroke)
+            if (style.StrokeWidth > 0 && Brush(style.Stroke, style.StrokeOpacity, style, bounds, canvas.TotalMatrix) is { } stroke)
             {
                 using (stroke)
                 {
-                    stroke.Style = SKPaintStyle.Stroke;
-                    stroke.StrokeWidth = (float)style.StrokeWidth;
-                    stroke.StrokeCap = style.LineCap switch { "round" => SKStrokeCap.Round, "square" => SKStrokeCap.Square, _ => SKStrokeCap.Butt };
-                    stroke.StrokeJoin = style.LineJoin switch { "round" => SKStrokeJoin.Round, "bevel" => SKStrokeJoin.Bevel, _ => SKStrokeJoin.Miter };
-                    stroke.StrokeMiter = (float)Math.Max(1, style.MiterLimit);
-                    if (style.Dashes is { Length: > 0 } dashes && dashes.Any(d => d > 0))
-                    {
-                        var pattern = (dashes.Length % 2 == 0 ? dashes : [.. dashes, .. dashes]).Select(d => (float)Math.Max(0, d)).ToArray();
-                        stroke.PathEffect = SKPathEffect.CreateDash(pattern, (float)style.DashOffset);
-                    }
+                    Stroked(stroke, style);
                     if (style.NonScalingStroke)
                     {
                         // The stroke's width in the device's pixels: the outline mapped there and stroked unscaled.
@@ -692,26 +841,55 @@ public sealed class SvgDrawing
             }
         }
 
-        /// <summary>A paint for a fill or stroke value: a color, currentColor, or a gradient or pattern of the document.</summary>
-        SKPaint? Brush(string value, double opacity, Style style, SKRect bounds)
+        /// <summary>A paint made a stroke as the style strokes: its width, caps, joins and dashes.</summary>
+        static void Stroked(SKPaint stroke, Style style)
+        {
+            stroke.Style = SKPaintStyle.Stroke;
+            stroke.StrokeWidth = (float)style.StrokeWidth;
+            stroke.StrokeCap = style.LineCap switch { "round" => SKStrokeCap.Round, "square" => SKStrokeCap.Square, _ => SKStrokeCap.Butt };
+            stroke.StrokeJoin = style.LineJoin switch { "round" => SKStrokeJoin.Round, "bevel" => SKStrokeJoin.Bevel, _ => SKStrokeJoin.Miter };
+            stroke.StrokeMiter = (float)Math.Max(1, style.MiterLimit);
+            if (style.Dashes is { Length: > 0 } dashes && dashes.Any(d => d > 0))
+            {
+                var pattern = (dashes.Length % 2 == 0 ? dashes : [.. dashes, .. dashes]).Select(d => (float)Math.Max(0, d)).ToArray();
+                stroke.PathEffect = SKPathEffect.CreateDash(pattern, (float)style.DashOffset);
+            }
+        }
+
+        /// <summary>The fill and the stroke an element's own attributes give it over a box (see SvgDrawing.Paints).</summary>
+        internal (SKPaint? Fill, SKPaint? Stroke) Paints(XElement element, SKRect bounds)
+        {
+            var style = Computed(element, Style.Initial);
+            var fill = Brush(style.Fill, style.FillOpacity, style, bounds, SKMatrix.Identity);
+            var stroke = style.StrokeWidth > 0 ? Brush(style.Stroke, style.StrokeOpacity, style, bounds, SKMatrix.Identity) : null;
+            if (stroke != null)
+                Stroked(stroke, style);
+            return (fill, stroke);
+        }
+
+        /// <summary>
+        /// A paint for a fill or stroke value: a color, currentColor, or a gradient or pattern of the document (drawn
+        /// under the canvas's matrix <paramref name="at"/>).
+        /// </summary>
+        SKPaint? Brush(string value, double opacity, Style style, SKRect bounds, SKMatrix at)
         {
             if (value is "none" or "transparent" || opacity <= 0)
                 return null;
             if (value.StartsWith("url(", StringComparison.Ordinal))
             {
-                if (Reference(value) is { } server && Server(server, bounds, opacity) is { } shader)
+                if (Reference(value) is { } server && Server(server, bounds, opacity, at) is { } shader)
                     return new SKPaint { Shader = shader, IsAntialias = true, Style = SKPaintStyle.Fill };
                 // A reference that is not there: the fallback color after it, else nothing.
                 var fallback = value[(value.IndexOf(')') + 1)..].Trim();
-                return fallback.Length > 0 ? Brush(fallback, opacity, style, bounds) : null;
+                return fallback.Length > 0 ? Brush(fallback, opacity, style, bounds, at) : null;
             }
             if (ParseColor(value == "currentColor" ? style.Color : value) is not { } color)
                 return null;
             return new SKPaint { Color = color.WithAlpha((byte)Math.Round(color.Alpha * Math.Clamp(opacity, 0, 1))), IsAntialias = true, Style = SKPaintStyle.Fill };
         }
 
-        /// <summary>The shader of a paint server (a gradient or a pattern) over what it paints.</summary>
-        SKShader? Server(XElement server, SKRect bounds, double opacity, int depth = 0)
+        /// <summary>The shader of a paint server (a gradient or a pattern) over what it paints, drawn under the matrix <paramref name="at"/>.</summary>
+        internal SKShader? Server(XElement server, SKRect bounds, double opacity, SKMatrix? at = null)
         {
             // Gradients and patterns inherit their attributes and stops through href.
             string? Inherited(string name)
@@ -762,7 +940,7 @@ public sealed class SvgDrawing
                     var (fx, fy) = (Coordinate("fx", cx), Coordinate("fy", cy));
                     return SKShader.CreateTwoPointConicalGradient(new SKPoint((float)fx, (float)fy), 0, new SKPoint((float)cx, (float)cy), (float)Math.Max(r, 1e-6), colors, positions, spread, local);
                 }
-                case "pattern" when depth < 4:
+                case "pattern" when patterns < 4:
                 {
                     var (x, y, w, h) = (Coordinate("x", 0), Coordinate("y", 0), Coordinate("width", 0), Coordinate("height", 0));
                     if (w <= 0 || h <= 0)
@@ -772,23 +950,34 @@ public sealed class SvgDrawing
                         holder = Reference(holder.Attribute(Xlink + "href")?.Value ?? holder.Attribute("href")?.Value);
                     if (holder == null)
                         return null;
-                    // The tile in the pattern's space (its content in user units, or in the box's where it asks for it).
+                    // The tile in the pattern's space (in user units, or in the box's where it asks for it); its content
+                    // has its origin at the tile's corner (SVG 1.1 13.3), mapped there by a viewBox where it has one, else
+                    // in user units or the box's size.
                     var tile = box.MapRect(SKRect.Create((float)x, (float)y, (float)w, (float)h));
                     using var recorder = new SKPictureRecorder();
                     var canvas = recorder.BeginRecording(SKRect.Create(tile.Width, tile.Height));
-                    canvas.Translate(-tile.Left, -tile.Top);
                     if (Numbers(Inherited("viewBox")) is { Length: 4 } viewBox && viewBox[2] > 0 && viewBox[3] > 0)
-                    {
-                        canvas.Translate(tile.Left, tile.Top);
                         canvas.Concat(ViewBox(viewBox, tile.Width, tile.Height, Inherited("preserveAspectRatio")));
-                    }
                     else if (Inherited("patternContentUnits") == "objectBoundingBox")
-                        canvas.Concat(SKMatrix.CreateTranslation(bounds.Left, bounds.Top).PreConcat(SKMatrix.CreateScale(bounds.Width, bounds.Height)));
+                        canvas.Scale(bounds.Width, bounds.Height);
+                    var local = transform.PreConcat(SKMatrix.CreateTranslation(tile.Left, tile.Top));
                     var style = Computed(holder, Style.Initial);
+                    // Its content lands on pixels under the element's matrix and the pattern's own; patterns within
+                    // patterns go four deep.
+                    var around = outer;
+                    outer = around?.PreConcat(at ?? SKMatrix.Identity).PreConcat(local);
+                    patterns++;
                     Children(holder, canvas, style);
+                    patterns--;
+                    outer = around;
                     using var picture = recorder.EndRecording();
-                    var shader = picture.ToShader(SKShaderTileMode.Repeat, SKShaderTileMode.Repeat, SKFilterMode.Linear,
-                        transform.PreConcat(SKMatrix.CreateTranslation(tile.Left, tile.Top)), SKRect.Create(tile.Width, tile.Height));
+                    // Where no pixels are known (into a PDF) the tile as a picture in 300 dots an inch: Skia's PDF keeps
+                    // an image's tiles as a pattern of it, but rasterizes those of a picture in its own 72.
+                    using var pixels = outer == null ? Tile(picture, tile.Size, (at ?? SKMatrix.Identity).PreConcat(local)) : null;
+                    var shader = pixels != null
+                        ? pixels.ToShader(SKShaderTileMode.Repeat, SKShaderTileMode.Repeat, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear),
+                            local.PreConcat(SKMatrix.CreateScale(tile.Width / pixels.Width, tile.Height / pixels.Height)))
+                        : picture.ToShader(SKShaderTileMode.Repeat, SKShaderTileMode.Repeat, SKFilterMode.Linear, local, SKRect.Create(tile.Width, tile.Height));
                     return opacity < 1 ? shader.WithColorFilter(SKColorFilter.CreateBlendMode(SKColors.White.WithAlpha((byte)Math.Round(opacity * 255)), SKBlendMode.DstIn)) : shader;
                 }
                 default:
@@ -915,13 +1104,10 @@ public sealed class SvgDrawing
                     continue;
                 using var font = Font(own);
                 var bounds = SKRect.Create((float)xs.Where(v => !double.IsNaN(v)).DefaultIfEmpty(0).First(), (float)(ys[0] - own.FontSize), (float)font.MeasureText(value), (float)own.FontSize);
-                using var fill = Brush(own.Fill, own.FillOpacity, own, bounds);
-                using var stroke = own.StrokeWidth > 0 ? Brush(own.Stroke, own.StrokeOpacity, own, bounds) : null;
+                using var fill = Brush(own.Fill, own.FillOpacity, own, bounds, canvas.TotalMatrix);
+                using var stroke = own.StrokeWidth > 0 ? Brush(own.Stroke, own.StrokeOpacity, own, bounds, canvas.TotalMatrix) : null;
                 if (stroke != null)
-                {
-                    stroke.Style = SKPaintStyle.Stroke;
-                    stroke.StrokeWidth = (float)own.StrokeWidth;
-                }
+                    Stroked(stroke, own);
                 var x = xs[0];
                 var y = ys[0];
                 for (var i = 0; i < value.Length;)
@@ -1011,7 +1197,9 @@ public sealed class SvgDrawing
                     canvas.Concat(ViewBox([0, 0, picture.Width, picture.Height], iw, ih, aspect));
                     var sampling = style.Pixelated ? new SKSamplingOptions(SKFilterMode.Nearest) : new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear);
                     using var paint = new SKPaint { IsAntialias = true };
-                    canvas.DrawImage(picture, SKRect.Create(picture.Width, picture.Height), sampling, paint);
+                    // On pixels, squeezed far more along one axis than along the other, evened first.
+                    using var evened = !style.Pixelated && outer is { } pixels ? Evened(picture, pixels.PreConcat(canvas.TotalMatrix)) : null;
+                    canvas.DrawImage(evened ?? picture, SKRect.Create(picture.Width, picture.Height), sampling, paint);
                 }
             }
             canvas.Restore();

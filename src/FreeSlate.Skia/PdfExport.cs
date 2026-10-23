@@ -33,7 +33,8 @@ public static class PdfExport
     /// <summary>The PDF's information from the package's core properties (docProps/core.xml).</summary>
     static SKDocumentPdfMetadata Metadata(string path, string? password)
     {
-        var metadata = new SKDocumentPdfMetadata { Producer = "FreeSlate", Creator = "FreeSlate", RasterDpi = 300 };
+        var metadata = SkiaScene.PdfMetadata();
+        metadata.Creator = "FreeSlate";
         using var package = OpcPackage.Open(path, password);
         if (package.FirstRelationship("/", "core-properties")?.Target is not { } part || !package.Exists(part))
             return metadata;

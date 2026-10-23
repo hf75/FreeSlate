@@ -676,13 +676,16 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         drawn.AddRange(content);
         List<SceneItem> canvas = shapeLink != null ? [new WrappedItem(Links.Open(shapeLink), drawn, "</a>")] : drawn;
         var over = new StringBuilder();
+        var missing = shape.Name.LocalName == "pic" ? MissingPicture(shape, part, pw, ph) : null;
         if (shape.Name.LocalName == "pic")
-            over.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide)).Append(MissingPicture(shape, part));
+            over.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide));
         if (solidBody)
         {
             html.Append($"<svg width=\"{Units.Css(sw)}\" height=\"{Units.Css(sh)}\" viewBox=\"0 0 {Units.Css(sw)} {Units.Css(sh)}\">");
             HtmlScene.Write(canvas, html);
             html.Append("</svg>").Append(over);
+            if (missing != null)
+                html.Append(HtmlScene.Markup(missing));
             html.Append("</div>");
             if (bevelShading.Length > 0)
                 html.Append($"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{bevelShading}</svg>");
@@ -693,6 +696,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var shapeCanvas = new SvgItem(sw, sh, canvas);
         var shapeBox = new BoxItem((pw, ph), ToPx(matrix), attributes, [shapeCanvas]);
         AddMarkup(shapeBox.Items, over.ToString());
+        if (missing != null)
+            shapeBox.Items.Add(missing);
         AddMarkup(shapeBox.Items, textLayer);
         items.Add(shapeBox);
     }
@@ -923,17 +928,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     };
 
     /// <summary>
-    /// The audio or video of a picture (catalog: picture.media): an HTML media element over the poster picture,
-    /// hidden until the player plays it. The p14:media part is preferred; trimming and fades travel as data
-    /// attributes.
+    /// The sign over a picture of <paramref name="width"/> × <paramref name="height"/> pixels without its picture (an
+    /// a:blip naming none, or a part the package lacks; in Word also a linked file it does not find), or null:
+    /// PowerPoint's is a 1-pixel grey frame on the picture's edge with the broken-picture icon and "The picture can't be
+    /// displayed." at its top left (measured: #6D6D6D, the icon 6 pixels in), worded in Office's language by
+    /// PowerPoint and in the viewer's by the player; Word's see MissingPictureItem.
     /// </summary>
-    /// <summary>
-    /// PowerPoint's sign for a picture without its picture (an a:blip naming none, or a part the package lacks): a
-    /// 1-pixel grey frame on the picture's edge with the broken-picture icon and "The picture can't be displayed." at
-    /// its top left (measured: #6D6D6D, the icon 6 pixels in). PowerPoint words it in Office's language; the player
-    /// words it in the viewer's.
-    /// </summary>
-    string MissingPicture(XElement pic, string part)
+    MissingPictureItem? MissingPicture(XElement pic, string part, double width, double height)
     {
         var blip = pic.Element(Ns.P + "blipFill")?.Element(Ns.A + "blip");
         var id = blip?.Descendants(Ns.Asvg + "svgBlip").FirstOrDefault()?.Attribute(Ns.R + "embed")?.Value
@@ -947,46 +948,34 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             // libreoffice/extras-ooxmlexport/FileWithInvalidImageLink: a GIF linked on F:, the message in three lines).
             if (slide.Presentation.Word && rel.External && blip?.Attribute(Ns.R + "embed") == null
                 && !(Uri.TryCreate(rel.Target, UriKind.Absolute, out var linked) && linked.Scheme is "http" or "https"))
-                return WordMissingPicture(german
+                return new MissingPictureItem(width, height, german
                     ? "Das verknüpfte Bild kann nicht angezeigt werden. Möglicherweise wurde die Datei verschoben, umbenannt oder gelöscht. Stellen Sie sicher, dass die Verknüpfung auf die korrekte Datei und den korrekten Speicherort zeigt."
                     : "The linked image cannot be displayed. The file may have been moved, renamed, or deleted. Verify that the link points to the correct file and location.");
-            return "";
+            return null;
         }
         // Word's sign for an embedded picture whose part the package lacks, or whose a:blip names none: the same frame
         // and icon, its own message (docx/external/libreoffice/extras-ooxmlimport/tdf115883: media/image1.png missing;
         // extras-ooxmlexport/fdo83057, tdf148671: an empty a:blip).
         if (slide.Presentation.Word && (id != null && package.Relationship(part, id) is { External: false } || id == null && blip != null))
-            return WordMissingPicture(german
+            return new MissingPictureItem(width, height, german
                 ? "Das Bild kann nicht angezeigt werden. Dieser Computer verfügt möglicherweise über zu wenig Arbeitsspeicher, um das Bild zu öffnen, oder das Bild ist beschädigt. Starten Sie den Computer neu, und öffnen Sie dann erneut die Datei. Wenn weiterhin das rote x angezeigt wird, müssen Sie das Bild möglicherweise löschen und dann erneut einfügen."
                 : "The image cannot be displayed. Your computer may not have enough memory to open the image, or the image may have been corrupted. Restart your computer, and then open the file again. If the red x still appears, you may have to delete the image and then insert it again.");
         // A picture of imported content (an RTF chunk's) comes as a data URI.
         if (id != null && id.StartsWith("data:", StringComparison.Ordinal))
-            return "";
+            return null;
         // Media have content of their own.
         var nvPr = pic.Element(Ns.P + "nvPicPr")?.Element(Ns.P + "nvPr");
         if (nvPr != null && (nvPr.Elements().Any(e => e.Name.LocalName is "videoFile" or "audioFile" or "wavAudioFile" or "quickTimeFile")
                              || nvPr.Descendants(P14 + "media").Any()))
-            return "";
-        return "<div class=\"fs-nopic\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 13 13\"><rect x=\".5\" y=\".5\" width=\"12\" height=\"12\" fill=\"#fff\" stroke=\"#808080\"/>" +
-               "<path d=\"M4 4l5 5M9 4l-5 5\" stroke=\"#e00000\" stroke-width=\"2\"/></svg><span>The picture can't be displayed.</span></div>";
+            return null;
+        return new MissingPictureItem(width, height, null);
     }
 
     /// <summary>
-    /// Word's sign for a picture it cannot show: on white its broken-picture icon and the message in 1.2 pt Tahoma
-    /// inside four 0.14 pt black lines centred 0.06 pt in from the edge, which the message's clipping leaves whole
-    /// (docx/external/libreoffice/extras-ooxmlimport/linked-picture, extras-ooxmlexport/FileWithInvalidImageLink,
-    /// tdf115883 77.5 -> 99.8 %, tdf59699, found by agent BM).
+    /// The audio or video of a picture (catalog: picture.media): an HTML media element over the poster picture,
+    /// hidden until the player plays it. The p14:media part is preferred; trimming and fades travel as data
+    /// attributes.
     /// </summary>
-    static string WordMissingPicture(string message) =>
-        "<div class=\"fs-nolink\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:#fff;pointer-events:none\">" +
-        "<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:.79pt 3.5pt 0 3.44pt;font:1.2pt/1.45pt Tahoma,'Segoe UI',sans-serif;color:#000\">" +
-        System.Net.WebUtility.HtmlEncode(message) + "</div>" +
-        "<svg style=\"position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible\"><g stroke=\"#000\" stroke-width=\".14pt\">" +
-        "<line x1=\"0\" y1=\".06pt\" x2=\"100%\" y2=\".06pt\"/><line x1=\"0\" y1=\"100%\" x2=\"100%\" y2=\"100%\" transform=\"translate(0 -.08)\"/>" +
-        "<line x1=\".06pt\" y1=\"0\" x2=\".06pt\" y2=\"100%\"/><line x1=\"100%\" y1=\"0\" x2=\"100%\" y2=\"100%\" transform=\"translate(-.08 0)\"/></g>" +
-        "<svg x=\".84pt\" y=\".84pt\" width=\"1.68pt\" height=\"1.92pt\" viewBox=\"0 0 4 5\">" +
-        "<rect x=\".5\" y=\".5\" width=\"3\" height=\"4\" fill=\"#fff\" stroke=\"#808080\"/><rect x=\"1.5\" y=\"1.5\" width=\"1\" height=\"1\" fill=\"#e00000\"/></svg></svg></div>";
-
     string Media(XElement pic, string part)
     {
         var nvPr = pic.Element(Ns.P + "nvPicPr")?.Element(Ns.P + "nvPr");

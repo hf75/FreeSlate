@@ -51,6 +51,27 @@ public static class HtmlScene
         return html.ToString();
     }
 
+    /// <summary>PowerPoint's sign for a picture it cannot show (see MissingPictureItem; class fs-nopic in the style sheet).</summary>
+    const string PowerPointMissingPicture =
+        "<div class=\"fs-nopic\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 13 13\"><rect x=\".5\" y=\".5\" width=\"12\" height=\"12\" fill=\"#fff\" stroke=\"#808080\"/>" +
+        "<path d=\"M4 4l5 5M9 4l-5 5\" stroke=\"#e00000\" stroke-width=\"2\"/></svg><span>The picture can't be displayed.</span></div>";
+
+    /// <summary>
+    /// Word's sign for a picture it cannot show: on white its broken-picture icon and the message in 1.2 pt Tahoma
+    /// inside four 0.14 pt black lines centred 0.06 pt in from the edge, which the message's clipping leaves whole
+    /// (docx/external/libreoffice/extras-ooxmlimport/linked-picture, extras-ooxmlexport/FileWithInvalidImageLink,
+    /// tdf115883 77.5 -> 99.8 %, tdf59699, found by agent BM).
+    /// </summary>
+    static string WordMissingPicture(string message) =>
+        "<div class=\"fs-nolink\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:#fff;pointer-events:none\">" +
+        "<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:.79pt 3.5pt 0 3.44pt;font:1.2pt/1.45pt Tahoma,'Segoe UI',sans-serif;color:#000\">" +
+        WebUtility.HtmlEncode(message) + "</div>" +
+        "<svg style=\"position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible\"><g stroke=\"#000\" stroke-width=\".14pt\">" +
+        "<line x1=\"0\" y1=\".06pt\" x2=\"100%\" y2=\".06pt\"/><line x1=\"0\" y1=\"100%\" x2=\"100%\" y2=\"100%\" transform=\"translate(0 -.08)\"/>" +
+        "<line x1=\".06pt\" y1=\"0\" x2=\".06pt\" y2=\"100%\"/><line x1=\"100%\" y1=\"0\" x2=\"100%\" y2=\"100%\" transform=\"translate(-.08 0)\"/></g>" +
+        "<svg x=\".84pt\" y=\".84pt\" width=\"1.68pt\" height=\"1.92pt\" viewBox=\"0 0 4 5\">" +
+        "<rect x=\".5\" y=\".5\" width=\"3\" height=\"4\" fill=\"#fff\" stroke=\"#808080\"/><rect x=\"1.5\" y=\"1.5\" width=\"1\" height=\"1\" fill=\"#e00000\"/></svg></svg></div>";
+
     /// <summary>Items as HTML and SVG, in their order.</summary>
     public static void Write(IEnumerable<SceneItem> items, StringBuilder html)
     {
@@ -131,6 +152,9 @@ public static class HtmlScene
                 case PictureItem picture:
                     html.Append($"<g clip-path=\"url(#{picture.Clip})\"><image href=\"{picture.Source}\" x=\"{Units.Css(picture.X)}\" y=\"{Units.Css(picture.Y)}\" "
                         + $"width=\"{Units.Css(picture.Width)}\" height=\"{Units.Css(picture.Height)}\" preserveAspectRatio=\"none\"{picture.Filter}/></g>");
+                    break;
+                case MissingPictureItem missing:
+                    html.Append(missing.Message is { } message ? WordMissingPicture(message) : PowerPointMissingPicture);
                     break;
                 case TransformItem transformed:
                     html.Append($"<g transform=\"{transformed.Css ?? transformed.Transform.Css()}\">");

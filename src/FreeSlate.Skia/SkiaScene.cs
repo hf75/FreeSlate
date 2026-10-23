@@ -48,11 +48,17 @@ public static class SkiaScene
     /// A page drawn on a canvas whose units are CSS pixels from the page's top left, its paper white; with
     /// <paramref name="links"/>, where the page's links stand in those units and what they lead to (LinkItem.Target).
     /// </summary>
-    public static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics = null, List<(SKRect Area, string Target)>? links = null)
+    /// <param name="vector">Whether the canvas keeps vectors and pictures as they are (a PDF's): its pictures are then
+    /// not evened for pixels (see SvgDrawing.Evened).</param>
+    public static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics = null, List<(SKRect Area, string Target)>? links = null,
+        bool vector = false)
     {
         using var paper = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
         canvas.DrawRect(0, 0, Px(scene.Width), Px(scene.Height), paper);
-        new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes, links: links).Draw(scene.Items);
+        var drawer = new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes, links: links,
+            pixels: vector ? null : SKMatrix.Identity);
+        drawer.Predefine(scene.Items);
+        drawer.Draw(scene.Items);
     }
 
     /// <summary>
@@ -81,16 +87,23 @@ public static class SkiaScene
     public static void Pdf(IEnumerable<PageScene> scenes, Stream output, SkiaStatistics? statistics = null, SKDocumentPdfMetadata? metadata = null)
     {
         using var stream = new SKManagedWStream(output);
-        using var document = SKDocument.CreatePdf(stream, metadata ?? new SKDocumentPdfMetadata { Producer = "FreeSlate", RasterDpi = 300 });
+        using var document = SKDocument.CreatePdf(stream, metadata ?? PdfMetadata());
         foreach (var scene in scenes)
         {
             var canvas = document.BeginPage((float)scene.Width, (float)scene.Height);
             canvas.Scale((float)(1 / PxPerPt));
-            Draw(scene, canvas, statistics);
+            Draw(scene, canvas, statistics, vector: true);
             document.EndPage();
         }
         document.Close();
     }
+
+    /// <summary>
+    /// A PDF's settings: produced by FreeSlate, what Skia rasterizes in 300 dots an inch, pictures not already JPEG kept
+    /// lossless (the metadata's own default of 0 makes them JPEG of the lowest quality).
+    /// </summary>
+    public static SKDocumentPdfMetadata PdfMetadata() =>
+        new() { Producer = "FreeSlate", RasterDpi = 300, EncodingQuality = SKDocumentPdfMetadata.DefaultEncodingQuality };
 
     /// <summary>The fonts as Skia's typefaces, made once; null where Skia cannot read one (its glyphs are drawn from outlines).</summary>
     static readonly ConditionalWeakTable<FontData, SKTypeface?[]> typefaces = [];
@@ -131,10 +144,15 @@ public static class SkiaScene
     /// <param name="defined">The page's definitions so far, shared with the drawer of the page.</param>
     /// <param name="exactDashes">Whether dash patterns repeat in the outline's exact width (see PageScene.ExactDashes).</param>
     /// <param name="links">Where the links drawn on the page itself stand on it (not those within recordings), or null.</param>
+    /// <param name="pixels">The matrix under which what the canvas draws lands on pixels (a recording's, its parent's;
+    /// the identity for a canvas of pixels), or null where it lands in a PDF.</param>
     sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null,
         GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null, bool exactDashes = false,
-        List<(SKRect Area, string Target)>? links = null)
+        List<(SKRect Area, string Target)>? links = null, SKMatrix? pixels = null)
     {
+        /// <summary>The matrix under which what the canvas draws now lands on pixels, or null (see pixels).</summary>
+        SKMatrix? OnPixels => pixels?.PreConcat(canvas.TotalMatrix);
+
         /// <summary>The elements the page's definitions (DefsItem) hold by id, which markup refers to.</summary>
         readonly Dictionary<string, System.Xml.Linq.XElement> definitions = defined ?? [];
 
@@ -152,11 +170,12 @@ public static class SkiaScene
             var start = html.AsSpan().TrimStart();
             if (start.Length == 0)
                 return true;
-            if (start.StartsWith("<div class=\"sp\""))
+            // Boxes, also where a 3D body's sides (an svg of class sp) come before its faces.
+            if (start.StartsWith("<div class=\"sp\"") || start.StartsWith("<svg class=\"sp\""))
                 return Boxes(html);
             if (!start.StartsWith("<") || start.StartsWith("<div") || start.StartsWith("<section") || start.StartsWith("<span"))
                 return false;
-            using var picture = SvgDrawing.Fragment(html, Definition);
+            using var picture = SvgDrawing.Fragment(html, Definition, OnPixels);
             if (picture == null)
                 return false;
             canvas.DrawPicture(picture);
@@ -204,7 +223,7 @@ public static class SkiaScene
                         canvas.Restore();
                         break;
                     case "svg":
-                        using (var picture = SvgDrawing.Fragment(element.ToString(System.Xml.Linq.SaveOptions.DisableFormatting), Definition))
+                        using (var picture = SvgDrawing.Fragment(element.ToString(System.Xml.Linq.SaveOptions.DisableFormatting), Definition, OnPixels))
                         {
                             if (picture != null)
                                 canvas.DrawPicture(picture);
@@ -217,20 +236,35 @@ public static class SkiaScene
             return true;
         }
 
-        /// <summary>Keeps a definitions item's elements by id for markup to refer to.</summary>
-        void Define(string markup)
+        /// <summary>Keeps a definitions item's elements by id for markup to refer to (those of an id already kept, with <paramref name="first"/> not).</summary>
+        void Define(string markup, bool first = false)
         {
             try
             {
                 var holder = System.Xml.Linq.XElement.Parse($"<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">{markup}</svg>");
                 foreach (var element in holder.Descendants())
                 {
-                    if (element.Attribute("id")?.Value is { Length: > 0 } id)
+                    if (element.Attribute("id")?.Value is { Length: > 0 } id && !(first && definitions.ContainsKey(id)))
                         definitions[id] = element;
                 }
             }
             catch (System.Xml.XmlException)
             {
+            }
+        }
+
+        /// <summary>
+        /// Keeps the definitions of a page's items before they are drawn, the first of an id: the HTML's references find
+        /// definitions anywhere in the document, those of text's paints after the text, at the page's end.
+        /// </summary>
+        public void Predefine(IEnumerable<SceneItem> items)
+        {
+            foreach (var item in items)
+            {
+                if (item is DefsItem defined)
+                    Define(defined.Markup, first: true);
+                else if (item is IHoldsItems holder)
+                    Predefine(holder.Items);
             }
         }
 
@@ -446,8 +480,14 @@ public static class SkiaScene
                 {
                     var bounds = SKRect.Create((float)background.Width, (float)background.Height);
                     if (background.Fill is PictureFill { Tiling: null } stretched)
+                    {
                         Picture(stretched.Image, bounds, null);
-                    else if (Paint(background.Fill, bounds) is { } fill)
+                        break;
+                    }
+                    // A gradient as the HTML's definitions of it paint it (see Served).
+                    if (background.Fill is GradientFill && background.Defs.Length > 0)
+                        Define(background.Defs);
+                    if (((background.Fill is GradientFill ? Served(background.Paint, "fill", bounds) : null) ?? Paint(background.Fill, bounds)) is { } fill)
                     {
                         canvas.DrawRect(bounds, fill);
                         fill.Dispose();
@@ -487,7 +527,79 @@ public static class SkiaScene
                 case PictureItem picture:
                     Picture(picture);
                     break;
+                case MissingPictureItem missing:
+                    MissingPicture(missing);
+                    break;
             }
+        }
+
+        static readonly SKTypeface Tahoma = SKTypeface.FromFamilyName("Tahoma") ?? SKTypeface.FromFamilyName("Segoe UI") ?? SKTypeface.Default;
+
+        /// <summary>
+        /// Office's sign for a picture it cannot show, as the HTML draws it (see HtmlScene): Word's on white in four
+        /// 0.14 pt black lines, its icon and the message wrapped in 1.2 pt Tahoma 1.45 pt apart within its padding;
+        /// PowerPoint's in a 1-pixel grey frame, its 13-pixel icon and the message on one line in 11-pixel Tahoma, cut
+        /// at the frame.
+        /// </summary>
+        void MissingPicture(MissingPictureItem missing)
+        {
+            var (w, h) = ((float)missing.Width, (float)missing.Height);
+            using var black = new SKPaint { Color = SKColors.Black, IsAntialias = true };
+            using var grey = new SKPaint { Color = new SKColor(0x80, 0x80, 0x80), Style = SKPaintStyle.Stroke, StrokeWidth = 1, IsAntialias = true };
+            using var red = new SKPaint { Color = new SKColor(0xe0, 0, 0), IsAntialias = true };
+            using var white = new SKPaint { Color = SKColors.White };
+            canvas.Save();
+            if (missing.Message is { } message)
+            {
+                canvas.DrawRect(SKRect.Create(w, h), white);
+                using var font = new SKFont(Tahoma, Px(1.2)) { Subpixel = true, Edging = SKFontEdging.Antialias };
+                var (left, right, top) = (Px(3.44), w - Px(3.5), Px(0.79));
+                canvas.Save();
+                canvas.ClipRect(SKRect.Create(w, h));
+                var line = "";
+                var baseline = top + (Px(1.45) - (font.Metrics.Descent - font.Metrics.Ascent)) / 2 - font.Metrics.Ascent;
+                foreach (var word in message.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var longer = line.Length == 0 ? word : line + " " + word;
+                    if (line.Length > 0 && font.MeasureText(longer) > right - left)
+                    {
+                        canvas.DrawText(line, left, baseline, font, black);
+                        (line, baseline) = (word, baseline + Px(1.45));
+                    }
+                    else
+                        line = longer;
+                }
+                if (line.Length > 0)
+                    canvas.DrawText(line, left, baseline, font, black);
+                canvas.Restore();
+                using var frame = new SKPaint { Color = SKColors.Black, Style = SKPaintStyle.Stroke, StrokeWidth = Px(0.14), IsAntialias = true };
+                canvas.DrawLine(0, Px(0.06), w, Px(0.06), frame);
+                canvas.DrawLine(0, h - 0.08f, w, h - 0.08f, frame);
+                canvas.DrawLine(Px(0.06), 0, Px(0.06), h, frame);
+                canvas.DrawLine(w - 0.08f, 0, w - 0.08f, h, frame);
+                // The icon's viewBox of 4 × 5 met in its box of 1.68 × 1.92 pt, centred.
+                var scale = Math.Min(Px(1.68) / 4, Px(1.92) / 5);
+                canvas.Translate(Px(0.84) + (Px(1.68) - 4 * scale) / 2, Px(0.84) + (Px(1.92) - 5 * scale) / 2);
+                canvas.Scale(scale);
+                canvas.DrawRect(SKRect.Create(0.5f, 0.5f, 3, 4), white);
+                canvas.DrawRect(SKRect.Create(0.5f, 0.5f, 3, 4), grey);
+                canvas.DrawRect(SKRect.Create(1.5f, 1.5f, 1, 1), red);
+            }
+            else
+            {
+                using var frame = new SKPaint { Color = new SKColor(0x6d, 0x6d, 0x6d), Style = SKPaintStyle.Stroke, StrokeWidth = 1 };
+                canvas.DrawRect(SKRect.Create(0.5f, 0.5f, w - 1, h - 1), frame);
+                canvas.ClipRect(SKRect.Create(1, 1, w - 2, h - 2));
+                using var font = new SKFont(Tahoma, 11) { Subpixel = true, Edging = SKFontEdging.Antialias };
+                canvas.DrawText("The picture can't be displayed.", 25, 6 + (13 - (font.Metrics.Descent - font.Metrics.Ascent)) / 2 - font.Metrics.Ascent, font, black);
+                canvas.Translate(7, 6);
+                canvas.DrawRect(SKRect.Create(0.5f, 0.5f, 12, 12), white);
+                canvas.DrawRect(SKRect.Create(0.5f, 0.5f, 12, 12), grey);
+                using var cross = new SKPaint { Color = new SKColor(0xe0, 0, 0), Style = SKPaintStyle.Stroke, StrokeWidth = 2, IsAntialias = true };
+                canvas.DrawLine(4, 4, 9, 9, cross);
+                canvas.DrawLine(9, 4, 4, 9, cross);
+            }
+            canvas.Restore();
         }
 
         void FillRect(SKRect rect, RgbColor color)
@@ -537,13 +649,22 @@ public static class SkiaScene
                     x += glyphs[i].Advance * text.Size + (Space(i) ? text.WordSpacing : 0);
                 }
             }
-            if (text.Paint != null && !text.Hollow)
+            // A paint of its own (Word's text fills and outlines): the fill and the stroke its SVG attributes give over the
+            // letters' box, as the HTML paints them.
+            SKPaint? painted = null, outlined = null;
+            var own = text.Paint != null && !text.Hollow && SvgDrawing.Paints(text.Paint,
+                SKRect.Create(Px(text.X), Px(text.Y - font.Ascent * text.Size), Px(text.Width), Px((font.Ascent + font.Descent) * text.Size)), Definition, out painted, out outlined);
+            if (text.Paint != null && !text.Hollow && !own)
                 statistics.Paints++;
-            using var fill = text.Hollow ? (text.Shadow ? Brush(RgbColor.White) : null) : Brush(text.Color);
-            // Outlined letters 0.14 pt wide, bold of a font without a bold face stroked a 35th of the size wide.
-            using var stroke = text.Hollow ? Pen(text.Color, Px(0.14)) : text.StrokedBold ? Pen(text.Color, Px(text.Size / 35)) : null;
-            if (stroke != null)
+            using var fill = own ? painted : text.Hollow ? (text.Shadow ? Brush(RgbColor.White) : null) : Brush(text.Color);
+            // Outlined letters 0.14 pt wide, bold of a font without a bold face stroked a 35th of the size wide (in the
+            // fill's paint where the text has a paint of its own without an outline).
+            using var stroke = own && outlined != null ? outlined
+                : text.StrokedBold ? (own ? painted?.Clone() : Pen(text.Color, Px(text.Size / 35)))
+                : text.Hollow ? Pen(text.Color, Px(0.14)) : null;
+            if (stroke != null && stroke != outlined)
             {
+                (stroke.Style, stroke.StrokeWidth) = (SKPaintStyle.Stroke, text.Hollow ? Px(0.14) : Px(text.Size / 35));
                 stroke.StrokeMiter = 10;
                 stroke.StrokeJoin = text.Hollow ? SKStrokeJoin.Round : SKStrokeJoin.Miter;
             }
@@ -689,14 +810,26 @@ public static class SkiaScene
             }
         }
 
+        static readonly Regex Blending = new(@"mix-blend-mode:\s*([\w-]+)", RegexOptions.Compiled);
+
         void ShapePath(ShapePathItem item)
         {
+            // Its blending with what lies behind it (a fill overlay's, see SlideRenderer): the path drawn on a layer that
+            // blends so.
+            if (Blending.Match(item.Attributes) is { Success: true } blending && SvgDrawing.BlendMode(blending.Groups[1].Value) is { } mode && mode != SKBlendMode.SrcOver)
+            {
+                using var layer = new SKPaint { BlendMode = mode };
+                canvas.SaveLayer(layer);
+                ShapePath(item with { Attributes = Blending.Replace(item.Attributes, "") });
+                canvas.Restore();
+                return;
+            }
             using var path = SKPath.ParseSvgPathData(item.Data);
             if (path == null)
                 return;
             if (item.Fill is PictureFill { Tiling: null } picture)
                 Stretched(picture, path);
-            else if (Paint(item.Fill, path.Bounds) is { } fill)
+            else if (((item.Fill is GradientFill or SlideFill { Fill: GradientFill } ? Served(item.Attributes, "fill", path.Bounds) : null) ?? Paint(item.Fill, path.Bounds)) is { } fill)
             {
                 canvas.DrawPath(path, fill);
                 fill.Dispose();
@@ -705,11 +838,27 @@ public static class SkiaScene
             {
                 using var pen = Pen(outline, item.DashesClosed);
                 // A gradient or a pattern along the outline, over the path's bounds as its fill would lie.
-                using var paint = outline.Fill is GradientFill or PatternFill ? Paint(outline.Fill, path.Bounds) : null;
+                using var paint = outline.Fill is GradientFill or PatternFill
+                    ? (outline.Fill is GradientFill ? Served(item.Attributes, "stroke", path.Bounds) : null) ?? Paint(outline.Fill, path.Bounds)
+                    : null;
                 if (paint?.Shader is { } shader)
                     pen.Shader = shader;
                 canvas.DrawPath(path, pen);
             }
+        }
+
+        /// <summary>
+        /// A gradient as the item's SVG attributes paint it with a server among the page's definitions (as SvgPaint
+        /// writes it: PowerPoint's blends, angles in the unit square, path gradients as trapezoids), or null.
+        /// </summary>
+        SKPaint? Served(string attributes, string property, SKRect bounds)
+        {
+            if (Regex.Match(attributes, "(?<![\\w-])" + property + "=\"url\\(#([^)\"]+)\\)\"") is not { Success: true } named
+                || Definition(named.Groups[1].Value) is not { } server)
+                return null;
+            var opacity = Regex.Match(attributes, "(?<![\\w-])" + property + "-opacity=\"([^\"]+)\"") is { Success: true } given
+                && double.TryParse(given.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var o) ? o : 1;
+            return SvgDrawing.Shader(server, bounds, opacity, Definition) is { } shader ? new SKPaint { Shader = shader, Style = SKPaintStyle.Fill, IsAntialias = true } : null;
         }
 
         /// <summary>
@@ -725,12 +874,52 @@ public static class SkiaScene
             var (innerW, innerH) = (w * (1 - fl - fr), h * (1 - ft - fb));
             var (fullW, fullH) = (innerW / Math.Max(1e-6, 1 - sl - sr), innerH / Math.Max(1e-6, 1 - st - sb));
             var (x, y) = (bounds.Left + w * fl - sl * fullW, bounds.Top + h * ft - st * fullH);
-            if (fill.Filter != null)
+            // Its recoloring (see BlipEffects) through the filter its primitives make, as the HTML's filter of them.
+            using var recolored = fill.Filter != null ? Recoloring(fill.Filter) : null;
+            if (fill.Filter != null && recolored == null)
                 statistics.Effects++;
             canvas.Save();
             canvas.ClipPath(path, antialias: true);
+            if (recolored != null)
+                canvas.SaveLayer(recolored);
             Picture(fill.Image, SKRect.Create((float)x, (float)y, (float)fullW, (float)fullH), null);
+            if (recolored != null)
+                canvas.Restore();
             canvas.Restore();
+        }
+
+        /// <summary>The pictures recolored so far, by picture and filter primitives.</summary>
+        readonly Dictionary<(SKImage, string), SKImage?> recolorings = [];
+
+        /// <summary>A picture through its recoloring (its filter primitives, see BlipEffects), made once; null where they do not draw.</summary>
+        SKImage? Recolored(SKImage image, string primitives)
+        {
+            if (recolorings.TryGetValue((image, primitives), out var made))
+                return made;
+            using var paint = Recoloring(primitives);
+            using var surface = paint != null ? SKSurface.Create(new SKImageInfo(image.Width, image.Height, SKColorType.Rgba8888, SKAlphaType.Premul)) : null;
+            if (surface != null)
+            {
+                surface.Canvas.SaveLayer(paint);
+                surface.Canvas.DrawImage(image, 0, 0);
+                surface.Canvas.Restore();
+                made = surface.Snapshot();
+            }
+            return recolorings[(image, primitives)] = made;
+        }
+
+        /// <summary>A layer's paint drawing a picture's recoloring, from its filter primitives (see BlipEffects), or null.</summary>
+        static SKPaint? Recoloring(string primitives)
+        {
+            try
+            {
+                return SvgDrawing.Filter(System.Xml.Linq.XElement.Parse($"<filter xmlns=\"http://www.w3.org/2000/svg\">{primitives}</filter>")) is { } filter
+                    ? new SKPaint { ImageFilter = filter } : null;
+            }
+            catch (System.Xml.XmlException)
+            {
+                return null;
+            }
         }
 
         /// <summary>A run of slide text from its glyphs' outlines in pixels (see GlyphRunItem), filled with its paint over the paint's box.</summary>
@@ -788,7 +977,12 @@ public static class SkiaScene
             }
             else
             {
-                var x = item.Positions[0] + item.Width - glyphs.Sum(g => (g.Advance + g.Kerning) * size);
+                // Right-to-left text goes whole to the left of its right end, the x the HTML gives the browser (Positions
+                // hold its characters' places, the first character's at the right).
+                var rightEnd = Regex.Match(item.Placement, "x=\"([^\"]+)\"") is { Success: true } end
+                    && double.TryParse(end.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var given)
+                    ? given : item.Positions.Min() + item.Width;
+                var x = rightEnd - glyphs.Sum(g => (g.Advance + g.Kerning) * size);
                 for (var i = 0; i < glyphs.Length; i++)
                 {
                     places[i] = x + glyphs[i].OffsetX * size;
@@ -850,7 +1044,7 @@ public static class SkiaScene
             // The recording starts at this canvas's origin; patterns still align to the page.
             var at = page.TryInvert(out var inverse) ? inverse.PreConcat(canvas.TotalMatrix) : canvas.TotalMatrix;
             var origin = at.TryInvert(out var back) ? back : SKMatrix.Identity;
-            new Drawer(recording, statistics, origin, pictures, glyphs, definitions, exactDashes).Draw(items);
+            new Drawer(recording, statistics, origin, pictures, glyphs, definitions, exactDashes, pixels: OnPixels).Draw(items);
             return recorder.EndRecording();
         }
 
@@ -1028,11 +1222,13 @@ public static class SkiaScene
                     var ay = tile.Align switch { "l" or "ctr" or "r" => (h - th) / 2, "bl" or "b" or "br" => h - th, _ => 0 };
                     var placed = SKMatrix.CreateScale((float)(tw / image.Width), (float)(th / image.Height))
                         .PostConcat(SKMatrix.CreateTranslation((float)(bounds.Left + ax + tile.Tx * PxPerPt), (float)(bounds.Top + ay + tile.Ty * PxPerPt)));
-                    if (picture.Filter != null)
+                    // Its recoloring (see BlipEffects) on the picture itself, every tile alike.
+                    var recolored = picture.Filter != null ? Recolored(image, picture.Filter) : null;
+                    if (picture.Filter != null && recolored == null)
                         statistics.Effects++;
                     return new SKPaint
                     {
-                        Shader = image.ToShader(tile.Flip is "x" or "xy" ? SKShaderTileMode.Mirror : SKShaderTileMode.Repeat,
+                        Shader = (recolored ?? image).ToShader(tile.Flip is "x" or "xy" ? SKShaderTileMode.Mirror : SKShaderTileMode.Repeat,
                             tile.Flip is "y" or "xy" ? SKShaderTileMode.Mirror : SKShaderTileMode.Repeat, Sampling, placed),
                         Style = SKPaintStyle.Fill, IsAntialias = true,
                     };
@@ -1081,7 +1277,7 @@ public static class SkiaScene
 
         static readonly Regex Opacity = new(" opacity=\"([0-9.]+)\"", RegexOptions.Compiled);
 
-        /// <summary>A group: its opacity where it has one (a 3D face's), its other attributes not.</summary>
+        /// <summary>A group: its opacity where it has one (a 3D face's) and its isolation (a fill overlay's), its other attributes not.</summary>
         void Group(SvgGroupItem group)
         {
             if (group.ColorMatrix is { Length: 20 } matrix)
@@ -1099,6 +1295,14 @@ public static class SkiaScene
                 if (group.Transform is { } transform)
                     Concat(Matrix(transform));
                 Effected(group.Effects, [group with { Transform = null, Effects = null }]);
+                canvas.Restore();
+                return;
+            }
+            // A group of its own, which what blends within it blends with.
+            if (group.Attributes.Contains("isolation:isolate", StringComparison.Ordinal))
+            {
+                canvas.SaveLayer();
+                Group(group with { Attributes = group.Attributes.Replace("isolation:isolate", "", StringComparison.Ordinal) });
                 canvas.Restore();
                 return;
             }
@@ -1142,9 +1346,17 @@ public static class SkiaScene
 
         void Picture(PictureItem item)
         {
-            if (item.Filter.Length > 0)
+            // Its recoloring through the filter its attribute names among the page's definitions.
+            using var recolored = item.Filter.Length > 0 && Regex.Match(item.Filter, @"url\(#([^)]+)\)") is { Success: true } named
+                && Definition(named.Groups[1].Value) is { Name.LocalName: "filter" } element && SvgDrawing.Filter(element) is { } filter
+                ? new SKPaint { ImageFilter = filter } : null;
+            if (item.Filter.Length > 0 && recolored == null)
                 statistics.Effects++;
+            if (recolored != null)
+                canvas.SaveLayer(recolored);
             Picture(item.Source, SKRect.Create((float)item.X, (float)item.Y, (float)item.Width, (float)item.Height), item.ClipPath);
+            if (recolored != null)
+                canvas.Restore();
         }
 
         /// <summary>A picture stretched over a rectangle, cut at a path where it has one (SVG path data).</summary>
@@ -1163,7 +1375,13 @@ public static class SkiaScene
                     canvas.ClipPath(clip, antialias: true);
             }
             if (decoded.Image is { } image)
-                canvas.DrawImage(image, rect, Sampling);
+            {
+                // On pixels, squeezed far more along one axis than along the other, evened first (see SvgDrawing.Evened).
+                using var evened = OnPixels is { } onPixels
+                    ? SvgDrawing.Evened(image, onPixels.PreConcat(SKMatrix.CreateScaleTranslation(rect.Width / image.Width, rect.Height / image.Height, rect.Left, rect.Top)))
+                    : null;
+                canvas.DrawImage(evened ?? image, rect, Sampling);
+            }
             else if (decoded.Drawing is { Size: { Width: > 0, Height: > 0 } size } drawing)
             {
                 // An SVG picture of a size (a viewBox, or a width and a height) stretched over the rectangle, as the
