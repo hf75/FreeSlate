@@ -1117,7 +1117,14 @@ public sealed class SvgDrawing
                 // private-use ones not).
                 using var chosen = typefaces != null && font.Typeface is { } found
                     && typefaces(found, font.GetGlyphs(value).Select(g => (uint)g), value) is var other && !ReferenceEquals(other, found)
-                    ? new SKFont(other, font.Size) { Subpixel = true, Edging = SKFontEdging.Antialias, LinearMetrics = true }
+                    ? new SKFont(other, font.Size)
+                    {
+                        Subpixel = true, Edging = SKFontEdging.Antialias, LinearMetrics = true,
+                        // The slant and weight the system simulates for a family without such a face, which a typeface
+                        // made from the font's data does not (DirectWrite's oblique measured: a skew of 0.34).
+                        SkewX = found.FontStyle.Slant != SKFontStyleSlant.Upright && other.FontStyle.Slant == SKFontStyleSlant.Upright ? -0.34f : 0,
+                        Embolden = found.FontStyle.Weight >= 600 && other.FontStyle.Weight < 600,
+                    }
                     : null;
                 void Draw(string run, double x, double y, SKPaint paint)
                 {
