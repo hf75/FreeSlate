@@ -102,6 +102,12 @@ public sealed class ParagraphInput
     /// <summary>Style of the paragraph mark; gives empty paragraphs their height.</summary>
     public required TextStyle EndStyle { get; init; }
 
+    /// <summary>
+    /// The paragraph mark as it weighs in where its last line's baseline sits (see LineMetrics): its own formatting
+    /// (a:endParaRPr), else the last run's in its Latin font; null without runs.
+    /// </summary>
+    public TextStyle? MarkStyle { get; init; }
+
     /// <summary>l, ctr, r, just, justLow, dist, thaiDist.</summary>
     public string Align { get; init; } = "l";
 
@@ -258,8 +264,9 @@ public sealed class LaidOutText
 /// <item>Single line height S = 1.2 × font size; multiples scale it; exact spacing is rounded to whole points.</item>
 /// <item>At single spacing the baseline sits at S × ascent ratio of the font. Above single spacing it sits at
 /// H × min(0.75, ascent ratio); below, at max(S × ratio − (S − H), H × min(0.75, ratio)).</item>
-/// <item>Each line takes the largest ascent and descent of its runs; bullets do not count, nor does the line break
-/// ending a line with text (an empty line is as high as its break).</item>
+/// <item>A line is as high as its largest font's line; its baseline divides that height as the largest ascent and
+/// descent of its runs divide theirs (see <see cref="LineMetrics"/>); bullets do not count, an empty line is as high as
+/// its break.</item>
 /// <item>Space before is ignored for the first paragraph, space after for the last, unless the body asks for them
 /// (bodyPr spcFirstLastPara); percentages refer to 1.2 × font size.</item>
 /// <item>Widths add up glyph advances rounded to PowerPoint's master units (1/8 point), see
@@ -296,11 +303,49 @@ public static class TextLayout
     }
 
     /// <summary>Ascent and descent of a run per PowerPoint's line model.</summary>
-    public static (double Ascent, double Descent) Metrics(TextStyle style, LineSpacing spacing)
+    public static (double Ascent, double Descent) Metrics(TextStyle style, LineSpacing spacing) =>
+        Metrics(style.Size, style.Font.Data.AscentRatio, spacing);
+
+    /// <summary>
+    /// Ascent and descent of a line of text in <paramref name="styles"/> per PowerPoint's line model (catalog:
+    /// text.spacing): in fonts of one ascent ratio the largest ascent and descent of its runs; in fonts of different
+    /// ones as high as the line of its largest font, its baseline dividing that height as the largest ascent and descent
+    /// of its fonts at single spacing divide theirs, the line break ending it or the paragraph's mark after it
+    /// (<paramref name="terminator"/>, already at the size of the run before it) among them (measured with
+    /// local/mixfonts-a to -d in PowerPoint's PDF: fonts whose ascents and descents differ, at one size and at two, three
+    /// in a line, at 80, 100 and 150 % and exactly 36 pt, breaks and marks of fonts and sizes of their own, Chinese and
+    /// Latin text, all within 0.1 pt; a break's or mark's own size counts for nothing).
+    /// </summary>
+    static (double Ascent, double Descent) LineMetrics(List<TextStyle> styles, TextStyle? terminator, LineSpacing spacing)
     {
-        var single = 1.2 * style.Size;
+        var fonts = terminator is { } end ? [.. styles, end] : styles;
+        var ratio = fonts[0].Font.Data.AscentRatio;
+        if (fonts.All(s => s.Font.Data.AscentRatio == ratio))
+        {
+            double ascent = 0, descent = 0;
+            foreach (var style in styles)
+            {
+                var (a, d) = Metrics(style, spacing);
+                ascent = Math.Max(ascent, a);
+                descent = Math.Max(descent, d);
+            }
+            return (ascent, descent);
+        }
+        var (above, below) = (0.0, 0.0);
+        foreach (var style in fonts)
+        {
+            var single = 1.2 * style.Size;
+            above = Math.Max(above, single * style.Font.Data.AscentRatio);
+            below = Math.Max(below, single * (1 - style.Font.Data.AscentRatio));
+        }
+        return Metrics(styles.Max(s => s.Size), above / (above + below), spacing);
+    }
+
+    /// <summary>Ascent and descent of a line as high as text of <paramref name="size"/> whose baseline divides it at <paramref name="ratio"/>.</summary>
+    static (double Ascent, double Descent) Metrics(double size, double ratio, LineSpacing spacing)
+    {
+        var single = 1.2 * size;
         var height = spacing.Exact ? Math.Round(spacing.Value) : single * Math.Max(0.01, spacing.Value);
-        var ratio = style.Font.Data.AscentRatio;
         var capped = Math.Min(0.75, ratio);
         var ascent = height <= single + 1e-9
             ? Math.Max(single * ratio - (single - height), height * capped)
@@ -505,20 +550,28 @@ public static class TextLayout
         List<(int Start, int End, double X)> pieces, double lineStart, double contentEnd, double width,
         bool first, bool last, double bulletWidth, List<(int Index, double From, double To)> tabs)
     {
-        // Vertical metrics: the largest ascent and descent of the line's runs. The line break ending it counts only
-        // on an otherwise empty line (measured: a 60 pt break after 20 pt text leaves the line 24 pt high, a 60 pt
-        // break alone makes it 72 pt); an empty last line takes the paragraph mark's.
-        double ascent = 0, descent = 0;
-        var lineStyles = pieces.Where(p => p.End > p.Start).SelectMany(p => Enumerable.Range(p.Start, p.End - p.Start))
-            .Where(i => i < styles.Count).Select(i => styles[i]).Distinct().ToList();
+        // Vertical metrics (see LineMetrics). The line break ending it sizes the line only when it is otherwise empty
+        // (measured: a 60 pt break after 20 pt text leaves the line 24 pt high, a 60 pt break alone makes it 72 pt); an
+        // empty last line takes the paragraph mark's.
+        var characters = pieces.Where(p => p.End > p.Start).SelectMany(p => Enumerable.Range(p.Start, p.End - p.Start))
+            .Where(i => i < styles.Count).ToList();
+        var lineStyles = characters.Select(i => styles[i]).Distinct().ToList();
+        double ascent, descent;
         if (lineStyles.Count == 0)
+        {
             lineStyles = pieces.Count > 0 && pieces[0].Start < styles.Count ? [styles[pieces[0].Start]] : [paragraph.EndStyle];
+            (ascent, descent) = Metrics(lineStyles[0], paragraph.Spacing);
+        }
+        else
+        {
+            var terminator = pieces[^1] is var (breakAt, breakEnd, _) && breakEnd == breakAt && breakAt < all.Length && all[breakAt] == '\n'
+                ? styles[breakAt]
+                : last ? paragraph.MarkStyle : null;
+            (ascent, descent) = LineMetrics(lineStyles, terminator is { } end ? end with { Size = styles[characters[^1]].Size } : null, paragraph.Spacing);
+        }
+        // An equation in the line makes room for itself.
         foreach (var style in lineStyles)
         {
-            var (a, d) = Metrics(style, paragraph.Spacing);
-            ascent = Math.Max(ascent, a);
-            descent = Math.Max(descent, d);
-            // An equation in the line makes room for itself.
             if (style.Inline is { } inline)
             {
                 ascent = Math.Max(ascent, inline.Ascent);

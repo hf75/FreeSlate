@@ -1201,8 +1201,18 @@ areas:
           line height is 1.2 × the font size for every font, multiples scale it, exact spacing is rounded to
           whole points. At single spacing the baseline sits at 1.2 × size × ascent/(ascent+descent) (typo
           metrics if USE_TYPO_METRICS, else Windows metrics); above single spacing at H × min(0.75, ratio);
-          below at max(S × ratio − (S − H), H × min(0.75, ratio)). Lines take the largest ascent and descent
-          of their runs; bullets do not count. Space before is ignored for the first paragraph; percentages of
+          below at max(S × ratio − (S − H), H × min(0.75, ratio)). Lines in fonts of one ratio take the largest
+          ascent and descent of their runs. Where the ratios differ, a line is as high as the line of its
+          largest font, and its baseline divides that height as the largest ascent and descent of its fonts at
+          single spacing divide theirs, among them the line break ending it, or on the paragraph's last line its
+          mark (a:endParaRPr, the theme's font where it names none; without a:endParaRPr the last run's Latin
+          font), each in its own font at the size of the run before it, its own size counting for nothing
+          (measured in PowerPoint's PDF of local/mixfonts-a to -d: two and three fonts at one size and at two,
+          at 80, 100 and 150 % and exactly 36 pt, breaks and marks of fonts and sizes of their own, Chinese and
+          Latin text, all within 0.1 pt; on screen 307 of 322 lines on PowerPoint's pixel rows, the rest one
+          or two rows off; the 37 decks it changes 95.86 -> 95.99 %, LibreOffice's tdf129686 79.0 -> 97.4 %
+          and tdf98603 89.1 -> 96.4 %).
+          Bullets do not count. Space before is ignored for the first paragraph; percentages of
           space before/after refer to 1.2 × font size. Glyph origins are snapped to device pixels. Verified
           with generated/text-metrics (98.9 %).
 
@@ -1321,7 +1331,10 @@ areas:
           3d_rotated_text). Other names, also PostScript names such as CambriaMath, become Calibri
           (generated/text-more, slide 7). Characters
           inserted from symbol fonts (stored at U+F000 to U+F0FF) take the run's symbol font (a:sym):
-          Wingdings 1 to 3, Symbol and Webdings render with their own glyphs (generated/text-more). charset,
+          Wingdings 1 to 3, Symbol and Webdings render with their own glyphs (generated/text-more). A Latin
+          font naming the theme's East Asian font (+mn-ea, +mj-ea) where the theme has none stands for the
+          theme's font of the East Asian script of the run's language, else of its alternative language
+          (local/mixfonts-d: Latin letters with altLang zh-CN drawn in 等线). charset,
           panose and pitchFamily only help find substitutes; fonts are resolved by name. Verified with
           generated/text-basic, text-eastasian, text-rtl and text-more.
 

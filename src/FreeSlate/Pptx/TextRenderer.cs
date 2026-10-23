@@ -1496,6 +1496,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         string? displayAlign = null;
         // Where each child begins in the paragraph's text (SlideText), which its runs' characters show.
         var offset = 0;
+        XElement? lastRun = null;
         foreach (var element in p.Elements())
         {
             var at = offset;
@@ -1504,6 +1505,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             {
                 case "r" or "fld":
                     // Every piece of one font slot (Latin, East Asian, complex script) gets its own font.
+                    lastRun = element;
                     var field = element.Name.LocalName == "fld";
                     var t = field ? FieldText(element) : element.Element(Ns.A + "t")?.Value ?? "";
                     var rPr = element.Element(Ns.A + "rPr");
@@ -1560,6 +1562,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             Mark = offset,
             Runs = runs,
             EndStyle = endStyle,
+            // A mark without formatting of its own counts as the last run's Latin font (measured with local/mixfonts-c
+            // and -d: Chinese text in 等线 sits as with Aptos, the run's Latin font, in its paragraph's last line).
+            MarkStyle = p.Element(Ns.A + "endParaRPr") != null ? endStyle
+                : lastRun != null ? Style(lastRun.Element(Ns.A + "rPr"), sources, level, fontScale, null) : null,
             Align = displayAlign ?? P("algn") ?? "l",
             RightToLeft = P("rtl") is "1" or "true",
             Kinsoku = P("eaLnBrk") is not ("0" or "false"),
@@ -1761,7 +1767,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // them (catalog: text.fonts).
         var latin = RunElement(rPr, sources, level, "latin");
         var major = latin?.Str("typeface") is "+mj-lt";
-        var family = Typeface(latin) ?? Colors.Theme.MinorLatin;
+        var family = Typeface(latin) ?? LatinFromEastAsian(latin, R("lang"), R("altLang")) ?? Colors.Theme.MinorLatin;
         if (slot == FontSlot.EastAsian)
         {
             var themeScript = Scripts.EastAsianScript(R("lang"), script);
@@ -1877,5 +1883,20 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     string? Typeface(XElement? font) =>
         font?.Str("typeface") is { Length: > 0 } t ? Colors.Theme.ResolveTypeface(t) is { Length: > 0 } r ? r : null : null;
+
+    /// <summary>
+    /// What a Latin font naming the theme's East Asian font (+mn-ea, +mj-ea) stands for where the theme has none: the
+    /// theme's font for the East Asian script of the run's language, else of its alternative language (measured with
+    /// local/mixfonts-d: Latin letters of a run with altLang zh-CN and latin +mn-ea are drawn in 等线, and paragraph marks
+    /// and line breaks so formatted count as 等线 in their lines); null without an East Asian language.
+    /// </summary>
+    string? LatinFromEastAsian(XElement? latin, string? language, string? alternative)
+    {
+        static bool EastAsian(string? tag) => tag?.ToLowerInvariant() is { } t && (t.StartsWith("ja", StringComparison.Ordinal)
+            || t.StartsWith("ko", StringComparison.Ordinal) || t.StartsWith("zh", StringComparison.Ordinal));
+        if (latin?.Str("typeface") is not ("+mn-ea" or "+mj-ea") || (EastAsian(language) ? language : EastAsian(alternative) ? alternative : null) is not { } tag)
+            return null;
+        return Colors.Theme.ScriptFonts.GetValueOrDefault((latin.Str("typeface") == "+mj-ea", Scripts.EastAsianScript(tag, null)));
+    }
 
 }
