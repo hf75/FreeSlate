@@ -348,6 +348,10 @@ public sealed class DocumentContext : IDisposable
         return document;
     }
 
+    /// <summary>The part a node of a loaded part stands in (see Load), or null for one made elsewhere.</summary>
+    public string? PartOf(XObject node) =>
+        node.Document is { } document ? documents.FirstOrDefault(d => ReferenceEquals(d.Value, document)).Key : null;
+
     /// <summary>
     /// Shading that names a theme color (w:shd's w:themeFill, w:themeColor) takes it, tinted or shaded, whatever
     /// w:fill and w:color say, as text colors do (catalog: color.models; docx/external/libreoffice/

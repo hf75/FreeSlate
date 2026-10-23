@@ -149,6 +149,25 @@ using (var pdf = File.Create("report-archive.pdf"))
 typed items per page or slide) on any Skia canvas, as PNG (`SkiaScene.Png`) or as PDF (`SkiaScene.Pdf`). The PDF is not
 tagged: SkiaSharp hands Skia no structure tree.
 
+### Editing and saving Word documents
+
+```csharp
+using FreeSlate;
+using FreeSlate.Docx;
+
+using var document = WordDocument.Open("report.docx");
+// Paragraphs by id; a place is an offset in a paragraph's text (a tab, a break or a field counts as one character).
+var first = document.Blocks.OfType<ParagraphBlock>().First();
+document.Insert(first.Id, 0, "Draft: ");
+var second = document.Split(first.Id, 7);   // as Enter splits it
+document.Save("report-edited.docx");        // the changed paragraphs written anew, every other byte as it was
+```
+
+`WordDocument` replaces text where the document has it as text, in the format of the text before it, and splits and
+removes paragraphs; it writes each changed paragraph into the XML it was read from and leaves the rest of the package
+as it was. The pages it lays out (`Scenes`) know where each character stands (`PlacesItem`), which
+`FreeSlate.Skia.TextPlaces` turns into hit tests, cursors and selections.
+
 ### The output
 
 - `deck.html` shows all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
@@ -182,8 +201,9 @@ dotnet run --project src/FreeSlate.Viewer -- report.docx
 The viewer is the presenter's counterpart for Word documents (its interface is German too): it converts a document and
 draws its pages with Skia (*Browser* shows FreeSlate's HTML in the platform's web view instead), zooms (automatic,
 page width, whole page, 50 to 200 %), jumps to a page, follows links (to bookmarks of the document or to the web),
-shows the document with its markup, prints it, saves it as PDF (or PDF/A for archiving) or HTML, and loads it again
-when it is saved (F5 does too). A document that cannot be converted shows the whole exception. On Windows with Word
+puts a cursor where one clicks and selects by dragging or with Shift and the arrow keys (the status bar names the
+paragraph and the place), shows the document with its markup, prints it, saves it as PDF (or PDF/A for archiving) or
+HTML, and loads it again when it is saved (F5 does too). A document that cannot be converted shows the whole exception. On Windows with Word
 installed, *Word daneben* puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with
 a slider between the two, and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM,
 as the fidelity tool renders its references, and Windows rasterizes the pages.
