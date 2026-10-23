@@ -235,11 +235,30 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     public string? CurrentList { get; set; }
 
     /// <summary>The level of the story's last LISTNUM field and the paragraph it stands in.</summary>
-    public (int Level, System.Xml.Linq.XElement? Paragraph) ListNum { get; set; }
+    (int Level, object? Paragraph) listNum;
 
     readonly int[] autoHeadings = new int[10];
     int autoBody, autoLevel;
-    System.Xml.Linq.XElement? autoParagraph;
+    object? autoParagraph;
+
+    /// <summary>
+    /// A LISTNUM field's number (catalog: field.evaluation): in the list of its name (an abstract definition's w:name,
+    /// else Word's default list of that name), without one in the list of the story's last numbered paragraph or the
+    /// default list; at the level \l gives, else one deeper than a LISTNUM before it in its paragraph, else at the last
+    /// LISTNUM's level without a name and the first with one; from \s on where given. It counts with the list, which
+    /// numbered paragraphs count on (measured with docx/local/lnum-*: 1) 2) 3); "1)a)" then "b)"; after \l 3 a plain
+    /// one at level 3, a LegalDefault one at level 1; a LISTNUM between paragraphs of a list "%1." numbered 2. and the
+    /// paragraph after it 3.; MyList's \l 2 1.1. and 1.2. under its first heading).
+    /// </summary>
+    public string? ListNumber(string? name, int? level, int? start, object? paragraph)
+    {
+        var (last, lastParagraph) = listNum;
+        var ilvl = level ?? (paragraph != null && ReferenceEquals(paragraph, lastParagraph) ? Math.Min(8, last + 1) : name != null ? 0 : last);
+        listNum = (ilvl, paragraph);
+        var list = name != null ? definitions.Named(name) ?? NumberingDefinitions.DefaultList(name)
+            : CurrentList ?? NumberingDefinitions.DefaultList("NumberDefault");
+        return Next(list, ilvl, null, start)?.Text;
+    }
 
     /// <summary>
     /// The text of an AUTONUM, AUTONUMLGL or AUTONUMOUT field in a paragraph of an outline level (1 to 9; 0 for body
@@ -248,7 +267,7 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     /// AUTONUM shows the paragraph's count, AUTONUMLGL the counts of the levels down to it ("1.0.1.2."), AUTONUMOUT its
     /// count in its level's outline style (I., A., 1., a), (1), (a), (i), (a), (i); below the ninth 1.).
     /// </summary>
-    public string AutoNumber(string type, int level, System.Xml.Linq.XElement? paragraph)
+    public string AutoNumber(string type, int level, object? paragraph)
     {
         if (paragraph == null || !ReferenceEquals(paragraph, autoParagraph))
         {

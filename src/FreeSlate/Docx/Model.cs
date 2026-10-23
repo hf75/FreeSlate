@@ -526,21 +526,34 @@ public sealed partial class ModelReader(DocumentContext context)
 
     readonly Dictionary<string, List<Block>> stories = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The numbers of footnotes and endnotes in the order their references stand in the document.</summary>
-    readonly Dictionary<string, int> footnoteNumbers = new(StringComparer.Ordinal), endnoteNumbers = new(StringComparer.Ordinal);
-
-    /// <summary>The marks of the notes (by kind and id) and the sections of the endnotes' references.</summary>
-    readonly Dictionary<(bool Endnote, string Id), string> noteMarks = [];
-    readonly Dictionary<string, int> endnoteSections = new(StringComparer.Ordinal);
-
-    /// <summary>The count of each kind of note and the section of its last reference, for restarts.</summary>
-    readonly int[] noteCounts = new int[2], noteSectionsSeen = [-1, -1];
+    /// <summary>The numbers and marks of footnotes and endnotes in the order their references stand in the document.</summary>
+    NoteNumbers? noteNumbers;
+    NoteNumbers NoteNumbers => noteNumbers ??= new NoteNumbers(context.Settings);
 
     /// <summary>An endnote's number (the order of its reference), or 0 where nothing refers to it.</summary>
-    public int EndnoteNumber(string id) => endnoteNumbers.GetValueOrDefault(id);
+    public int EndnoteNumber(string id) => NoteNumbers.Endnotes.GetValueOrDefault(id);
 
     /// <summary>The index of the section that refers to an endnote.</summary>
-    public int EndnoteSection(string id) => endnoteSections.GetValueOrDefault(id);
+    public int EndnoteSection(string id) => NoteNumbers.EndnoteSections.GetValueOrDefault(id);
+
+    /// <summary>What each story asked for numbers (see NumberStep), in order, with the answers, by its part.</summary>
+    readonly Dictionary<string, List<(NumberStep Step, object? Answer)>> numberSteps = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The numbers a story's paragraphs, fields and note references asked for, in order, with what they were answered.</summary>
+    public IReadOnlyList<(NumberStep Step, object? Answer)> NumberSteps(string part) => numberSteps.GetValueOrDefault(part) ?? [];
+
+    /// <summary>The parts whose stories asked for numbers, in the order they first asked.</summary>
+    public IEnumerable<string> NumberedParts => numberSteps.Keys;
+
+    /// <summary>Asks the story's list counter or the document's note numbers a step, recording it with its answer.</summary>
+    object? Ask(NumberStep step)
+    {
+        var answer = Numbers.Answer(step, counter, NoteNumbers);
+        if (!numberSteps.TryGetValue(currentPart, out var steps))
+            numberSteps[currentPart] = steps = [];
+        steps.Add((step, answer));
+        return answer;
+    }
 
     /// <summary>The number of the note being read, which its w:footnoteRef or w:endnoteRef shows, and its id.</summary>
     string? noteMark, noteId;
@@ -640,7 +653,7 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             var id = note.Attr("id") ?? "";
             var type = note.Attr("type") ?? "normal";
-            noteMark = type == "normal" && noteMarks.TryGetValue((endnotes, id), out var mark) ? mark : "";
+            noteMark = type == "normal" && NoteNumbers.Marks.TryGetValue((endnotes, id), out var mark) ? mark : "";
             noteId = id;
             var blocks = new List<Block>();
             ReadBlocks(note, blocks);
@@ -690,25 +703,6 @@ public sealed partial class ModelReader(DocumentContext context)
         noteMark = null;
         (counter, currentPart) = (savedCounter, savedPart);
         return notes;
-    }
-
-    /// <summary>
-    /// The mark of the next note of a kind (catalog: note.footnotes, note.endnotes), as Word numbers them (measured with
-    /// docx/local/fnpages-c): in the format, from the start and with the restarts of the section of its reference
-    /// (w:footnotePr, w:endnotePr), else of the document's settings; decimal footnotes and lower roman endnotes by
-    /// default, counting on through the sections.
-    /// </summary>
-    string NextNoteMark(bool endnote)
-    {
-        var name = endnote ? "endnotePr" : "footnotePr";
-        var (own, settings) = (currentSection.Properties.Child(name), context.Settings.Child(name));
-        string? Value(string property) => own.Child(property).Val() ?? settings.Child(property).Val();
-        var kind = endnote ? 1 : 0;
-        if (Value("numRestart") == "eachSect" && noteSectionsSeen[kind] != currentSection.Index)
-            noteCounts[kind] = 0;
-        noteSectionsSeen[kind] = currentSection.Index;
-        var start = int.TryParse(Value("numStart"), out var first) ? first : 1;
-        return NumberText.Format(++noteCounts[kind] + start - 1, Value("numFmt") ?? (endnote ? "lowerRoman" : "decimal"));
     }
 
     /// <summary>The blocks of a header or footer part (catalog: headerFooter.parts), read once.</summary>
@@ -1212,7 +1206,7 @@ public sealed partial class ModelReader(DocumentContext context)
         if (pPr.Child("sectPr") != null && !p.Elements().Where(e => e.Name != Wml.W + "pPr").SelectMany(e => e.DescendantsAndSelf())
                 .Any(e => e.Name.LocalName is "t" or "tab" or "br" or "cr" or "drawing" or "pict" or "object" or "sym" or "ptab" or "fldChar" or "fldSimple" or "noBreakHyphen" or "softHyphen"))
             number = false;
-        if ((number ? counter.Next(format.NumberingId, format.NumberingLevel ?? 0, mark.Language) : null) is { } next)
+        if ((number ? Ask(new ListStep(format.NumberingId, format.NumberingLevel ?? 0, mark.Language)) as (string Text, NumberingLevel Level, string Own)? : null) is { } next)
         {
             format = context.Styles.Paragraph(direct.Style, direct, next.Level.ParagraphProperties, tableParagraph, numberingUnderStyle: direct.NumberingId == null);
             CharacterIndents(format, direct.Style);
@@ -1230,7 +1224,6 @@ public sealed partial class ModelReader(DocumentContext context)
             {
                 Own = next.Own, List = context.Numbering.Find(format.NumberingId)?.AbstractId,
             };
-            counter.CurrentList = format.NumberingId;
         }
         // The margins of the HTML divisions around the paragraph add to its indents (catalog: paragraph.htmlDivs).
         if (context.Divs.Chain(format.DivId) is { Count: > 0 } divs)
@@ -1513,7 +1506,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     // (measured with docx/local/fnd-b, fnd-c, fnd-d: the second of three references deleted leaves the
                     // others numbered 1 and 3; docx/external/libreoffice/extras-ooxmlexport/tdf141660).
                     foreach (var deleted in e.Descendants().Where(x => x.Name == Wml.W + "footnoteReference" || x.Name == Wml.W + "endnoteReference"))
-                        NextNoteMark(deleted.Name.LocalName == "endnoteReference");
+                        Ask(new NoteStep(deleted.Name.LocalName == "endnoteReference", null, currentSection.Index, currentSection.Properties));
                     // Its text stays as hidden text that the widths of autofit tables count (see RunFormat.Deleted).
                     deleting = true;
                     foreach (var run in e.Elements(Wml.W + "r"))
@@ -1716,13 +1709,7 @@ public sealed partial class ModelReader(DocumentContext context)
             if (words[i] == "\\s" && int.TryParse(words[i + 1], out var s))
                 start = s;
         }
-        var paragraph = at.AncestorsAndSelf(Wml.W + "p").FirstOrDefault();
-        var (last, lastParagraph) = counter.ListNum;
-        var ilvl = level ?? (paragraph != null && ReferenceEquals(paragraph, lastParagraph) ? Math.Min(8, last + 1) : name != null ? 0 : last);
-        counter.ListNum = (ilvl, paragraph);
-        var list = name != null ? context.Numbering.Named(name) ?? NumberingDefinitions.DefaultList(name)
-            : counter.CurrentList ?? NumberingDefinitions.DefaultList("NumberDefault");
-        return counter.Next(list, ilvl, null, start)?.Text;
+        return Ask(new ListNumStep(name, level, start, at.AncestorsAndSelf(Wml.W + "p").FirstOrDefault())) as string;
     }
 
     /// <summary>
@@ -1740,7 +1727,7 @@ public sealed partial class ModelReader(DocumentContext context)
         direct.Apply(paragraph?.Child("pPr"));
         var outline = context.Styles.Paragraph(direct.Style, direct).OutlineLevel;
         var type = FieldInline.TypeOf(instruction);
-        var text = counter.AutoNumber(type, outline is >= 0 and <= 8 ? outline.Value + 1 : 0, paragraph);
+        var text = (string)Ask(new AutoNumStep(type, outline is >= 0 and <= 8 ? outline.Value + 1 : 0, paragraph))!;
         if (type != "BIDIOUTLINE")
             return new TextInline(text, format);
         var bold = format.Clone();
@@ -2067,16 +2054,9 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "footnoteReference" or "endnoteReference" when !field.Hidden && e.Attr("id") is { } noteId:
                 {
                     var endnote = e.Name.LocalName == "endnoteReference";
-                    var numbers = endnote ? endnoteNumbers : footnoteNumbers;
-                    if (!numbers.ContainsKey(noteId))
-                    {
-                        numbers[noteId] = numbers.Count + 1;
-                        noteMarks[(endnote, noteId)] = NextNoteMark(endnote);
-                        if (endnote)
-                            endnoteSections[noteId] = currentSection.Index;
-                    }
+                    var mark = (string)Ask(new NoteStep(endnote, noteId, currentSection.Index, currentSection.Properties))!;
                     var custom = e.Attr("customMarkFollows") is "1" or "true" or "on";
-                    field.Target(content).Add(new NoteReferenceInline(noteId, endnote, custom ? "" : noteMarks[(endnote, noteId)], format) { Xml = e });
+                    field.Target(content).Add(new NoteReferenceInline(noteId, endnote, custom ? "" : mark, format) { Xml = e });
                     break;
                 }
                 case "footnoteRef" or "endnoteRef" when !field.Hidden && noteMark != null:
