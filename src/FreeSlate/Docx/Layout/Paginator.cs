@@ -1354,8 +1354,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     public sealed class Checkpoint
     {
-        internal Checkpoint(int page, int section, int block, int id, Paginator state, FieldEvaluator.Snapshot? fields) =>
-            (Page, Section, Block, Id, State, Fields) = (page, section, block, id, state, fields);
+        internal Checkpoint(int page, int section, int block, int id, Paginator state, FieldEvaluator.Snapshot? fields, TableRun? table = null) =>
+            (Page, Section, Block, Id, State, Fields, Table) = (page, section, block, id, state, fields, table);
 
         /// <summary>The number of the page the flow goes on on.</summary>
         public int Page { get; }
@@ -1365,11 +1365,32 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         public int Block { get; }
         public int Id { get; }
 
+        /// <summary>The row of the block, a table, that the flow goes on with; -1 where it goes on with the block.</summary>
+        public int Row => Table?.Row ?? -1;
+
         /// <summary>The run as it stood, in a paginator of its own that does not run.</summary>
         internal Paginator State { get; }
 
         /// <summary>What the fields knew (see FieldEvaluator.Snapshot), or null without fields.</summary>
         internal FieldEvaluator.Snapshot? Fields { get; }
+
+        /// <summary>Where the flow goes on within a table, the placing of its rows as it stood (see PlaceTable), or null.</summary>
+        internal TableRun? Table { get; }
+
+        /// <summary>The checkpoint at another place of its block (see Changed).</summary>
+        internal Checkpoint At(int section, int block) => new(Page, section, block, Id, State, Fields, Table);
+    }
+
+    /// <summary>
+    /// A table's placing taken up again at a row (see PlaceTable): the row; the table as laid out, which the flow's
+    /// previous table holds too; whether its header rows were left off the page; where its part on the page begins; the
+    /// row placed last, which closes that part where the table breaks again; whether a break follows the table.
+    /// </summary>
+    internal sealed record TableRun(int Row, TableBox Box, bool Omitted, double TableTop, RowBox? Last, bool BreakAfter)
+    {
+        /// <summary>Whether another placing stands as this one does (the table's box compared with the flow).</summary>
+        public bool Holds(TableRun other) =>
+            Row == other.Row && Omitted == other.Omitted && TableTop == other.TableTop && BreakAfter == other.BreakAfter && LayoutValues.Same(Last, other.Last);
     }
 
     /// <summary>
@@ -1425,7 +1446,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // The run stops only after the last block that differs, and not where the fields of the pages after it
                 // may read otherwise (the text of a bookmark, a sequence's numbers) or headers look back over the pages
                 // before theirs (STYLEREF).
-                stops = StoriesLookBack() || before == null || !fields.ReadsAs(before) ? null : after.ToDictionary(c => (c.Section, c.Block)),
+                stops = StoriesLookBack() || before == null || !fields.ReadsAs(before) ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
             };
             run.Take(from.State, laid!.Take(from.Page - 1));
             var pages = run.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator, from);
@@ -1482,7 +1503,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (!index.TryGetValue((c.Section, c.Block), out var k) || k < given.Count - tail)
                 continue;
             var moved = now[k + blocks.Count - given.Count];
-            after.Add(moved == (c.Section, c.Block) ? c : new Checkpoint(c.Page, moved.Section, moved.Block, c.Id, c.State, c.Fields));
+            after.Add(moved == (c.Section, c.Block) ? c : c.At(moved.Section, moved.Block));
         }
         return (from, after);
     }
@@ -1549,7 +1570,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// end; that run's pages as laid out and the settings it ended with, which it goes on with from there; the
     /// checkpoint it stopped at.
     /// </summary>
-    Dictionary<(int Section, int Block), Checkpoint>? stops;
+    Dictionary<(int Section, int Block, int Row), Checkpoint>? stops;
     List<PageBox>? stopPages;
     TextSettings? stopSettings;
     Checkpoint? stoppedAt;
@@ -1566,6 +1587,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return false;
         foreach (var field in flowFields)
         {
+            // Within a table the paragraph before it counts only as far as the table as laid out with it, which the
+            // previous table holds: its rows read nothing else of it, and after them it is replaced (see PlaceTable).
+            if (old.Table != null && field.Name is nameof(previous) or nameof(stylePrevious))
+                continue;
             if (!LayoutValues.Same(field.GetValue(this), field.GetValue(state)))
                 return false;
         }
@@ -1592,10 +1617,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>
     /// Takes a checkpoint before block <paramref name="block"/> of section <paramref name="at"/>, whose id is
-    /// <paramref name="id"/>: of the pages a copy of the one in hand; none where the flow refers to an earlier page (a
-    /// stack of frames or notes kept there).
+    /// <paramref name="id"/>, or within it where it is a table whose placing goes on at a row (<paramref name="table"/>):
+    /// of the pages a copy of the one in hand; none where the flow refers to an earlier page (a stack of frames or notes
+    /// kept there).
     /// </summary>
-    void Keep(int at, int block, int id)
+    void Keep(int at, int block, int id, TableRun? table = null)
     {
         if (!ReferenceEquals(page, pages[^1]) || frameStack is { } stack && !ReferenceEquals(stack.Page, page)
             || keptNotes is { } kept && !ReferenceEquals(kept.Page, page))
@@ -1606,7 +1632,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         state.settled = settledCopy ??= settled.Copy();
         if (layout.Evaluator != null)
             fieldsCopy = layout.Evaluator.Take(fieldsCopy);
-        checkpoints!.Add(new Checkpoint(page.Number, at, block, id, state, fieldsCopy));
+        checkpoints!.Add(new Checkpoint(page.Number, at, block, id, state, fieldsCopy, table));
     }
 
     /// <summary>
@@ -2024,11 +2050,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 throw new ArgumentException("The checkpoint's block is not where the blocks have it.", nameof(from));
             for (var i = from != null && s == from.Section ? from.Block : 0; i < sectionBlocks.Count - (emptyEnd ? 1 : 0); i++)
             {
+                // A run resumed within a table takes up its placing at the checkpoint's row (see PlaceTable).
+                var within = from?.Table is { } run && s == from.Section && i == from.Block ? run : null;
                 // A checkpoint on each page, before the first block placed there that no parts of floating tables wait for.
-                if (checkpoints != null && page!.Number != checkpointPage && floatingRests.Count == 0)
+                if (checkpoints != null && page!.Number != checkpointPage && floatingRests.Count == 0 && within == null)
                 {
                     // A run laying edited blocks out again stops where its flow stands as the run before did (see Relayout).
-                    if (stops != null && stops.TryGetValue((s, i), out var stop) && stop.Id == sectionBlocks[i].Id && SameFlow(stop))
+                    if (stops != null && stops.TryGetValue((s, i, -1), out var stop) && stop.Id == sectionBlocks[i].Id && SameFlow(stop))
                     {
                         stoppedAt = stop;
                         break;
@@ -2036,7 +2064,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     Keep(s, i, sectionBlocks[i].Id);
                 }
                 if (sectionBlocks[i] is TableBlock)
-                    PlaceTable(sectionBlocks, i);
+                {
+                    PlaceTable(sectionBlocks, i, keeps: true, within);
+                    if (stoppedAt != null)
+                        break;
+                }
                 else if (sectionBlocks[i] is ParagraphBlock { Format.Frame: not null, EndsSection: null })
                     i = PlaceFrame(sectionBlocks, i) - 1;
                 else
@@ -3317,10 +3349,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         return 0;
     }
 
-    void PlaceTable(List<Block> blocks, int index)
+    /// <param name="keeps">Whether the table is a block of the body (section <c>sectionIndex</c>, block
+    /// <paramref name="index"/>), which keeps a checkpoint on each page it goes on to (see Keep).</param>
+    /// <param name="resume">Where a run resumed from such a checkpoint takes the table's placing up again.</param>
+    void PlaceTable(List<Block> blocks, int index, bool keeps = false, TableRun? resume = null)
     {
         var table = (TableBlock)blocks[index];
         var (left, width) = Column(column);
+        if (resume != null)
+        {
+            PlaceRows(blocks, index, table, resume.Box, left, width, resume.BreakAfter, keeps, resume);
+            return;
+        }
         // A table right after another one continues it (TableLayout.Layout's joined).
         var joined = index > 0 && blocks[index - 1] is TableBlock { Table.Format.Floating: null } prior && table.Table.Format.Floating == null
                      && previousTable is { } p && ReferenceEquals(p.Block, prior) ? p.Box.BottomEdges : null;
@@ -3360,12 +3400,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             left += BelowFloats(box, left, table.Element, table.Table.Format.Justification);
         var breakAfter = BelowOwnDrawings(box, left, index + 1 < blocks.Count);
         tableKept = RowKept(table.Table, box.Rows.Count - 1);
+        PlaceRows(blocks, index, table, box, left, width, breakAfter, keeps, null);
+    }
+
+    /// <summary>
+    /// A table's rows placed (see PlaceTable): from its first, or from where a run resumed within it takes its placing
+    /// up again (<paramref name="resume"/>); in the body a checkpoint at the first row boundary on each page the table
+    /// goes on to, where a run laying edited blocks out again stops if it stands as there before.
+    /// </summary>
+    void PlaceRows(List<Block> blocks, int index, TableBlock table, TableBox box, double left, double width, bool breakAfter, bool keeps, TableRun? resume)
+    {
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
         var headersHeight = headers.Sum(h => h.Height);
         // Whether the header rows were left off this column or page.
-        var omitted = false;
-        RowBox? last = null;
-        var tableTop = y;
+        var omitted = resume?.Omitted ?? false;
+        var last = resume?.Last;
+        var tableTop = resume?.TableTop ?? y;
         // The table's alternative text, for the part of it on each page.
         var alternative = string.Join(": ", new[] { table.Table.Format.Caption, table.Table.Format.Description }.Where(t => !string.IsNullOrWhiteSpace(t)));
         void Describe()
@@ -3408,7 +3458,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // all of them and not after one between them (measured with docx/local/hk-*: in modes 11, 12 and 14 a header
         // row with room for no row below it stays and repeats on the next page; of two the first stays alone and the
         // second goes on with the table; docx/external/poi/bug57031).
-        if (headers.Count > 0 && !columnEmpty && context.Profile.HeaderRowsGoOn
+        if (resume == null && headers.Count > 0 && !columnEmpty && context.Profile.HeaderRowsGoOn
             && (headers.Count < box.Rows.Count ? !Takes(box.Rows[headers.Count], y + headersHeight) : !Fits(headers[^1], y + headersHeight - headers[^1].Height)))
         {
             NextColumn(natural: true);
@@ -3416,8 +3466,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             tableTop = y;
         }
         mergedDown.Clear();
-        for (var r = 0; r < box.Rows.Count; r++)
+        for (var r = resume?.Row ?? 0; r < box.Rows.Count; r++)
         {
+            // A checkpoint on each page the table goes on to, at its first row boundary there, but where lines of cells
+            // merged down go on into the row (see Keep); a run laying edited blocks out again stops there where it
+            // stands as the run before stood (see Relayout).
+            if (keeps && r > 0 && checkpoints != null && page!.Number != checkpointPage && floatingRests.Count == 0 && mergedDown.Count == 0)
+            {
+                var here = new TableRun(r, box, omitted, tableTop, last, breakAfter);
+                if (stops != null && stops.TryGetValue((sectionIndex, index, r), out var stop) && stop.Id == table.Id && stop.Table is { } then
+                    && then.Holds(here) && SameFlow(stop))
+                {
+                    stoppedAt = stop;
+                    return;
+                }
+                Keep(sectionIndex, index, table.Id, here);
+            }
             var row = box.Rows[r];
             // Lines of cells merged down from the row before go on with this one (RowBox.Overflow).
             if (mergedDown.Count > 0)
