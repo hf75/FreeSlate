@@ -134,16 +134,20 @@ for Word documents too; the culture also chooses the language of the markup ball
 ```csharp
 using FreeSlate.Skia;
 
-// The pages drawn by Skia into a PDF: text in its fonts (embedded as subsets), drawings as vectors, the document's
-// title, author, subject and keywords from its properties.
+// The pages drawn by Skia into a PDF: text in its fonts (embedded as subsets), drawings as vectors, pictures lossless
+// (JPEGs as they are), the document's title, author, subject and keywords from its properties.
 using (var pdf = File.Create("report.pdf"))
     PdfExport.FromDocx("report.docx", pdf);
 using (var pdf = File.Create("deck.pdf"))
     PdfExport.FromPptx("deck.pptx", pdf);
+// For archiving: PDF/A-2b (XMP metadata, an sRGB output intent).
+using (var pdf = File.Create("report-archive.pdf"))
+    PdfExport.FromDocx("report.docx", pdf, archive: true);
 ```
 
 `FreeSlate.Skia` draws what the converters lay out (`DocxConverter.ToScenes`, `PptxConverter.ToScenes`: one scene of
-typed items per page or slide) on any Skia canvas, as PNG (`SkiaScene.Png`) or as PDF (`SkiaScene.Pdf`).
+typed items per page or slide) on any Skia canvas, as PNG (`SkiaScene.Png`) or as PDF (`SkiaScene.Pdf`). The PDF is not
+tagged: SkiaSharp hands Skia no structure tree.
 
 ### The output
 
@@ -178,11 +182,11 @@ dotnet run --project src/FreeSlate.Viewer -- report.docx
 The viewer is the presenter's counterpart for Word documents (its interface is German too): it converts a document and
 draws its pages with Skia (*Browser* shows FreeSlate's HTML in the platform's web view instead), zooms (automatic,
 page width, whole page, 50 to 200 %), jumps to a page, follows links (to bookmarks of the document or to the web),
-shows the document with its markup, prints it, saves it as PDF or HTML, and loads it again when it is saved (F5 does
-too). A document that cannot be converted shows the whole exception. On Windows with Word installed, *Word daneben*
-puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with a slider between the two,
-and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM, as the fidelity tool
-renders its references, and Windows rasterizes the pages.
+shows the document with its markup, prints it, saves it as PDF (or PDF/A for archiving) or HTML, and loads it again
+when it is saved (F5 does too). A document that cannot be converted shows the whole exception. On Windows with Word
+installed, *Word daneben* puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with
+a slider between the two, and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM,
+as the fidelity tool renders its references, and Windows rasterizes the pages.
 
 ## How it works
 

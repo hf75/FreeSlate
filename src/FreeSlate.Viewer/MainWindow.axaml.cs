@@ -326,33 +326,40 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>The document's pages as Skia draws them, written as a PDF (see PdfExport).</summary>
-    static Task WritePdfAsync(View shown, string target) => Task.Run(() =>
+    /// <summary>
+    /// The document's pages as Skia draws them, written as a PDF with the document's information (see PdfExport), for
+    /// archiving as PDF/A-2b where asked.
+    /// </summary>
+    static Task WritePdfAsync(View shown, string target, bool archive = false) => Task.Run(() =>
     {
         using var file = File.Create(target);
         if (shown.Scenes is { } scenes)
-            SkiaScene.Pdf(scenes, file);
+            SkiaScene.Pdf(scenes, file, metadata: PdfExport.Metadata(shown.Source, shown.Password, archive));
         else
-            PdfExport.FromDocx(shown.Source, file, password: shown.Password, markup: shown.Markup);
+            PdfExport.FromDocx(shown.Source, file, password: shown.Password, markup: shown.Markup, archive: archive);
     });
+
+    static readonly FilePickerFileType PdfType = new("PDF-Dokument") { Patterns = ["*.pdf"] };
+
+    static readonly FilePickerFileType ArchiveType = new("PDF/A-Dokument zur Archivierung") { Patterns = ["*.pdf"] };
 
     async void OnPdfClick(object? sender, RoutedEventArgs e)
     {
         if (view == null)
             return;
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        var chosen = await StorageProvider.SaveFilePickerWithResultAsync(new FilePickerSaveOptions
         {
             Title = "Als PDF speichern",
             SuggestedFileName = Path.GetFileNameWithoutExtension(view.Path) + ".pdf",
             DefaultExtension = "pdf",
-            FileTypeChoices = [new FilePickerFileType("PDF-Dokument") { Patterns = ["*.pdf"] }],
+            FileTypeChoices = [PdfType, ArchiveType],
         });
-        if (file?.TryGetLocalPath() is not { } target)
+        if (chosen.File?.TryGetLocalPath() is not { } target)
             return;
         try
         {
             StatusText.Text = $"{Path.GetFileName(target)} wird geschrieben …";
-            await WritePdfAsync(view, target);
+            await WritePdfAsync(view, target, chosen.SelectedFileType?.Name == ArchiveType.Name);
             StatusText.Text = $"Gespeichert: {target}";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
