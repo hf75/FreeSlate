@@ -33,9 +33,12 @@ public sealed class SvgDrawing
     /// in, its text of class sel transparent as the HTML's style sheet has it; what it names by id and does not define
     /// itself comes from <paramref name="definitions"/> (the page's definitions, the document's glyph outlines). Null
     /// for markup that is no SVG. With <paramref name="pixels"/>, the matrix it is drawn under onto pixels (not into a
-    /// PDF): pictures squeezed far more along one axis than along the other are evened for it (see Evened).
+    /// PDF): pictures squeezed far more along one axis than along the other are evened for it (see Evened). With
+    /// <paramref name="typefaces"/>, the typeface text is drawn in, given the one found for its family, the glyphs it draws
+    /// and its text (into a PDF, the font cut down to what the PDF draws).
     /// </summary>
-    public static SKPicture? Fragment(string markup, Func<string, XElement?>? definitions = null, SKMatrix? pixels = null)
+    public static SKPicture? Fragment(string markup, Func<string, XElement?>? definitions = null, SKMatrix? pixels = null,
+        Func<SKTypeface, IEnumerable<uint>, string, SKTypeface>? typefaces = null)
     {
         XDocument document;
         try
@@ -52,7 +55,7 @@ public sealed class SvgDrawing
             return null;
         using var recorder = new SKPictureRecorder();
         var canvas = recorder.BeginRecording(SKRect.Create(-1e6f, -1e6f, 2e6f, 2e6f), useRTree: true);
-        var painter = new Painter(document, definitions, "text.sel{fill-opacity:0}", pixels);
+        var painter = new Painter(document, definitions, "text.sel{fill-opacity:0}", pixels, typefaces);
         painter.Children(document.Root!, canvas, Style.Initial);
         return recorder.EndRecording();
     }
@@ -198,8 +201,8 @@ public sealed class SvgDrawing
         return SKImage.FromPixelCopy(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul), bytes, width * 4);
     }
 
-    /// <summary>Reads and records an SVG picture, or null where it is not one.</summary>
-    public static SvgDrawing? Load(byte[] data)
+    /// <summary>Reads and records an SVG picture, or null where it is not one; its text in <paramref name="typefaces"/>' (see Fragment).</summary>
+    public static SvgDrawing? Load(byte[] data, Func<SKTypeface, IEnumerable<uint>, string, SKTypeface>? typefaces = null)
     {
         XDocument document;
         try
@@ -227,7 +230,7 @@ public sealed class SvgDrawing
                 (float)(height > 0 ? height : width > 0 ? width * boxHeight / boxWidth : boxHeight));
         using var recorder = new SKPictureRecorder();
         var canvas = recorder.BeginRecording(SKRect.Create(size));
-        var painter = new Painter(document, null, null);
+        var painter = new Painter(document, null, null, typefaces: typefaces);
         painter.Viewport(root, canvas, size.Width, size.Height, Style.Initial, outermost: true);
         return new SvgDrawing(recorder.EndRecording(), size, sized);
     }
@@ -289,13 +292,19 @@ public sealed class SvgDrawing
         /// <summary>How many patterns' tiles are being recorded within one another.</summary>
         int patterns;
 
+        /// <summary>The typeface text is drawn in, given the one found for its family and what it draws (see Fragment), or null.</summary>
+        readonly Func<SKTypeface, IEnumerable<uint>, string, SKTypeface>? typefaces;
+
         /// <param name="definitions">What the document names by id and does not define itself.</param>
         /// <param name="sheet">A style sheet the document is drawn with before its own.</param>
         /// <param name="pixels">The matrix the drawing lands on pixels under (see Fragment), or null.</param>
-        public Painter(XDocument document, Func<string, XElement?>? definitions, string? sheet, SKMatrix? pixels = null)
+        /// <param name="typefaces">The typeface text is drawn in (see Fragment), or null.</param>
+        public Painter(XDocument document, Func<string, XElement?>? definitions, string? sheet, SKMatrix? pixels = null,
+            Func<SKTypeface, IEnumerable<uint>, string, SKTypeface>? typefaces = null)
         {
             this.definitions = definitions;
             outer = pixels;
+            this.typefaces = typefaces;
             var order = 0;
             if (sheet != null)
                 Sheet(sheet, ref order);
@@ -1103,6 +1112,28 @@ public sealed class SvgDrawing
                 if (!own.Visible || value.Length == 0)
                     continue;
                 using var font = Font(own);
+                // The typeface the caller has it drawn in (into a PDF, the one cut down to what is drawn), by the glyphs
+                // the one found maps the text to: a subset maps only the characters it was given (a symbol font's
+                // private-use ones not).
+                using var chosen = typefaces != null && font.Typeface is { } found
+                    && typefaces(found, font.GetGlyphs(value).Select(g => (uint)g), value) is var other && !ReferenceEquals(other, found)
+                    ? new SKFont(other, font.Size) { Subpixel = true, Edging = SKFontEdging.Antialias, LinearMetrics = true }
+                    : null;
+                void Draw(string run, double x, double y, SKPaint paint)
+                {
+                    if (chosen == null)
+                    {
+                        canvas.DrawText(run, (float)x, (float)y, SKTextAlign.Left, font, paint);
+                        return;
+                    }
+                    var ids = font.GetGlyphs(run);
+                    using var builder = new SKTextBlobBuilder();
+                    var buffer = builder.AllocateRun(chosen, ids.Length, (float)x, (float)y);
+                    ids.CopyTo(buffer.Glyphs);
+                    using var blob = builder.Build();
+                    if (blob != null)
+                        canvas.DrawText(blob, 0, 0, paint);
+                }
                 var bounds = SKRect.Create((float)xs.Where(v => !double.IsNaN(v)).DefaultIfEmpty(0).First(), (float)(ys[0] - own.FontSize), (float)font.MeasureText(value), (float)own.FontSize);
                 using var fill = Brush(own.Fill, own.FillOpacity, own, bounds, canvas.TotalMatrix);
                 using var stroke = own.StrokeWidth > 0 ? Brush(own.Stroke, own.StrokeOpacity, own, bounds, canvas.TotalMatrix) : null;
@@ -1122,9 +1153,9 @@ public sealed class SvgDrawing
                         y = ys[i];
                     var run = value[i..end];
                     if (fill != null)
-                        canvas.DrawText(run, (float)x, (float)y, SKTextAlign.Left, font, fill);
+                        Draw(run, x, y, fill);
                     if (stroke != null)
-                        canvas.DrawText(run, (float)x, (float)y, SKTextAlign.Left, font, stroke);
+                        Draw(run, x, y, stroke);
                     var advance = font.MeasureText(run);
                     if (fill != null && own.Decoration.Contains("underline"))
                         canvas.DrawRect(SKRect.Create((float)x, (float)(y + own.FontSize * 0.1), advance, (float)Math.Max(1, own.FontSize / 16)), fill);

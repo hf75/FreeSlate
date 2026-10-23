@@ -51,12 +51,16 @@ public static class SkiaScene
     /// <param name="vector">Whether the canvas keeps vectors and pictures as they are (a PDF's): its pictures are then
     /// not evened for pixels (see SvgDrawing.Evened).</param>
     public static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics = null, List<(SKRect Area, string Target)>? links = null,
-        bool vector = false)
+        bool vector = false) =>
+        Draw(scene, canvas, statistics, links, vector, null);
+
+    /// <param name="fonts">Into a PDF, the fonts cut down to the glyphs its pages draw (see PdfFonts).</param>
+    static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics, List<(SKRect Area, string Target)>? links, bool vector, PdfFonts? fonts)
     {
         using var paper = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
         canvas.DrawRect(0, 0, Px(scene.Width), Px(scene.Height), paper);
         var drawer = new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes, links: links,
-            pixels: vector ? null : SKMatrix.Identity);
+            pixels: vector ? null : SKMatrix.Identity, subsets: fonts);
         drawer.Predefine(scene.Items);
         drawer.Draw(scene.Items);
     }
@@ -86,16 +90,75 @@ public static class SkiaScene
     /// <param name="metadata">The document's title, author and so on; by default none, its producer FreeSlate.</param>
     public static void Pdf(IEnumerable<PageScene> scenes, Stream output, SkiaStatistics? statistics = null, SKDocumentPdfMetadata? metadata = null)
     {
+        var pages = scenes as IReadOnlyList<PageScene> ?? scenes.ToList();
+        // The glyphs each font draws, gathered by drawing the pages on no canvas first; the fonts then cut down to them,
+        // which Skia's PDF embeds whole (it subsets none, and embeds a collection's every face).
+        using var fonts = new PdfFonts();
+        foreach (var scene in pages)
+        {
+            using var none = new SKNoDrawCanvas(Math.Max(1, (int)Math.Ceiling(Px(scene.Width))), Math.Max(1, (int)Math.Ceiling(Px(scene.Height))));
+            Draw(scene, none, new SkiaStatistics(), null, vector: true, fonts);
+        }
+        fonts.Subset();
         using var stream = new SKManagedWStream(output);
         using var document = SKDocument.CreatePdf(stream, metadata ?? PdfMetadata());
-        foreach (var scene in scenes)
+        foreach (var scene in pages)
         {
             var canvas = document.BeginPage((float)scene.Width, (float)scene.Height);
             canvas.Scale((float)(1 / PxPerPt));
-            Draw(scene, canvas, statistics, vector: true);
+            Draw(scene, canvas, statistics, null, vector: true, fonts);
             document.EndPage();
         }
         document.Close();
+    }
+
+    /// <summary>
+    /// A PDF's fonts cut down to the glyphs its pages draw (see FontSubset): noted while the pages are drawn once on no
+    /// canvas, then each typeface's subset as a typeface of its own, every glyph at its id, the characters drawn mapped to
+    /// theirs (the PDF's text stays searchable), a face of a collection a font of its own; a typeface's own where it
+    /// cannot be cut down.
+    /// </summary>
+    sealed class PdfFonts : IDisposable
+    {
+        readonly Dictionary<SKTypeface, (HashSet<uint> Glyphs, HashSet<uint> Characters)> used = new(ReferenceEqualityComparer.Instance);
+        readonly Dictionary<SKTypeface, SKTypeface> subsets = new(ReferenceEqualityComparer.Instance);
+        bool gathering = true;
+
+        /// <summary>The typeface glyphs of <paramref name="typeface"/> are drawn in, noting them and the text's characters while gathering.</summary>
+        public SKTypeface Typeface(SKTypeface typeface, IEnumerable<uint> glyphs, string? text)
+        {
+            if (!gathering)
+                return subsets.GetValueOrDefault(typeface) ?? typeface;
+            if (!used.TryGetValue(typeface, out var noted))
+                used[typeface] = noted = ([], []);
+            noted.Glyphs.UnionWith(glyphs);
+            foreach (var rune in (text ?? "").EnumerateRunes())
+                noted.Characters.Add((uint)rune.Value);
+            return typeface;
+        }
+
+        /// <summary>Cuts the typefaces down to what was noted; from then on their subsets are drawn.</summary>
+        public void Subset()
+        {
+            gathering = false;
+            foreach (var (typeface, (glyphs, characters)) in used)
+            {
+                using var stream = typeface.OpenStream(out var index);
+                if (stream == null)
+                    continue;
+                var data = new byte[stream.Length];
+                if (stream.Read(data, data.Length) != data.Length)
+                    continue;
+                if (FontSubset.Subset(data, index, glyphs, characters) is { } subset && SKTypeface.FromData(SKData.CreateCopy(subset)) is { } cut)
+                    subsets[typeface] = cut;
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var typeface in subsets.Values)
+                typeface.Dispose();
+        }
     }
 
     /// <summary>
@@ -146,10 +209,18 @@ public static class SkiaScene
     /// <param name="links">Where the links drawn on the page itself stand on it (not those within recordings), or null.</param>
     /// <param name="pixels">The matrix under which what the canvas draws lands on pixels (a recording's, its parent's;
     /// the identity for a canvas of pixels), or null where it lands in a PDF.</param>
+    /// <param name="subsets">Into a PDF, its fonts cut down to the glyphs its pages draw (see PdfFonts).</param>
     sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null,
         GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null, bool exactDashes = false,
-        List<(SKRect Area, string Target)>? links = null, SKMatrix? pixels = null)
+        List<(SKRect Area, string Target)>? links = null, SKMatrix? pixels = null, PdfFonts? subsets = null)
     {
+        /// <summary>The typeface a font's glyphs are drawn in: into a PDF its subset (see PdfFonts), else its own.</summary>
+        SKTypeface? TypefaceFor(FontData font, IEnumerable<uint> drawn, string? text) =>
+            Typeface(font) is { } typeface && subsets != null ? subsets.Typeface(typeface, drawn, text) : Typeface(font);
+
+        /// <summary>The typeface SVG text is drawn in (see SvgDrawing.Fragment): into a PDF its subset, else none chosen.</summary>
+        Func<SKTypeface, IEnumerable<uint>, string, SKTypeface>? Typefaces => subsets != null ? subsets.Typeface : null;
+
         /// <summary>The matrix under which what the canvas draws now lands on pixels, or null (see pixels).</summary>
         SKMatrix? OnPixels => pixels?.PreConcat(canvas.TotalMatrix);
 
@@ -175,7 +246,7 @@ public static class SkiaScene
                 return Boxes(html);
             if (!start.StartsWith("<") || start.StartsWith("<div") || start.StartsWith("<section") || start.StartsWith("<span"))
                 return false;
-            using var picture = SvgDrawing.Fragment(html, Definition, OnPixels);
+            using var picture = SvgDrawing.Fragment(html, Definition, OnPixels, Typefaces);
             if (picture == null)
                 return false;
             canvas.DrawPicture(picture);
@@ -223,7 +294,7 @@ public static class SkiaScene
                         canvas.Restore();
                         break;
                     case "svg":
-                        using (var picture = SvgDrawing.Fragment(element.ToString(System.Xml.Linq.SaveOptions.DisableFormatting), Definition, OnPixels))
+                        using (var picture = SvgDrawing.Fragment(element.ToString(System.Xml.Linq.SaveOptions.DisableFormatting), Definition, OnPixels, Typefaces))
                         {
                             if (picture != null)
                                 canvas.DrawPicture(picture);
@@ -660,7 +731,7 @@ public static class SkiaScene
                 stroke.StrokeMiter = 10;
                 stroke.StrokeJoin = text.Hollow ? SKStrokeJoin.Round : SKStrokeJoin.Miter;
             }
-            if (Typeface(font) is { } typeface)
+            if (TypefaceFor(font, glyphs.Select(g => g.Id), text.Text) is { } typeface)
             {
                 using var face = new SKFont(typeface, Px(text.Size), (float)text.Scale)
                 {
@@ -742,7 +813,7 @@ public static class SkiaScene
         void MathGlyph(MathGlyphItem item)
         {
             using var fill = Brush(item.Color);
-            if (Typeface(item.Font) is { } typeface)
+            if (TypefaceFor(item.Font, [item.Glyph], item.Character) is { } typeface)
             {
                 using var face = new SKFont(typeface, Px(item.Size)) { Subpixel = true, LinearMetrics = true, Hinting = SKFontHinting.None, Edging = SKFontEdging.Antialias };
                 using var builder = new SKTextBlobBuilder();
@@ -770,7 +841,7 @@ public static class SkiaScene
             var x = label.X - glyphs.Sum(g => g.Advance * label.Size);
             var scale = label.Size * PxPerPt / label.Font.UnitsPerEm;
             using var fill = Brush(label.Color);
-            if (Typeface(label.Font) is { } typeface && glyphs.Length > 0)
+            if (glyphs.Length > 0 && TypefaceFor(label.Font, glyphs.Select(g => g.Id), label.Text) is { } typeface)
             {
                 using var face = new SKFont(typeface, Px(label.Size)) { Subpixel = true, LinearMetrics = true, Hinting = SKFontHinting.None, Edging = SKFontEdging.Antialias };
                 using var builder = new SKTextBlobBuilder();
@@ -990,7 +1061,7 @@ public static class SkiaScene
                 }
             }
             using var fill = Brush(item.Color);
-            if (Typeface(font) is { } typeface)
+            if (TypefaceFor(font, glyphs.Select(g => g.Id), item.Text) is { } typeface)
             {
                 using var face = new SKFont(typeface, (float)size)
                 {
@@ -1044,7 +1115,7 @@ public static class SkiaScene
             // The recording starts at this canvas's origin; patterns still align to the page.
             var at = page.TryInvert(out var inverse) ? inverse.PreConcat(canvas.TotalMatrix) : canvas.TotalMatrix;
             var origin = at.TryInvert(out var back) ? back : SKMatrix.Identity;
-            new Drawer(recording, statistics, origin, pictures, glyphs, definitions, exactDashes, pixels: OnPixels).Draw(items);
+            new Drawer(recording, statistics, origin, pictures, glyphs, definitions, exactDashes, pixels: OnPixels, subsets: subsets).Draw(items);
             return recorder.EndRecording();
         }
 
@@ -1400,7 +1471,7 @@ public static class SkiaScene
         Decoded Picture(string uri)
         {
             if (!pictures.TryGetValue(uri, out var decoded))
-                pictures[uri] = decoded = Decode(uri);
+                pictures[uri] = decoded = Decode(uri, Typefaces);
             return decoded;
         }
 
@@ -1408,7 +1479,7 @@ public static class SkiaScene
         /// A picture of a data URI: an image in a format Skia decodes, or an SVG picture (a document's own, a metafile as
         /// the converter writes it, see SvgDrawing); neither for other formats.
         /// </summary>
-        static Decoded Decode(string uri)
+        static Decoded Decode(string uri, Func<SKTypeface, IEnumerable<uint>, string, SKTypeface>? typefaces)
         {
             if (!uri.StartsWith("data:", StringComparison.Ordinal) || uri.IndexOf(',') is not (> 0 and var comma)
                 || !uri.AsSpan(0, comma).EndsWith(";base64", StringComparison.Ordinal))
@@ -1418,7 +1489,7 @@ public static class SkiaScene
                 var data = Convert.FromBase64String(uri[(comma + 1)..]);
                 if (!uri.AsSpan(5).StartsWith("image/svg+xml", StringComparison.Ordinal))
                     return new Decoded(SKImage.FromEncodedData(data), null);
-                return SvgDrawing.Load(data) is { } drawing ? new Decoded(null, drawing) : default;
+                return SvgDrawing.Load(data, typefaces) is { } drawing ? new Decoded(null, drawing) : default;
             }
             catch (FormatException)
             {
