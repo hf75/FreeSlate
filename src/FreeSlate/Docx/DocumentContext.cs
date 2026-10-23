@@ -332,11 +332,15 @@ public sealed class DocumentContext : IDisposable
     /// <summary>Font families the output names (the browser draws their text where outlines are not used).</summary>
     public HashSet<string> UsedFonts { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// A part of the document as XML, read once, its elements with where they were read (see OpcPackage.ReadXml), markup
+    /// compatibility resolved and theme shading applied.
+    /// </summary>
     public XDocument Load(string part)
     {
         if (documents.TryGetValue(part, out var document))
             return document;
-        document = Package.ReadXml(part);
+        document = Package.ReadXml(part, lines: true);
         MarkupCompatibility.Process(document, chartEx: true);
         if (Theme != null)
             ThemeShading(document);

@@ -58,7 +58,8 @@ public static class MarkupCompatibility
     public static void Process(XDocument document, bool chartEx = false)
     {
         // Innermost first: an alternative inside a chosen one (a wp14 position inside a Word 2010 drawing) is resolved
-        // before the chosen content is copied into its place.
+        // before the chosen content is moved into its place. Moved, not copied: it keeps where it was read (its line
+        // info), which writing a document back needs.
         foreach (var alternate in document.Descendants(Mc + "AlternateContent").Reverse().ToList())
         {
             if (alternate.Parent == null)
@@ -85,7 +86,10 @@ public static class MarkupCompatibility
                 AnnotateZooms(alternate, chosen);
                 AnnotateModels(alternate, chosen);
             }
-            alternate.ReplaceWith(chosen.Elements());
+            var content = chosen.Elements().ToList();
+            foreach (var element in content)
+                element.Remove();
+            alternate.ReplaceWith(content);
         }
     }
 

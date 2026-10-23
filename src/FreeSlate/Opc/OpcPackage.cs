@@ -28,7 +28,7 @@ public sealed class OpcPackage : IDisposable
     {
         zip = new ZipArchive(stream, ZipArchiveMode.Read);
         foreach (var entry in zip.Entries)
-            entries["/" + Uri.UnescapeDataString(entry.FullName.Replace('\\', '/'))] = entry;
+            entries[PartName(entry)] = entry;
 
         if (entries.TryGetValue("/[Content_Types].xml", out var types))
         {
@@ -62,24 +62,83 @@ public sealed class OpcPackage : IDisposable
         return new OpcPackage(new MemoryStream(OfficeCrypto.Decrypt(file, password)));
     }
 
-    public bool Exists(string partName) => entries.ContainsKey(partName);
+    public bool Exists(string partName) => entries.ContainsKey(partName) || replaced.ContainsKey(partName);
 
     public byte[] ReadBytes(string partName)
     {
+        if (replaced.TryGetValue(partName, out var bytes))
+            return bytes;
         using var stream = entries[partName].Open();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();
     }
 
+    /// <summary>The parts given new bytes (see Replace), by part name.</summary>
+    readonly Dictionary<string, byte[]> replaced = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Gives a part new bytes, or adds it: reading and saving take them from now on (the content types are the ones read
+    /// when the package was opened).
+    /// </summary>
+    public void Replace(string partName, byte[] bytes)
+    {
+        replaced[partName] = bytes;
+        if (partName.EndsWith(".rels", StringComparison.OrdinalIgnoreCase))
+            relationships.Clear();
+    }
+
+    /// <summary>
+    /// Writes the package as a ZIP file of its own (catalog: package.opc): its entries in their order, each part with its
+    /// bytes as they were read or as Replace gave them, the parts it added at the end. A password-protected package is
+    /// written without its password.
+    /// </summary>
+    public void Save(Stream output)
+    {
+        using var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
+        var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in zip.Entries)
+        {
+            var name = PartName(entry);
+            written.Add(name);
+            using var target = Created(archive, entry.FullName, entry.LastWriteTime);
+            if (replaced.TryGetValue(name, out var bytes))
+                target.Write(bytes);
+            else
+            {
+                using var source = entry.Open();
+                source.CopyTo(target);
+            }
+        }
+        foreach (var (name, bytes) in replaced)
+        {
+            if (written.Contains(name))
+                continue;
+            using var target = Created(archive, Uri.EscapeDataString(name.TrimStart('/')).Replace("%2F", "/"), null);
+            target.Write(bytes);
+        }
+
+        static Stream Created(ZipArchive archive, string name, DateTimeOffset? time)
+        {
+            var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
+            // ZIP keeps DOS times, 1980 to 2107.
+            if (time is { Year: >= 1980 and < 2107 } at)
+                entry.LastWriteTime = at;
+            return entry.Open();
+        }
+    }
+
+    static string PartName(ZipArchiveEntry entry) => "/" + Uri.UnescapeDataString(entry.FullName.Replace('\\', '/'));
+
     /// <summary>
     /// A part as XML, whitespace kept: a run of spaces (&lt;a:t&gt; &lt;/a:t&gt;) is text, and dropping it joins the words
-    /// around it.
+    /// around it. With <paramref name="lines"/>, each element knows where it was read (line info), which PartText finds
+    /// in the part's text to write it back.
     /// </summary>
-    public XDocument ReadXml(string partName)
+    public XDocument ReadXml(string partName, bool lines = false)
     {
-        using var stream = entries[partName].Open();
-        return Strict.Transition(XDocument.Load(stream, LoadOptions.PreserveWhitespace));
+        using var stream = replaced.TryGetValue(partName, out var bytes) ? new MemoryStream(bytes, false) : entries[partName].Open();
+        return Strict.Transition(XDocument.Load(stream, lines ? LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo : LoadOptions.PreserveWhitespace));
     }
 
     public string ContentType(string partName)
