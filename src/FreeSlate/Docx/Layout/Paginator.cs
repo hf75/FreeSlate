@@ -4282,7 +4282,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             else
                 NextColumn(natural: false);
             top = Top.Leading;
-            paragraph = paragraph with { Content = paragraph.Content.Where(i => !ReferenceEquals(i, leading)).ToList() };
+            paragraph = paragraph with { Content = paragraph.Content.Where(i => !ReferenceEquals(i, leading)).ToList(), TextOffset = paragraph.TextOffset + 1 };
         }
         var next = index + 1 < blocks.Count ? blocks[index + 1] as ParagraphBlock : null;
         var format = paragraph.Format;

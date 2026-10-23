@@ -16,8 +16,11 @@ public sealed class Piece
     public bool JoinsAfter { get; init; }
     public double X { get; set; }
 
-    /// <summary>Where the piece's text begins in its paragraph's text; -1 for tabs and spacers.</summary>
+    /// <summary>Where the piece's text begins in its paragraph's laid out text; -1 for spacers past floating objects.</summary>
     public int Start { get; init; } = -1;
+
+    /// <summary>Whether the piece's last character is a hyphen automatic hyphenation added, which the paragraph's text does not have.</summary>
+    public bool AddedHyphen { get; init; }
 
     /// <summary>Room before the piece's first character, in its first advance: a run border's line and space.</summary>
     public double Lead { get; init; }
@@ -258,6 +261,13 @@ public sealed class Line
 
     /// <summary>The paragraph the line is of (set by <see cref="ParagraphLayout.Layout"/>).</summary>
     public ParagraphBlock? Paragraph { get; set; }
+
+    /// <summary>
+    /// Where each character of the paragraph's laid out text (which TextStart and the pieces' Start index) comes from in
+    /// the paragraph's text (ParagraphText; -1 for what the layout adds), the same for all its lines (set by
+    /// <see cref="ParagraphLayout.Layout"/>).
+    /// </summary>
+    public int[]? Sources { get; set; }
 
     /// <summary>Where the line's text begins in its paragraph's text.</summary>
     public int TextStart { get; init; }
@@ -843,6 +853,9 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// <summary>The place in its text of the tab after the list number of the paragraph being laid out, or -1.</summary>
     int labelTab = -1;
 
+    /// <summary>Where the characters of the paragraph laid out last come from (Line.Sources).</summary>
+    int[]? laidSources;
+
     /// <summary>The Word 6 numbering of the paragraph's list number (NumberingLevel.Legacy), or null.</summary>
     (double Indent, double Space)? legacyLabel;
 
@@ -914,7 +927,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     {
         var laid = LayoutLines(paragraph, width, fields, room, from, unhyphenated);
         foreach (var line in laid)
-            line.Paragraph = paragraph;
+            (line.Paragraph, line.Sources) = (paragraph, laidSources);
         // The markup view marks the lines of a paragraph whose formatting changed and the last line of one whose mark
         // changed; the formatting change's balloon hangs from the first line.
         if (laid.Count > 0 && (paragraph.Change != null || paragraph.MarkRevision != null))
@@ -953,7 +966,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         double? snapCell = settings.SnapCell is { } nominal && nominal > 0.01 ? width / Math.Max(1, Math.Floor(width / nominal + 1e-6)) : null;
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         unseenBreak = settings.BreakUnseen?.Invoke(paragraph) == true;
-        var (text, charStyles, labelLength) = Flatten(paragraph, fields);
+        var (text, charStyles, labelLength, sources) = Flatten(paragraph, fields);
+        laidSources = [.. sources];
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         legacyLabel = paragraph.Label?.Level.Legacy;
         levels = BidiLevels(text, charStyles, format.Bidi == true, labelLength);
@@ -1672,7 +1686,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         var format = paragraph.Format;
         displayWidth = double.MaxValue;
         measuringDeleted = deleted;
-        var (text, charStyles, labelLength) = Flatten(paragraph, fields);
+        var (text, charStyles, labelLength, _) = Flatten(paragraph, fields);
         measuringDeleted = false;
         if (!empty && text.Length == 0)
             return (0, 0);
@@ -1802,10 +1816,20 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         advances[labelLength] = Advances(" ", [styles.Style(arial, WordSlot.Ascii)], settings.CharacterExtra, settings.CharacterExtraEastAsian)[0];
     }
 
-    (string Text, List<RunStyle> Styles, int LabelLength) Flatten(ParagraphBlock paragraph, PageFields? fields)
+    /// <summary>
+    /// The paragraph's text as it is laid out (its list number, its text in capitals where it is so formatted, the
+    /// results of its fields, U+FFFC for each object …), the style of each of its characters, the length of the number,
+    /// and where each character comes from in the paragraph's text (ParagraphText): the offset of its character in a text
+    /// inline, or of the inline it shows (a field's result, a note's mark, a drawing), -1 for what the layout adds (the
+    /// list number and its tab, a tab before a decimal stop, a break after a display equation).
+    /// </summary>
+    (string Text, List<RunStyle> Styles, int LabelLength, List<int> Sources) Flatten(ParagraphBlock paragraph, PageFields? fields)
     {
         var text = new System.Text.StringBuilder();
         var list = new List<RunStyle>();
+        var sources = new List<int>();
+        // The offset of the inline being added, and whether all its characters stand for it as a whole.
+        var (source, whole) = (-1, false);
         levels = null;
         objects.Clear();
         boxes.Clear();
@@ -1827,9 +1851,21 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
         void AddText(string value, RunFormat format, string? link = null, bool number = false, bool noteMark = false)
         {
-            // Medium and high kashida justification lengthen every Arabic word by two or three kashidas.
+            // Medium and high kashida justification lengthen every Arabic word by two or three kashidas, which come from
+            // the letter before them.
+            int[]? from = null;
             if (paragraph.Format.Justification is "mediumKashida" or "highKashida")
-                value = Kashidas(value, paragraph.Format.Justification == "mediumKashida" ? 2 : 3);
+            {
+                var lengthened = Kashidas(value, paragraph.Format.Justification == "mediumKashida" ? 2 : 3);
+                if (lengthened.Length != value.Length)
+                {
+                    from = new int[lengthened.Length];
+                    for (int i = 0, j = 0; i < lengthened.Length; i++)
+                        from[i] = j < value.Length && lengthened[i] == value[j] ? j++ : Math.Max(0, j - 1);
+                }
+                value = lengthened;
+            }
+            int Source(int index) => source < 0 ? -1 : whole ? source : source + (from?[index] ?? index);
             if (link != null)
                 links[text.Length] = (link, value.Length);
             if (format.Vanish == true && !(measuringDeleted && format.Deleted))
@@ -1854,6 +1890,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 across[text.Length] = new TextInline(value, format);
                 text.Append('\uFFFC');
                 list.Add(styles.Character(format, char.ConvertToUtf32(value, 0)));
+                sources.Add(Source(0));
                 return;
             }
             if (format.CombineLines == true && value.Length > 1)
@@ -1861,6 +1898,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 combined[text.Length] = new TextInline(value, format);
                 text.Append('\uFFFC');
                 list.Add(styles.Style(format, WordSlot.EastAsia));
+                sources.Add(Source(0));
                 return;
             }
             // All caps shows capitals; small caps shows lowercase letters as smaller capitals, the spaces between them
@@ -1869,6 +1907,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             var small = format.SmallCaps == true && format.Caps != true;
             RunStyle? previous = null;
             var runes = value.EnumerateRunes().ToList();
+            var index = 0;
             for (var r = 0; r < runes.Count; r++)
             {
                 var rune = runes[r];
@@ -1897,7 +1936,11 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 var s = shown.ToString();
                 text.Append(s);
                 for (var k = 0; k < s.Length; k++)
+                {
                     list.Add(style);
+                    sources.Add(Source(Math.Min(index + k, value.Length - 1)));
+                }
+                index += rune.Utf16SequenceLength;
             }
         }
 
@@ -1911,6 +1954,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 text.Append('\n');
                 list.Add(styles.Style(format, WordSlot.Ascii));
+                sources.Add(-1);
                 breakAfterDisplay = false;
             }
             switch (inline)
@@ -1938,6 +1982,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                             equations[text.Length] = (equation, null);
                             text.Append('\uFFFC');
                             list.Add(mathStyle);
+                            sources.Add(source);
                         }
                         break;
                     }
@@ -1954,6 +1999,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         {
                             text.Append('\n');
                             list.Add(styles.Style(format, WordSlot.Ascii));
+                            sources.Add(-1);
                         }
                         var width = lines[k].Width;
                         double x = math.Justification switch
@@ -1968,6 +2014,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         equations[text.Length] = (lines[k], mathLeft + Math.Max(0, x));
                         text.Append('\uFFFC');
                         list.Add(mathStyle);
+                        sources.Add(source);
                     }
                     breakAfterDisplay = true;
                     break;
@@ -2002,10 +2049,12 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         if (Evaluator.Emptied(field) && !FieldEvaluator.IsError(value))
                             shown = unmerged;
                     }
+                    whole = true;
                     AddText(value, shown, field.Cached.OfType<TextInline>().FirstOrDefault()?.Link);
                     break;
                 }
                 case FieldInline field:
+                    whole = true;
                     foreach (var cached in field.Cached)
                         Add(cached);
                     break;
@@ -2022,26 +2071,31 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     objects[text.Length] = drawing;
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
+                    sources.Add(source);
                     break;
                 case CheckBoxInline box:
                     boxes[text.Length] = box;
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
+                    sources.Add(source);
                     break;
                 case RubyInline ruby:
                     rubies[text.Length] = ruby;
                     text.Append('\uFFFC');
                     list.Add(styles.Style(ruby.Base.FirstOrDefault()?.Format ?? format, WordSlot.EastAsia));
+                    sources.Add(source);
                     break;
                 case NoteReferenceInline note:
                     if (!note.Endnote && !note.Own)
                         notes.Add((text.Length, note.Id));
+                    whole = true;
                     AddText(note.Mark.Length > 0 && NoteMarks?.GetValueOrDefault((note.Endnote, note.Id)) is { } mark ? mark : note.Mark, format, noteMark: true);
                     break;
                 case SeparatorInline separator:
                     separators[text.Length] = separator.Continuation;
                     text.Append('\uFFFC');
                     list.Add(styles.Style(format, WordSlot.Ascii));
+                    sources.Add(source);
                     break;
                 // Tabs and breaks of a right-to-left or complex script run take its complex script font and size
                 // (docx/external/powertools/RP/RP051-Arabic: an empty paragraph of two breaks in w:rtl runs of w:szCs
@@ -2051,12 +2105,14 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                         positional[text.Length] = absolute;
                     text.Append('\t');
                     list.Add(styles.Character(format, '\t'));
+                    sources.Add(source);
                     break;
                 case BreakInline b:
                     if (b.Type is not ("page" or "column") && b.Clear is "left" or "right" or "all")
                         clears[text.Length] = b.Clear;
                     text.Append(b.Type switch { "page" => '\f', "column" => '\v', _ => '\n' });
                     list.Add(styles.Character(format, '\n'));
+                    sources.Add(source);
                     break;
             }
         }
@@ -2070,6 +2126,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                 objects[text.Length] = picture;
                 text.Append('\uFFFC');
                 list.Add(styles.Style(label.Format, WordSlot.Ascii));
+                sources.Add(-1);
             }
             else
                 AddText(label.Text, label.Format, number: true);
@@ -2078,6 +2135,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             {
                 text.Append('\t');
                 list.Add(styles.Style(label.Format, WordSlot.Ascii));
+                sources.Add(-1);
             }
             else if (label.Suffix == "space")
                 AddText(" ", label.Format, number: true);
@@ -2090,9 +2148,16 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         {
             text.Append('\t');
             list.Add(styles.Style(firstText.Format, WordSlot.Ascii));
+            sources.Add(-1);
         }
+        var offset = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
+        {
+            (source, whole) = (offset, false);
             Add(inline);
+            offset += ParagraphText.Length(inline);
+        }
+        (source, whole) = (-1, false);
         // Text of automatic color is white on dark shading, its own, its paragraph's or its cell's (measured with
         // docx/local/autocolor: where 0.30 red + 0.59 green + 0.11 blue of the shading is below 60 of 255, C00000 and
         // 006400 white, C80000, 006600 and 3C3C3C black; highlights change nothing); in a text box without shading it
@@ -2119,7 +2184,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             else if (settings.TextColor is { } color)
                 list[k] = colored.GetOrAdd((list[k], color), s => s.Item1 with { Color = s.Item2 });
         }
-        return (text.ToString(), list, labelLength);
+        return (text.ToString(), list, labelLength, sources);
     }
 
     readonly System.Collections.Concurrent.ConcurrentDictionary<RunStyle, RunStyle> whitened = new();
@@ -2492,6 +2557,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     Style = charStyles[pieceStart],
                     X = x,
                     Start = pieceStart,
+                    AddedHyphen = automatic,
                     JoinsBefore = JoinsAcross(text, pieceStart),
                     JoinsAfter = i > pieceStart && JoinsAcross(text, i),
                     Advances = pieceAdvances,

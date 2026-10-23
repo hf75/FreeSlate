@@ -311,6 +311,16 @@ public readonly record struct GlyphItem(uint Id, string Outline, double X, doubl
 public sealed record HiddenTextItem(string Text, double X, double[] Positions, double Y, FontData Font, double Size) : SceneItem;
 
 /// <summary>
+/// The places of a laid out line, where a cursor stands and what a selection covers (not drawn): the paragraph (its
+/// Block.Id, unique in its document), the line's top and bottom, and for each character the line shows its offset in the
+/// paragraph's text (Docx.ParagraphText) and the x where it begins and ends in reading order (the end left of the start
+/// in right-to-left text), in the line's order; the paragraph's last line ends with its mark, of no width. All the
+/// characters of a field's result or a note's mark have the field's or the reference's offset; what the layout added (a
+/// list number, a hyphen of automatic hyphenation) has none.
+/// </summary>
+public sealed record PlacesItem(int Block, double Top, double Bottom, int[] Offsets, double[] Starts, double[] Ends) : SceneItem;
+
+/// <summary>
 /// Characters drawn invisibly in points, stretched over Width from X on the baseline Y at the font size Size, for
 /// selecting and searching them (an equation's).
 /// </summary>

@@ -245,6 +245,8 @@ public static class HtmlScene
                 case BookmarkItem bookmark:
                     html.Append($"<a class=\"bm\" id=\"{WebUtility.HtmlEncode(bookmark.Name)}\" style=\"left:{Px(bookmark.X)}px;top:{Px(bookmark.Y)}px\"></a>");
                     break;
+                case PlacesItem:
+                    break;
                 case TextItem text:
                     WriteText(text, html);
                     break;

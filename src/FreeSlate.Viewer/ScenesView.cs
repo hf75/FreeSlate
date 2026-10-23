@@ -45,9 +45,47 @@ sealed class ScenesView : Control
     /// <summary>A link was clicked: its target (a web address, or # and a bookmark's name).</summary>
     public event Action<string>? LinkClicked;
 
+    /// <summary>
+    /// The cursor moved: the place it stands at (a paragraph's Block.Id and an offset in its text, see Docx.ParagraphText)
+    /// and how many characters the selection holds (0 without one); null where it left the text.
+    /// </summary>
+    public event Action<(int Block, int Offset, int Selected)?>? PlaceChanged;
+
+    /// <summary>
+    /// The cursor and where the selection began, each a page (its index) and a place among the page's characters in
+    /// order (TextPlaces.Spots): before the character of that index, the count of them after the last; null before the
+    /// first click into text.
+    /// </summary>
+    (int Page, int At)? caret, anchor;
+
+    /// <summary>
+    /// Whether the cursor, where its place begins a line other than the character before it, stands at the end of that
+    /// character's line (after a click there or End) rather than at the start of the next one.
+    /// </summary>
+    bool lineEnd;
+
+    /// <summary>The character the cursor stands at on its page, before it, or after it at the end of its line.</summary>
+    (TextPlaces.Spot Spot, bool After) CaretSpot(List<TextPlaces.Spot> spots, int at) =>
+        at >= spots.Count || at > 0 && lineEnd && spots[at - 1].Line != spots[at].Line ? (spots[Math.Min(at, spots.Count) - 1], true) : (spots[at], false);
+
+    /// <summary>Whether the left button is down after a click into text: moving selects.</summary>
+    bool selecting;
+
+    /// <summary>Whether the blinking cursor shows.</summary>
+    bool blink = true;
+    readonly Avalonia.Threading.DispatcherTimer blinker;
+
     public ScenesView()
     {
         ClipToBounds = true;
+        Focusable = true;
+        blinker = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(530) };
+        blinker.Tick += (_, _) =>
+        {
+            blink = !blink;
+            if (caret != null)
+                InvalidateVisual();
+        };
     }
 
     public IReadOnlyList<PageScene> Scenes
@@ -56,6 +94,9 @@ sealed class ScenesView : Control
         set
         {
             scenes = value;
+            (caret, anchor, selecting) = (null, null, false);
+            blinker.Stop();
+            PlaceChanged?.Invoke(null);
             pictures.Clear();
             Arrange();
         }
@@ -212,7 +253,33 @@ sealed class ScenesView : Control
         var visible = rows.Where(r => r.Top * factor < view.Bottom && (r.Top + r.Height) * factor > view.Top)
             .Select(r => (Row: r, Left: Left(r))).ToList();
         if (visible.Count > 0)
-            context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, word, comparison, blend, pictures));
+            context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, word, comparison, blend, pictures, Marks(visible)));
+    }
+
+    /// <summary>What a page shows over its text: the areas of the selection and the cursor (from its top to its bottom), in CSS pixels of the page.</summary>
+    sealed record Mark(List<SKPoint[]> Areas, (SKPoint Top, SKPoint Bottom)? Caret);
+
+    /// <summary>The selection and the cursor on the rows in view, by page.</summary>
+    Dictionary<int, Mark> Marks(List<(Row Row, double Left)> visible)
+    {
+        var marks = new Dictionary<int, Mark>();
+        if (caret == null)
+            return marks;
+        var inView = visible.Select(v => v.Row.Index).Where(i => i < scenes.Count).ToHashSet();
+        foreach (var (page, from, count) in Selected())
+        {
+            if (!inView.Contains(page))
+                continue;
+            var spots = pictures.Spots(scenes[page]);
+            marks[page] = new Mark(pictures.Places(scenes[page]).Selection(spots[from], spots[from + count - 1]), null);
+        }
+        if (caret is var (cursorPage, at) && blink && inView.Contains(cursorPage) && pictures.Spots(scenes[cursorPage]) is { Count: > 0 } all)
+        {
+            var (spot, after) = CaretSpot(all, at);
+            var bar = pictures.Places(scenes[cursorPage]).CaretAt(spot, after);
+            marks[cursorPage] = new Mark(marks.TryGetValue(cursorPage, out var selected) ? selected.Areas : [], bar);
+        }
+        return marks;
     }
 
     /// <summary>The page in view: the last whose top is above a third of the view's height.</summary>
@@ -270,17 +337,221 @@ sealed class ScenesView : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        Cursor = LinkAt(e.GetPosition(this)) != null ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
+        if (selecting && PlaceAt(e.GetPosition(this)) is var (page, at, end))
+        {
+            (caret, lineEnd) = ((page, at), end);
+            Moved();
+            return;
+        }
+        Cursor = LinkAt(e.GetPosition(this)) != null ? new Cursor(StandardCursorType.Hand)
+            : PlaceAt(e.GetPosition(this), near: false) != null ? new Cursor(StandardCursorType.Ibeam) : Cursor.Default;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && LinkAt(e.GetPosition(this)) is { } target)
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+        if (LinkAt(e.GetPosition(this)) is { } target)
         {
             e.Handled = true;
             LinkClicked?.Invoke(target);
+            return;
         }
+        // A click into the text puts the cursor there, with Shift selects up to there; dragging selects.
+        if (PlaceAt(e.GetPosition(this)) is var (page, at, end))
+        {
+            Focus();
+            (caret, lineEnd) = ((page, at), end);
+            if ((e.KeyModifiers & KeyModifiers.Shift) == 0 || anchor == null)
+                anchor = (page, at);
+            selecting = true;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            Moved();
+        }
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (selecting)
+        {
+            selecting = false;
+            e.Pointer.Capture(null);
+        }
+    }
+
+    /// <summary>
+    /// The place a point of the view hits: on the page it stands on, or with <paramref name="near"/> on the page nearest
+    /// to it, the character it is over or the nearest one, before it or after it (see TextPlaces.HitPlace), and whether
+    /// that is after a line's last character; null off the text.
+    /// </summary>
+    (int Page, int At, bool End)? PlaceAt(Point point, bool near = true)
+    {
+        Row? best = null;
+        var bestDistance = double.MaxValue;
+        foreach (var row in rows)
+        {
+            if (row.Index >= scenes.Count)
+                continue;
+            var y = point.Y / factor - row.Top - row.Ours.Y;
+            var distance = y < 0 ? -y : y > row.Ours.Height ? y - row.Ours.Height : 0;
+            if (distance < bestDistance)
+                (best, bestDistance) = (row, distance);
+        }
+        if (best == null || !near && bestDistance > 0)
+            return null;
+        var local = new SKPoint((float)((point.X - Left(best)) / factor - best.Ours.X), (float)(point.Y / factor - best.Top - best.Ours.Y));
+        if (!near && (local.X < 0 || local.X > best.Ours.Width))
+            return null;
+        var places = pictures.Places(scenes[best.Index]);
+        if (places.HitPlace(local) is not var (spot, after))
+            return null;
+        if (!near)
+        {
+            // Over the text itself: within its line and character.
+            var (toPage, line) = places.Lines[spot.Line];
+            if (!toPage.TryInvert(out var inverse))
+                return null;
+            var p = inverse.MapPoint(local);
+            var (x, y) = (p.X / PxPerPt, p.Y / PxPerPt);
+            if (y < line.Top || y > line.Bottom || x < Math.Min(line.Starts[spot.Index], line.Ends[spot.Index]) - 2
+                || x > Math.Max(line.Starts[spot.Index], line.Ends[spot.Index]) + 2)
+                return null;
+        }
+        return Placed(best.Index, spot, after);
+    }
+
+    /// <summary>The place before or after a character of a page, and whether that is after its line's last one.</summary>
+    (int Page, int At, bool End) Placed(int page, TextPlaces.Spot spot, bool after)
+    {
+        var spots = pictures.Spots(scenes[page]);
+        var at = pictures.Index(scenes[page], spot) + (after ? 1 : 0);
+        return (page, at, after && (at >= spots.Count || spots[at].Line != spot.Line));
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (caret is not var (page, at) || page >= scenes.Count)
+            return;
+        var places = pictures.Places(scenes[page]);
+        var spots = pictures.Spots(scenes[page]);
+        (int Page, int At, bool End)? moved = e.Key switch
+        {
+            Key.Left => at > 0 ? (page, at - 1, false) : page > 0 ? (page - 1, pictures.Spots(scenes[page - 1]).Count, true) : null,
+            Key.Right => at < spots.Count ? (page, at + 1, false) : page + 1 < scenes.Count ? (page + 1, 0, false) : null,
+            Key.Home or Key.End when spots.Count > 0 => LineEdge(page, at, e.Key == Key.End),
+            Key.Up or Key.Down when spots.Count > 0 => LineAcross(page, at, e.Key == Key.Down),
+            _ => null,
+        };
+        if (moved is not var (movedPage, movedAt, movedEnd))
+            return;
+        e.Handled = true;
+        (caret, lineEnd) = ((movedPage, movedAt), movedEnd);
+        if ((e.KeyModifiers & KeyModifiers.Shift) == 0)
+            anchor = (movedPage, movedAt);
+        Moved();
+        Reveal((movedPage, movedAt));
+    }
+
+    /// <summary>The first or the last place of the cursor's line: after its last character, before the paragraph's mark.</summary>
+    (int Page, int At, bool End)? LineEdge(int page, int at, bool end)
+    {
+        var spots = pictures.Spots(scenes[page]);
+        var line = CaretSpot(spots, at).Spot.Line;
+        var first = spots.FindIndex(s => s.Line == line);
+        var last = spots.FindLastIndex(s => s.Line == line);
+        if (!end)
+            return (page, first, false);
+        var places = pictures.Places(scenes[page]).Lines[line].Line;
+        return places.Starts[spots[last].Index] == places.Ends[spots[last].Index] ? (page, last, false) : (page, last + 1, true);
+    }
+
+    /// <summary>The place in the line above or below the cursor's that stands nearest to it, on the next page over its edge.</summary>
+    (int Page, int At, bool End)? LineAcross(int page, int at, bool down)
+    {
+        var places = pictures.Places(scenes[page]);
+        var spots = pictures.Spots(scenes[page]);
+        var (current, currentAfter) = CaretSpot(spots, at);
+        var (top, bottom) = places.CaretAt(current, currentAfter);
+        var x = top.X;
+        // The nearest line beside this one, in the page's order of lines.
+        var lineIndex = current.Line + (down ? 1 : -1);
+        while (lineIndex >= 0 && lineIndex < places.Lines.Count && places.Lines[lineIndex].Line.Offsets.Length == 0)
+            lineIndex += down ? 1 : -1;
+        if (lineIndex < 0 || lineIndex >= places.Lines.Count)
+        {
+            var next = page + (down ? 1 : -1);
+            if (next < 0 || next >= scenes.Count)
+                return null;
+            var nextSpots = pictures.Spots(scenes[next]);
+            return nextSpots.Count == 0 ? null : (next, down ? 0 : nextSpots.Count, !down);
+        }
+        var (toPage, line) = places.Lines[lineIndex];
+        var middle = toPage.MapPoint((float)(line.Starts[0] * PxPerPt), (float)((line.Top + line.Bottom) / 2 * PxPerPt));
+        var target = new SKPoint(x, middle.Y);
+        return places.HitPlace(target) is var (spot, after) ? Placed(page, spot, after) : null;
+    }
+
+    /// <summary>Scrolls the cursor's page into view where it is out of it.</summary>
+    void Reveal((int Page, int At) place)
+    {
+        if (scroller == null || place.Page >= rows.Count)
+            return;
+        var row = rows[place.Page];
+        var spots = pictures.Spots(scenes[place.Page]);
+        if (spots.Count == 0)
+            return;
+        var (spot, after) = CaretSpot(spots, place.At);
+        var (top, bottom) = pictures.Places(scenes[place.Page]).CaretAt(spot, after);
+        var (y1, y2) = ((row.Top + row.Ours.Y + top.Y) * factor, (row.Top + row.Ours.Y + bottom.Y) * factor);
+        if (y1 < scroller.Offset.Y)
+            scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0, y1 - 24));
+        else if (y2 > scroller.Offset.Y + scroller.Viewport.Height)
+            scroller.Offset = new Vector(scroller.Offset.X, y2 - scroller.Viewport.Height + 24);
+    }
+
+    /// <summary>The cursor moved: it shows (and blinks again from there), and the window learns its place.</summary>
+    void Moved()
+    {
+        blink = true;
+        blinker.Stop();
+        blinker.Start();
+        InvalidateVisual();
+        if (caret is not var (page, at) || page >= scenes.Count)
+        {
+            PlaceChanged?.Invoke(null);
+            return;
+        }
+        var spots = pictures.Spots(scenes[page]);
+        if (spots.Count == 0)
+        {
+            PlaceChanged?.Invoke(null);
+            return;
+        }
+        var places = pictures.Places(scenes[page]);
+        var (spot, after) = CaretSpot(spots, at);
+        var (block, offset) = places.PlaceAt(spot, after);
+        PlaceChanged?.Invoke((block, offset, Selected().Sum(s => s.Count)));
+    }
+
+    /// <summary>The selection page by page: the page and the range of its characters (from the index, so many), in order.</summary>
+    List<(int Page, int From, int Count)> Selected()
+    {
+        if (caret is not var (page, at) || anchor is not var (anchorPage, anchorAt) || (page, at) == (anchorPage, anchorAt))
+            return [];
+        var ((p1, a1), (p2, a2)) = (anchorPage, anchorAt).CompareTo((page, at)) < 0 ? ((anchorPage, anchorAt), (page, at)) : ((page, at), (anchorPage, anchorAt));
+        var result = new List<(int, int, int)>();
+        for (var p = p1; p <= p2 && p < scenes.Count; p++)
+        {
+            var count = pictures.Spots(scenes[p]).Count;
+            var (from, to) = (p == p1 ? a1 : 0, p == p2 ? a2 : count);
+            if (to > from)
+                result.Add((p, from, to - from));
+        }
+        return result;
     }
 
     /// <summary>The position in the document: the page in view and how far down it the view's top is (a share of its height).</summary>
@@ -307,15 +578,21 @@ sealed class ScenesView : Control
     /// <summary>The pages' recorded drawings and links and Word's pictures, made once and drawn on the render thread.</summary>
     sealed class Pictures
     {
-        readonly Dictionary<PageScene, (SKPicture Picture, List<(SKRect Area, string Target)> Links)> pages = new(ReferenceEqualityComparer.Instance);
+        readonly Dictionary<PageScene, Recording> pages = new(ReferenceEqualityComparer.Instance);
         readonly Dictionary<string, SKImage?> images = [];
+
+        /// <summary>
+        /// A page recorded once: its drawing, where its links stand on it in CSS pixels and where they lead, its places,
+        /// its characters in order (TextPlaces.Spots) and where each line's begin among them.
+        /// </summary>
+        sealed record Recording(SKPicture Picture, List<(SKRect Area, string Target)> Links, TextPlaces Places, List<TextPlaces.Spot> Spots, int[] LineStarts);
 
         public void Clear()
         {
             lock (this)
             {
-                foreach (var (picture, _) in pages.Values)
-                    picture.Dispose();
+                foreach (var recording in pages.Values)
+                    recording.Picture.Dispose();
                 pages.Clear();
             }
         }
@@ -325,7 +602,16 @@ sealed class ScenesView : Control
         /// <summary>Where the page's links stand on it in CSS pixels and where they lead.</summary>
         public List<(SKRect Area, string Target)> Links(PageScene scene) => Recorded(scene).Links;
 
-        (SKPicture Picture, List<(SKRect Area, string Target)> Links) Recorded(PageScene scene)
+        /// <summary>The places of the page's text (see TextPlaces).</summary>
+        public TextPlaces Places(PageScene scene) => Recorded(scene).Places;
+
+        /// <summary>The page's characters in order, line after line.</summary>
+        public List<TextPlaces.Spot> Spots(PageScene scene) => Recorded(scene).Spots;
+
+        /// <summary>Where a character stands among the page's characters in order.</summary>
+        public int Index(PageScene scene, TextPlaces.Spot spot) => Recorded(scene).LineStarts[spot.Line] + spot.Index;
+
+        Recording Recorded(PageScene scene)
         {
             lock (this)
             {
@@ -334,8 +620,13 @@ sealed class ScenesView : Control
                 using var recorder = new SKPictureRecorder();
                 var size = PageSize(scene);
                 var links = new List<(SKRect Area, string Target)>();
-                SkiaScene.Draw(scene, recorder.BeginRecording(SKRect.Create((float)size.Width, (float)size.Height)), links: links);
-                return pages[scene] = (recorder.EndRecording(), links);
+                var lines = new List<(SKMatrix ToPage, PlacesItem Line)>();
+                SkiaScene.Draw(scene, recorder.BeginRecording(SKRect.Create((float)size.Width, (float)size.Height)), links: links, places: lines);
+                var places = new TextPlaces(lines);
+                var starts = new int[lines.Count];
+                for (var k = 1; k < lines.Count; k++)
+                    starts[k] = starts[k - 1] + lines[k - 1].Line.Offsets.Length;
+                return pages[scene] = new Recording(recorder.EndRecording(), links, places, places.Spots(), starts);
             }
         }
 
@@ -362,7 +653,7 @@ sealed class ScenesView : Control
 
     /// <summary>The rows in view drawn on Avalonia's Skia canvas.</summary>
     sealed class Drawing(Rect bounds, List<(Row Row, double Left)> rows, double factor, IReadOnlyList<PageScene> scenes, IReadOnlyList<WordPicture> word,
-        string comparison, double blend, Pictures pictures) : ICustomDrawOperation
+        string comparison, double blend, Pictures pictures, Dictionary<int, Mark> marks) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -397,6 +688,22 @@ sealed class ScenesView : Control
                     canvas.Translate((float)row.Ours.X, (float)row.Ours.Y);
                     canvas.ClipRect(SKRect.Create((float)row.Ours.Width, (float)row.Ours.Height));
                     canvas.DrawPicture(pictures.Page(scene));
+                    // The selection over the text, the cursor at its place.
+                    if (marks.TryGetValue(row.Index, out var mark))
+                    {
+                        using var selected = new SKPaint { Color = new SKColor(0x33, 0x99, 0xFF, 0x60), IsAntialias = true };
+                        foreach (var area in mark.Areas)
+                        {
+                            using var path = new SKPath();
+                            path.AddPoly(area);
+                            canvas.DrawPath(path, selected);
+                        }
+                        if (mark.Caret is var (top, bottom))
+                        {
+                            using var pen = new SKPaint { Color = SKColors.Black, StrokeWidth = (float)Math.Max(1, 1.5 / factor), IsAntialias = true };
+                            canvas.DrawLine(top, bottom, pen);
+                        }
+                    }
                     // Word's page over ours: blended, or as the difference of the two.
                     if (!side && comparison != "off" && picture != null && pictures.Image(picture.File) is { } over)
                     {

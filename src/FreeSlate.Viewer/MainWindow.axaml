@@ -54,6 +54,8 @@
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <TextBlock Name="PlaceText" VerticalAlignment="Center" Margin="0,0,8,0"
+                     ToolTip.Tip="Wo der Cursor steht: der Absatz (seine Nummer im Dokument) und die Stelle in seinem Text" />
           <ProgressBar Name="WordProgress" IsIndeterminate="True" IsVisible="False" Width="80" MinWidth="80" VerticalAlignment="Center" />
           <TextBlock Name="WordText" VerticalAlignment="Center" />
           <Button Name="WordPdfButton" Content="Words PDF" IsVisible="False" Padding="8,2" Click="OnWordPdfClick"

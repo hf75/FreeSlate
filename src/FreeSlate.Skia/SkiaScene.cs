@@ -46,21 +46,23 @@ public static class SkiaScene
 
     /// <summary>
     /// A page drawn on a canvas whose units are CSS pixels from the page's top left, its paper white; with
-    /// <paramref name="links"/>, where the page's links stand in those units and what they lead to (LinkItem.Target).
+    /// <paramref name="links"/>, where the page's links stand in those units and what they lead to (LinkItem.Target);
+    /// with <paramref name="places"/>, the places of its lines with what maps their points onto the page (see TextPlaces).
     /// </summary>
     /// <param name="vector">Whether the canvas keeps vectors and pictures as they are (a PDF's): its pictures are then
     /// not evened for pixels (see SvgDrawing.Evened).</param>
     public static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics = null, List<(SKRect Area, string Target)>? links = null,
-        bool vector = false) =>
-        Draw(scene, canvas, statistics, links, vector, null);
+        bool vector = false, List<(SKMatrix ToPage, PlacesItem Line)>? places = null) =>
+        Draw(scene, canvas, statistics, links, vector, null, places);
 
     /// <param name="fonts">Into a PDF, the fonts cut down to the glyphs its pages draw (see PdfFonts).</param>
-    static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics, List<(SKRect Area, string Target)>? links, bool vector, PdfFonts? fonts)
+    static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics, List<(SKRect Area, string Target)>? links, bool vector, PdfFonts? fonts,
+        List<(SKMatrix ToPage, PlacesItem Line)>? places = null)
     {
         using var paper = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
         canvas.DrawRect(0, 0, Px(scene.Width), Px(scene.Height), paper);
         var drawer = new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes, links: links,
-            pixels: vector ? null : SKMatrix.Identity, subsets: fonts);
+            pixels: vector ? null : SKMatrix.Identity, subsets: fonts, places: places);
         drawer.Predefine(scene.Items);
         drawer.Draw(scene.Items);
     }
@@ -210,9 +212,11 @@ public static class SkiaScene
     /// <param name="pixels">The matrix under which what the canvas draws lands on pixels (a recording's, its parent's;
     /// the identity for a canvas of pixels), or null where it lands in a PDF.</param>
     /// <param name="subsets">Into a PDF, its fonts cut down to the glyphs its pages draw (see PdfFonts).</param>
+    /// <param name="places">The places of the lines drawn on the page itself, with what maps them onto it, or null.</param>
     sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null,
         GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null, bool exactDashes = false,
-        List<(SKRect Area, string Target)>? links = null, SKMatrix? pixels = null, PdfFonts? subsets = null)
+        List<(SKRect Area, string Target)>? links = null, SKMatrix? pixels = null, PdfFonts? subsets = null,
+        List<(SKMatrix ToPage, PlacesItem Line)>? places = null)
     {
         /// <summary>The typeface a font's glyphs are drawn in: into a PDF its subset (see PdfFonts), else its own.</summary>
         SKTypeface? TypefaceFor(FontData font, IEnumerable<uint> drawn, string? text) =>
@@ -445,6 +449,10 @@ public static class SkiaScene
                     canvas.Restore();
                     break;
                 case AltTextItem or BookmarkItem or HiddenTextItem or HiddenSpanItem or SvgTextItem { Hidden: true }:
+                    break;
+                case PlacesItem line:
+                    if (places != null && page.TryInvert(out var linesToPage))
+                        places.Add((linesToPage.PreConcat(canvas.TotalMatrix), line));
                     break;
                 case TextItem text:
                     Text(text);

@@ -121,6 +121,10 @@ public partial class MainWindow : Window
                 PageBox.Text = n.ToString(CultureInfo.CurrentCulture);
         };
         ScenePages.LinkClicked += Follow;
+        ScenePages.PlaceChanged += place => PlaceText.Text = place is var (block, offset, selected)
+            ? $"Absatz {block.ToString(CultureInfo.CurrentCulture)}, Stelle {offset.ToString(CultureInfo.CurrentCulture)}"
+              + (selected > 0 ? $" · {selected.ToString(CultureInfo.CurrentCulture)} Zeichen markiert" : "")
+            : "";
 
         Closing += (_, _) => settings.Save();
         Closed += (_, _) =>

@@ -874,6 +874,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // Run borders behind the text; underlines and strikethrough end with the line's content.
             RunBorders(placed.Line, placed.Left, baseline, items);
             var contentEnd = placed.Left + ContentEnd(placed.Line, device);
+            var places = placed.Line.Paragraph != null && placed.Line.Sources != null ? new Places(placed.Line.Sources) : null;
             foreach (var piece in placed.Line.Pieces)
             {
                 var x = placed.Left + piece.X;
@@ -885,6 +886,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     var along = piece.X + (device != null && device.TryGetValue(piece, out var turnedDevice) ? turnedDevice[0] : 0);
                     x += down ? Grow(placed.Top + along, paperSize.Height) : -Grow(placed.Top - along, paperSize.Height);
                 }
+                places?.Add(piece, x, Positions(piece, device));
                 // Highlight and shading lie behind the text over the line's natural height, as far as the line's
                 // content goes: under tabs, not under the spaces that end the line (measured with docx/local/hlspace:
                 // a paragraph of highlighted or shaded spaces shows none, "Word" and four spaces only the word, a
@@ -1040,6 +1042,45 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // w:ulTrailSpace underlines the spaces that end the line too (docx/external/libreoffice/extras-cjk/
             // UnderlineTrailingSpace: 70 and 80 underlined spaces drawn in mode 15).
             Underlines(placed.Line, placed.Left, baseline, context.Profile.UnderlinesTrailingSpaces ? double.MaxValue : contentEnd, device, items);
+            if (places != null)
+                items.Add(places.Item(placed.Line, baseline - placed.Line.Baseline, placed.Left));
+        }
+    }
+
+    /// <summary>The places of a line's characters as its pieces are drawn, gathered into its PlacesItem.</summary>
+    sealed class Places(int[] sources)
+    {
+        readonly List<int> offsets = [];
+        readonly List<double> starts = [], ends = [];
+
+        /// <summary>A piece's characters at their positions from x (see Positions), right-to-left text from the piece's right end.</summary>
+        public void Add(Piece piece, double x, double[] positions)
+        {
+            if (piece.Start < 0)
+                return;
+            var width = positions[^1];
+            for (var i = 0; i < piece.Text.Length; i++)
+            {
+                if (piece.Start + i >= sources.Length || piece.AddedHyphen && i == piece.Text.Length - 1 || sources[piece.Start + i] < 0)
+                    continue;
+                var (start, end) = piece.RightToLeft ? (width - positions[i], width - positions[i + 1]) : (positions[i], positions[i + 1]);
+                offsets.Add(sources[piece.Start + i]);
+                starts.Add(x + start);
+                ends.Add(x + end);
+            }
+        }
+
+        /// <summary>The line's places from its top; its paragraph's last line ends with the mark, after the last character or at the line's start.</summary>
+        public PlacesItem Item(Line line, double top, double left)
+        {
+            if (line.Last)
+            {
+                var at = ends.Count > 0 ? ends[^1] : left;
+                offsets.Add(ParagraphText.End(line.Paragraph!));
+                starts.Add(at);
+                ends.Add(at);
+            }
+            return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends]);
         }
     }
 

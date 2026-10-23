@@ -3,7 +3,15 @@ using System.Xml.Linq;
 namespace FreeSlate.Docx;
 
 /// <summary>A piece of a paragraph's content with its resolved character formatting.</summary>
-public abstract record Inline(RunFormat Format);
+public abstract record Inline(RunFormat Format)
+{
+    /// <summary>
+    /// The element of its part's XML the inline was read from (w:t, w:tab, w:br, w:drawing, a field's w:fldChar …), which
+    /// writing an edited document changes in place; null for what the reader made of other things (a list number, a
+    /// computed field result, an imported HTML run).
+    /// </summary>
+    public XElement? Xml { get; init; }
+}
 
 /// <summary>Text of one run (catalog: run.basic).</summary>
 public sealed record TextInline(string Text, RunFormat Format) : Inline(Format)
@@ -170,6 +178,12 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
     /// for), laid out from there without its space before; null for the whole paragraph.
     /// </summary>
     public int? ResumeAt { get; init; }
+
+    /// <summary>
+    /// How many characters of the paragraph's text (ParagraphText) come before its content: 0, 1 for a copy set
+    /// without the page or column break that began it.
+    /// </summary>
+    public int TextOffset { get; init; }
 }
 
 /// <summary>A table (catalog: table.structure); laid out by the table engine.</summary>
@@ -1477,13 +1491,13 @@ public sealed partial class ModelReader(DocumentContext context)
                     break;
                 }
                 case "permStart" or "permEnd":
-                    field.Target(content).Add(new PermissionInline(e.Name.LocalName == "permStart", context.Styles.Run(paragraphStyle, null, null, tableRun)));
+                    field.Target(content).Add(new PermissionInline(e.Name.LocalName == "permStart", context.Styles.Run(paragraphStyle, null, null, tableRun)) { Xml = e });
                     break;
                 case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
-                    field.Target(content).Add(new BookmarkInline(name, context.Styles.Run(paragraphStyle, null, null, tableRun)) { Id = e.Attr("id") });
+                    field.Target(content).Add(new BookmarkInline(name, context.Styles.Run(paragraphStyle, null, null, tableRun)) { Id = e.Attr("id"), Xml = e });
                     break;
                 case "bookmarkEnd" when e.Attr("id") is { } endId:
-                    field.Target(content).Add(new BookmarkEndInline(endId, context.Styles.Run(paragraphStyle, null, null, tableRun)));
+                    field.Target(content).Add(new BookmarkEndInline(endId, context.Styles.Run(paragraphStyle, null, null, tableRun)) { Xml = e });
                     break;
                 case "ins" or "moveTo" or "del" or "moveFrom" when context.Markup:
                 {
@@ -1509,7 +1523,7 @@ public sealed partial class ModelReader(DocumentContext context)
                 case "commentRangeStart" or "commentRangeEnd" when context.Markup && e.Attr("id") is { } commentId:
                     if (e.Name.LocalName == "commentRangeStart")
                         CommentAnchored(commentId);
-                    field.Target(content).Add(new CommentInline(commentId, e.Name.LocalName == "commentRangeStart", context.Styles.Run(paragraphStyle, null, null, tableRun)));
+                    field.Target(content).Add(new CommentInline(commentId, e.Name.LocalName == "commentRangeStart", context.Styles.Run(paragraphStyle, null, null, tableRun)) { Xml = e });
                     break;
                 case "smartTag" or "customXml" or "ins" or "moveTo":
                     ReadInlines(e, paragraphStyle, content, field);
@@ -1534,13 +1548,13 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (FieldInline.TypeOf(e.Attr("instr")!) == "LISTNUM")
                     {
                         if (!field.Hidden && ListNumber(e.Attr("instr")!, e) is { } listed)
-                            field.Target(content).Add(new TextInline(listed, simpleFormat));
+                            field.Target(content).Add(new TextInline(listed, simpleFormat) { Xml = e });
                         break;
                     }
                     if (FieldInline.IsAutoNumber(e.Attr("instr")!))
                     {
                         if (!field.Hidden)
-                            field.Target(content).Add(AutoNumber(e.Attr("instr")!, e, simpleFormat));
+                            field.Target(content).Add(AutoNumber(e.Attr("instr")!, e, simpleFormat) with { Xml = e });
                         break;
                     }
                     // A simple field has no instruction runs: what Word computes prints in the paragraph style's format,
@@ -1558,6 +1572,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     {
                         ErrorFormat = styleFormat,
                         Unmerged = merged && FieldInline.TypeOf(instr) == "STYLEREF" && cached.Count > 0 ? styleFormat : null,
+                        Xml = e,
                     });
                     break;
                 case "fldSimple":
@@ -1589,7 +1604,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             var format = bound == DataBinding.Empty ? plainFormat
                                 : sdtPr.Child("showingPlcHdr") != null ? ControlFormat()
                                 : inner.FirstOrDefault(i => i is TextInline)?.Format ?? plainFormat;
-                            field.Target(content).Add(new TextInline(bound, format));
+                            field.Target(content).Add(new TextInline(bound, format) { Xml = e });
                         }
                         else
                             ReadInlines(Shown(e, sdtContent, block: false), paragraphStyle, content, field);
@@ -1637,7 +1652,7 @@ public sealed partial class ModelReader(DocumentContext context)
             return formats;
         }
         if (e.Name.LocalName == "oMath")
-            content.Add(new MathInline(e, false, null, format, Formats(e)));
+            content.Add(new MathInline(e, false, null, format, Formats(e)) { Xml = e });
         else if (e.Name.LocalName == "oMathPara")
         {
             var jc = (string?)e.Element(m + "oMathParaPr")?.Element(m + "jc")?.Attribute(m + "val")
@@ -1647,7 +1662,7 @@ public sealed partial class ModelReader(DocumentContext context)
             var maths = e.Elements(m + "oMath").ToList();
             var math = maths.Count == 1 ? maths[0] : new XElement(m + "oMath", maths.SelectMany(o => o.Elements()));
             if (maths.Count > 0)
-                content.Add(new MathInline(math, true, jc, format, Formats(math)));
+                content.Add(new MathInline(math, true, jc, format, Formats(math)) { Xml = e });
         }
     }
 
@@ -1829,14 +1844,14 @@ public sealed partial class ModelReader(DocumentContext context)
                                 if (form.Child("checkBox") is { } box)
                                 {
                                     var on = box.Child("checked") is { } c ? c.OnOff() ?? true : box.Child("default").Val() is "1" or "true" or "on";
-                                    field.Target(content).Add(new CheckBoxInline(on, box.Child("size").Number("val") is { } half ? half / 2 : null, format));
+                                    field.Target(content).Add(new CheckBoxInline(on, box.Child("size").Number("val") is { } half ? half / 2 : null, format) { Xml = e });
                                 }
                                 else if (form.Child("ddList") is { } list)
                                 {
                                     var entries = list.Elements(Wml.W + "listEntry").Select(x => x.Val() ?? "").ToList();
                                     var index = list.Child("result").Number("val") is { } chosen ? (int)chosen : list.Child("default").Number("val") is { } preset ? (int)preset : 0;
                                     if (index >= 0 && index < entries.Count)
-                                        field.Target(content).Add(new TextInline(entries[index], format));
+                                        field.Target(content).Add(new TextInline(entries[index], format) { Xml = e });
                                 }
                             }
                             // A locked field keeps its saved result (docx/external/libreoffice/extras-ooxmlexport/
@@ -1883,20 +1898,20 @@ public sealed partial class ModelReader(DocumentContext context)
                             if (FieldInline.TypeOf(instruction) == "LISTNUM")
                             {
                                 if (!field.Hidden && ListNumber(instruction, e) is { } listed)
-                                    field.Target(content).Add(new TextInline(listed, ended.InstructionFormat ?? ended.Format));
+                                    field.Target(content).Add(new TextInline(listed, ended.InstructionFormat ?? ended.Format) { Xml = e });
                                 break;
                             }
                             if (FieldInline.IsAutoNumber(instruction))
                             {
                                 if (!field.Hidden)
-                                    field.Target(content).Add(AutoNumber(instruction, e, ended.InstructionFormat ?? ended.Format));
+                                    field.Target(content).Add(AutoNumber(instruction, e, ended.InstructionFormat ?? ended.Format) with { Xml = e });
                                 break;
                             }
                             if (ended.Cached == null && !ended.InResult && !ended.Locked && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
                                 ended.Cached = [];
                             // A field nested in another's instruction shows nothing of its own.
                             if (ended.Cached != null && !field.Hidden)
-                                field.Target(content).Add(new FieldInline(ended.CurrentDate ?? instruction, ResultFormat(ended, instruction), ended.Cached) { ErrorFormat = ended.SeparateFormat });
+                                field.Target(content).Add(new FieldInline(ended.CurrentDate ?? instruction, ResultFormat(ended, instruction), ended.Cached) { ErrorFormat = ended.SeparateFormat, Xml = e });
                             break;
                     }
                     break;
@@ -1913,7 +1928,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     // (docx/external/libreoffice/uibase-uno/cond-field-cached-value: a DOCVARIABLE's saved "Sunday" in a
                     // w:instrText of its result, found by agent BK).
                     else if ((field.Frames.Count > 0 || field.Unclosed > 0) && !field.Hidden)
-                        field.Target(content).Add(new TextInline(e.Value, format) { Link = field.Link ?? link });
+                        field.Target(content).Add(new TextInline(e.Value, format) { Link = field.Link ?? link, Xml = e });
                     if (openFields.Count > 0 && !openFields[^1].InResult)
                         openFields[^1].Instruction.Append(e.Value);
                     break;
@@ -1922,7 +1937,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     if (!field.Hidden)
                         // Line feeds and carriage returns in the text show as spaces, CR LF as one (measured with
                         // docx/local/wtcontrol: Word breaks no line there; tabs stay tabs).
-                        field.Target(content).Add(new TextInline(Text(e).Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), format) { Link = field.Link ?? link });
+                        field.Target(content).Add(new TextInline(Text(e).Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), format) { Link = field.Link ?? link, Xml = e });
                     break;
                 case "delInstrText" when context.Markup:
                     if (field.Frames.Count > 0 && !field.Frames.Peek().InResult)
@@ -1932,16 +1947,16 @@ public sealed partial class ModelReader(DocumentContext context)
                 // anchor-type-change-position: a hidden flowchart and line break before a caption in a frame).
                 case "tab":
                     if (!field.Hidden && format.Vanish != true)
-                        field.Target(content).Add(new TabInline(format));
+                        field.Target(content).Add(new TabInline(format) { Xml = e });
                     break;
                 case "pgNum":
                     // The page number as an element of the run (catalog: section.pageNumbers), shown as a PAGE field would.
                     if (!field.Hidden)
-                        field.Target(content).Add(new FieldInline("PAGE", format, []));
+                        field.Target(content).Add(new FieldInline("PAGE", format, []) { Xml = e });
                     break;
                 case "ptab":
                     if (!field.Hidden && format.Vanish != true)
-                        field.Target(content).Add(new TabInline(format) { Positional = (e.Attr("alignment") ?? "left", e.Attr("relativeTo") ?? "margin", e.Attr("leader") ?? "none") });
+                        field.Target(content).Add(new TabInline(format) { Positional = (e.Attr("alignment") ?? "left", e.Attr("relativeTo") ?? "margin", e.Attr("leader") ?? "none"), Xml = e });
                     break;
                 case "br":
                     // Page and column breaks in table cells break nothing at all, the text going on in its line
@@ -1950,11 +1965,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     // (docx/external/libreoffice/extras-ooxmlimport/tdf129659: an endnote's address on its next line).
                     if (!field.Hidden && format.Vanish != true && !(tableParagraph != null && e.Attr("type") is "page" or "column"))
                         field.Target(content).Add(new BreakInline(noteMark != null && e.Attr("type") is "page" or "column" ? "textWrapping" : e.Attr("type") ?? "textWrapping",
-                            e.Attr("clear"), format));
+                            e.Attr("clear"), format) { Xml = e });
                     break;
                 case "cr":
                     if (!field.Hidden && format.Vanish != true)
-                        field.Target(content).Add(new BreakInline("textWrapping", null, format));
+                        field.Target(content).Add(new BreakInline("textWrapping", null, format) { Xml = e });
                     break;
                 case "ruby" when !field.Hidden:
                 {
@@ -1981,7 +1996,7 @@ public sealed partial class ModelReader(DocumentContext context)
                     // The ruby text takes w:hps's size, whatever its runs say (measured with docx/local/rbs-15: hps 16
                     // over runs of 20 pt and hps 40 over runs of 8 pt print 8 and 20 pt; extras-rtfexport/tdf138779).
                     field.Target(content).Add(new RubyInline(Texts(e.Child("rubyBase")), Texts(e.Child("rt"), properties.Child("hps").Number("val") / 2),
-                        properties.Child("rubyAlign").Val() ?? "center", (properties.Child("hpsRaise").Number("val") ?? 0) / 2, format));
+                        properties.Child("rubyAlign").Val() ?? "center", (properties.Child("hpsRaise").Number("val") ?? 0) / 2, format) { Xml = e });
                     break;
                 }
                 case "dayShort" or "dayLong" or "monthShort" or "monthLong" or "yearShort" or "yearLong":
@@ -2002,18 +2017,18 @@ public sealed partial class ModelReader(DocumentContext context)
                             "yearShort" => (today.Year % 100).ToString("00", culture),
                             _ => today.Year.ToString(culture),
                         };
-                        field.Target(content).Add(new TextInline(shown, format));
+                        field.Target(content).Add(new TextInline(shown, format) { Xml = e });
                     }
                     break;
                 case "noBreakHyphen":
                     // Word prints the font's own hyphen, which no line breaks after (a word joiner keeps it with the
                     // next character; fonts such as Arial have no U+2011, measured with docx/local/run-content).
                     if (!field.Hidden)
-                        field.Target(content).Add(new TextInline("-\u2060", format));
+                        field.Target(content).Add(new TextInline("-\u2060", format) { Xml = e });
                     break;
                 case "softHyphen":
                     if (!field.Hidden)
-                        field.Target(content).Add(new TextInline("­", format));
+                        field.Target(content).Add(new TextInline("­", format) { Xml = e });
                     break;
                 case "drawing":
                     if (!field.Hidden && format.Vanish != true)
@@ -2026,12 +2041,12 @@ public sealed partial class ModelReader(DocumentContext context)
                             if (context.Profile.TurnedDrawingsSwapSides && Drawings.TurnedAcross(d))
                                 d.SetAttributeValue(Drawings.SwappedTurn, "1");
                             if (d.Name == Drawings.Wp + "inline")
-                                field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children, InField = InField });
+                                field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children, InField = InField, Xml = e });
                             // A hidden floating drawing (wp:docPr hidden) is gone, the text not wrapping around it either
                             // (docx/external/libreoffice/extras-ooxmlexport/tdf162527_hidden_image, tdf169802_hidden_shape:
                             // a picture and a rectangle wrapped tight, eleven full lines).
                             else if (d.Name == Drawings.Wp + "anchor" && d.Element(Drawings.Wp + "docPr")?.Attribute("hidden")?.Value is not ("1" or "true"))
-                                field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children });
+                                field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children, Xml = e });
                         }
                     }
                     break;
@@ -2044,9 +2059,9 @@ public sealed partial class ModelReader(DocumentContext context)
                         var text = TextBox(d);
                         var children = ChildTextBoxes(d);
                         if (d.Name == Drawings.Wp + "inline")
-                            field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children, InField = InField || e.Name.LocalName == "object" });
+                            field.Target(content).Add(new DrawingInline(d, currentPart, format) { Text = text, ChildText = children, InField = InField || e.Name.LocalName == "object", Xml = e });
                         else
-                            field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children });
+                            field.Target(content).Add(new AnchorInline(d, currentPart, format) { Text = text, ChildText = children, Xml = e });
                     }
                     break;
                 case "footnoteReference" or "endnoteReference" when !field.Hidden && e.Attr("id") is { } noteId:
@@ -2061,14 +2076,14 @@ public sealed partial class ModelReader(DocumentContext context)
                             endnoteSections[noteId] = currentSection.Index;
                     }
                     var custom = e.Attr("customMarkFollows") is "1" or "true" or "on";
-                    field.Target(content).Add(new NoteReferenceInline(noteId, endnote, custom ? "" : noteMarks[(endnote, noteId)], format));
+                    field.Target(content).Add(new NoteReferenceInline(noteId, endnote, custom ? "" : noteMarks[(endnote, noteId)], format) { Xml = e });
                     break;
                 }
                 case "footnoteRef" or "endnoteRef" when !field.Hidden && noteMark != null:
-                    field.Target(content).Add(new NoteReferenceInline(noteId ?? "", e.Name.LocalName == "endnoteRef", noteMark, format) { Own = true });
+                    field.Target(content).Add(new NoteReferenceInline(noteId ?? "", e.Name.LocalName == "endnoteRef", noteMark, format) { Own = true, Xml = e });
                     break;
                 case "separator" or "continuationSeparator" when !field.Hidden:
-                    field.Target(content).Add(new SeparatorInline(e.Name.LocalName == "continuationSeparator", format));
+                    field.Target(content).Add(new SeparatorInline(e.Name.LocalName == "continuationSeparator", format) { Xml = e });
                     break;
                 case "sym":
                     if (!field.Hidden && e.Attr("char") is { } code && int.TryParse(code, System.Globalization.NumberStyles.HexNumber, null, out var value))
@@ -2076,7 +2091,7 @@ public sealed partial class ModelReader(DocumentContext context)
                         var symbol = format.Clone();
                         symbol.Ascii = symbol.HAnsi = e.Attr("font") ?? symbol.Ascii;
                         symbol.AsciiTheme = symbol.HAnsiTheme = null;
-                        field.Target(content).Add(new TextInline(char.ConvertFromUtf32(value), symbol));
+                        field.Target(content).Add(new TextInline(char.ConvertFromUtf32(value), symbol) { Xml = e });
                     }
                     break;
                 // A run in a run counts as a run of its own (docx/external/libreoffice/writerfilter-ooxml/nested-runs:
