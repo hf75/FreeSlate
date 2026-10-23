@@ -101,6 +101,23 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>Whether the text being rendered is drawn character by character (see <see cref="TextChain.Units"/>).</summary>
     bool units;
 
+    /// <summary>
+    /// Where the frame the text is laid out in (the shape's box, a table's frame) stands on the slide in CSS pixels, where it
+    /// is only moved, not turned, scaled or flipped: underlines and strikethroughs land on the slide's pixels, as PowerPoint
+    /// draws them (see Decorations); null: on the frame's own. Turned and mirrored text leaves it aside.
+    /// </summary>
+    public (double X, double Y)? Grid { get; set; }
+
+    /// <summary>The underline the run being drawn shares with the runs beside it (see Shared); null: its own.</summary>
+    Underlining? sharedUnderline;
+
+    /// <summary>
+    /// An underline runs share (see Shared): how far below its baseline's row it starts and how thick it is in whole
+    /// pixels, its thickness before rounding, where its first run starts (points, from which its dashes count), and the
+    /// baseline it hangs from where that is not the run's own (points; a raised run's is its line's).
+    /// </summary>
+    readonly record struct Underlining(double Position, double Thickness, double Exact, double Start, double? Baseline);
+
     /// <summary>The formatting the text being rendered takes instead of its own (see <see cref="TextChain.Override"/>).</summary>
     TextOverride? runOverride;
 
@@ -108,12 +125,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     {
         units = chain.Units;
         runOverride = chain.Override;
+        var grid = Grid;
         try
         {
-            var items = RenderText(chain, geometry, boxWidth, unflip);
             // a:bodyPr rot turns the laid-out text about the middle of the text rectangle (LibreOffice's tdf149551).
             var rotation = chain.Shapes.Select(s => TxBody(s.Element)?.Element(Ns.A + "bodyPr")?.Attribute("rot")?.Value)
                 .FirstOrDefault(v => v != null) is { } rot && long.TryParse(rot, out var angle) ? angle / 60000.0 : 0;
+            if (Math.Abs(rotation) > 1e-9 || unflip)
+                Grid = null;
+            var items = RenderText(chain, geometry, boxWidth, unflip);
             if (items.Count > 0 && Math.Abs(rotation) > 1e-9)
                 items = [TransformItem.Rotation(rotation, (geometry.TextLeft + geometry.TextRight) / 2, (geometry.TextTop + geometry.TextBottom) / 2, items)];
             return items;
@@ -122,6 +142,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         {
             units = false;
             runOverride = null;
+            Grid = grid;
         }
     }
 
@@ -235,7 +256,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var (matrix, css) = mode == "vert270"
             ? (new Matrix(0, -1, 1, 0, left * PxPerPt, (top + height) * PxPerPt), $"matrix(0 -1 1 0 {Px(left)} {Px(top + height)})")
             : (new Matrix(0, 1, -1, 0, (left + width) * PxPerPt, top * PxPerPt), $"matrix(0 1 -1 0 {Px(left + width)} {Px(top)})");
-        return [new TransformItem(matrix, Emit(layout, 0, 0, width, anchor, lineShift: shift)) { Css = css }];
+        // Turned text's lines lie across the slide's pixels.
+        var grid = Grid;
+        Grid = null;
+        try
+        {
+            return [new TransformItem(matrix, Emit(layout, 0, 0, width, anchor, lineShift: shift)) { Css = css }];
+        }
+        finally
+        {
+            Grid = grid;
+        }
     }
 
     /// <summary>Splits runs so that East Asian characters stand alone as upright runs.</summary>
@@ -644,8 +675,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             double formatOrigin = 0, formatEnd = double.NaN;
             // Where each run's format run starts, from which the places of its characters count (see Places).
             var origins = line.Id != null ? new List<double>(line.Runs.Count) : null;
+            var shared = Shared(line, left, baseline);
             foreach (var run in line.Runs)
             {
+                sharedUnderline = shared != null && shared.TryGetValue(run, out var common) ? common : null;
                 if (!ReferenceEquals(run.Style, formatStyle) || Math.Abs(run.X - formatEnd) > 1e-6)
                 {
                     formatStyle = run.Style;
@@ -721,6 +754,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 else
                     items.AddRange(drawnRun);
             }
+            sharedUnderline = null;
             if (line.Id is { } id)
                 items.Add(Places(id, line, left, baseline, origins!));
         }
@@ -827,13 +861,16 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     public string EmitLine(LaidOutLine line, double left, double baseline)
     {
         var items = new List<SceneItem>();
+        var shared = Shared(line, left, baseline);
         foreach (var run in line.Runs)
         {
+            sharedUnderline = shared != null && shared.TryGetValue(run, out var common) ? common : null;
             if (!string.IsNullOrWhiteSpace(run.Text))
                 items.AddRange(Text(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
             else if (BetweenWords(line, run))
                 items.AddRange(SpaceDecorations(run, left + run.X, baseline - run.Style.BaselineShift * run.Style.Size));
         }
+        sharedUnderline = null;
         return HtmlScene.Markup(items);
     }
 
@@ -850,10 +887,69 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     }
 
     /// <summary>
+    /// The underlines runs of a line share, its text area's left at <paramref name="left"/> and its baseline at
+    /// <paramref name="baseline"/> (catalog: text.underline): underlined runs side by side on one baseline draw one line,
+    /// each in the style and color it asks for, at the mean of their own underlines' positions and thicknesses (each in
+    /// whole pixels, see Underline) weighted by their widths and rounded, its dashes running on from the first run's
+    /// start; raised runs (superscripts) underline on the line's baseline as the runs beside them do, without counting,
+    /// lowered ones (subscripts) on their own (measured with local/ulmix-c and -d: 72 pt beside 12 pt text, long or
+    /// short, either first, three sizes and two fonts in a line, single beside double, two colors, dotted lines, raised
+    /// and lowered runs, in Arial, Calibri and Aptos; strikethroughs stay each run's own). Null where no runs share one.
+    /// </summary>
+    static Dictionary<PlacedRun, Underlining>? Shared(LaidOutLine line, double left, double baseline)
+    {
+        Dictionary<PlacedRun, Underlining>? shared = null;
+        var stretch = new List<(PlacedRun Run, bool Raised, (double, double) Level, (double Position, double Thickness, double Exact) Own)>();
+        void Close()
+        {
+            if (stretch.Count > 1 || stretch.Count == 1 && stretch[0].Raised)
+            {
+                // Raised runs count only where all are.
+                var counted = stretch.Any(r => !r.Raised) ? stretch.Where(r => !r.Raised).ToList() : stretch;
+                var weight = counted.Sum(r => r.Run.Width);
+                var common = counted[0].Own;
+                if (weight > 0 && counted.Any(r => r.Own != common))
+                    common = (Math.Round(counted.Sum(r => r.Run.Width * r.Own.Position) / weight),
+                        Math.Round(counted.Sum(r => r.Run.Width * r.Own.Thickness) / weight), counted.Sum(r => r.Run.Width * r.Own.Exact) / weight);
+                shared ??= [];
+                foreach (var (run, raised, _, _) in stretch)
+                    shared[run] = new Underlining(common.Position, common.Thickness, common.Exact, left + stretch[0].Run.X, raised ? baseline : null);
+            }
+            stretch.Clear();
+        }
+        foreach (var run in line.Runs)
+        {
+            var style = run.Style;
+            var drawn = style.Underline != null && run.Picture == null && style.Inline == null
+                        && (!string.IsNullOrWhiteSpace(run.Text) || BetweenWords(line, run));
+            // Raised runs share the line's baseline, lowered and lifted ones keep their own.
+            var raised = style.BaselineShift > 0 && run.Lift == 0;
+            var level = raised ? (0.0, 0.0) : (style.BaselineShift, run.Lift);
+            if (stretch.Count > 0 && !(drawn && stretch[^1] is var (last, _, lastLevel, _) && lastLevel == level && Math.Abs(last.X + last.Width - run.X) < 1e-3))
+                Close();
+            if (drawn)
+                stretch.Add((run, raised, level, Underline(style, style.Font.Data)));
+        }
+        Close();
+        return shared;
+    }
+
+    /// <summary>
+    /// A run's own underline in whole pixels (see Decorations): how far below its baseline's row it starts and how thick
+    /// it is, from the post table's metrics at the font's size in whole pixels, and the thickness before rounding.
+    /// </summary>
+    static (double Position, double Thickness, double Exact) Underline(TextStyle style, FontData data)
+    {
+        var size = Math.Round(style.Size * PxPerPt);
+        var exact = data.UnderlineThickness * size;
+        return (Math.Round(data.UnderlinePosition * size), Math.Max(1, Math.Round(exact)), exact);
+    }
+
+    /// <summary>
     /// The underline and strikethrough of spaces between words, which PowerPoint draws through (measured: "Math Problem
     /// Solving" underlined in one piece); spaces ending a line stay bare.
     /// </summary>
-    static List<SceneItem> SpaceDecorations(PlacedRun run, double x, double y)
+    List<SceneItem> SpaceDecorations(PlacedRun run, double x, double y)
     {
         var style = run.Style;
         if (style.Underline == null && style.Strike == null)
@@ -1009,38 +1105,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var placement = run.RightToLeft
             ? $" x=\"{Units.Css(x * PxPerPt + run.Width * PxPerPt)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\""
             : $" x=\"{xs}\"";
+        // Small text's underline and strikethrough are drawn as for text of outlines, as PowerPoint draws them (see
+        // Decorations): on whole pixels, through the spaces of the run, the text's effects on them too (measured: 20 pt
+        // Aptos Display underlined in a 44 pt line, one pixel two rows below the baseline, unbroken; the browser's own
+        // underline was two pixels a row lower and broke at the space).
+        var lines = outlined ? [] : Decorations(run, style, data, x, y);
         var attributes = new StringBuilder();
         if (!outlined)
         {
             attributes.Append(fill);
-            var decorations = new List<string>();
-            if (style.Underline != null) decorations.Add("underline");
-            if (style.Strike != null) decorations.Add("line-through");
-            if (decorations.Count > 0) attributes.Append($" text-decoration=\"{string.Join(' ', decorations)}\"");
-            // The browser draws small text's underline: its style, color and width as CSS (catalog: text.underline).
-            var css = new List<string>();
-            if (style.Underline is { } underline)
-            {
-                var kind = underline.Replace("Heavy", "", StringComparison.Ordinal);
-                if ((style.UnderlineDash ?? kind) switch
-                    {
-                        "dotted" or "dot" or "sysDot" => "dotted",
-                        "dash" or "dashLong" or "dotDash" or "dotDotDash" or "sysDash" or "lgDash" or "dashDot" or "lgDashDot" or "lgDashDotDot" or "sysDashDot" or "sysDashDotDot" => "dashed",
-                        "wavy" or "wavyDbl" => "wavy",
-                        "dbl" => "double",
-                        _ => null,
-                    } is { } decorationStyle)
-                    css.Add($"text-decoration-style:{decorationStyle}");
-                if (style.UnderlineColor is { } underlineColor)
-                    css.Add($"text-decoration-color:{underlineColor.ToHex()}");
-                if (style.UnderlineWidth is { } underlineWidth)
-                    css.Add($"text-decoration-thickness:{Units.Css(underlineWidth * PxPerPt)}px");
-                else if (underline != kind || underline == "heavy")
-                    css.Add("text-decoration-thickness:0.15em");
-            }
-            if (!style.Kerning) css.Add("font-kerning:none");
-            if (css.Count > 0) attributes.Append($" style=\"{string.Join(';', css)}\"");
-            if (filter is { } textFilter) attributes.Append($" filter=\"url(#{textFilter.Id})\"");
+            if (!style.Kerning) attributes.Append(" style=\"font-kerning:none\"");
+            if (filter is { } textFilter && lines.Count == 0) attributes.Append($" filter=\"url(#{textFilter.Id})\"");
         }
         var textItem = new SvgTextItem(text, places, y * PxPerPt, data, style.Size * PxPerPt, style.Color)
         {
@@ -1051,9 +1126,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             RightToLeft = run.RightToLeft,
             Width = run.Width * PxPerPt,
             Kerning = style.Kerning,
-            Underline = !outlined && style.Underline != null,
-            Strike = !outlined && style.Strike != null,
-            Effects = !outlined ? filter?.Model : null,
+            Effects = !outlined && lines.Count == 0 ? filter?.Model : null,
             Placement = placement,
             Attributes = attributes.ToString(),
         };
@@ -1061,15 +1134,22 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             items.Add(textItem);
         else
         {
+            List<SceneItem> drawn = [textItem];
+            if (lines.Count > 0)
+            {
+                drawn.Add(new SvgGroupItem(fill, lines));
+                if (filter is { } lineFilter)
+                    drawn = [new SvgGroupItem($" filter=\"url(#{lineFilter.Id})\"", drawn) { Effects = lineFilter.Model }];
+            }
             var local = defs ?? new StringBuilder();
-            if (Reflect([textItem], local) is { } reflected)
+            if (Reflect(drawn, local) is { } reflected)
             {
                 if (defs == null && local.Length > 0)
                     items.Add(new DefsItem(local.ToString()));
                 items.Add(reflected);
             }
             else
-                items.Add(textItem);
+                items.AddRange(drawn);
         }
         // A mouse-over action on the text (a:hlinkMouseOver, catalog: interactivity.hyperlinks) runs when the pointer
         // enters it during the show, like a shape's.
@@ -1140,50 +1220,61 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             $"{m.Groups[1].Value}=\"{string.Join(' ', m.Groups[2].Value.Split(' ').Select(v => Units.Css1(double.Parse(v, CultureInfo.InvariantCulture) / scale)))}\"");
 
     /// <summary>
-    /// Underline and strikethrough of a run (pixels), from the font's post and OS/2 metrics, placed on whole pixels
-    /// (catalog: text.underline). The underline styles repeat in units of the plain line's thickness (measured with
-    /// generated/text-underline: dotted 1:1, dash 3:2, long dash 7:4, dot dash 3:2:1:2, dot dot dash 3:2:1:2:1:2);
-    /// heavy ones are twice as thick, reaching up, with the same pattern; double ones are two lines of three quarters
-    /// of the thickness, the second above the first; wavy ones are waves four units long. An underline line of its own
-    /// (a:uLn) gives the thickness, color and dash, a:uFill the color.
+    /// Underline and strikethrough of a run (pixels), from the font's post and OS/2 metrics, on whole pixels as PowerPoint
+    /// draws them (catalog: text.underline): the baseline rounded to its row of the slide's pixels (see Grid), the metrics
+    /// taken at the font's size in whole pixels and each rounded; the underline that far below the row (or where the
+    /// run shares one with the runs beside it, see Shared), the strikethrough's top that far above it, each at least a
+    /// pixel thick, from the run's start to its end on the slide's pixels (measured with local/ulmix-a and -b: 144 lines
+    /// of Aptos, Calibri, Arial and Times New Roman from 8 to 22 pt, their baselines at every fraction of a pixel, all on
+    /// PowerPoint's rows; runs of one line meet without a seam). The underline styles repeat in units of the plain line's
+    /// thickness (measured with generated/text-underline: dotted 1:1, dash 3:2, long dash 7:4, dot dash 3:2:1:2, dot dot
+    /// dash 3:2:1:2:1:2); a double one is two lines of half the thickness (rounded up), from the thickness above the
+    /// plain one's top to its bottom, a heavy one reaches from there to half the thickness below the top, with the same
+    /// pattern (measured with local/ulmix-c: Arial and Aptos from 8 to 36 pt, one to four pixels thick); wavy ones are
+    /// waves four units long. An underline line of its own (a:uLn) gives the thickness, color and dash, a:uFill the
+    /// color.
     /// </summary>
-    static List<SceneItem> Decorations(PlacedRun run, TextStyle style, FontData data, double x, double y)
+    List<SceneItem> Decorations(PlacedRun run, TextStyle style, FontData data, double x, double y)
     {
         if (style.Underline == null && style.Strike == null)
             return [];
         var items = new List<SceneItem>();
-        var left = x * PxPerPt;
-        var width = run.Width * PxPerPt;
-        var size = style.Size * PxPerPt;
-        var baseline = y * PxPerPt;
+        var (gridX, gridY) = Grid ?? (0, 0);
+        var left = Math.Round(gridX + x * PxPerPt) - gridX;
+        var width = Math.Round(gridX + (x + run.Width) * PxPerPt) - gridX - left;
+        if (width <= 0)
+            return [];
+        var size = Math.Round(style.Size * PxPerPt);
+        var baseline = Math.Round(gridY + y * PxPerPt) - gridY;
+        var (position, unit, exact) = sharedUnderline is { } shared ? (shared.Position, shared.Thickness, shared.Exact) : Underline(style, data);
+        // Where the dashes start, before the run's start where it shares its underline.
+        var phase = sharedUnderline is { } from ? left - (Math.Round(gridX + from.Start * PxPerPt) - gridX) : 0;
         // A line in a color, in HTML with the attributes of its fill (none where it takes the text's from around it).
-        void Line(double top, double height, RgbColor color, string fill = "", double[]? dashes = null, double unit = 1)
+        void Line(double top, double height, RgbColor color, string fill = "", double[]? dashes = null, double dashUnit = 1)
         {
             if (dashes == null)
             {
                 items.Add(new ShapeRectItem(left, top, width, height, new SolidFill(color), null, fill));
                 return;
             }
-            // A dashed line: one rectangle per dash, the pattern from the run's start.
-            var (position, i) = (0.0, 0);
-            while (position < width - 1e-6)
+            // A dashed line: one rectangle per dash, the pattern from the start of the underline.
+            var (at, i) = (-phase, 0);
+            while (at < width - 1e-6)
             {
-                var length = dashes[i % dashes.Length] * unit;
-                if (i % 2 == 0 && length > 0)
-                    items.Add(new ShapeRectItem(left + position, top, Math.Min(length, width - position), height, new SolidFill(color), null, fill));
-                position += Math.Max(length, 1e-3);
+                var length = dashes[i % dashes.Length] * dashUnit;
+                var (start, end) = (Math.Max(at, 0), Math.Min(at + length, width));
+                if (i % 2 == 0 && end > start)
+                    items.Add(new ShapeRectItem(left + start, top, end - start, height, new SolidFill(color), null, fill));
+                at += Math.Max(length, 1e-3);
                 i++;
             }
         }
         if (style.Underline is { } underline)
         {
-            var exact = data.UnderlineThickness * size;
-            var unit = Math.Max(1, Math.Round(exact));
             var thickness = style.UnderlineWidth is { } own ? Math.Max(1, Math.Round(own * PxPerPt)) : unit;
-            // The post table's underline position is the line's top (measured: 26 pt Arial, top 3.7 px below the
-            // baseline).
-            var offset = data.UnderlinePosition * size;
-            var top = Math.Round(baseline + offset);
+            // The post table's underline position is the line's top; a raised run's hangs from its line's baseline.
+            var top = (sharedUnderline?.Baseline is { } line ? Math.Round(gridY + line * PxPerPt) - gridY : baseline) + position;
+            var half = Math.Ceiling(thickness / 2);
             var lineColor = style.UnderlineColor ?? style.Color;
             var fill = style.UnderlineColor is { } color
                 ? color.A < 0.999 ? $" fill=\"{color.ToHex()}\" fill-opacity=\"{Units.Css4(color.A)}\"" : $" fill=\"{color.ToHex()}\""
@@ -1223,10 +1314,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             }
             else if (kind == "dbl")
             {
-                var thin = Math.Max(1, Math.Round(thickness * 0.75));
-                var lower = top + thickness - thin;
-                Line(lower, thin, lineColor, fill);
-                Line(lower - 2 * thin, thin, lineColor, fill);
+                Line(top - thickness, half, lineColor, fill);
+                Line(top + thickness - half, half, lineColor, fill);
             }
             else if (style.UnderlineWidth is { } lineWidth && !heavy)
             {
@@ -1251,34 +1340,36 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 }
                 else
                 {
-                    var half = stroke / 2;
-                    var (outerTop, outerBottom) = (Math.Floor(top - half + 0.5), Math.Ceiling(bottom + half));
-                    var (innerTop, innerBottom) = (Math.Ceiling(top + half), Math.Floor(bottom - half + 0.5));
+                    var inset = stroke / 2;
+                    var (outerTop, outerBottom) = (Math.Floor(top - inset + 0.5), Math.Ceiling(bottom + inset));
+                    var (innerTop, innerBottom) = (Math.Ceiling(top + inset), Math.Floor(bottom - inset + 0.5));
                     Line(outerTop, outerBottom - outerTop, style.UnderlineLineColor ?? style.Color, Paint(style.UnderlineLineColor));
                     if (innerBottom > innerTop)
                         Line(innerTop, innerBottom - innerTop, style.UnderlineFillColor ?? style.Color, Paint(style.UnderlineFillColor));
                 }
             }
+            else if (heavy)
+            {
+                Line(top - thickness, thickness + half, lineColor, fill, pattern, unit);
+            }
             else
             {
-                // A heavy line reaches up from the plain one's bottom.
-                var height = heavy ? Math.Max(1, Math.Round(2 * (style.UnderlineWidth is { } w2 ? w2 * PxPerPt : exact))) : thickness;
-                Line(heavy ? top + thickness - height : top, height, lineColor, fill, pattern, unit);
+                Line(top, thickness, lineColor, fill, pattern, unit);
             }
         }
         if (style.Strike is { } strike)
         {
+            // OS/2's strikeout position is the line's top.
             var thickness = Math.Max(1, Math.Round(data.StrikeoutThickness * size));
-            var offset = -data.StrikeoutPosition * size;
+            var top = baseline - Math.Round(data.StrikeoutPosition * size);
             if (strike == "dblStrike")
             {
-                var gap = thickness;
-                Line(Math.Round(baseline + offset - gap - thickness / 2), thickness, style.Color);
-                Line(Math.Round(baseline + offset + gap - thickness / 2), thickness, style.Color);
+                Line(top - thickness, thickness, style.Color);
+                Line(top + thickness, thickness, style.Color);
             }
             else
             {
-                Line(Math.Round(baseline + offset - thickness / 2), thickness, style.Color);
+                Line(top, thickness, style.Color);
             }
         }
         return items;

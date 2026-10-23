@@ -602,6 +602,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 Units = shapeId != null && (Iterated.Contains(shapeId) || Morph is "byWord" or "byChar"),
             };
             text.ShapeSize = (pw, ph);
+            // Text that stays as laid out in its box lines its underlines up with the slide's pixels; upright, turned
+            // and 3D text and a Word page's drawings leave them in the box.
+            text.Grid = textCamera == null && !solidBody && !(upright && turn != 0) && Math.Abs(textTurn) < 1e-9 ? Grid(slideMatrix) : null;
             var textItems = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
             var glyphOutlines = text.Outlines;
             text.Outlines = null;
@@ -610,6 +613,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 textItems = [new MarkupItem(TextVariants.Merge(HtmlScene.Markup(textItems),
                     formattings.Select(f => (f.Key, HtmlScene.Markup(text.Render(textChain.With(f), textGeometry, pw, flipH ^ flipV)))).ToList(), textChain.Units)),
                     .. PlacesOf(textItems)];
+            text.Grid = null;
             if (upright && turn != 0 && textItems.Count > 0)
                 textItems = [TransformItem.Rotation(-turn, pw / 2, ph / 2, textItems)];
             if (Math.Abs(textTurn) > 1e-9 && textItems.Count > 0)
@@ -1203,11 +1207,21 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         {
             var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
             var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+            text.Grid = Grid(placement.OnSlide(placement.Transform.Then(LocalMatrix(bx, by, bw, bh, rotation, flipH, flipV))));
             var (drawn, width, height) = Tables.Render(table);
+            text.Grid = null;
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, Math.Max(bw, width * Units.EmuPerPixel), Math.Max(bh, height * Units.EmuPerPixel), rotation, flipH, flipV));
             items.Add(Framed(width, height, ToPx(matrix), Accessibility(frame, isSlide, part), drawn));
         }
     }
+
+    /// <summary>
+    /// Where a box with this transform (EMU) stands on the slide in pixels, where it is only moved (see
+    /// <see cref="TextRenderer.Grid"/>); null where it is turned, scaled or flipped, or lies on a Word page.
+    /// </summary>
+    (double X, double Y)? Grid(Matrix m) =>
+        !slide.Presentation.Word && Math.Abs(m.A - 1) < 1e-9 && Math.Abs(m.B) < 1e-9 && Math.Abs(m.C) < 1e-9 && Math.Abs(m.D - 1) < 1e-9
+            ? (Units.ToPx(m.E), Units.ToPx(m.F)) : null;
 
     /// <summary>The transform keeps horizontal and vertical lines horizontal and vertical (rotations by multiples of 90°).</summary>
     static bool IsAxisAligned(Matrix m) =>

@@ -1292,6 +1292,11 @@ areas:
           bmk, dirty, err, noProof, smtClean and smtId are editing state. Verified with generated/text-basic,
           text-underline and text-more. Underlines and strikethroughs run on through the spaces between words,
           not through spaces ending a line (POI's aascu deck: 'Math Problem Solving' in one piece). A
+          strikethrough's top lies the OS/2 strikeout position above the baseline's row of the slide's pixels,
+          at least a pixel thick, both taken at the font's size in whole pixels and each rounded; a double one
+          is two such lines a thickness above and below the single one's place; each run keeps its own,
+          whatever runs beside it (measured with local/ulmix-a and -c: Aptos,
+          Calibri, Arial and Times New Roman from 8 to 36 pt, 72 pt beside 12 pt text). A
           presentation without p:defaultTextStyle (as other programs write them) takes PowerPoint's own, which
           kerns from 12 pt (LibreOffice decks with Calibri text: kerned without any kern attribute).
 
@@ -1362,21 +1367,33 @@ areas:
         priority: P1
         difficulty: 2
         status: done
-        strategy: The 18 underline styles drawn by our layout engine with position and thickness from the font.
+        strategy: >-
+          The 18 underline styles drawn by our layout engine as rectangles on the slide's pixels, with position
+          and thickness from the font, shared by the runs side by side in a line.
         office: >-
-          All 18 underline styles: the post table's underline position is the line's top, the thickness its
-          own rounded to whole pixels; dashed styles repeat in units of that thickness (dotted 1:1, dash 3:2,
-          long dash 7:4, dot dash 3:2:1:2, dot dot dash 3:2:1:2:1:2), heavy ones are twice as thick, reaching
-          up from the plain line's bottom, with the same pattern; double ones are two lines of three quarters
-          of the thickness, the second above the first; wavy ones are waves four thicknesses long. An
-          underline line of its own (a:uLn) outlines the plain underline, which is filled with a:uFill (or
-          the text's color): the line lies half inside and half outside the edges, at least a pixel, with its
-          own dash (measured with Arial 40 pt and uLn of 0.25 to 6 pt: 0.25 pt adds a row of line above and
-          below a fill of three rows, 2 pt leaves one row of fill between three rows of line, from 3 pt the
-          line covers the fill); uLnTx and uFillTx follow the text. Small text drawn by the browser gets the
-          style, color and width as CSS. Measured with generated/text-underline (every style in the text color and in a color of its
-          own, lines of their own, runs of different sizes): 76.1 -> 90.7 %, the rest one-pixel rounding of
-          the line's position.
+          All 18 underline styles on whole pixels: the baseline rounded to its row of the slide's pixels, the
+          post table's underline position (the line's top) and thickness taken at the font's size in whole
+          pixels and each rounded, the thickness at least a pixel (measured with local/ulmix-a and -b: 144
+          lines of Aptos, Calibri, Arial and Times New Roman from 8 to 22 pt, their baselines at every fraction
+          of a pixel, all on PowerPoint's rows); dashed styles repeat in units of that thickness (dotted 1:1,
+          dash 3:2, long dash 7:4, dot dash 3:2:1:2, dot dot dash 3:2:1:2:1:2); a double one is two lines of
+          half the thickness (rounded up) from the thickness above the plain one's top to its bottom, a heavy
+          one reaches from there to half the thickness below the top, with the same pattern (measured with
+          local/ulmix-c: Arial and Aptos from 8 to 36 pt, one to four pixels thick); wavy ones are waves four
+          thicknesses long. Underlined runs side by side in a line share one underline, each in its own style
+          and color: at the mean of their positions and thicknesses (in whole pixels) weighted by their widths,
+          rounded, its dashes running on from the first run's start through the words; raised runs underline
+          on the line's baseline with the runs beside them, without counting, lowered ones on their own
+          (measured with local/ulmix-c and -d: 72 pt beside 12 pt text, long or short, either first, three
+          sizes and two fonts in a line, single beside double, two colors, dotted lines, raised and lowered
+          runs, in Arial, Calibri and Aptos). An underline line of its own (a:uLn) outlines the plain
+          underline, which is filled with a:uFill (or the text's color): the line lies half inside and half
+          outside the edges, at least a pixel, with its own dash (measured with Arial 40 pt and uLn of 0.25 to
+          6 pt: 0.25 pt adds a row of line above and below a fill of three rows, 2 pt leaves one row of fill
+          between three rows of line, from 3 pt the line covers the fill); uLnTx and uFillTx follow the text.
+          Measured with generated/text-underline (every style in the text color and in a color of its own,
+          lines of their own, runs of different sizes): 76.1 -> 90.7 %, the rest one-pixel rounding of the
+          line's position.
 
       - id: text.effects
         title: Text effects

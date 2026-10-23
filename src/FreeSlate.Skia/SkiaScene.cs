@@ -1107,11 +1107,6 @@ public static class SkiaScene
                     canvas.Restore();
                 }
             }
-            var (left, right) = (places[0], item.RightToLeft ? item.Positions[0] + item.Width : places[^1] + glyphs[^1].Advance * size);
-            if (item.Underline)
-                canvas.DrawRect(SKRect.Create((float)left, (float)(item.Y + font.UnderlinePosition * size), (float)(right - left), (float)Math.Max(1, font.UnderlineThickness * size)), fill);
-            if (item.Strike)
-                canvas.DrawRect(SKRect.Create((float)left, (float)(item.Y - font.StrikeoutPosition * size), (float)(right - left), (float)Math.Max(1, font.StrikeoutThickness * size)), fill);
         }
 
         /// <summary>

@@ -366,10 +366,10 @@ public readonly record struct RunGlyph(string Id, uint Glyph, double X, double Y
 
 /// <summary>
 /// Slide text set by the backend in CSS pixels: its characters on the baseline Y at their places (Positions, one per
-/// UTF-16 unit; right-to-left text whole from its right end, Positions[0] + Width), in Font at Size, in its color, with a
-/// plain underline or strikethrough where it has one; Hidden where outlines draw it (GlyphRunItem) and it stays for
-/// selecting and searching only. In HTML an SVG text element, its x attribute Placement, its paint, decoration, style and
-/// filter Attributes.
+/// UTF-16 unit; right-to-left text whole from its right end, Positions[0] + Width), in Font at Size, in its color (its
+/// underline and strikethrough drawn beside it, see TextRenderer.Decorations); Hidden where outlines draw it
+/// (GlyphRunItem) and it stays for selecting and searching only. In HTML an SVG text element, its x attribute Placement,
+/// its paint, style and filter Attributes.
 /// </summary>
 public sealed record SvgTextItem(string Text, double[] Positions, double Y, FontData Font, double Size, RgbColor Color) : SceneItem
 {
@@ -379,8 +379,6 @@ public sealed record SvgTextItem(string Text, double[] Positions, double Y, Font
     public bool RightToLeft { get; init; }
     public double Width { get; init; }
     public bool Kerning { get; init; } = true;
-    public bool Underline { get; init; }
-    public bool Strike { get; init; }
     public EffectModel? Effects { get; init; }
     public string Placement { get; init; } = "";
     public string Attributes { get; init; } = "";
