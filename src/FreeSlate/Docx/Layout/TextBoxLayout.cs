@@ -14,7 +14,8 @@ public sealed record BoxText(List<PlacedLine> Lines, List<FillRect> Fills, List<
 
 /// <summary>
 /// The text boxes of drawings laid out (catalog: drawing.textBoxes): their shapes sized to their text, their text in
-/// them; the paginator fits shapes before text wraps around them, the renderer lays out each box it draws.
+/// them; the paginator fits shapes before text wraps around them, a page's boxes are laid out before the page is drawn
+/// (PageRenderer.LayBoxes), in the order its drawing takes them.
 /// </summary>
 public sealed class TextBoxLayout(DocumentContext context, TableLayout blocks, Drawings? drawings)
 {

@@ -82,6 +82,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var drawn = !turned ? page.Drawings : page.Drawings.Select(d => Upright(d, page.PaperWidth)).ToList();
         if (page.Upright is { } upright)
             drawn.AddRange(upright.Drawings);
+        LayBoxes(page, drawn);
         // The page background, drawings behind the text, the text, then inline drawings and the drawings in front.
         var front = new List<PlacedDrawing>();
         // Linked text boxes take their story in the chain's order (wps:txbx, then wps:linkedTxbx by seq), whatever order
@@ -287,6 +288,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
         var items = new List<SceneItem>();
+        // Its text boxes as laid out before the page was drawn (see LayBoxes).
+        var laidOut = Laid(drawing);
         // WordArt: a text box whose body has a text warp bends its text as PowerPoint does, so the slide renderer
         // draws it, in its runs' fonts, fills, outlines and effects, instead of the text box's layout; the warp fills
         // the shape less the body's insets and half its own outline (measured with docx/local/wordartbox: an H in
@@ -301,10 +304,17 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             items.AddRange(drawings.Render(drawings.WordArtText(art, drawing, l, t, r, b)));
             return items;
         }
-        if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
-            drawing = boxes!.Fitted(drawing, content, bodyPr, shape, page, scope.Settings);
-        if (blocks != null && drawing.ChildText is { Count: > 0 })
-            drawing = boxes!.FittedChildren(drawing, page, scope.Settings);
+        // Fitted to its text before the page was drawn (see LayBoxes), an inline drawing laid out at the page's corner
+        // fitted where it stands (see Inline); here where the order went astray.
+        if (laidOut?.Fitted is { } fitted)
+            drawing = ReferenceEquals(laidOut.Placed, drawing) ? fitted : fitted with { X = drawing.X + fitted.X, Y = drawing.Y + fitted.Y, DeviceShift = drawing.DeviceShift };
+        else
+        {
+            if (blocks != null && drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
+                drawing = boxes!.Fitted(drawing, content, bodyPr, shape, page, scope.Settings);
+            if (blocks != null && drawing.ChildText is { Count: > 0 })
+                drawing = boxes!.FittedChildren(drawing, page, scope.Settings);
+        }
         var drawn = new List<SceneItem>();
         drawn.AddRange(drawings!.Render(drawing));
         if (drawing.Drawing.Attribute(Vml.RuleBevel) != null)
@@ -319,17 +329,16 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // libreoffice/extras-ooxmlexport/TextFrameRotation: a VML text box turned by −90° reads upwards;
         // core-exportdata-ooxml-pass/sdt-in-shape-with-textbox: one turned by 180° and flipped, which mirrors it top
         // to bottom, keeps its page number upright).
-        var shapeXfrm = shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "xfrm");
-        var turn = (long?)shapeXfrm?.Attribute("rot") is { } rot && (string?)drawing.Body?.Attribute("upright") is not ("1" or "true")
-                   && (string?)shapeXfrm!.Attribute("flipH") is not ("1" or "true") && (string?)shapeXfrm.Attribute("flipV") is not ("1" or "true")
-            ? rot / 60000.0 : 0;
+        var turn = Turn(shape, drawing.Body);
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
-            TextBox(drawing.Text, drawing.Body, shape, drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, scope, items, deviceShift: drawing.DeviceShift);
+            TextBox(laidOut != null ? laidOut.Text : boxes!.Lay(drawing.Text, drawing.Body, shape, drawing.Width, drawing.Height, page, scope.Settings, scope.StoryPage),
+                drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, scope, items, deviceShift: drawing.DeviceShift);
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         // Groups of DrawingML (wpg), not those of VML (docx/external/libreoffice/extras-ooxmlexport/tdf164065: a v:group's
         // text box's table borders lines in Word's PDF).
         var grouped = drawing.Drawing.Attribute(Vml.Source) == null
             && drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wpg + "wgp") != null;
+        var laidChild = 0;
         foreach (var (child, childText) in drawing.ChildText ?? [])
         {
             if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is not { } rect
@@ -344,9 +353,153 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 items.AddRange(drawings.Render(drawings.WordArtText(childArt, box, l, t, r, b)));
                 continue;
             }
-            TextBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, scope, items, grouped);
+            TextBox(laidOut != null ? laidOut.Children[laidChild++]
+                    : boxes!.Lay(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.W, rect.H, page, scope.Settings, scope.StoryPage),
+                rect.X, rect.Y, rect.W, rect.H, rect.Rotation, page, scope, items, grouped);
         }
         return items;
+    }
+
+    /// <summary>
+    /// How far a shape turns its text with it: by its turn, unless the text stands upright or the shape is flipped
+    /// (see ShapeOf).
+    /// </summary>
+    static double Turn(XElement? shape, XElement? body)
+    {
+        var xfrm = shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "xfrm");
+        return (long?)xfrm?.Attribute("rot") is { } rot && (string?)body?.Attribute("upright") is not ("1" or "true")
+               && (string?)xfrm!.Attribute("flipH") is not ("1" or "true") && (string?)xfrm.Attribute("flipV") is not ("1" or "true")
+            ? rot / 60000.0 : 0;
+    }
+
+    /// <summary>
+    /// A drawing's text boxes as LayBoxes laid them out before the page was drawn: the drawing fitted to its text (not
+    /// WordArt, which the slide renderer draws), its own box's text and its group's boxes' texts in their order.
+    /// </summary>
+    sealed class LaidDrawing(PlacedDrawing placed)
+    {
+        /// <summary>The drawing as it was laid out: the page's own, an inline one at the page's corner.</summary>
+        public PlacedDrawing Placed { get; } = placed;
+        public PlacedDrawing? Fitted { get; set; }
+        public BoxText? Text { get; set; }
+        public List<BoxText?> Children { get; } = [];
+    }
+
+    /// <summary>The drawings of the page in hand with their text boxes laid out, in the order ShapeOf takes them.</summary>
+    readonly Queue<LaidDrawing> laid = new();
+
+    /// <summary>
+    /// The text boxes of a page laid out before it is drawn (catalog: drawing.textBoxes): its drawings fitted to their
+    /// text and their boxes' text set (TextBoxLayout), in the order the page's drawing takes them, which linked boxes
+    /// take their story in: the drawings of chains first, those behind the text, the inline drawings of headers and
+    /// footers, those of the body's and of upright lines, then the drawings in front (see Scene); of each drawing its
+    /// own box, the drawings in that box's lines, then its group's boxes (see ShapeOf and TextBox).
+    /// </summary>
+    /// <param name="drawn">The page's drawings as the page draws them (upright where its text is vertical).</param>
+    void LayBoxes(PageBox page, List<PlacedDrawing> drawn)
+    {
+        laid.Clear();
+        if (drawings == null || blocks == null)
+            return;
+        var made = new HashSet<PlacedDrawing>(ReferenceEqualityComparer.Instance);
+        foreach (var drawing in ChainOrder(drawn))
+        {
+            made.Add(drawing);
+            LayDrawing(drawing, page, null);
+        }
+        foreach (var drawing in drawn.Where(d => d.Behind && !made.Contains(d)).OrderBy(d => d.Order))
+            LayDrawing(drawing, page, null);
+        foreach (var drawing in Inline(page.Lines.Where(l => l.Story)))
+            LayDrawing(drawing, page, null);
+        var front = Inline(page.Lines.Where(l => !l.Story));
+        if (page.Upright != null)
+            front = front.Concat(Inline(page.Upright.Lines));
+        foreach (var drawing in front.Concat(drawn.Where(d => !d.Behind && !made.Contains(d)).OrderBy(d => d.Order)))
+            LayDrawing(drawing, page, null);
+    }
+
+    /// <summary>A drawing's text boxes laid out as ShapeOf draws them (see LayBoxes), under the scope of the box it stands in, if it does.</summary>
+    void LayDrawing(PlacedDrawing drawing, PageBox page, BoxScope? outer)
+    {
+        var shape = drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp");
+        if (!Boxed(drawing, shape))
+            return;
+        var scope = outer ?? new BoxScope(Settings, null);
+        if (layout is not null && (drawing.Part == page.Header || drawing.Part == page.Footer))
+            scope = new BoxScope(scope.Settings with { LinePitch = null, CharacterExtra = 0, GridCell = null, SnapCell = null }, page);
+        var record = new LaidDrawing(drawing);
+        laid.Enqueue(record);
+        if (shape != null && drawing.Text is { Count: > 0 } words && Warped(drawing.Body) is { } warped && WordArt(words, warped) != null)
+            return;
+        if (drawing.Text is { Count: > 0 } content && drawing.Body is { } bodyPr)
+            drawing = boxes!.Fitted(drawing, content, bodyPr, shape, page, scope.Settings);
+        if (drawing.ChildText is { Count: > 0 })
+            drawing = boxes!.FittedChildren(drawing, page, scope.Settings);
+        record.Fitted = drawing;
+        if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
+            record.Text = LayBox(drawing.Text, drawing.Body, shape, drawing.Width, drawing.Height, Turn(shape, drawing.Body), page, scope);
+        foreach (var (child, childText) in drawing.ChildText ?? [])
+        {
+            if (Drawings.ChildRect(drawing.Drawing, child, drawing.X, drawing.Y, drawing.Width, drawing.Height) is not { } rect
+                || childText.Count == 0 && child.Element(Drawings.Wps + "linkedTxbx") == null
+                || Warped(child.Element(Drawings.Wps + "bodyPr")) is { } childWarp && WordArt(childText, childWarp) != null)
+                continue;
+            record.Children.Add(LayBox(childText, child.Element(Drawings.Wps + "bodyPr"), child, rect.W, rect.H, rect.Rotation, page, scope));
+        }
+    }
+
+    /// <summary>
+    /// Whether a drawing has text boxes to lay out: text of its own, a linked box's place in a story, or its group's
+    /// boxes. Others (3D text among them, which the lines make as they are drawn) have nothing to lay out.
+    /// </summary>
+    static bool Boxed(PlacedDrawing drawing, XElement? shape) =>
+        drawing.Text is { Count: > 0 } || drawing.ChildText is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null;
+
+    /// <summary>A box's text laid out, then the drawings in its lines, which an unturned box of horizontal text draws (see TextBox).</summary>
+    BoxText? LayBox(List<Block>? text, XElement? body, XElement? shape, double w, double h, double rotation, PageBox page, BoxScope scope)
+    {
+        var box = boxes!.Lay(text, body, shape, w, h, page, scope.Settings, scope.StoryPage);
+        if (box is { Vertical: null } && rotation == 0)
+        {
+            foreach (var drawing in Inline(box.Lines))
+                LayDrawing(drawing, page, scope);
+        }
+        return box;
+    }
+
+    /// <summary>
+    /// The inline drawings of lines as Lines draws them, at their sizes (where they stand does not matter to their
+    /// boxes' text).
+    /// </summary>
+    IEnumerable<PlacedDrawing> Inline(IEnumerable<PlacedLine> lines)
+    {
+        foreach (var line in lines)
+        {
+            foreach (var piece in line.Line.Pieces)
+            {
+                if (piece.IsTab || piece.Separator || piece.Ruby != null || piece.Combined != null && layout != null || piece.CheckBox != null
+                    || piece.Equation != null || piece.Drawing is not { } inline)
+                    continue;
+                var (w, h) = Drawings.Extent(inline.Drawing);
+                if (piece.Rule is { } rule)
+                    w = rule.Width;
+                yield return new PlacedDrawing(inline.Drawing, inline.Part, 0, 0, w, h) { Text = inline.Text, ChildText = inline.ChildText };
+            }
+        }
+    }
+
+    /// <summary>
+    /// The drawing's text boxes as LayBoxes laid them out, the next in its order; null where the drawing is not that one
+    /// (its boxes then laid out as it is drawn, those of the rest of the page too).
+    /// </summary>
+    LaidDrawing? Laid(PlacedDrawing drawing)
+    {
+        if (blocks == null || !Boxed(drawing, drawing.Drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Element(Drawings.Wps + "wsp")))
+            return null;
+        if (laid.TryDequeue(out var next) && ReferenceEquals(next.Placed.Drawing, drawing.Drawing))
+            return next;
+        laid.Clear();
+        return null;
     }
 
     /// <summary>
@@ -453,18 +606,19 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     }
 
     /// <summary>
-    /// A shape's text box drawn: its content as TextBoxLayout lays it out in the shape's rectangle less its insets, at
-    /// the top, middle or bottom, turned with the shape (catalog: drawing.textBoxes, measured with docx/local/textboxes).
+    /// A shape's text box drawn: its content as TextBoxLayout laid it out in the shape's rectangle less its insets (see
+    /// LayBoxes), at the top, middle or bottom, turned with the shape (catalog: drawing.textBoxes, measured with
+    /// docx/local/textboxes).
     /// Vertical text turns its lines a quarter: vert runs them down, the first at the right; vert270 runs them up,
     /// the first at the left; mongolianVert runs them down, the first at the left; the insets stay with the shape's
     /// sides.
     /// </summary>
     /// <param name="grouped">Whether the box is a shape's in a group (wpg), whose shading and borders Word's PDF holds as a bitmap.</param>
     /// <param name="deviceShift">How far an inline box moved with its line onto Word's device (PlacedDrawing.DeviceShift).</param>
-    void TextBox(List<Block>? text, XElement? body, XElement? shape, double x, double y, double w, double h, double rotation, PageBox page,
-        BoxScope scope, List<SceneItem> items, bool grouped = false, double deviceShift = 0)
+    void TextBox(BoxText? laid, double x, double y, double w, double h, double rotation, PageBox page, BoxScope scope, List<SceneItem> items,
+        bool grouped = false, double deviceShift = 0)
     {
-        if (boxes!.Lay(text, body, shape, w, h, page, scope.Settings, scope.StoryPage) is not { } laid)
+        if (laid == null)
             return;
         var (lines, fills, strokes, offset, vert) = (laid.Lines, laid.Fills, laid.Strokes, laid.Offset, laid.Vertical);
         var (l, t, r, b) = laid.Insets;
