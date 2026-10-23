@@ -1221,14 +1221,18 @@ public static class SkiaScene
             canvas.SaveLayer(bounds, null);
             using (var blur = reflection.Blurred ? new SKPaint { ImageFilter = SKImageFilter.CreateBlur((float)reflection.Sigma, (float)reflection.Sigma) } : null)
                 canvas.DrawPicture(picture, in transform, blur);
+            // The fade on a layer of its own that goes on the reflection DstIn: drawn with DstIn itself, Skia's PDF
+            // loses it (the reflection stood whole there).
+            using var fading = new SKPaint { BlendMode = SKBlendMode.DstIn };
+            canvas.SaveLayer(bounds, fading);
             using var fade = new SKPaint
             {
                 Shader = SKShader.CreateLinearGradient(new SKPoint((float)reflection.From.X, (float)reflection.From.Y), new SKPoint((float)reflection.To.X, (float)reflection.To.Y),
                     [SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(reflection.FromAlpha, 0, 1) * 255)), SKColors.White.WithAlpha((byte)Math.Round(Math.Clamp(reflection.ToAlpha, 0, 1) * 255))],
                     SKShaderTileMode.Clamp),
-                BlendMode = SKBlendMode.DstIn,
             };
             canvas.DrawRect(bounds, fade);
+            canvas.Restore();
             canvas.Restore();
         }
 
