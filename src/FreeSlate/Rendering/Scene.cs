@@ -94,7 +94,11 @@ public sealed record BoxItem((double Width, double Height)? Size, Matrix? Transf
 public sealed record SvgItem(double Width, double Height, List<SceneItem> Items) : SceneItem, IHoldsItems;
 
 /// <summary>The shapes of a group (DrawingML grpSp), in HTML a div of class grp with the group's own attributes (in Word its effects' filter).</summary>
-public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : SceneItem, IHoldsItems;
+public sealed record GroupBoxItem(string Attributes, List<SceneItem> Items) : SceneItem, IHoldsItems
+{
+    /// <summary>The effects the filter among its attributes draws (Word's group effects), or null.</summary>
+    public EffectModel? Effects { get; init; }
+}
 
 /// <summary>
 /// A path of a shape's geometry, its SVG path data in CSS pixels, filled and outlined as DrawingML gives it (no fill,

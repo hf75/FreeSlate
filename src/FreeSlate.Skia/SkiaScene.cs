@@ -520,7 +520,8 @@ public static class SkiaScene
                     Draw(svg.Items);
                     break;
                 case GroupBoxItem group:
-                    Draw(group.Items);
+                    // A Word group's effects (a glow from the union of its shapes) on all of it.
+                    Effected(group.Effects, group.Items);
                     break;
                 case ShapePathItem { Transform: null, Effects: null } shapePath:
                     ShapePath(shapePath);

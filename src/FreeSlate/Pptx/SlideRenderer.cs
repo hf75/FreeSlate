@@ -1507,6 +1507,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // would, but for the gap's corners). PowerPoint draws none (external/poi/60810 slide 22: a group's 18 pt glow
         // and its shadow). The filter takes the group's layer, whose origin is its parent's.
         var filter = "";
+        EffectModel? model = null;
         if (slide.Presentation.Word && spPr?.Element(Ns.A + "effectLst") is { HasElements: true } effects)
         {
             var turn = ToPx(placement.Transform.Then(rotFlip));
@@ -1514,14 +1515,15 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 .Select(p => (X: turn.A * Units.ToPx(p.X) + turn.C * Units.ToPx(p.Y) + turn.E, Y: turn.B * Units.ToPx(p.X) + turn.D * Units.ToPx(p.Y) + turn.F)).ToList();
             var (left, top) = (corners.Min(p => p.X), corners.Min(p => p.Y));
             var defs = new StringBuilder();
-            if (SvgEffects.Filter(effects, slide.Colors, Units.ToPx(bw), Units.ToPx(bh), defs,
-                    region: (left, top, corners.Max(p => p.X) - left, corners.Max(p => p.Y) - top)) is { } id)
+            if (SvgEffects.FilterOf(effects, slide.Colors, Units.ToPx(bw), Units.ToPx(bh), defs,
+                    region: (left, top, corners.Max(p => p.X) - left, corners.Max(p => p.Y) - top)) is { } made)
             {
                 items.Add(new WrappedItem("<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\">", [new DefsItem(defs.ToString())], "</svg>"));
-                filter = $" style=\"filter:url(#{id})\"";
+                filter = $" style=\"filter:url(#{made.Id})\"";
+                model = made.Model;
             }
         }
-        var grouped = new GroupBoxItem(filter + Accessibility(group, isSlide, part), []);
+        var grouped = new GroupBoxItem(filter + Accessibility(group, isSlide, part), []) { Effects = model };
         items.Add(grouped);
         RenderTree(group, part, grouped.Items, child, isSlide);
     }
