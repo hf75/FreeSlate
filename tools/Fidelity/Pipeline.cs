@@ -188,6 +188,8 @@ public static class Pipeline
                         var pdf = Path.Combine(dir, "ours.pdf");
                         using (var file = File.Create(pdf))
                             SkiaScene.Pdf(scenes, file);
+                        // Word's PDFs embed their fonts without gasp tables, as the browser's are made to (RenderDocument).
+                        PdfFonts.HideGasp(pdf);
                         var reference = References.DocumentPdf(deck);
                         var sizes = File.Exists(reference) ? new PdfText(reference).Pages.Select(p => (p.Width, p.Height)).ToList() : null;
                         PdfPages.Rasterize(pdf, dir, References.DocumentScale, sizes);
