@@ -164,6 +164,8 @@ document.Join(first.Id);                    // as Delete at its end joins it wit
 document.Format(first.Id, 0, 5, new TextFormatting { Bold = true, Size = 14 });
 document.Format(first.Id, new ParagraphFormatting { Alignment = "center", After = 6 });
 document.Undo();                            // and Redo
+document.Author = "Reviewer";               // from now on tracked changes (w:ins, w:del, w:rPrChange)
+document.Delete(first.Id, 0, 7);
 document.Save("report-edited.docx");        // the changed paragraphs written anew, every other byte as it was
 ```
 
@@ -172,7 +174,9 @@ and removes paragraphs, gives text and paragraphs direct formatting as Word's bu
 change; paragraphs keep their ids through changes. A change is made in the XML of the paragraphs it touches, which are
 read again on their own (the numbers of the lists after them worked out anew) and laid out again from the page
 before; saving writes each changed paragraph into the XML it was read from and leaves the rest of the package as it
-was. The pages it lays out (`Scenes`) know where each character stands
+was. With an `Author` set, changes are tracked changes as Word's Track Changes makes them (what the author inserted and
+deletes again goes away outright); `WordDocument.Open(path, markup: true)` reads a document with its markup, as Word
+shows all markup. The pages it lays out (`Scenes`) know where each character stands
 (`PlacesItem`), which `FreeSlate.Skia.TextPlaces` turns into hit tests, cursors and selections.
 
 ### The output

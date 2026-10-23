@@ -129,7 +129,7 @@ static class TextEdits
     /// the new text goes into the text it continues (the text before it, else after it, as typing takes the format before
     /// it), else into a run of its own with the format of the run before it. Returns the stretch's new text.
     /// </summary>
-    public static string Replace(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text)
+    public static string Replace(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking? tracking = null)
     {
         if (offset < paragraph.TextOffset || length < 0 || offset + length > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The range is not in the paragraph's text.");
@@ -137,6 +137,8 @@ static class TextEdits
             throw new ArgumentException("The text holds control characters; breaks and paragraphs are not text.", nameof(text));
         Between(paragraph, offset);
         Between(paragraph, offset + length);
+        if (tracking != null)
+            return ReplaceTracked(stretch, paragraph, offset, length, text, tracking);
         var p = Find(stretch, paragraph);
         var end = offset + length;
         var changed = new Dictionary<XElement, string>();
@@ -238,9 +240,10 @@ static class TextEdits
     /// A paragraph split in two at a place (as Enter splits it): what comes before stays, what comes after goes into a
     /// new paragraph after it with the same paragraph properties, the section the paragraph ends (its w:sectPr) going with
     /// the second, which keeps the mark. Runs and the hyperlinks, insertions and smart tags around the place are split
-    /// too. Returns the stretch's new text and where the second paragraph begins in it.
+    /// too; as a tracked change the first half's mark, the new one, is marked inserted. Returns the stretch's new text
+    /// and where the second paragraph begins in it.
     /// </summary>
-    public static (string Text, int Second) Split(Stretch stretch, ParagraphBlock paragraph, int offset)
+    public static (string Text, int Second) Split(Stretch stretch, ParagraphBlock paragraph, int offset, Tracking? tracking = null)
     {
         if (offset < paragraph.TextOffset || offset > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The place is not in the paragraph's text.");
@@ -320,13 +323,18 @@ static class TextEdits
                 second.Add(node);
             }
         }
+        if (tracking != null)
+            Marked(p, "ins", tracking);
         // In the stretch, so that it is written with the prefixes of its scope.
         p.AddAfterSelf(second);
         return (stretch.Written([(p, [p, second])]), stretch.Text.Start(p) - stretch.Head + PartText.Xml(p).Length);
     }
 
-    /// <summary>A paragraph taken away with all its content, the section it ends merging with the next one.</summary>
-    public static string Remove(Stretch stretch, ParagraphBlock paragraph)
+    /// <summary>
+    /// A paragraph taken away with all its content, the section it ends merging with the next one; as a tracked change
+    /// its runs and its mark are deleted (see Deleted), what the author inserted going away outright.
+    /// </summary>
+    public static string Remove(Stretch stretch, ParagraphBlock paragraph, Tracking? tracking = null)
     {
         var p = Find(stretch, paragraph);
         Whole(stretch, paragraph, p);
@@ -337,7 +345,12 @@ static class TextEdits
         // Nor does a field over several paragraphs lose its beginning or its end.
         if (OpenFields(p.Descendants()) != 0)
             throw new NotSupportedException("The paragraph holds the beginning or the end of a field over several paragraphs.");
-        return stretch.Written([(p, [])]);
+        if (tracking == null || OwnMark(p, tracking) && p.Descendants(p.Name.Namespace + "r").All(r => r.Ancestors().FirstOrDefault(IsRevision) is { Name.LocalName: "ins" } ins && tracking.Own(ins)))
+            return stretch.Written([(p, [])]);
+        foreach (var run in p.Descendants(p.Name.Namespace + "r").Where(r => ParagraphOf(r) == p).ToList())
+            Deleted(run, tracking);
+        Marked(p, "del", tracking);
+        return stretch.Written([(p, [p])]);
     }
 
     /// <summary>
@@ -349,7 +362,7 @@ static class TextEdits
     /// (the end of a table of contents), which goes on at the second's beginning. Marks between them (bookmarks, comment
     /// ranges) go between their contents. Returns the stretch's new text and whether the first paragraph stays.
     /// </summary>
-    public static (string Text, bool First) Join(Stretch stretch, ParagraphBlock paragraph, ParagraphBlock next)
+    public static (string Text, bool First) Join(Stretch stretch, ParagraphBlock paragraph, ParagraphBlock next, Tracking? tracking = null)
     {
         var p = Find(stretch, paragraph);
         var q = Find(stretch, next);
@@ -368,6 +381,12 @@ static class TextEdits
             }
         }
         var w = p.Name.Namespace;
+        // As a tracked change the first's mark is deleted, the paragraphs joined as the change is accepted.
+        if (tracking != null && !OwnMark(p, tracking))
+        {
+            Marked(p, "del", tracking);
+            return (stretch.Written([(p, [p])]), true);
+        }
         if (ParagraphText.End(paragraph) == paragraph.TextOffset)
         {
             // What an empty first holds of a field over paragraphs (a table of contents' end) goes on into the second.
@@ -467,7 +486,7 @@ static class TextEdits
     /// where it begins and ends, each run within it formatted, a field the layout computes with all its runs (begin to
     /// end). Returns the stretch's new text.
     /// </summary>
-    public static string Format(Stretch stretch, ParagraphBlock paragraph, int offset, int length, TextFormatting format)
+    public static string Format(Stretch stretch, ParagraphBlock paragraph, int offset, int length, TextFormatting format, Tracking? tracking = null)
     {
         if (offset < paragraph.TextOffset || length < 0 || offset + length > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The range is not in the paragraph's text.");
@@ -508,7 +527,7 @@ static class TextEdits
             runs.Add(element.Parent!);
         }
         foreach (var run in runs.Distinct())
-            Format(run, format);
+            Format(run, format, tracking);
         return stretch.Written([(p, [p])]);
     }
 
@@ -562,11 +581,20 @@ static class TextEdits
         return null;
     }
 
-    /// <summary>Character formatting set on a run's properties, as Word's buttons set it (see TextFormatting).</summary>
-    static void Format(XElement run, TextFormatting format)
+    /// <summary>
+    /// Character formatting set on a run's properties, as Word's buttons set it (see TextFormatting); as a tracked change
+    /// the properties it had kept in a w:rPrChange (the first change's, where it has one).
+    /// </summary>
+    static void Format(XElement run, TextFormatting format, Tracking? tracking)
     {
         var w = run.Name.Namespace;
         var properties = Properties(run, "rPr");
+        if (tracking != null && properties.Element(w + "rPrChange") == null)
+        {
+            var change = tracking.Mark(w, "rPrChange");
+            change.Add(new XElement(w + "rPr", properties.Elements().Select(e => new XElement(e))));
+            properties.Add(change);
+        }
         void Set(string name, string? value, params string[] taken)
         {
             var e = Property(properties, name, RunOrder);
@@ -613,7 +641,7 @@ static class TextEdits
     /// them (of its own, of its style or its list, 0 too, which keeps a style's away), are set to 0, as Word sets them.
     /// Returns the stretch's new text.
     /// </summary>
-    public static string Format(Stretch stretch, ParagraphBlock paragraph, ParagraphFormatting format)
+    public static string Format(Stretch stretch, ParagraphBlock paragraph, ParagraphFormatting format, Tracking? tracking = null)
     {
         var p = Find(stretch, paragraph);
         Whole(stretch, paragraph, p);
@@ -623,6 +651,13 @@ static class TextEdits
             throw new NotSupportedException("The paragraph's mark is deleted: it shows the formatting of the paragraph it runs into.");
         var strict = w != Wml.W;
         var properties = Properties(p, "pPr");
+        // As a tracked change the properties it had (but for its mark's and its section) are kept in a w:pPrChange.
+        if (tracking != null && properties.Element(w + "pPrChange") == null)
+        {
+            var change = tracking.Mark(w, "pPrChange");
+            change.Add(new XElement(w + "pPr", properties.Elements().Where(e => e.Name.LocalName is not ("rPr" or "sectPr")).Select(e => new XElement(e))));
+            properties.Add(change);
+        }
         if (format.Style is { } style)
             Property(properties, "pStyle", ParagraphOrder).SetAttributeValue(w + "val", style);
         if (format.Alignment is { } alignment)
@@ -677,6 +712,213 @@ static class TextEdits
         }
         return stretch.Written([(p, [p])]);
     }
+
+    /// <summary>
+    /// Replace as a tracked change (see Tracking), as Word makes it with Track Changes on: the text of the range deleted
+    /// (each run of it in a w:del, its w:t as w:delText; what the author inserted goes away outright), the new text
+    /// inserted after it in a w:ins, in the format of the text before it, or into the author's insertion it continues.
+    /// </summary>
+    static string ReplaceTracked(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking tracking)
+    {
+        var p = Find(stretch, paragraph);
+        var w = p.Name.Namespace;
+        var end = offset + length;
+        var deleted = new List<XElement>();
+        // The element the new text follows (the last of the range, else the text before the place), the one it goes
+        // before, and the author's inserted text it goes into.
+        XElement? before = null, after = null;
+        (XElement T, int Index)? continued = null;
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var (s, e) = (at, at + ParagraphText.Length(inline));
+            at = e;
+            if (e == s)
+                continue;
+            var t = TextOf(stretch, inline, p);
+            var within = Math.Max(s, offset) < Math.Min(e, end);
+            if (t == null && Foreign(stretch, inline, p))
+            {
+                if (within || text.Length > 0 && s < offset && offset <= e)
+                    throw new NotSupportedException("The range reaches into content of another paragraph (one whose mark is hidden or deleted, or a placeholder).");
+                continue;
+            }
+            if (t != null)
+            {
+                var length0 = ((TextInline)inline).Text.Length;
+                if (within)
+                {
+                    // The part within the range in a run of its own.
+                    var (from, to) = (Math.Max(offset, s) - s, Math.Min(end, e) - s);
+                    if (to < length0)
+                        Cut(t, to);
+                    if (from > 0)
+                        t = Cut(t, from);
+                    SplitBefore(t);
+                    if (t.ElementsAfterSelf().FirstOrDefault() is { } rest)
+                        SplitBefore(rest);
+                    deleted.Add(t.Parent!);
+                    before = t;
+                }
+                else if (length == 0 && s <= offset && offset <= e)
+                {
+                    // At the place: into the author's insertion, else after the text before it (cut there).
+                    if (t.Ancestors().FirstOrDefault(IsRevision) is { Name.LocalName: "ins" } ins && tracking.Own(ins))
+                        continued ??= (t, offset - s);
+                    else if (offset == s)
+                        after ??= t;
+                    else
+                    {
+                        if (offset < e)
+                            Cut(t, offset - s);
+                        before = t;
+                    }
+                }
+                else if (e <= offset)
+                    before = t;
+                else if (after == null && s >= end)
+                    after = t;
+            }
+            else if (within)
+            {
+                if (!Removable(inline) || stretch.Find(inline.Xml) is not { } element || !element.Ancestors().Contains(p) || element.Parent is not { Name.LocalName: "r" })
+                    throw new NotSupportedException($"The range holds what cannot be taken away so ({inline.GetType().Name}).");
+                SplitBefore(element);
+                if (element.ElementsAfterSelf().FirstOrDefault() is { } rest)
+                    SplitBefore(rest);
+                deleted.Add(element.Parent!);
+                before = element;
+            }
+            else if (s >= end && after == null)
+                after = stretch.Find(inline.Xml);
+        }
+        // The new text first, while what it follows stands where it did; then the range deleted.
+        if (text.Length > 0)
+        {
+            if (continued is { } into)
+            {
+                var value = ReadText(into.T);
+                SetText(into.T, value[..into.Index] + text + value[into.Index..]);
+            }
+            else
+                Inserted(p, before, after, text, tracking);
+        }
+        foreach (var run in deleted)
+            Deleted(run, tracking);
+        return stretch.Written([(p, [p])]);
+    }
+
+    /// <summary>Whether an element marks a tracked change around the runs in it.</summary>
+    static bool IsRevision(XElement element) => element.Name.LocalName is "ins" or "del" or "moveFrom" or "moveTo";
+
+    /// <summary>
+    /// New text in a run of its own in a w:ins: after the run of the element before it, else before the run of the
+    /// element after it, else at the paragraph's end; out of the changes around that run (split where the run does not
+    /// end or begin them); in the format of the run it follows or precedes, else of the paragraph's mark.
+    /// </summary>
+    static void Inserted(XElement p, XElement? before, XElement? after, string text, Tracking tracking)
+    {
+        var w = p.Name.Namespace;
+        var beside = (before ?? after)?.AncestorsAndSelf(w + "r").FirstOrDefault();
+        var properties = beside?.Element(w + "rPr") ?? p.Element(w + "pPr")?.Element(w + "rPr");
+        var t = new XElement(w + "t");
+        SetText(t, text);
+        var ins = tracking.Mark(w, "ins");
+        ins.Add(new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => !IsRevision(e) && e.Name.LocalName != "rPrChange")) : null, t));
+        if (before?.AncestorsAndSelf(w + "r").FirstOrDefault() is { } previous)
+        {
+            if (before.ElementsAfterSelf().FirstOrDefault() is { } rest)
+                SplitBefore(rest);
+            Out(previous, tracking, after: true).AddAfterSelf(ins);
+        }
+        else if (after?.AncestorsAndSelf(w + "r").FirstOrDefault() is { } next)
+        {
+            if (after.ElementsBeforeSelf().Any(e => e.Name.LocalName != "rPr"))
+                SplitBefore(after);
+            Out(after.Parent!, tracking, after: false).AddBeforeSelf(ins);
+        }
+        else
+            p.Add(ins);
+    }
+
+    /// <summary>
+    /// A run taken out of the changes around it (w:ins, w:del) to put something beside it: each change split after it
+    /// (or before it), the part that goes on in a copy of the change with an id of its own; the outermost change around
+    /// it, or the run.
+    /// </summary>
+    static XElement Out(XElement run, Tracking tracking, bool after)
+    {
+        var place = run;
+        while (place.Parent is { } change && IsRevision(change))
+        {
+            var others = (after ? place.NodesAfterSelf() : place.NodesBeforeSelf()).ToList();
+            if (others.Any(n => n is XElement))
+            {
+                var part = tracking.Copy(change);
+                foreach (var node in others)
+                    node.Remove();
+                part.Add(others);
+                if (after)
+                    change.AddAfterSelf(part);
+                else
+                    change.AddBeforeSelf(part);
+            }
+            place = change;
+        }
+        return place;
+    }
+
+    /// <summary>
+    /// A run deleted as a tracked change: in the author's own insertion it goes away (and the insertion with it where
+    /// nothing is left); else into a w:del of its own, its w:t as w:delText and w:instrText as w:delInstrText.
+    /// </summary>
+    static void Deleted(XElement run, Tracking tracking)
+    {
+        var w = run.Name.Namespace;
+        if (run.Ancestors().FirstOrDefault(IsRevision) is { } change)
+        {
+            if (change.Name.LocalName is "del" or "moveFrom")
+                return;
+            if (change.Name.LocalName == "ins" && tracking.Own(change))
+            {
+                run.Remove();
+                if (!change.Elements().Any())
+                    change.Remove();
+                return;
+            }
+        }
+        foreach (var t in run.Elements(w + "t").ToList())
+            t.Name = w + "delText";
+        foreach (var instruction in run.Elements(w + "instrText").ToList())
+            instruction.Name = w + "delInstrText";
+        var del = tracking.Mark(w, "del");
+        run.ReplaceWith(del);
+        del.Add(run);
+    }
+
+    /// <summary>
+    /// A paragraph's mark marked as a tracked change of a kind (ins, del) in its run properties, where they begin
+    /// (CT_ParaRPr); an insertion takes the place of the changes the mark had (it is a new mark).
+    /// </summary>
+    static void Marked(XElement p, string kind, Tracking tracking)
+    {
+        var w = p.Name.Namespace;
+        var mark = Property(Properties(p, "pPr"), "rPr", ParagraphOrder);
+        if (kind == "ins")
+        {
+            foreach (var change in mark.Elements().Where(IsRevision).ToList())
+                change.Remove();
+            mark.AddFirst(tracking.Mark(w, kind));
+        }
+        else if (mark.Elements().LastOrDefault(IsRevision) is { } last)
+            last.AddAfterSelf(tracking.Mark(w, kind));
+        else
+            mark.AddFirst(tracking.Mark(w, kind));
+    }
+
+    /// <summary>Whether a paragraph's mark is the author's own insertion (a tracked change).</summary>
+    static bool OwnMark(XElement p, Tracking tracking) =>
+        p.Element(p.Name.Namespace + "pPr")?.Element(p.Name.Namespace + "rPr")?.Elements(p.Name.Namespace + "ins").Any(tracking.Own) == true;
 
     /// <summary>Whether an element between paragraphs is a mark, which goes into a paragraph (a bookmark, a comment's range, a proofing mark).</summary>
     static bool IsMark(XElement element) =>

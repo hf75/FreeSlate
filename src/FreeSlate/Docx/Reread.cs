@@ -43,10 +43,10 @@ public sealed partial class ModelReader
                 return null;
         }
         // Sections end where they did: only the last old child and the last new one may end one, both or neither, with
-        // the same properties.
+        // the same properties, the mark that holds the break deleted in both or in neither.
         var (oldEnd, newEnd) = (old.Count > 0 ? SectionEnd(old[^1]) : null, children.Count > 0 ? SectionEnd(children[^1]) : null);
         if (old.SkipLast(1).Any(e => SectionEnd(e) != null) || children.SkipLast(1).Any(c => SectionEnd(c) != null) || old.Concat(children).Any(BreaksWithin)
-            || (oldEnd == null) != (newEnd == null) || oldEnd != null && !XNode.DeepEquals(oldEnd, newEnd))
+            || (oldEnd == null) != (newEnd == null) || oldEnd != null && (!XNode.DeepEquals(oldEnd, newEnd) || MarkDeleted(old[^1]) != MarkDeleted(children[^1])))
             return null;
         // Whether a field reaches beyond its paragraphs is worked out from the field characters of the whole body (see
         // Unclosed): where the change's are not those it had, children before it read otherwise.
@@ -260,6 +260,9 @@ public sealed partial class ModelReader
 
     /// <summary>The properties of the section a child of the body ends, a paragraph's (w:sectPr in its w:pPr), or null.</summary>
     static XElement? SectionEnd(XElement child) => child.Name == Wml.W + "p" ? child.Child("pPr").Child("sectPr") : null;
+
+    /// <summary>Whether a paragraph's mark is deleted (a tracked change): it runs into the next one, a section break it holds with it.</summary>
+    static bool MarkDeleted(XElement p) => p.Child("pPr").Child("rPr") is { } mark && (mark.Child("del") ?? mark.Child("moveFrom")) != null;
 
     /// <summary>
     /// Whether a child of the body shows what stands elsewhere: a content control showing its placeholder (the first

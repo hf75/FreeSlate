@@ -13,8 +13,9 @@ namespace FreeSlate;
 /// A Word document opened to change it and to save it (catalog: package.opc): its paragraphs by the ids the reader gives
 /// them (Block.Id, which the places of its pages name, see PlacesItem) and keep through changes; text replaced at places
 /// of a paragraph's text (Docx.ParagraphText), a paragraph split in two, joined with the next or taken away, text and
-/// paragraphs given direct formatting (Docx.TextFormatting, Docx.ParagraphFormatting); each change undone and done
-/// again; its pages as it reads now; and the document saved as DOCX: the stretches of its body it
+/// paragraphs given direct formatting (Docx.TextFormatting, Docx.ParagraphFormatting), as tracked changes where an
+/// author is set (Docx.Tracking); each change undone and done again; its pages as it reads now (with its markup or as
+/// all its tracked changes accepted); and the document saved as DOCX: the stretches of its body it
 /// changed written anew in the XML they were read from, every other byte of the package as it was (see Docx.TextEdits).
 /// A change is made in the XML the blocks it touches were read from, a stretch of the main part's text: parsed afresh,
 /// changed, made ready as the part was when it was loaded and read anew in place of those blocks (ModelReader.Reread),
@@ -29,6 +30,7 @@ public sealed class WordDocument : IDisposable
     readonly FontLocator? fonts;
     readonly CultureInfo culture;
     readonly DateTime? printed;
+    readonly bool markup;
     DocumentContext context = null!;
     ModelReader reader = null!;
 
@@ -97,9 +99,9 @@ public sealed class WordDocument : IDisposable
     /// </summary>
     sealed record Version(byte[] Whole, IReadOnlyList<Island> Islands, List<Block> Blocks);
 
-    WordDocument(OpcPackage package, FontLocator? fonts, CultureInfo culture, DateTime? printed)
+    WordDocument(OpcPackage package, FontLocator? fonts, CultureInfo culture, DateTime? printed, bool markup)
     {
-        (this.package, this.fonts, this.culture, this.printed) = (package, fonts, culture, printed);
+        (this.package, this.fonts, this.culture, this.printed, this.markup) = (package, fonts, culture, printed, markup);
         ReadWhole();
         versions.Add(new Version(whole, islands, blocks));
     }
@@ -107,11 +109,23 @@ public sealed class WordDocument : IDisposable
     /// <summary>
     /// Opens a Word document, read into memory (so that it can be saved over its file): a password-protected one with its
     /// password (it is saved without it); its fields of the date print at <paramref name="printed"/> (now when null), its
-    /// numbers and dates in <paramref name="culture"/>.
+    /// numbers and dates in <paramref name="culture"/>; with <paramref name="markup"/> it reads with its tracked changes
+    /// and comments as Word shows them with all markup (catalog: review.revisions), else as all of them accepted.
     /// </summary>
     /// <exception cref="PasswordException">The document needs a password, or the password is wrong.</exception>
-    public static WordDocument Open(string path, string? password = null, FontLocator? fonts = null, CultureInfo? culture = null, DateTime? printed = null) =>
-        new(OpcPackage.Open(File.ReadAllBytes(path), password), fonts, culture ?? CultureInfo.CurrentCulture, printed);
+    public static WordDocument Open(string path, string? password = null, FontLocator? fonts = null, CultureInfo? culture = null, DateTime? printed = null,
+        bool markup = false) =>
+        new(OpcPackage.Open(File.ReadAllBytes(path), password), fonts, culture ?? CultureInfo.CurrentCulture, printed, markup);
+
+    /// <summary>
+    /// The author whose changes are tracked changes (Word's Track Changes: see Docx.Tracking), or null: changes are made
+    /// as they are; and the time they carry, now where null.
+    /// </summary>
+    public string? Author { get; set; }
+    public DateTime? ChangedAt { get; set; }
+
+    /// <summary>The id the next tracked change takes: one more than the greatest id the main part's elements have.</summary>
+    int changeId = -1;
 
     /// <summary>The body's blocks as the document reads now.</summary>
     public IReadOnlyList<Block> Blocks => blocks;
@@ -134,7 +148,7 @@ public sealed class WordDocument : IDisposable
     public void Replace(int paragraph, int offset, int length, string text)
     {
         var (p, top) = Find(paragraph);
-        Change(top, top, stretch => TextEdits.Replace(stretch, p, offset, length, text));
+        Change(top, top, (stretch, tracking) => TextEdits.Replace(stretch, p, offset, length, text, tracking));
     }
 
     /// <summary>Puts text into a paragraph at a place (see Replace).</summary>
@@ -152,9 +166,9 @@ public sealed class WordDocument : IDisposable
     {
         var (p, top) = Find(paragraph);
         var second = 0;
-        var where = Change(top, top, stretch =>
+        var where = Change(top, top, (stretch, tracking) =>
         {
-            var (text, at) = TextEdits.Split(stretch, p, offset);
+            var (text, at) = TextEdits.Split(stretch, p, offset, tracking);
             second = at;
             return text;
         });
@@ -176,9 +190,9 @@ public sealed class WordDocument : IDisposable
         if (index + 1 >= list.Count || list[index + 1] is not ParagraphBlock next)
             throw new NotSupportedException("No paragraph follows the paragraph in its body, cell or text box.");
         var first = true;
-        Change(top, ReferenceEquals(list, blocks) ? next : top, stretch =>
+        Change(top, ReferenceEquals(list, blocks) ? next : top, (stretch, tracking) =>
         {
-            var (text, stays) = TextEdits.Join(stretch, p, next);
+            var (text, stays) = TextEdits.Join(stretch, p, next, tracking);
             first = stays;
             return text;
         });
@@ -193,7 +207,7 @@ public sealed class WordDocument : IDisposable
     public void Format(int paragraph, int offset, int length, TextFormatting format)
     {
         var (p, top) = Find(paragraph);
-        Change(top, top, stretch => TextEdits.Format(stretch, p, offset, length, format));
+        Change(top, top, (stretch, tracking) => TextEdits.Format(stretch, p, offset, length, format, tracking));
     }
 
     /// <summary>Gives a paragraph paragraph formatting (see ParagraphFormatting).</summary>
@@ -201,7 +215,7 @@ public sealed class WordDocument : IDisposable
     public void Format(int paragraph, ParagraphFormatting format)
     {
         var (p, top) = Find(paragraph);
-        Change(top, top, stretch => TextEdits.Format(stretch, p, format));
+        Change(top, top, (stretch, tracking) => TextEdits.Format(stretch, p, format, tracking));
     }
 
     /// <summary>Takes a paragraph away with all its content; the section it ends goes on into the next one.</summary>
@@ -209,7 +223,7 @@ public sealed class WordDocument : IDisposable
     public void Remove(int paragraph)
     {
         var (p, top) = Find(paragraph);
-        Change(top, top, stretch => TextEdits.Remove(stretch, p));
+        Change(top, top, (stretch, tracking) => TextEdits.Remove(stretch, p, tracking));
     }
 
     /// <summary>Undoes the last change not undone; false where there is none.</summary>
@@ -325,10 +339,13 @@ public sealed class WordDocument : IDisposable
     /// text, which the document then reads (see Apply), a version of its own. Returns where an element of the new text
     /// stands in it.
     /// </summary>
-    Func<XElement, int> Change(Block from, Block to, Func<Stretch, string> edit)
+    Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit)
     {
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
-        var text = edit(stretch);
+        var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
+        var text = edit(stretch, tracking);
+        if (tracking != null)
+            changeId = tracking.NextId;
         var changed = islands.Where(i => i.End <= start || i.Start >= end).ToList();
         if (text != wholeText.Text[start..end])
             changed.Add(new Island(start, end, text));
@@ -337,6 +354,19 @@ public sealed class WordDocument : IDisposable
         versions.Add(new Version(whole, islands, blocks));
         version++;
         return where;
+    }
+
+    /// <summary>The id the next tracked change takes (see changeId).</summary>
+    int ChangeId()
+    {
+        if (changeId < 0)
+        {
+            var greatest = islands.Select(i => i.Text).Prepend(wholeText.Text)
+                .SelectMany(text => System.Text.RegularExpressions.Regex.Matches(text, @"(?<=[\s:]id="")\d{1,9}(?="")").Select(m => int.Parse(m.Value, CultureInfo.InvariantCulture)))
+                .DefaultIfEmpty(0).Max();
+            changeId = greatest + 1;
+        }
+        return changeId;
     }
 
     /// <summary>The document as it reads in another of its versions: the stretches whose text differs read anew (see Apply).</summary>
@@ -672,7 +702,7 @@ public sealed class WordDocument : IDisposable
     {
         var last = reader?.LastId ?? 0;
         wholeReads++;
-        context = new DocumentContext(package, fonts) { Culture = culture, Printed = printed };
+        context = new DocumentContext(package, fonts) { Culture = culture, Printed = printed, Markup = markup };
         budget = context.Text3DBudget;
         reader = new ModelReader(context) { LastId = last };
         blocks = reader.Body();
