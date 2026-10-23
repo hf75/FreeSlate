@@ -11,7 +11,9 @@ CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
 var command = args.FirstOrDefault() ?? "run";
-var rest = args.Skip(1).Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
+// @file stands for the names in a file, one a line.
+var rest = args.Skip(1).Where(a => !a.StartsWith("--", StringComparison.Ordinal))
+    .SelectMany(a => a.StartsWith('@') ? File.ReadAllLines(a[1..]).Select(l => l.Trim()).Where(l => l.Length > 0) : [a]).ToList();
 var force = args.Contains("--force");
 Pipeline.Skia = args.Contains("--skia");
 var decks = Repo.Select(rest);
@@ -179,6 +181,7 @@ switch (command)
               compare [deck…]      compare screenshots with the references, write artifacts/fidelity/report.html
                 --skia             (run, render, compare) the Skia backend instead of the browser: documents drawn
                                    into a PDF, slides into pictures; output and report in artifacts/fidelity/skia
+              @file                the names in a file, one a line, wherever names are given
               generate [deck…]     create the generated test decks with PowerPoint, the generated documents
                                    ("docx/generated/<name>", "docx" for all) with Word (Windows)
               reference [deck…]    render reference images with PowerPoint, of Word documents ("docx/…") with Word

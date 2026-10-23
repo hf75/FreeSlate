@@ -41,7 +41,7 @@ dotnet run --project tools/Fidelity -c Release --no-build -- run generated
 | `smartart [files]` | compares the SmartArt engine's layout with the drawings PowerPoint saved | |
 
 Decks are named by their path below the corpus (`generated/fills`, `local/probe`, `external/poi/bar-chart`); a folder
-stands for all decks in it (`run generated`, `run external`). Without a name, all decks of `tests/corpus/pptx/` run
+stands for all decks in it (`run generated`, `run external`), `@file` for the names in a file, one a line. Without a name, all decks of `tests/corpus/pptx/` run
 (not the external ones). The report is written to `artifacts/fidelity/report.html`: reference, FreeSlate's rendering
 and a difference image for every slide, with the scores in `artifacts/fidelity/scores.json`.
 
