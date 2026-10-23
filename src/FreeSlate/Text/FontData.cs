@@ -43,6 +43,9 @@ public sealed class FontData : IDisposable
         Path = path;
         Family = family;
         Index = index;
+        hhea = new(ReadHhea);
+        eastAsian = new(ReadEastAsian);
+        typo = new(ReadTypo);
         memory = inMemory ? data : null;
         this.advanceExtra = advanceExtra;
         var offset = data.Length > 12 && data[0] == 't' && data[1] == 't' && data[2] == 'c' && data[3] == 'f'
@@ -590,16 +593,18 @@ public sealed class FontData : IDisposable
         kerningPairs != null && kerningPairs.TryGetValue(left << 16 | right & 0xFFFF, out var value) ? (double)value / UnitsPerEm : 0;
 
     /// <summary>The line metrics of the hhea table in em: ascender, descender (positive below) and line gap.</summary>
-    public (double Ascender, double Descender, double LineGap) Hhea
+    public (double Ascender, double Descender, double LineGap) Hhea => hhea.Value;
+
+    /// <summary>The hhea metrics, read once: every line's metrics ask for them (see Table, which reads the file).</summary>
+    readonly Lazy<(double Ascender, double Descender, double LineGap)> hhea;
+
+    (double Ascender, double Descender, double LineGap) ReadHhea()
     {
-        get
-        {
-            var hhea = Table("hhea");
-            return hhea == null || hhea.Length < 10
-                ? (Ascent, Descent, LineGap)
-                : (BinaryPrimitives.ReadInt16BigEndian(hhea.AsSpan(4)) / (double)UnitsPerEm, -BinaryPrimitives.ReadInt16BigEndian(hhea.AsSpan(6)) / (double)UnitsPerEm,
-                    BinaryPrimitives.ReadInt16BigEndian(hhea.AsSpan(8)) / (double)UnitsPerEm);
-        }
+        var table = Table("hhea");
+        return table == null || table.Length < 10
+            ? (Ascent, Descent, LineGap)
+            : (BinaryPrimitives.ReadInt16BigEndian(table.AsSpan(4)) / (double)UnitsPerEm, -BinaryPrimitives.ReadInt16BigEndian(table.AsSpan(6)) / (double)UnitsPerEm,
+                BinaryPrimitives.ReadInt16BigEndian(table.AsSpan(8)) / (double)UnitsPerEm);
     }
 
     /// <summary>Whether the font has a glyph for the character.</summary>
@@ -619,16 +624,17 @@ public sealed class FontData : IDisposable
     /// Whether the font is made for East Asian text: its OS/2 code page range names a Japanese, Chinese or Korean code
     /// page (JIS, GB 2312, Wansung, Big5, Johab).
     /// </summary>
-    public bool EastAsian
+    public bool EastAsian => eastAsian.Value;
+
+    readonly Lazy<bool> eastAsian;
+
+    bool ReadEastAsian()
     {
-        get
-        {
-            var os2 = Table("OS/2");
-            if (os2 == null || os2.Length < 82 || BinaryPrimitives.ReadUInt16BigEndian(os2) < 1)
-                return false;
-            var range = BinaryPrimitives.ReadUInt32BigEndian(os2.AsSpan(78));
-            return (range & (0x1Fu << 17)) != 0;
-        }
+        var os2 = Table("OS/2");
+        if (os2 == null || os2.Length < 82 || BinaryPrimitives.ReadUInt16BigEndian(os2) < 1)
+            return false;
+        var range = BinaryPrimitives.ReadUInt32BigEndian(os2.AsSpan(78));
+        return (range & (0x1Fu << 17)) != 0;
     }
 
     /// <summary>
@@ -677,17 +683,18 @@ public sealed class FontData : IDisposable
     }
 
     /// <summary>The OS/2 typographic metrics in em (ascender, descender positive below, line gap) and whether USE_TYPO_METRICS is set.</summary>
-    public (double Ascender, double Descender, double LineGap, bool Use)? Typo
+    public (double Ascender, double Descender, double LineGap, bool Use)? Typo => typo.Value;
+
+    readonly Lazy<(double Ascender, double Descender, double LineGap, bool Use)?> typo;
+
+    (double Ascender, double Descender, double LineGap, bool Use)? ReadTypo()
     {
-        get
-        {
-            var os2 = Table("OS/2");
-            if (os2 == null || os2.Length < 78)
-                return null;
-            var selection = BinaryPrimitives.ReadUInt16BigEndian(os2.AsSpan(62));
-            return (BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(68)) / (double)UnitsPerEm, -BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(70)) / (double)UnitsPerEm,
-                BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(72)) / (double)UnitsPerEm, (selection & 0x80) != 0);
-        }
+        var os2 = Table("OS/2");
+        if (os2 == null || os2.Length < 78)
+            return null;
+        var selection = BinaryPrimitives.ReadUInt16BigEndian(os2.AsSpan(62));
+        return (BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(68)) / (double)UnitsPerEm, -BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(70)) / (double)UnitsPerEm,
+            BinaryPrimitives.ReadInt16BigEndian(os2.AsSpan(72)) / (double)UnitsPerEm, (selection & 0x80) != 0);
     }
 
     /// <summary>The outline of a glyph as SVG path data in font units, y down; "" for glyphs without contours.</summary>

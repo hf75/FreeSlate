@@ -69,8 +69,12 @@ public sealed class MathTable
         }
     }
 
-    /// <summary>The MATH table of a font, or null when it has none.</summary>
-    public static MathTable? Of(Text.FontData font) => font.Table("MATH") is { Length: > 10 } bytes ? new MathTable(bytes, font.Table("GSUB")) : null;
+    /// <summary>The MATH tables of the fonts read so far (FontData.Table reads the font's file).</summary>
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Text.FontData, System.Runtime.CompilerServices.StrongBox<MathTable?>> read = [];
+
+    /// <summary>The MATH table of a font, or null when it has none; read once a font.</summary>
+    public static MathTable? Of(Text.FontData font) =>
+        read.GetValue(font, f => new(f.Table("MATH") is { Length: > 10 } bytes ? new MathTable(bytes, f.Table("GSUB")) : null)).Value;
 
     readonly Dictionary<uint, uint[]> scriptStyles = new();
 
