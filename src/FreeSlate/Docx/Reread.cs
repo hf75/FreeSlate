@@ -27,9 +27,10 @@ public sealed partial class ModelReader
     /// them whose numbers change are read anew too. The blocks read anew keep the ids of the blocks they stand for (see
     /// Keep), or of <paramref name="like"/> where given (another version of the body, the same but for the change); new
     /// ones take ids of their own. Null, the XML left as it was, where reading cannot so begin or go on (a paragraph whose
-    /// mark is hidden, a field to the body's end, children the reader made of others), where a note reference is involved
-    /// (the notes' marks are read with the notes), where sections would begin or end elsewhere, where a content control
-    /// shows its placeholder (which later ones show too) or in the markup view: the document has to be read again.
+    /// mark is hidden, a field to the body's end, children the reader made of others), where note references come, go or
+    /// change their order (the notes' marks are read with the notes), where sections would begin or end elsewhere, where a
+    /// content control shows its placeholder (which later ones show too) or in the markup view: the document has to be
+    /// read again.
     /// </summary>
     public List<Block>? Reread(List<Block> body, IReadOnlyList<XElement> old, XElement? before, IReadOnlyList<XElement> children, IReadOnlyList<Block>? like = null)
     {
@@ -162,7 +163,9 @@ public sealed partial class ModelReader
             probe = Read([.. leading, .. children, .. trailing], null);
         }
         var end = next != null ? bodyPoints[next].Steps : steps.Count;
-        if (probe is not { } asked || asked.Steps.Any(s => s.Step is NoteStep) || steps.Skip(start).Take(end - start).Any(s => s.Step is NoteStep))
+        // Note references count where they stand, their marks read with the notes: the change keeps those it had, in
+        // their order, or the notes read otherwise.
+        if (probe is not { } asked || !asked.Steps.Select(s => s.Step).OfType<NoteStep>().SequenceEqual(steps.Skip(start).Take(end - start).Select(s => s.Step).OfType<NoteStep>()))
             return Undone();
         List<(NumberStep Step, object? Answer)> all = [.. steps.Take(start), .. asked.Steps, .. steps.Skip(end)];
         var answers = Numbers.Replay(all.Select(s => s.Step), context.Numbering, new NoteNumbers(context.Settings));
