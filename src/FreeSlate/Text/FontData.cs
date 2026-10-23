@@ -46,6 +46,7 @@ public sealed class FontData : IDisposable
         hhea = new(ReadHhea);
         eastAsian = new(ReadEastAsian);
         typo = new(ReadTypo);
+        serif = new(ReadSerif);
         memory = inMemory ? data : null;
         this.advanceExtra = advanceExtra;
         var offset = data.Length > 12 && data[0] == 't' && data[1] == 't' && data[2] == 'c' && data[3] == 'f'
@@ -611,13 +612,14 @@ public sealed class FontData : IDisposable
     public bool HasGlyph(int c) => font.TryGetGlyph((uint)c, out var glyph) && glyph != 0;
 
     /// <summary>Whether the font has serifs by its PANOSE numbers: a Latin text face with a serif style of 2 to 10.</summary>
-    public bool Serif
+    public bool Serif => serif.Value;
+
+    readonly Lazy<bool> serif;
+
+    bool ReadSerif()
     {
-        get
-        {
-            var os2 = Table("OS/2");
-            return os2 != null && os2.Length >= 42 && os2[32] == 2 && os2[33] is >= 2 and <= 10;
-        }
+        var os2 = Table("OS/2");
+        return os2 != null && os2.Length >= 42 && os2[32] == 2 && os2[33] is >= 2 and <= 10;
     }
 
     /// <summary>
