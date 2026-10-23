@@ -548,6 +548,13 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>Asks the story's list counter or the document's note numbers a step, recording it with its answer.</summary>
     object? Ask(NumberStep step)
     {
+        // A re-read records its steps apart and takes their answers from the body's steps replayed (see Reread).
+        if (rereadSteps != null)
+        {
+            var given = rereadAnswers != null ? rereadAnswers.Dequeue() : Numbers.Answer(step, counter, NoteNumbers);
+            rereadSteps.Add((step, given));
+            return given;
+        }
         var answer = Numbers.Answer(step, counter, NoteNumbers);
         if (!numberSteps.TryGetValue(currentPart, out var steps))
             numberSteps[currentPart] = steps = [];
@@ -904,12 +911,23 @@ public sealed partial class ModelReader(DocumentContext context)
         }).ToList();
     }
 
-    void ReadBlocks(XElement container, List<Block> blocks, ref ParagraphBlock? pending)
+    void ReadBlocks(XElement container, List<Block> blocks, ref ParagraphBlock? pending) => ReadBlocks(container, container.Elements(), blocks, ref pending);
+
+    void ReadBlocks(XElement container, IEnumerable<XElement> elements, List<Block> blocks, ref ParagraphBlock? pending)
     {
-        foreach (var e in JoinedFields(SplitTables(container.Elements())))
+        foreach (var e in JoinedFields(SplitTables(elements)))
         {
             if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
                 currentSection = section;
+            // Where reading stood before each child of the body, for reading some of them anew (see Reread).
+            if (container == bodyElement && e.Parent == bodyElement)
+            {
+                var fresh = pending == null && openFields.Count == 0 && strayBreaks.Count == 0 && blockBookmarks.Count == 0;
+                if (rereadSteps != null)
+                    rereadPoints[e] = (rereadSteps.Count, fresh);
+                else
+                    bodyPoints[e] = (numberSteps.TryGetValue(currentPart, out var asked) ? asked.Count : 0, fresh);
+            }
             if (e.Name.Namespace != Wml.W)
                 continue;
             // A table whose rows were all deleted is gone (docx/external/powertools/RA001-Tracked-Revisions-01: a moved

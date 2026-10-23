@@ -348,6 +348,28 @@ public sealed class DocumentContext : IDisposable
         return document;
     }
 
+    /// <summary>
+    /// An element for a loaded part made ready as Load makes the part's XML: a Strict element's names made transitional,
+    /// its markup compatibility resolved, its shading's theme colors taken (for elements put into a loaded part in place
+    /// of others, see ModelReader.Reread). The element itself, or what its alternatives chose in its place.
+    /// </summary>
+    public List<XElement> Prepare(XElement element)
+    {
+        var holder = new XElement("holder");
+        if (element.Parent != null)
+            element = new XElement(element);
+        holder.Add(element);
+        if (Strict.IsStrict(element))
+            Strict.Transition(element);
+        MarkupCompatibility.Process(holder, chartEx: true);
+        if (Theme != null)
+            ThemeShading(holder);
+        var prepared = holder.Elements().ToList();
+        foreach (var e in prepared)
+            e.Remove();
+        return prepared;
+    }
+
     /// <summary>The part a node of a loaded part stands in (see Load), or null for one made elsewhere.</summary>
     public string? PartOf(XObject node) =>
         node.Document is { } document ? documents.FirstOrDefault(d => ReferenceEquals(d.Value, document)).Key : null;
@@ -358,7 +380,7 @@ public sealed class DocumentContext : IDisposable
     /// extras-ooxmlexport/n780853: cells of accent2 and accent1 print C0504D and 4F81BD where w:fill says DD8047 and
     /// 94B6D2 of another theme).
     /// </summary>
-    void ThemeShading(XDocument document)
+    void ThemeShading(XContainer document)
     {
         var w = Wml.W;
         foreach (var shd in document.Descendants(w + "shd"))

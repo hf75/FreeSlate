@@ -71,10 +71,19 @@ static class Strict
     /// <summary>A strict part's markup renamed to the transitional namespaces; other parts as they are.</summary>
     public static XDocument Transition(XDocument document)
     {
-        if (document.Root is not { } root
-            || !root.Name.NamespaceName.StartsWith(Prefix, StringComparison.Ordinal)
-               && !root.Attributes().Any(a => a.IsNamespaceDeclaration && a.Value.StartsWith(Prefix, StringComparison.Ordinal)))
-            return document;
+        if (document.Root is { } root && IsStrict(root))
+            Transition(root);
+        return document;
+    }
+
+    /// <summary>Whether a part's root is of Strict's namespaces.</summary>
+    public static bool IsStrict(XElement root) =>
+        root.Name.NamespaceName.StartsWith(Prefix, StringComparison.Ordinal)
+        || root.Attributes().Any(a => a.IsNamespaceDeclaration && a.Value.StartsWith(Prefix, StringComparison.Ordinal));
+
+    /// <summary>An element of a strict part, and what it holds, renamed to the transitional namespaces.</summary>
+    public static void Transition(XElement root)
+    {
         foreach (var element in root.DescendantsAndSelf())
         {
             if (element.Name.NamespaceName == StrictDrawing && StrictShapes.TryGetValue(element.Name.LocalName, out var shapeNs))
@@ -112,6 +121,5 @@ static class Strict
                 : Transitional.TryGetValue(a.Name.NamespaceName, out var attributeNs) ? new XAttribute(XNamespace.Get(attributeNs) + a.Name.LocalName, a.Value)
                 : new XAttribute(a)).ToList());
         }
-        return document;
     }
 }

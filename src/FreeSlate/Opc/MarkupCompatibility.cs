@@ -55,7 +55,7 @@ public static class MarkupCompatibility
     /// fallback picture, as Word draws such charts itself (measured with openxml-sdk's Of16-01 to Of16-07: Word's
     /// waterfalls, box plots, sunburst and treemap, not Excel's pictures of them).
     /// </summary>
-    public static void Process(XDocument document, bool chartEx = false)
+    public static void Process(XContainer document, bool chartEx = false)
     {
         // Innermost first: an alternative inside a chosen one (a wp14 position inside a Word 2010 drawing) is resolved
         // before the chosen content is moved into its place. Moved, not copied: it keeps where it was read (its line
