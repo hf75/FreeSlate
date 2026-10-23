@@ -463,17 +463,9 @@ public static class SkiaScene
                     break;
                 case ShapeRectItem shapeRect:
                 {
-                    var bounds = SKRect.Create((float)shapeRect.X, (float)shapeRect.Y, (float)shapeRect.Width, (float)shapeRect.Height);
-                    if (Paint(shapeRect.Fill, bounds) is { } fill)
-                    {
-                        canvas.DrawRect(bounds, fill);
-                        fill.Dispose();
-                    }
-                    if (shapeRect.Outline is { Visible: true } outline)
-                    {
-                        using var pen = Pen(outline);
-                        canvas.DrawRect(bounds, pen);
-                    }
+                    using var path = new SKPath();
+                    path.AddRect(SKRect.Create((float)shapeRect.X, (float)shapeRect.Y, (float)shapeRect.Width, (float)shapeRect.Height));
+                    Shape(path, shapeRect.Fill, shapeRect.Outline, shapeRect.Attributes, dashesClosed: false);
                     break;
                 }
                 case BackgroundItem background:
@@ -825,21 +817,29 @@ public static class SkiaScene
                 return;
             }
             using var path = SKPath.ParseSvgPathData(item.Data);
-            if (path == null)
-                return;
-            if (item.Fill is PictureFill { Tiling: null } picture)
+            if (path != null)
+                Shape(path, item.Fill, item.Outline, item.Attributes, item.DashesClosed);
+        }
+
+        /// <summary>
+        /// An outline filled and stroked as DrawingML gives it: a picture stretched over it, a gradient as the SVG
+        /// attributes paint it (see Served), else its own paint; the outline's gradient or pattern over its bounds.
+        /// </summary>
+        void Shape(SKPath path, Fill fill, Outline? outline, string attributes, bool dashesClosed)
+        {
+            if (fill is PictureFill { Tiling: null } picture)
                 Stretched(picture, path);
-            else if (((item.Fill is GradientFill or SlideFill { Fill: GradientFill } ? Served(item.Attributes, "fill", path.Bounds) : null) ?? Paint(item.Fill, path.Bounds)) is { } fill)
+            else if (((fill is GradientFill or SlideFill { Fill: GradientFill } ? Served(attributes, "fill", path.Bounds) : null) ?? Paint(fill, path.Bounds)) is { } brush)
             {
-                canvas.DrawPath(path, fill);
-                fill.Dispose();
+                canvas.DrawPath(path, brush);
+                brush.Dispose();
             }
-            if (item.Outline is { Visible: true } outline)
+            if (outline is { Visible: true })
             {
-                using var pen = Pen(outline, item.DashesClosed);
+                using var pen = Pen(outline, dashesClosed);
                 // A gradient or a pattern along the outline, over the path's bounds as its fill would lie.
                 using var paint = outline.Fill is GradientFill or PatternFill
-                    ? (outline.Fill is GradientFill ? Served(item.Attributes, "stroke", path.Bounds) : null) ?? Paint(outline.Fill, path.Bounds)
+                    ? (outline.Fill is GradientFill ? Served(attributes, "stroke", path.Bounds) : null) ?? Paint(outline.Fill, path.Bounds)
                     : null;
                 if (paint?.Shader is { } shader)
                     pen.Shader = shader;

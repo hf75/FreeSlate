@@ -135,7 +135,11 @@ public sealed record DefsItem(string Markup) : SceneItem;
 /// A rectangle of a drawing in CSS pixels (a highlight, an underline), filled and outlined as DrawingML gives it; in HTML
 /// a rect element with the attributes of its paint (none where it takes its fill from a group around it).
 /// </summary>
-public sealed record ShapeRectItem(double X, double Y, double Width, double Height, Fill Fill, Outline? Outline, string Attributes) : SceneItem;
+public sealed record ShapeRectItem(double X, double Y, double Width, double Height, Fill Fill, Outline? Outline, string Attributes) : SceneItem
+{
+    /// <summary>Whether it stands at the origin, which HTML then leaves out (a slide table's background).</summary>
+    public bool AtOrigin { get; init; }
+}
 
 /// <summary>
 /// A slide's background in CSS pixels: its fill over Width by Height; in HTML an SVG of class bg with the fill's

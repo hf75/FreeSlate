@@ -131,13 +131,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             items.Add(new MarkupItem(html));
     }
 
-    /// <summary>A frame's drawing (a chart's, a table's) on a canvas of its box, at least a pixel each way.</summary>
-    static BoxItem Framed(double width, double height, Matrix transform, string attributes, string markup)
-    {
-        var canvas = new SvgItem(Math.Max(width, 1), Math.Max(height, 1), []);
-        AddMarkup(canvas.Items, markup);
-        return new BoxItem((width, height), transform, attributes, [canvas]);
-    }
+    /// <summary>A frame's drawing (a chart's) on a canvas of its box, at least a pixel each way.</summary>
+    static BoxItem Framed(double width, double height, Matrix transform, string attributes, string markup) =>
+        Framed(width, height, transform, attributes, markup.Length > 0 ? [new MarkupItem(markup)] : []);
+
+    /// <summary>A frame's drawing as items (a table's) on a canvas of its box, at least a pixel each way.</summary>
+    static BoxItem Framed(double width, double height, Matrix transform, string attributes, List<SceneItem> drawn) =>
+        new((width, height), transform, attributes, [new SvgItem(Math.Max(width, 1), Math.Max(height, 1), drawn)]);
 
     void RenderTree(XElement? tree, string part, List<SceneItem> items, Placement placement, bool isSlide)
     {
@@ -1165,9 +1165,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         {
             var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
             var (bx, by, bw, bh) = placement.Map(x, y, w, h);
-            var (svg, width, height) = Tables.Render(table);
+            var (drawn, width, height) = Tables.Render(table);
             var matrix = placement.Transform.Then(LocalMatrix(bx, by, Math.Max(bw, width * Units.EmuPerPixel), Math.Max(bh, height * Units.EmuPerPixel), rotation, flipH, flipV));
-            items.Add(Framed(width, height, ToPx(matrix), Accessibility(frame, isSlide, part), svg));
+            items.Add(Framed(width, height, ToPx(matrix), Accessibility(frame, isSlide, part), drawn));
         }
     }
 
@@ -1349,12 +1349,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var (bx, by, bw, bh) = placement.Map(x, y, w, h);
         var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, rotation, flipH, flipV));
         var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
-        var markup = Ink.Render(ink, pw, ph);
-        if (markup.Length == 0)
+        var drawn = Ink.Render(ink, pw, ph);
+        if (drawn.Count == 0)
             return;
         // The id lets animations reach the ink (p:inkTgt, or p:spTgt of the content part).
         items.Add(new BoxItem((pw, ph), ToPx(matrix), Accessibility(element, isSlide, part),
-            [new MarkupItem($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">{markup}</svg>")]));
+            [new WrappedItem($"<svg width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\">", drawn, "</svg>")]));
     }
 
     static readonly XNamespace Cdr = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing";

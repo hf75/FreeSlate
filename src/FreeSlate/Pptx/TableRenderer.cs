@@ -21,14 +21,17 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
 
     sealed record Cell(XElement Element, int Row, int Column, int RowSpan, int ColumnSpan);
 
-    /// <summary>SVG content (pixels, frame-local) and the table's size in pixels.</summary>
-    public (string Svg, double Width, double Height) Render(XElement table)
+    /// <summary>
+    /// The table drawn (in pixels, frame-local): its definitions, the shadow and glow its effects cast, the cells'
+    /// fills, their borders and their text; and the table's size in pixels.
+    /// </summary>
+    public (List<SceneItem> Items, double Width, double Height) Render(XElement table)
     {
         var tblPr = table.Element(Ns.A + "tblPr");
         var columns = table.Element(Ns.A + "tblGrid")?.Elements(Ns.A + "gridCol").Select(c => (c.Long("w") ?? 0) / Units.EmuPerPoint).ToList() ?? [];
         var rows = table.Elements(Ns.A + "tr").ToList();
         if (columns.Count == 0 || rows.Count == 0)
-            return ("", 0, 0);
+            return ([], 0, 0);
 
         var style = Style(tblPr);
 
@@ -71,9 +74,9 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             ys[r + 1] = ys[r] + heights[r];
 
         var defs = new StringBuilder();
-        var fills = new StringBuilder();
-        var borders = new StringBuilder();
-        var texts = new StringBuilder();
+        var fills = new List<SceneItem>();
+        var borders = new List<SceneItem>();
+        var texts = new List<SceneItem>();
         // Each edge is drawn once: of the two cells sharing it, the border with the higher priority wins (own cell
         // borders over style parts, later style parts over earlier ones); measured on a total row's double top
         // border, which the row above does not paint over.
@@ -83,7 +86,7 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         // theme fill reference), visible through cells without a fill or with transparent ones.
         var background = TableBackground(tblPr, style);
         if (background is not NoFill)
-            fills.Append($"<rect width=\"{Px(xs[^1])}\" height=\"{Px(ys[^1])}\"{paint.Fill(background, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs)}/>");
+            fills.Add(new ShapeRectItem(0, 0, xs[^1] * PxPerPt, ys[^1] * PxPerPt, background, null, paint.Fill(background, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs)) { AtOrigin = true });
 
         // A right-to-left table (tblPr rtl) puts its first column on the right: every cell is mirrored with its left
         // and right borders, the text in it is not (measured).
@@ -101,9 +104,9 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             var cell3D = tcPr?.Element(Ns.A + "cell3D")
                          ?? Enumerable.Range(0, parts.Count).Reverse().Select(i => parts[i].Element(Ns.A + "tcStyle")?.Element(Ns.A + "cell3D")).FirstOrDefault(e => e != null);
             if (fill is not NoFill && cell3D?.Element(Ns.A + "bevel") is { } bevel)
-                fills.Append(Beveled(cell3D, bevel, fill, x, y, w, h, defs));
+                fills.Add(new MarkupItem(Beveled(cell3D, bevel, fill, x, y, w, h, defs)));
             else if (fill is not NoFill)
-                fills.Append($"<rect x=\"{Px(x)}\" y=\"{Px(y)}\" width=\"{Px(w)}\" height=\"{Px(h)}\"{paint.Fill(fill, w * PxPerPt, h * PxPerPt, defs)}/>");
+                fills.Add(new ShapeRectItem(x * PxPerPt, y * PxPerPt, w * PxPerPt, h * PxPerPt, fill, null, paint.Fill(fill, w * PxPerPt, h * PxPerPt, defs)));
 
             // A style part's borders refer to its own region (a row, a column, a corner cell or the whole table):
             // an edge on the region's outline takes top/bottom/left/right, an edge inside it insideH/insideV.
@@ -137,25 +140,28 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
                 (marL, marR) = (marR, marL);
             if (tcPr.Bool("anchorCtr") == true)
                 TextLayout.CenterBlock(layouts[cell], w - marL - marR);
-            texts.Append(HtmlScene.Markup(Turned(cell) is { } mode
+            texts.AddRange(Turned(cell) is { } mode
                 ? text.EmitTurned(layouts[cell], mode, x + marL, y + marT, w - marL - marR, h - marT - marB, tcPr.Str("anchor") ?? "t")
-                : text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t")));
+                : text.Emit(layouts[cell], x + marL, y + marT, h - marT - marB, tcPr.Str("anchor") ?? "t"));
         }
 
         foreach (var edge in edges.Values)
             Draw(borders, defs, edge.Outline, edge.X1, edge.Y1, edge.X2, edge.Y2);
         // The table's effects (a:tblPr/a:effectLst): the cells' fills and borders cast its shadow and glow, the text
         // does not; translucent fills let the shadow show through (measured: LibreOffice's table-shadow-blur).
-        var body = fills.ToString() + borders;
+        List<SceneItem> cast = [.. fills, .. borders];
+        var body = new List<SceneItem>(cast);
         var effects = tblPr?.Element(Ns.A + "effectLst");
-        if (SvgEffects.Filter(effects, slide.Colors, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs, parts: SvgEffects.Parts.Outer) is { } outer)
-            body = $"<g filter=\"url(#{outer})\">{body}</g>" + body;
+        if (SvgEffects.FilterOf(effects, slide.Colors, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs, parts: SvgEffects.Parts.Outer) is { } outer)
+            body.Insert(0, new FilterItem(outer.Id, outer.Model, cast));
         // A scaled, skewed or flipped shadow is a transformed copy of the table behind it, as for shapes (measured:
         // LibreOffice's tdf150020-shadow-alignment, a black shadow 130 % the table's size about its center).
         if (SvgEffects.Shadow(effects, slide.Colors, xs[^1] * PxPerPt, ys[^1] * PxPerPt, defs) is { } copy)
-            body = $"<g filter=\"url(#{copy.Filter})\"><g transform=\"{copy.Transform.Css()}\">{fills}{borders}</g></g>" + body;
-        var svg = (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + body + texts;
-        return (svg, xs[^1] * PxPerPt, ys[^1] * PxPerPt);
+            body.Insert(0, new FilterItem(copy.Filter, copy.Model, [new TransformItem(copy.Transform, cast)]));
+        List<SceneItem> items = defs.Length > 0 ? [new DefsItem(defs.ToString())] : [];
+        items.AddRange(body);
+        items.AddRange(texts);
+        return (items, xs[^1] * PxPerPt, ys[^1] * PxPerPt);
     }
 
     Fill TableBackground(XElement? tblPr, XElement? style)
@@ -284,7 +290,7 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         return (null, -1);
     }
 
-    void Draw(StringBuilder svg, StringBuilder defs, Outline? outline, double x1, double y1, double x2, double y2)
+    void Draw(List<SceneItem> items, StringBuilder defs, Outline? outline, double x1, double y1, double x2, double y2)
     {
         if (outline is not { Visible: true })
             return;
@@ -294,9 +300,9 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             // Double, thick-thin and triple borders (catalog: line.compound) as parallel strokes.
             var path = new Drawing.Geometry.EvaluatedPath(
                 [new Drawing.Geometry.PathSegment('M', [x1 * PxPerPt, y1 * PxPerPt]), new Drawing.Geometry.PathSegment('L', [x2 * PxPerPt, y2 * PxPerPt])], "none", true);
-            svg.Append(HtmlScene.Markup(CompoundLines.Strokes(path, flat, part => paint.Stroke(part, 0, 0, defs))));
+            items.AddRange(CompoundLines.Strokes(path, flat, part => paint.Stroke(part, 0, 0, defs)));
             return;
         }
-        svg.Append($"<path d=\"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}\" fill=\"none\"{paint.Stroke(flat, 0, 0, defs)}/>");
+        items.Add(new ShapePathItem($"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}", Fill.None, flat, $" fill=\"none\"{paint.Stroke(flat, 0, 0, defs)}"));
     }
 }

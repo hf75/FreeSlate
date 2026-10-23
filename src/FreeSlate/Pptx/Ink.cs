@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
 using FreeSlate.Drawing;
+using FreeSlate.Rendering;
 
 namespace FreeSlate.Pptx;
 
@@ -24,12 +25,15 @@ static class Ink
     sealed record Brush(double Width, RgbColor Color, double Opacity, bool Rectangle, bool Highlighter = false, bool IgnorePressure = false,
         bool FitToCurve = false);
 
-    /// <summary>SVG markup of an InkML part drawn into a box of <paramref name="width"/> × <paramref name="height"/> pixels.</summary>
-    public static string Render(XDocument ink, double width, double height)
+    /// <summary>
+    /// An InkML part drawn into a box of <paramref name="width"/> × <paramref name="height"/> pixels: each trace a path,
+    /// stroked with its brush, or one with the pen's pressure filled as its tapered outline.
+    /// </summary>
+    public static List<SceneItem> Render(XDocument ink, double width, double height)
     {
         var root = ink.Root;
         if (root == null)
-            return "";
+            return [];
         var definitions = root.Descendants(InkMl + "definitions").ToList();
         var brushes = definitions.SelectMany(d => d.Elements(InkMl + "brush"))
             .Where(b => b.Attribute(XNamespace.Xml + "id") != null)
@@ -68,7 +72,7 @@ static class Ink
                 traces.Add((points, pressure, brush));
         }
         if (traces.Count == 0)
-            return "";
+            return [];
 
         var all = traces.SelectMany(t => t.Points).ToList();
         var (minX, maxX, minY, maxY) = (all.Min(p => p.X), all.Max(p => p.X), all.Min(p => p.Y), all.Max(p => p.Y));
@@ -84,7 +88,7 @@ static class Ink
         var (ox, oy) = (0.0, 0.0);
         var highlighter = traces.Any(t => t.Brush.Highlighter);
 
-        var svg = new StringBuilder();
+        var drawn = new List<SceneItem>();
         foreach (var (points, pressure, brush) in traces)
         {
             var nominal = brush.Width * 96 / 2.54;
@@ -94,7 +98,6 @@ static class Ink
             // (measured); the stroke is drawn as tapered pieces with round joints.
             if (pressure.Any(f => Math.Abs(f - 0.5) > 0.001) && !brush.Rectangle)
             {
-                svg.Append($"<g fill=\"{brush.Color.ToHex()}\"{(opacityOf < 0.999 ? $" opacity=\"{Units.Css4(opacityOf)}\"" : "")}>");
                 var screen = points.Select(p => (X: ox + (p.X - minX) * sx, Y: oy + (p.Y - minY) * sy)).ToList();
                 var radius = pressure.Select(f => nominal * (0.25 + 1.5 * f) / 2).ToList();
                 var shape = new StringBuilder();
@@ -112,7 +115,8 @@ static class Ink
                     shape.Append($"M{Units.Css(x + nx * radius[i])} {Units.Css(y + ny * radius[i])}L{Units.Css(x2 + nx * radius[i + 1])} {Units.Css(y2 + ny * radius[i + 1])}" +
                                  $"L{Units.Css(x2 - nx * radius[i + 1])} {Units.Css(y2 - ny * radius[i + 1])}L{Units.Css(x - nx * radius[i])} {Units.Css(y - ny * radius[i])}Z");
                 }
-                svg.Append($"<path d=\"{shape}\" fill-rule=\"nonzero\"/></g>");
+                drawn.Add(new SvgGroupItem($" fill=\"{brush.Color.ToHex()}\"{(opacityOf < 0.999 ? $" opacity=\"{Units.Css4(opacityOf)}\"" : "")}",
+                    [new ShapePathItem(shape.ToString(), new SolidFill(brush.Color), null, " fill-rule=\"nonzero\"")]));
                 continue;
             }
             var d = new StringBuilder();
@@ -139,13 +143,16 @@ static class Ink
             var stroke = brush.Width * 96 / 2.54;
             var cap = brush.Rectangle ? "square" : "round";
             var join = brush.Rectangle ? "miter" : "round";
-            svg.Append($"<path d=\"{d}\" fill=\"none\" stroke=\"{brush.Color.ToHex()}\" stroke-width=\"{Units.Css(stroke)}\" stroke-linecap=\"{cap}\" stroke-linejoin=\"{join}\"");
             var opacity = highlighter ? Math.Min(brush.Opacity, 0.5) : brush.Opacity;
-            if (opacity < 0.999)
-                svg.Append($" stroke-opacity=\"{Units.Css4(opacity)}\"");
-            svg.Append("/>");
+            // The stroke's outline as DrawingML's (round or square tips and joins, SVG's miter limit), translucent as
+            // the brush is.
+            var outline = new Outline(stroke * Units.EmuPerPixel, new SolidFill(opacity < 0.999 ? brush.Color with { A = opacity } : brush.Color), "solid",
+                brush.Rectangle ? "sq" : "rnd", join, 4, "sng");
+            drawn.Add(new ShapePathItem(d.ToString(), Fill.None, outline,
+                $" fill=\"none\" stroke=\"{brush.Color.ToHex()}\" stroke-width=\"{Units.Css(stroke)}\" stroke-linecap=\"{cap}\" stroke-linejoin=\"{join}\""
+                + (opacity < 0.999 ? $" stroke-opacity=\"{Units.Css4(opacity)}\"" : "")));
         }
-        return svg.ToString();
+        return drawn;
     }
 
     static Brush ReadBrush(XElement brush)

@@ -124,6 +124,9 @@ public static class HtmlScene
                 case ShapePathItem shapePath:
                     html.Append($"<path{shapePath.Lead} d=\"{shapePath.Data}\"{shapePath.Attributes}/>");
                     break;
+                case ShapeRectItem { AtOrigin: true } atOrigin:
+                    html.Append($"<rect width=\"{Units.Css(atOrigin.Width)}\" height=\"{Units.Css(atOrigin.Height)}\"{atOrigin.Attributes}/>");
+                    break;
                 case ShapeRectItem shapeRect:
                     html.Append($"<rect x=\"{Units.Css(shapeRect.X)}\" y=\"{Units.Css(shapeRect.Y)}\" width=\"{Units.Css(shapeRect.Width)}\" height=\"{Units.Css(shapeRect.Height)}\"{shapeRect.Attributes}/>");
                     break;
