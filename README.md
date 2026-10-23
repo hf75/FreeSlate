@@ -179,6 +179,27 @@ deletes again goes away outright); `WordDocument.Open(path, markup: true)` reads
 shows all markup. The pages it lays out (`Scenes`) know where each character stands
 (`PlacesItem`), which `FreeSlate.Skia.TextPlaces` turns into hit tests, cursors and selections.
 
+### Editing and saving presentations
+
+```csharp
+using FreeSlate;
+
+using var deck = PresentationDocument.Open("deck.pptx");
+// Slides by id, their text bodies (shapes, groups, table cells) and paragraphs by id; a place is an offset in a
+// paragraph's text (a line break, a field or an equation counts as one character).
+var title = deck.Slides[0].Bodies[0].Paragraphs[0];
+deck.Insert(title, 0, "Draft: ");
+var second = deck.Split(title, 7);      // as Enter splits it
+deck.Join(title);                       // as Delete at its end joins it with the next
+deck.Undo();                            // and Redo
+deck.Save("deck-edited.pptx");          // the changed paragraphs written anew, every other byte as it was
+```
+
+`PresentationDocument` changes the text of slides as PowerPoint does (new text in the format of the text before it,
+a split paragraph's halves with its properties, a joined one with the first's), undoes and redoes each change, and keeps
+the paragraphs' ids. A change is made in the XML of its slide, which is read and drawn again; the slides it draws
+(`Scenes`) know where each character stands, as Word documents' pages do.
+
 ### The output
 
 - `deck.html` shows all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
