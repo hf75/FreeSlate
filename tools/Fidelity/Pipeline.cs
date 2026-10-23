@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using FreeSlate;
+using FreeSlate.Skia;
 using Fidelity.Compare;
 using Fidelity.Rendering;
 using Fidelity.Word;
@@ -20,10 +21,24 @@ public static class Pipeline
 {
     const int Parallelism = 4;
 
-    public static string OutputDir(string deck) => Path.Combine(Repo.Artifacts, deck);
+    /// <summary>
+    /// Whether the Skia backend (FreeSlate.Skia) renders instead of the browser (--skia): its renderings and report go to
+    /// artifacts/fidelity/skia.
+    /// </summary>
+    public static bool Skia { get; set; }
+
+    /// <summary>Where the report and the renderings go.</summary>
+    public static string ReportDir => Skia ? Path.Combine(Repo.Artifacts, "skia") : Repo.Artifacts;
+
+    public static string OutputDir(string deck) => Path.Combine(ReportDir, deck);
 
     public static void Render(IEnumerable<string> decks)
     {
+        if (Skia)
+        {
+            RenderSkia(decks);
+            return;
+        }
         var browser = Browser.Find();
         var profiles = new ConcurrentBag<string>(Enumerable.Range(0, Parallelism).Select(i => Path.Combine(Repo.Artifacts, ".browser", $"profile-{i}")));
         Console.WriteLine($"Browser: {browser.Executable}");
@@ -145,6 +160,65 @@ public static class Pipeline
             }
         });
         Console.WriteLine($"  rendered  {deck}: {pages} pages (convert {convertTime} ms, screenshots {watch.ElapsedMilliseconds - convertTime} ms)");
+    }
+
+    /// <summary>
+    /// The Skia backend's renderings: a document's pages drawn into a PDF, rasterized as RenderDocument rasterizes the
+    /// browser's on Windows (elsewhere drawn straight to pictures); a deck's slides, hidden ones too, drawn straight to
+    /// pictures at the size of PowerPoint's.
+    /// </summary>
+    static void RenderSkia(IEnumerable<string> decks)
+    {
+        foreach (var deck in decks)
+        {
+            var dir = OutputDir(deck);
+            Directory.CreateDirectory(dir);
+            foreach (var old in Directory.GetFiles(dir, "*.png"))
+                File.Delete(old);
+            var watch = Stopwatch.StartNew();
+            try
+            {
+                if (Repo.IsDocument(deck))
+                {
+                    // Date and time fields show when Word printed the reference, as in RenderDocument.
+                    var scenes = DocxConverter.ToScenes(Repo.DeckFile(deck), password: Repo.DeckPassword(deck), culture: Repo.Regional,
+                        markup: Repo.Markup(deck), printed: References.DocumentPrinted(deck));
+                    if (OperatingSystem.IsWindows())
+                    {
+                        var pdf = Path.Combine(dir, "ours.pdf");
+                        using (var file = File.Create(pdf))
+                            SkiaScene.Pdf(scenes, file);
+                        var reference = References.DocumentPdf(deck);
+                        var sizes = File.Exists(reference) ? new PdfText(reference).Pages.Select(p => (p.Width, p.Height)).ToList() : null;
+                        PdfPages.Rasterize(pdf, dir, References.DocumentScale, sizes);
+                    }
+                    else
+                    {
+                        for (var i = 0; i < scenes.Count; i++)
+                            File.WriteAllBytes(Path.Combine(dir, References.ImageName(deck, i + 1)), SkiaScene.Png(scenes[i], References.DocumentScale));
+                    }
+                    Console.WriteLine($"  rendered  {deck}: {scenes.Count} pages with Skia ({watch.ElapsedMilliseconds} ms)");
+                }
+                else
+                {
+                    // Fonts a deck embeds are used even where they are installed, as in Render.
+                    var scenes = PptxConverter.ToScenes(Repo.DeckFile(deck), password: Repo.DeckPassword(deck), embeddedFontsFirst: true,
+                        culture: Repo.Regional, hidden: true);
+                    var reference = References.Load(deck);
+                    for (var i = 0; i < scenes.Count; i++)
+                    {
+                        var (width, height) = reference is { } r ? (r.Width, r.Height) : (1280, 720);
+                        var scale = width / (scenes[i].Width * 96 / 72);
+                        File.WriteAllBytes(Path.Combine(dir, References.ImageName(deck, i + 1)), SkiaScene.Png(scenes[i], scale, width, height));
+                    }
+                    Console.WriteLine($"  rendered  {deck}: {scenes.Count} slides with Skia ({watch.ElapsedMilliseconds} ms)");
+                }
+            }
+            catch (Exception e) when (e is not OutOfMemoryException)
+            {
+                Console.WriteLine($"  failed    {deck}: {e.GetType().Name}: {e.Message.Split('\n')[0].Trim()}");
+            }
+        }
     }
 
     public static List<DeckResult> Compare(IEnumerable<string> decks)

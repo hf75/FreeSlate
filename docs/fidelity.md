@@ -74,6 +74,11 @@ MuPDF's other antialiasing moves no score. PyMuPDF brings MuPDF under the AGPL-3
 only, FreeSlate does not use it. Without it (or with `FIDELITY_NO_MUPDF=1`) the pages stay as Windows draws them, and
 a note says so. `reraster` brings stored references up to date; scores before 2026-10-21 were measured without it.
 
+With `--skia`, `run`, `render` and `compare` measure the Skia backend (`FreeSlate.Skia`) instead of the browser: a
+document's pages are drawn into a PDF (`SkiaScene.Pdf`) and rasterized as the browser's is, a deck's slides (the
+hidden ones too, as PowerPoint exports them) are drawn straight to pictures at the reference's size. The renderings
+and the report go to `artifacts/fidelity/skia`, so that both backends can be compared document by document.
+
 Documents whose name begins with `markup-` (`docx/local/markup-revisions`) are rendered with their markup on both
 sides: Word prints them with all markup (`ExportDocumentWithMarkup`), FreeSlate converts them with `markup: true`.
 Word gives the authors of comments and tracked changes their colors in the order it meets them in a session, over all

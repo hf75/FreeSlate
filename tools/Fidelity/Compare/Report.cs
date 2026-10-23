@@ -10,9 +10,9 @@ public static class Report
 {
     public static string Write(List<DeckResult> results)
     {
-        Directory.CreateDirectory(Repo.Artifacts);
-        var reportPath = Path.Combine(Repo.Artifacts, "report.html");
-        string Rel(string path) => Path.GetRelativePath(Repo.Artifacts, path).Replace('\\', '/');
+        Directory.CreateDirectory(Pipeline.ReportDir);
+        var reportPath = Path.Combine(Pipeline.ReportDir, "report.html");
+        string Rel(string path) => Path.GetRelativePath(Pipeline.ReportDir, path).Replace('\\', '/');
         static string Pct(double v) => (v * 100).ToString("0.0", CultureInfo.InvariantCulture) + " %";
 
         var overall = results.Count == 0 ? 0 : results.SelectMany(r => r.Slides).Average(s => s.Score.Score);
@@ -37,7 +37,10 @@ public static class Report
         foreach (var r in results)
         {
             html.Append($"<h2 id=\"{WebUtility.HtmlEncode(r.Deck)}\">{WebUtility.HtmlEncode(r.Deck)}: {Pct(r.Score)}</h2>");
-            html.Append($"<p><a href=\"{Rel(Path.Combine(Pipeline.OutputDir(r.Deck), "index.html"))}\">our HTML</a></p>");
+            if (!Pipeline.Skia)
+                html.Append($"<p><a href=\"{Rel(Path.Combine(Pipeline.OutputDir(r.Deck), "index.html"))}\">our HTML</a></p>");
+            else if (Repo.IsDocument(r.Deck))
+                html.Append($"<p><a href=\"{Rel(Path.Combine(Pipeline.OutputDir(r.Deck), "ours.pdf"))}\">our PDF</a></p>");
             var document = Repo.IsDocument(r.Deck);
             foreach (var s in r.Slides)
             {
@@ -55,7 +58,7 @@ public static class Report
         html.Append("</body></html>");
         File.WriteAllText(reportPath, html.ToString());
 
-        File.WriteAllText(Path.Combine(Repo.Artifacts, "scores.json"), JsonSerializer.Serialize(new
+        File.WriteAllText(Path.Combine(Pipeline.ReportDir, "scores.json"), JsonSerializer.Serialize(new
         {
             overall,
             decks = results.Select(r => new

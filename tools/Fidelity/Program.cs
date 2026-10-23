@@ -13,6 +13,7 @@ CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 var command = args.FirstOrDefault() ?? "run";
 var rest = args.Skip(1).Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
 var force = args.Contains("--force");
+Pipeline.Skia = args.Contains("--skia");
 var decks = Repo.Select(rest);
 
 switch (command)
@@ -176,6 +177,8 @@ switch (command)
               run [deck…]          render and compare (default); a folder stands for its decks ("generated")
               render [deck…]       convert with the engine and take screenshots with a headless browser
               compare [deck…]      compare screenshots with the references, write artifacts/fidelity/report.html
+                --skia             (run, render, compare) the Skia backend instead of the browser: documents drawn
+                                   into a PDF, slides into pictures; output and report in artifacts/fidelity/skia
               generate [deck…]     create the generated test decks with PowerPoint, the generated documents
                                    ("docx/generated/<name>", "docx" for all) with Word (Windows)
               reference [deck…]    render reference images with PowerPoint, of Word documents ("docx/…") with Word
