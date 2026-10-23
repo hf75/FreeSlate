@@ -161,15 +161,18 @@ var first = document.Blocks.OfType<ParagraphBlock>().First();
 document.Insert(first.Id, 0, "Draft: ");
 var second = document.Split(first.Id, 7);   // as Enter splits it
 document.Join(first.Id);                    // as Delete at its end joins it with the next
+document.Format(first.Id, 0, 5, new TextFormatting { Bold = true, Size = 14 });
+document.Format(first.Id, new ParagraphFormatting { Alignment = "center", After = 6 });
 document.Undo();                            // and Redo
 document.Save("report-edited.docx");        // the changed paragraphs written anew, every other byte as it was
 ```
 
 `WordDocument` replaces text where the document has it as text, in the format of the text before it, splits, joins
-and removes paragraphs, and undoes and redoes each change; paragraphs keep their ids through changes. A change is made
-in the XML of the paragraphs it touches, which are read again on their own (the numbers of the lists after them worked
-out anew) and laid out again from the page before; saving writes each changed paragraph into the XML it was read from
-and leaves the rest of the package as it was. The pages it lays out (`Scenes`) know where each character stands
+and removes paragraphs, gives text and paragraphs direct formatting as Word's buttons do, and undoes and redoes each
+change; paragraphs keep their ids through changes. A change is made in the XML of the paragraphs it touches, which are
+read again on their own (the numbers of the lists after them worked out anew) and laid out again from the page
+before; saving writes each changed paragraph into the XML it was read from and leaves the rest of the package as it
+was. The pages it lays out (`Scenes`) know where each character stands
 (`PlacesItem`), which `FreeSlate.Skia.TextPlaces` turns into hit tests, cursors and selections.
 
 ### The output

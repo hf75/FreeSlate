@@ -1432,6 +1432,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var (given, lastSection, footnotes, endnotes, endnoteSeparator) = input ?? throw new InvalidOperationException("Relayout needs a pagination.");
         var (from, after) = settledRun && laid != null && checkpoints is { Count: > 0 } ? Changed(given, blocks) : (null, []);
+        // A header's field that came out empty on some page prints plain on every page (FieldInline.Unmerged): whether it
+        // still does after the change shows only on all pages again (found with docx/local/fsf3-e).
+        if (from?.Fields is { Emptied.Count: > 0 })
+            from = null;
         if (from != null)
         {
             // The fields read the edited blocks (bookmarks' text, sequences) and know of the pages what the checkpoint's did.
@@ -1492,8 +1496,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             tail++;
         var (was, now) = (Places(given), Places(blocks));
         // The first checkpoint, before any block, knows nothing of the blocks; the others may know the block they
-        // stand before (the one before looked ahead at it).
-        var at = head < given.Count ? was[head] : (Section: int.MaxValue, Block: 0);
+        // stand before (the one before looked ahead at it), and the blocks kept with the next one stand where the blocks
+        // after them put them (a chain of them goes to the next page where it does not fit): the run begins before the
+        // chain the first block that differs ends (found with docx/local/kc12, tk4, tk9: a chain pushed to page 2
+        // came back once a block of it was taken away).
+        var first = head;
+        while (first > 0 && KeptWithNext(given[first - 1]))
+            first--;
+        var at = first < given.Count ? was[first] : (Section: int.MaxValue, Block: 0);
         var from = checkpoints!.LastOrDefault(c => c.Section < at.Section || c.Section == at.Section && c.Block < at.Block)
             ?? (checkpoints![0] is { Section: 0, Block: 0 } start ? start : null);
         var index = Enumerable.Range(0, was.Count).ToDictionary(k => was[k]);
@@ -5532,6 +5542,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     static bool RowKept(TableModel table, int row) =>
         table.Rows.Where(r => !r.Format.Hidden).ElementAtOrDefault(row)?.Cells.FirstOrDefault()?.Blocks.FirstOrDefault() is ParagraphBlock { Format.KeepNext: true };
+
+    /// <summary>Whether a block is kept with the next one: a paragraph by w:keepNext, a table by its last row (see RowKept).</summary>
+    static bool KeptWithNext(Block block) => block switch
+    {
+        ParagraphBlock paragraph => paragraph.Format.KeepNext == true,
+        TableBlock table => table.Table.Rows.Count(r => !r.Format.Hidden) is var rows and > 0 && RowKept(table.Table, rows - 1),
+        _ => false,
+    };
 
     /// <summary>Whether the last table placed ends with a row kept with the next block.</summary>
     bool tableKept;

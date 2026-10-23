@@ -65,23 +65,27 @@ public sealed partial class ModelReader
                 return null;
             leading.Insert(0, e = previous);
         }
+        // The blocks read from the children (each block from the child of the body it stands in). A paragraph that stands
+        // for no block of its own and whose mark is not deleted went into the block of the one before it (a hidden mark
+        // takes in the next paragraph, see JoinHidden).
+        var tops = body.Select(b => Top(Of(b))).ToList();
+        var blockTops = tops.OfType<XElement>().ToHashSet(ReferenceEqualityComparer.Instance);
+        bool Absorbed(XElement e) => e.Name == Wml.W + "p" && !blockTops.Contains(e) && e.Child("pPr").Child("rPr") is var mark
+            && mark.Child("del") == null && mark.Child("moveFrom") == null;
         // It goes on as it did at the first child after them where it could begin afresh, the children up to it read
-        // anew; further on where the new children do not end afresh.
+        // anew (those the last old one took in too); further on where the new children do not end afresh.
         var trailing = new List<XElement>();
         var next = old.Count > 0 ? After(old[^1]) : before;
         void Further()
         {
-            while (next != null && !(bodyPoints.TryGetValue(next, out var point) && point.Fresh))
+            while (next != null && (!(bodyPoints.TryGetValue(next, out var point) && point.Fresh) || Absorbed(next)))
             {
                 trailing.Add(next);
                 next = After(next);
             }
         }
         Further();
-        // The blocks read from those children (each block from the child of the body it stands in), one after the other;
-        // where there are none, the new ones go before the blocks of the children after them.
-        var tops = body.Select(b => Top(Of(b))).ToList();
-        var blockTops = tops.OfType<XElement>().ToHashSet(ReferenceEqualityComparer.Instance);
+        // Where none of those children has blocks, the new ones go before the blocks of the children after them.
         var place = body.Count;
         for (var e = first; e != null; e = After(e))
         {
@@ -102,13 +106,11 @@ public sealed partial class ModelReader
             }
             if (from < 0)
                 (from, to) = (place, place);
-            // The block before them took nothing of them (a paragraph whose mark is hidden takes in the next one, see
-            // JoinHidden: a paragraph read that stands for no block of its own, its mark not deleted, went into it), nor
-            // does it stay as it is only before what they were (a hidden mark's before a table).
+            // The block before them took nothing of them (what a paragraph read took in, the one it went into is read
+            // too), nor does it stay as it is only before what they were (a hidden mark's before a table).
             read.Add(first);
             return trailing.All(bodyPoints.ContainsKey) && !leading.Concat(trailing).Any(Elsewhere) && Enumerable.Range(from, to - from).All(k => tops[k] is { } top && read.Contains(top))
-                && !read.Any(e => e.Name == Wml.W + "p" && !blockTops.Contains(e) && e.Child("pPr").Child("rPr") is var mark
-                    && mark.Child("del") == null && mark.Child("moveFrom") == null)
+                && read.Where(Absorbed).All(e => Before(e) is { } taker && read.Contains(taker))
                 && !(from > 0 && body[from - 1] is ParagraphBlock previous
                     && (previous.MarkFormat.Vanish == true || previous.Content.Any(i => i.Xml is { } xml && Top(xml) is { } top && read.Contains(top))))
                 ? (from, to) : null;

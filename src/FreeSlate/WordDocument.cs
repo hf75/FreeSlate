@@ -12,8 +12,9 @@ namespace FreeSlate;
 /// <summary>
 /// A Word document opened to change it and to save it (catalog: package.opc): its paragraphs by the ids the reader gives
 /// them (Block.Id, which the places of its pages name, see PlacesItem) and keep through changes; text replaced at places
-/// of a paragraph's text (Docx.ParagraphText), a paragraph split in two, joined with the next or taken away; each change
-/// undone and done again; its pages as it reads now; and the document saved as DOCX: the stretches of its body it
+/// of a paragraph's text (Docx.ParagraphText), a paragraph split in two, joined with the next or taken away, text and
+/// paragraphs given direct formatting (Docx.TextFormatting, Docx.ParagraphFormatting); each change undone and done
+/// again; its pages as it reads now; and the document saved as DOCX: the stretches of its body it
 /// changed written anew in the XML they were read from, every other byte of the package as it was (see Docx.TextEdits).
 /// A change is made in the XML the blocks it touches were read from, a stretch of the main part's text: parsed afresh,
 /// changed, made ready as the part was when it was loaded and read anew in place of those blocks (ModelReader.Reread),
@@ -184,6 +185,25 @@ public sealed class WordDocument : IDisposable
         return first ? paragraph : next.Id;
     }
 
+    /// <summary>
+    /// Gives a stretch of a paragraph's text character formatting (see TextFormatting): its runs split where it begins
+    /// and ends, those within it formatted.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The stretch holds what cannot be formatted so (an equation, a ruby, what the reader made); nothing changes.</exception>
+    public void Format(int paragraph, int offset, int length, TextFormatting format)
+    {
+        var (p, top) = Find(paragraph);
+        Change(top, top, stretch => TextEdits.Format(stretch, p, offset, length, format));
+    }
+
+    /// <summary>Gives a paragraph paragraph formatting (see ParagraphFormatting).</summary>
+    /// <exception cref="NotSupportedException">The paragraph holds content of another (see TextEdits); nothing changes.</exception>
+    public void Format(int paragraph, ParagraphFormatting format)
+    {
+        var (p, top) = Find(paragraph);
+        Change(top, top, stretch => TextEdits.Format(stretch, p, format));
+    }
+
     /// <summary>Takes a paragraph away with all its content; the section it ends goes on into the next one.</summary>
     /// <exception cref="NotSupportedException">It is the last of its body, cell or text box; nothing changes.</exception>
     public void Remove(int paragraph)
@@ -241,9 +261,11 @@ public sealed class WordDocument : IDisposable
         renderer.Settings = paginator.Settings;
         // The pages before the one laid out again from and from the one the layout before followed on are drawn as they
         // were, unless what their headers and footers show may have changed with them: their number, a section's number
-        // of pages, fields that read the body.
+        // of pages, fields that read the body; those after it also not where line numbers count on over pages.
         var now = (pages.Count, string.Join(",", pages.Where(p => !p.Blank).GroupBy(p => p.SectionIndex).Select(g => $"{g.Key}:{g.Count()}")));
         var keep = scenes != null && from > 0 && now == counts && !StoriesRead(pages);
+        var counted = pages.Any(p => p.Section.Element.Child("lnNumType") is { } numbering && (numbering.Number("countBy") ?? 0) >= 1
+            && numbering.Attr("restart") is "newSection" or "continuous");
         var sizes = new List<(double Width, double Height)>();
         var drawn = new List<PageScene>(pages.Count);
         var how = new List<(int Paper, double Budget, double Cost)>(pages.Count);
@@ -260,7 +282,7 @@ public sealed class WordDocument : IDisposable
                 paper = sizes.Count - 1;
             }
             var left = context.Text3DBudget;
-            if (keep && k < scenes!.Count && drawnAs[k].Paper == paper && drawnAs[k].Budget == left && (k < from - 1 || until > 0 && k >= until - 1))
+            if (keep && k < scenes!.Count && drawnAs[k].Paper == paper && drawnAs[k].Budget == left && (k < from - 1 || until > 0 && k >= until - 1 && !counted))
             {
                 drawn.Add(scenes[k]);
                 context.Text3DBudget -= drawnAs[k].Cost;

@@ -406,6 +406,278 @@ static class TextEdits
         return (stretch.Spliced([(start, end, PartText.Xml(p))]), true);
     }
 
+    /// <summary>The order of the run properties in w:rPr (CT_ParaRPr, EG_RPrBase): a mark's revisions first.</summary>
+    static readonly string[] RunOrder =
+    [
+        "ins", "del", "moveFrom", "moveTo", "rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps", "strike", "dstrike", "outline", "shadow",
+        "emboss", "imprint", "noProof", "snapToGrid", "vanish", "webHidden", "color", "spacing", "w", "kern", "position", "sz", "szCs", "highlight",
+        "u", "effect", "bdr", "shd", "fitText", "vertAlign", "rtl", "cs", "em", "lang", "eastAsianLayout", "specVanish", "oMath",
+    ];
+
+    /// <summary>The order of the paragraph properties in w:pPr (CT_PPr): the mark's run properties, the section and a change of them last.</summary>
+    static readonly string[] ParagraphOrder =
+    [
+        "pStyle", "keepNext", "keepLines", "pageBreakBefore", "framePr", "widowControl", "numPr", "suppressLineNumbers", "pBdr", "shd", "tabs",
+        "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd",
+        "snapToGrid", "spacing", "ind", "contextualSpacing", "mirrorIndents", "suppressOverlap", "jc", "textDirection", "textAlignment",
+        "textboxTightWrap", "outlineLvl", "divId", "cnfStyle", "rPr", "sectPr", "pPrChange",
+    ];
+
+    /// <summary>
+    /// The child of a properties element (w:rPr, w:pPr) with a name, made where there is none in its place by the
+    /// schema's order: before the first child that comes after it, elements of other namespaces (extensions, which come
+    /// after the schema's own) and a change of the properties (w:rPrChange, w:pPrChange) counting as after it. Where the
+    /// element has it twice (docx/external/libreoffice/extras-uiwriter/tdf147199: two w:sz, the reader takes the last),
+    /// the others go.
+    /// </summary>
+    static XElement Property(XElement properties, string name, string[] order)
+    {
+        var w = properties.Name.Namespace;
+        if (properties.Element(w + name) is { } found)
+        {
+            foreach (var twice in properties.Elements(w + name).Skip(1).ToList())
+                twice.Remove();
+            return found;
+        }
+        var rank = Array.IndexOf(order, name);
+        var made = new XElement(w + name);
+        if (properties.Elements().FirstOrDefault(e => e.Name.Namespace != w || e.Name.LocalName is "rPrChange" or "pPrChange" || Array.IndexOf(order, e.Name.LocalName) > rank) is { } after)
+            after.AddBeforeSelf(made);
+        else
+            properties.Add(made);
+        return made;
+    }
+
+    /// <summary>The properties element (w:rPr of a run, w:pPr of a paragraph) an element begins with, made where it has none.</summary>
+    static XElement Properties(XElement element, string name) =>
+        element.Element(element.Name.Namespace + name) ?? Made(element, element.Name.Namespace + name);
+
+    static XElement Made(XElement parent, XName name)
+    {
+        var made = new XElement(name);
+        parent.AddFirst(made);
+        return made;
+    }
+
+    /// <summary>A length in points as twentieths of a point (twips).</summary>
+    static string Twips(double points) => ((int)Math.Round(points * 20)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Character formatting given to a stretch of a paragraph's text (see TextFormatting): the runs that hold it split
+    /// where it begins and ends, each run within it formatted, a field the layout computes with all its runs (begin to
+    /// end). Returns the stretch's new text.
+    /// </summary>
+    public static string Format(Stretch stretch, ParagraphBlock paragraph, int offset, int length, TextFormatting format)
+    {
+        if (offset < paragraph.TextOffset || length < 0 || offset + length > ParagraphText.End(paragraph))
+            throw new ArgumentOutOfRangeException(nameof(offset), "The range is not in the paragraph's text.");
+        Between(paragraph, offset);
+        Between(paragraph, offset + length);
+        var p = Find(stretch, paragraph);
+        var end = offset + length;
+        var runs = new List<XElement>();
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var (s, e) = (at, at + ParagraphText.Length(inline));
+            at = e;
+            if (e == s || e <= offset || s >= end)
+                continue;
+            if (inline is FieldInline && stretch.Find(inline.Xml) is { } begin && begin.Ancestors().Contains(p) && FieldRuns(begin, p) is { } field)
+            {
+                runs.AddRange(field);
+                continue;
+            }
+            var text = inline is TextInline { Xml.Name.LocalName: "t" } t ? t : null;
+            var element = text != null ? TextOf(stretch, inline, p) : inline is RubyInline or MathInline ? null : stretch.Find(inline.Xml);
+            if (element == null || !element.Ancestors().Contains(p) || element.Parent is not { Name.LocalName: "r" })
+                throw new NotSupportedException($"The range holds what cannot be formatted so ({inline.GetType().Name}).");
+            if (text != null)
+            {
+                // The part of the text within the range in a w:t of its own.
+                var (from, to) = (Math.Max(offset, s) - s, Math.Min(end, e) - s);
+                if (to < text.Text.Length)
+                    Cut(element, to);
+                if (from > 0)
+                    element = Cut(element, from);
+            }
+            // In a run of its own.
+            SplitBefore(element);
+            if (element.ElementsAfterSelf().FirstOrDefault() is { } next)
+                SplitBefore(next);
+            runs.Add(element.Parent!);
+        }
+        foreach (var run in runs.Distinct())
+            Format(run, format);
+        return stretch.Written([(p, [p])]);
+    }
+
+    /// <summary>A w:t cut in two at a place in its text (as the reader reads it); returns the second half, after it in its run.</summary>
+    static XElement Cut(XElement t, int at)
+    {
+        var value = ReadText(t);
+        var rest = new XElement(t);
+        SetText(t, value[..at]);
+        SetText(rest, value[at..]);
+        t.AddAfterSelf(rest);
+        return rest;
+    }
+
+    /// <summary>A run split before one of its children: that child and what follows it go into a run of their own after it, with the same properties.</summary>
+    static void SplitBefore(XElement child)
+    {
+        var run = child.Parent!;
+        if (!child.ElementsBeforeSelf().Any(e => e.Name.LocalName != "rPr"))
+            return;
+        var w = run.Name.Namespace;
+        var second = new XElement(run.Name, run.Attributes(), run.Element(w + "rPr") is { } properties ? new XElement(properties) : null);
+        var moved = child.NodesAfterSelf().Prepend(child).ToList();
+        foreach (var node in moved)
+            node.Remove();
+        second.Add(moved);
+        run.AddAfterSelf(second);
+    }
+
+    /// <summary>
+    /// The runs of a field the layout computes: a w:fldSimple's, or a complex field's from its begin to its end, which
+    /// stand in its paragraph; null where it does not end there.
+    /// </summary>
+    static List<XElement>? FieldRuns(XElement begin, XElement p)
+    {
+        var w = begin.Name.Namespace;
+        if (begin.Name.LocalName == "fldSimple")
+            return [.. begin.Descendants(w + "r").Where(r => ParagraphOf(r) == p)];
+        if (begin.Parent is not { Name.LocalName: "r" } first)
+            return null;
+        var runs = new List<XElement>();
+        var depth = 0;
+        foreach (var run in p.Descendants(w + "r").Where(r => ParagraphOf(r) == p).SkipWhile(r => r != first))
+        {
+            runs.Add(run);
+            foreach (var c in run.Elements(w + "fldChar"))
+                depth += (string?)c.Attribute(w + "fldCharType") switch { "begin" => 1, "end" => -1, _ => 0 };
+            if (depth == 0)
+                return runs;
+        }
+        return null;
+    }
+
+    /// <summary>Character formatting set on a run's properties, as Word's buttons set it (see TextFormatting).</summary>
+    static void Format(XElement run, TextFormatting format)
+    {
+        var w = run.Name.Namespace;
+        var properties = Properties(run, "rPr");
+        void Set(string name, string? value, params string[] taken)
+        {
+            var e = Property(properties, name, RunOrder);
+            e.SetAttributeValue(w + "val", value);
+            foreach (var attribute in taken)
+                e.Attribute(w + attribute)?.Remove();
+        }
+        if (format.Bold is { } bold)
+        {
+            Set("b", bold ? null : "0");
+            Set("bCs", bold ? null : "0");
+        }
+        if (format.Italic is { } italic)
+        {
+            Set("i", italic ? null : "0");
+            Set("iCs", italic ? null : "0");
+        }
+        if (format.Underline is { } underline)
+            Set("u", underline);
+        if (format.Size is { } size)
+        {
+            var half = ((int)Math.Round(size * 2)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            Set("sz", half);
+            Set("szCs", half);
+        }
+        if (format.Font is { } font)
+        {
+            var fonts = Property(properties, "rFonts", RunOrder);
+            foreach (var slot in new[] { "ascii", "hAnsi", "eastAsia", "cs" })
+                fonts.SetAttributeValue(w + slot, font);
+            foreach (var theme in new[] { "asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme" })
+                fonts.Attribute(w + theme)?.Remove();
+        }
+        if (format.Color is { } color)
+            Set("color", color, "themeColor", "themeTint", "themeShade");
+        if (format.Highlight is { } highlight)
+            Set("highlight", highlight);
+    }
+
+    /// <summary>
+    /// Paragraph formatting given to a paragraph (see ParagraphFormatting): in a Strict document's names (start and end
+    /// for left and right), and in the names its indents have. Indents and spacing in points stand where indents in
+    /// characters, spacing in lines or automatic spacing (of HTML) would stand over them: those, where the paragraph has
+    /// them (of its own, of its style or its list, 0 too, which keeps a style's away), are set to 0, as Word sets them.
+    /// Returns the stretch's new text.
+    /// </summary>
+    public static string Format(Stretch stretch, ParagraphBlock paragraph, ParagraphFormatting format)
+    {
+        var p = Find(stretch, paragraph);
+        Whole(stretch, paragraph, p);
+        var w = p.Name.Namespace;
+        // A paragraph whose mark is deleted (a tracked change) shows the formatting of the one it runs into.
+        if (p.Element(w + "pPr")?.Element(w + "rPr") is { } mark && (mark.Element(w + "del") ?? mark.Element(w + "moveFrom")) != null)
+            throw new NotSupportedException("The paragraph's mark is deleted: it shows the formatting of the paragraph it runs into.");
+        var strict = w != Wml.W;
+        var properties = Properties(p, "pPr");
+        if (format.Style is { } style)
+            Property(properties, "pStyle", ParagraphOrder).SetAttributeValue(w + "val", style);
+        if (format.Alignment is { } alignment)
+            Property(properties, "jc", ParagraphOrder).SetAttributeValue(w + "val", strict ? alignment switch { "left" => "start", "right" => "end", _ => alignment } : alignment);
+        if (format.Left != null || format.Right != null || format.FirstLine != null)
+        {
+            var ind = Property(properties, "ind", ParagraphOrder);
+            var (left, right) = strict || ind.Attribute(w + "start") != null || ind.Attribute(w + "end") != null ? ("start", "end") : ("left", "right");
+            var had = paragraph.Format;
+            if (format.Left is { } l)
+            {
+                ind.SetAttributeValue(w + left, Twips(l));
+                ind.SetAttributeValue(w + (left + "Chars"), had.LeftChars != null ? "0" : null);
+            }
+            if (format.Right is { } r)
+            {
+                ind.SetAttributeValue(w + right, Twips(r));
+                ind.SetAttributeValue(w + (right + "Chars"), had.RightChars != null ? "0" : null);
+            }
+            // A first line in characters stands over one in twips, and a hanging one makes the left one count in
+            // characters too (see ParagraphFormat.ApplyCharacterUnits): with a left indent given, the first line keeps
+            // where it stood, in twips.
+            if ((format.FirstLine ?? (format.Left != null && had.FirstLineChars is not (null or 0) ? had.FirstLine ?? 0 : null)) is { } first)
+            {
+                ind.SetAttributeValue(w + (first >= 0 ? "firstLine" : "hanging"), Twips(Math.Abs(first)));
+                ind.Attribute(w + (first >= 0 ? "hanging" : "firstLine"))?.Remove();
+                ind.Attribute(w + "hangingChars")?.Remove();
+                ind.SetAttributeValue(w + "firstLineChars", had.FirstLineChars != null ? "0" : null);
+            }
+        }
+        if (format.Before != null || format.After != null || format.Lines != null)
+        {
+            var spacing = Property(properties, "spacing", ParagraphOrder);
+            var had = paragraph.Format;
+            if (format.Before is { } before)
+            {
+                spacing.SetAttributeValue(w + "before", Twips(before));
+                spacing.SetAttributeValue(w + "beforeLines", had.BeforeLines != null ? "0" : null);
+                spacing.SetAttributeValue(w + "beforeAutospacing", had.BeforeAuto != null ? "0" : null);
+            }
+            if (format.After is { } after)
+            {
+                spacing.SetAttributeValue(w + "after", Twips(after));
+                spacing.SetAttributeValue(w + "afterLines", had.AfterLines != null ? "0" : null);
+                spacing.SetAttributeValue(w + "afterAutospacing", had.AfterAuto != null ? "0" : null);
+            }
+            if (format.Lines is { } lines)
+            {
+                spacing.SetAttributeValue(w + "line", ((int)Math.Round(lines * 240)).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                spacing.SetAttributeValue(w + "lineRule", "auto");
+            }
+        }
+        return stretch.Written([(p, [p])]);
+    }
+
     /// <summary>Whether an element between paragraphs is a mark, which goes into a paragraph (a bookmark, a comment's range, a proofing mark).</summary>
     static bool IsMark(XElement element) =>
         element.Name.LocalName is "bookmarkStart" or "bookmarkEnd" or "commentRangeStart" or "commentRangeEnd" or "permStart" or "permEnd" or "proofErr"
