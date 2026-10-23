@@ -17,8 +17,8 @@
         <Button Name="ReloadButton" Content="Neu laden" IsEnabled="False" Click="OnReloadClick" ToolTip.Tip="F5" />
         <ToggleButton Name="MarkupToggle" Content="Mit Markup" IsCheckedChanged="OnMarkupChanged"
                       ToolTip.Tip="Kommentare und Änderungen, wie Word sie mit Markup druckt" />
-        <ToggleButton Name="SkiaToggle" Content="Skia" IsCheckedChanged="OnSkiaChanged"
-                      ToolTip.Tip="Die Seiten selbst mit Skia zeichnen statt als HTML im Browser" />
+        <ToggleButton Name="BrowserToggle" Content="Browser" IsCheckedChanged="OnBrowserChanged"
+                      ToolTip.Tip="Das Dokument als HTML im Browser zeigen statt die Seiten selbst mit Skia zu zeichnen" />
         <ComboBox Name="ZoomBox" MinWidth="140" SelectionChanged="OnZoomChanged" ToolTip.Tip="Zoom">
           <ComboBoxItem Content="Automatisch" />
           <ComboBoxItem Content="Seitenbreite" />

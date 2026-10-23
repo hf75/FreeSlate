@@ -76,8 +76,8 @@ with the Office behavior that was measured for it.
 
 ## Quick start
 
-Requirements: the [.NET 10 SDK](https://dotnet.microsoft.com/download). The presenter and the viewer additionally need a
-web view (WebView2 on Windows).
+Requirements: the [.NET 10 SDK](https://dotnet.microsoft.com/download). The presenter and the viewer's *Browser* view
+additionally need a web view (WebView2 on Windows).
 
 ```sh
 git clone https://github.com/hf75/FreeSlate.git
@@ -129,6 +129,22 @@ DocxConverter.ToFile("report.docx", "report-markup.html", markup: true);
 The options of `PptxConverter` for passwords, fonts and the regional format (`password`, `fonts`, `culture`) work
 for Word documents too; the culture also chooses the language of the markup balloons (German or English).
 
+### Exporting PDF
+
+```csharp
+using FreeSlate.Skia;
+
+// The pages drawn by Skia into a PDF: text in its fonts (embedded as subsets), drawings as vectors, the document's
+// title, author, subject and keywords from its properties.
+using (var pdf = File.Create("report.pdf"))
+    PdfExport.FromDocx("report.docx", pdf);
+using (var pdf = File.Create("deck.pdf"))
+    PdfExport.FromPptx("deck.pptx", pdf);
+```
+
+`FreeSlate.Skia` draws what the converters lay out (`DocxConverter.ToScenes`, `PptxConverter.ToScenes`: one scene of
+typed items per page or slide) on any Skia canvas, as PNG (`SkiaScene.Png`) or as PDF (`SkiaScene.Pdf`).
+
 ### The output
 
 - `deck.html` shows all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
@@ -159,12 +175,13 @@ always runs against the current engine.
 dotnet run --project src/FreeSlate.Viewer -- report.docx
 ```
 
-The viewer is the presenter's counterpart for Word documents (its interface is German too): it converts a document
-and shows its pages in the platform's web view, zooms (automatic, page width, whole page, 50 to 200 %), jumps to a
-page, shows the document with its markup, prints it, saves its HTML, and loads it again when it is saved (F5 does
+The viewer is the presenter's counterpart for Word documents (its interface is German too): it converts a document and
+draws its pages with Skia (*Browser* shows FreeSlate's HTML in the platform's web view instead), zooms (automatic,
+page width, whole page, 50 to 200 %), jumps to a page, follows links (to bookmarks of the document or to the web),
+shows the document with its markup, prints it, saves it as PDF or HTML, and loads it again when it is saved (F5 does
 too). A document that cannot be converted shows the whole exception. On Windows with Word installed, *Word daneben*
-puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with a slider between the
-two, and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM, as the fidelity tool
+puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with a slider between the two,
+and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM, as the fidelity tool
 renders its references, and Windows rasterizes the pages.
 
 ## How it works
@@ -198,8 +215,9 @@ More in [docs/fidelity.md](docs/fidelity.md).
 
 | Path | Content |
 |---|---|
-| `FreeSlate.slnx` | the solution: engine, presenter and viewer |
+| `FreeSlate.slnx` | the solution: engine, Skia backend, presenter and viewer |
 | `src/FreeSlate/` | the rendering engine |
+| `src/FreeSlate.Skia/` | the Skia backend: pages and slides drawn from their scenes, PNG and PDF |
 | `src/FreeSlate.Presenter/` | the presenter app (Avalonia) |
 | `src/FreeSlate.Viewer/` | the viewer app for Word documents (Avalonia) |
 | `tools/Fidelity/` | builds the test decks through PowerPoint, renders references, measures fidelity |

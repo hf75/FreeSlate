@@ -16,9 +16,9 @@ using FreeSlate.Skia;
 namespace FreeSlate.Viewer;
 
 /// <summary>
-/// Opens a Word document and shows it as FreeSlate's HTML document in the platform's web view, or its pages drawn by
-/// Skia, as Word prints them; on Windows with Word installed also Word's own pages, beside FreeSlate's, over them or
-/// against them.
+/// Opens a Word document and shows its pages drawn by Skia, or FreeSlate's HTML document in the platform's web view, as
+/// Word prints them; on Windows with Word installed also Word's own pages, beside FreeSlate's, over them or against
+/// them.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -113,13 +113,14 @@ public partial class MainWindow : Window
         }
         BlendSlider.Value = Math.Clamp(settings.Blend, 0, 100);
         MarkupToggle.IsChecked = settings.Markup;
-        SkiaToggle.IsChecked = settings.Skia;
+        BrowserToggle.IsChecked = settings.Browser;
         WatchBox.IsChecked = settings.Watch;
         ScenePages.PageChanged += n =>
         {
             if (!PageBox.IsFocused)
                 PageBox.Text = n.ToString(CultureInfo.CurrentCulture);
         };
+        ScenePages.LinkClicked += Follow;
 
         Closing += (_, _) => settings.Save();
         Closed += (_, _) =>
@@ -239,10 +240,40 @@ public partial class MainWindow : Window
         await ReloadAsync();
     }
 
-    async void OnSkiaChanged(object? sender, RoutedEventArgs e)
+    async void OnBrowserChanged(object? sender, RoutedEventArgs e)
     {
-        settings.Skia = SkiaToggle.IsChecked == true;
+        settings.Browser = BrowserToggle.IsChecked == true;
         await ReloadAsync();
+    }
+
+    /// <summary>A link of the pages Skia draws: a bookmark of the document scrolled to, a web address opened in the browser.</summary>
+    void Follow(string target)
+    {
+        if (target.StartsWith('#'))
+        {
+            var name = target[1..];
+            if (view?.Scenes is { } scenes && scenes.Select((scene, i) => (Page: i + 1, Mark: Bookmark(scene.Items, name))).FirstOrDefault(m => m.Mark != null) is { Mark: { } mark } found)
+                ScenePages.GoTo(found.Page, mark.Y);
+            return;
+        }
+        if (Uri.TryCreate(target, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" or "mailto")
+            _ = Launcher.LaunchUriAsync(uri);
+    }
+
+    /// <summary>A bookmark of a page by its name, among its items and those they hold.</summary>
+    static BookmarkItem? Bookmark(IEnumerable<SceneItem> items, string name)
+    {
+        foreach (var item in items)
+        {
+            if (item is BookmarkItem bookmark && bookmark.Name == name)
+                return bookmark;
+            foreach (var property in item.GetType().GetProperties().Where(p => p.PropertyType == typeof(List<SceneItem>)))
+            {
+                if (property.GetValue(item) is List<SceneItem> inner && Bookmark(inner, name) is { } found)
+                    return found;
+            }
+        }
+        return null;
     }
 
     async void OnZoomChanged(object? sender, SelectionChangedEventArgs e)
@@ -404,7 +435,7 @@ public partial class MainWindow : Window
         {
             var clock = Stopwatch.StartNew();
             var (source, key) = await Task.Run(() => Readable(path, markup));
-            if (SkiaToggle.IsChecked == true)
+            if (BrowserToggle.IsChecked != true)
             {
                 // The pages drawn by Skia from their scenes, no web view.
                 var scenes = await Task.Run(() => DocxConverter.ToScenes(source, password: password, markup: markup));

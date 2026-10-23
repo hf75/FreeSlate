@@ -44,12 +44,15 @@ public static class SkiaScene
 
     static float Px(double points) => (float)(points * PxPerPt);
 
-    /// <summary>A page drawn on a canvas whose units are CSS pixels from the page's top left, its paper white.</summary>
-    public static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics = null)
+    /// <summary>
+    /// A page drawn on a canvas whose units are CSS pixels from the page's top left, its paper white; with
+    /// <paramref name="links"/>, where the page's links stand in those units and what they lead to (LinkItem.Target).
+    /// </summary>
+    public static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics = null, List<(SKRect Area, string Target)>? links = null)
     {
         using var paper = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
         canvas.DrawRect(0, 0, Px(scene.Width), Px(scene.Height), paper);
-        new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes).Draw(scene.Items);
+        new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes, links: links).Draw(scene.Items);
     }
 
     /// <summary>
@@ -127,8 +130,10 @@ public static class SkiaScene
     /// <param name="glyphs">The glyph outlines markup names by id (see PageScene.Glyphs).</param>
     /// <param name="defined">The page's definitions so far, shared with the drawer of the page.</param>
     /// <param name="exactDashes">Whether dash patterns repeat in the outline's exact width (see PageScene.ExactDashes).</param>
+    /// <param name="links">Where the links drawn on the page itself stand on it (not those within recordings), or null.</param>
     sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null,
-        GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null, bool exactDashes = false)
+        GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null, bool exactDashes = false,
+        List<(SKRect Area, string Target)>? links = null)
     {
         /// <summary>The elements the page's definitions (DefsItem) hold by id, which markup refers to.</summary>
         readonly Dictionary<string, System.Xml.Linq.XElement> definitions = defined ?? [];
@@ -276,7 +281,18 @@ public static class SkiaScene
                     canvas.Restore();
                     break;
                 case LinkItem link:
-                    Draw(link.Items);
+                    if (links == null)
+                    {
+                        Draw(link.Items);
+                        break;
+                    }
+                    // Recorded once, the link's text gives where it stands on the page.
+                    using (var drawn = Record(link.Items))
+                    {
+                        if (!drawn.CullRect.IsEmpty && page.TryInvert(out var toPage))
+                            links.Add((toPage.PreConcat(canvas.TotalMatrix).MapRect(drawn.CullRect), link.Target));
+                        canvas.DrawPicture(drawn);
+                    }
                     break;
                 case CheckBoxItem box:
                 {

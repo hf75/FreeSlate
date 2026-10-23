@@ -9,7 +9,8 @@ sealed class Settings
     public int Compare { get; set; }
     public double Blend { get; set; } = 50;
     public bool Markup { get; set; }
-    public bool Skia { get; set; }
+    /// <summary>Whether the document shows as HTML in the web view, not drawn by Skia.</summary>
+    public bool Browser { get; set; }
     public bool Watch { get; set; } = true;
     public string? Folder { get; set; }
 

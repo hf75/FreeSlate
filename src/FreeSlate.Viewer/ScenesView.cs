@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
@@ -40,6 +41,9 @@ sealed class ScenesView : Control
 
     /// <summary>The page in view changed (its number, 1 for the first).</summary>
     public event Action<int>? PageChanged;
+
+    /// <summary>A link was clicked: its target (a web address, or # and a bookmark's name).</summary>
+    public event Action<string>? LinkClicked;
 
     public ScenesView()
     {
@@ -237,14 +241,46 @@ sealed class ScenesView : Control
         }
     }
 
-    /// <summary>Scrolls to a page's top.</summary>
-    public void GoTo(int page)
+    /// <summary>Scrolls to a page's top, or to <paramref name="points"/> below it.</summary>
+    public void GoTo(int page, double? points = null)
     {
         if (scroller == null || rows.Count == 0)
             return;
         var row = rows[Math.Clamp(page, 1, rows.Count) - 1];
-        scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0, (row.Top - Edge) * factor));
+        var top = points is { } y ? row.Top + row.Ours.Top + y * PxPerPt - Edge : row.Top - Edge;
+        scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0, top * factor));
         Track();
+    }
+
+    /// <summary>The target of the link under a point of the view, or null.</summary>
+    string? LinkAt(Point point)
+    {
+        foreach (var row in rows)
+        {
+            if (row.Index >= scenes.Count)
+                continue;
+            var (x, y) = ((point.X - Left(row)) / factor - row.Ours.X, point.Y / factor - row.Top - row.Ours.Y);
+            if (x < 0 || y < 0 || x > row.Ours.Width || y > row.Ours.Height)
+                continue;
+            return pictures.Links(scenes[row.Index]).LastOrDefault(l => l.Area.Contains((float)x, (float)y)).Target;
+        }
+        return null;
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        Cursor = LinkAt(e.GetPosition(this)) != null ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && LinkAt(e.GetPosition(this)) is { } target)
+        {
+            e.Handled = true;
+            LinkClicked?.Invoke(target);
+        }
     }
 
     /// <summary>The position in the document: the page in view and how far down it the view's top is (a share of its height).</summary>
@@ -268,32 +304,38 @@ sealed class ScenesView : Control
         Track();
     }
 
-    /// <summary>The pages' recorded drawings and Word's pictures, made once and drawn on the render thread.</summary>
+    /// <summary>The pages' recorded drawings and links and Word's pictures, made once and drawn on the render thread.</summary>
     sealed class Pictures
     {
-        readonly Dictionary<PageScene, SKPicture> pages = new(ReferenceEqualityComparer.Instance);
+        readonly Dictionary<PageScene, (SKPicture Picture, List<(SKRect Area, string Target)> Links)> pages = new(ReferenceEqualityComparer.Instance);
         readonly Dictionary<string, SKImage?> images = [];
 
         public void Clear()
         {
             lock (this)
             {
-                foreach (var picture in pages.Values)
+                foreach (var (picture, _) in pages.Values)
                     picture.Dispose();
                 pages.Clear();
             }
         }
 
-        public SKPicture Page(PageScene scene)
+        public SKPicture Page(PageScene scene) => Recorded(scene).Picture;
+
+        /// <summary>Where the page's links stand on it in CSS pixels and where they lead.</summary>
+        public List<(SKRect Area, string Target)> Links(PageScene scene) => Recorded(scene).Links;
+
+        (SKPicture Picture, List<(SKRect Area, string Target)> Links) Recorded(PageScene scene)
         {
             lock (this)
             {
-                if (pages.TryGetValue(scene, out var picture))
-                    return picture;
+                if (pages.TryGetValue(scene, out var recorded))
+                    return recorded;
                 using var recorder = new SKPictureRecorder();
                 var size = PageSize(scene);
-                SkiaScene.Draw(scene, recorder.BeginRecording(SKRect.Create((float)size.Width, (float)size.Height)));
-                return pages[scene] = recorder.EndRecording();
+                var links = new List<(SKRect Area, string Target)>();
+                SkiaScene.Draw(scene, recorder.BeginRecording(SKRect.Create((float)size.Width, (float)size.Height)), links: links);
+                return pages[scene] = (recorder.EndRecording(), links);
             }
         }
 
