@@ -251,6 +251,217 @@ static class SlideEdits
         return paragraph;
     }
 
+    /// <summary>
+    /// Gives text character formatting as PowerPoint's buttons do: the runs cut where the stretch begins and ends, its
+    /// runs, fields and line breaks formatted (a:rPr), and the paragraph's mark where the stretch reaches the paragraph's
+    /// end (an empty paragraph's mark made where it has none); runs cut in vain joined again.
+    /// </summary>
+    public static void Format(XElement paragraph, int offset, int length, TextFormatting format)
+    {
+        Check(paragraph);
+        var all = SlideText.Of(paragraph);
+        if (offset < 0 || length < 0 || offset + length > all.Length)
+            throw new ArgumentOutOfRangeException(nameof(offset), "The places lie outside the paragraph's text.");
+        Between(all, offset);
+        Between(all, offset + length);
+        var cuts = new[] { Cut(paragraph, offset), Cut(paragraph, offset + length) };
+        foreach (var (element, start) in Pieces(paragraph))
+        {
+            var size = SlideText.Length(element);
+            if (size > 0 && start >= offset && start + size <= offset + length && element.Name.Namespace == Ns.A)
+                Apply(Properties(element), format, element.Name == Ns.A + "r" ? Text(element) : "");
+        }
+        if (offset + length == all.Length)
+        {
+            var mark = paragraph.Element(Ns.A + "endParaRPr");
+            if (mark == null && all.Length == 0)
+                paragraph.Add(mark = new XElement(Ns.A + "endParaRPr"));
+            if (mark != null)
+                Apply(mark, format, "");
+        }
+        foreach (var cut in cuts)
+        {
+            if (cut is { Parent: not null } && cut.ElementsAfterSelf().FirstOrDefault() is { } next && next.Name == Ns.A + "r"
+                && XNode.DeepEquals(cut.Element(Ns.A + "rPr"), next.Element(Ns.A + "rPr")))
+            {
+                SetText(cut, Text(cut) + Text(next));
+                next.Remove();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gives a paragraph paragraph formatting (a:pPr): its alignment, indents (marL, marR, indent in EMU), space before
+    /// and after (in points) and line spacing (in percent), each in the place the schema gives it.
+    /// </summary>
+    public static void Format(XElement paragraph, ParagraphFormatting format)
+    {
+        Check(paragraph);
+        if (format.Style != null)
+            throw new NotSupportedException("Slide paragraphs have no styles.");
+        var pPr = paragraph.Element(Ns.A + "pPr");
+        if (pPr == null)
+            paragraph.AddFirst(pPr = new XElement(Ns.A + "pPr"));
+        if (format.Alignment is { } alignment)
+            pPr.SetAttributeValue("algn", alignment switch
+            {
+                "left" or "start" or "l" => "l",
+                "center" or "ctr" => "ctr",
+                "right" or "end" or "r" => "r",
+                "both" or "just" => "just",
+                "distribute" or "dist" => "dist",
+                "justLow" or "thaiDist" => alignment,
+                _ => throw new ArgumentException($"No alignment is called {alignment}.", nameof(format)),
+            });
+        if (format.Left is { } left)
+            pPr.SetAttributeValue("marL", Emu(left, 0, nameof(format.Left)));
+        if (format.Right is { } right)
+            pPr.SetAttributeValue("marR", Emu(right, 0, nameof(format.Right)));
+        if (format.FirstLine is { } firstLine)
+            pPr.SetAttributeValue("indent", Emu(firstLine, -4032, nameof(format.FirstLine)));
+        if (format.Lines is { } lines)
+            Place(pPr, new XElement(Ns.A + "lnSpc", new XElement(Ns.A + "spcPct", new XAttribute("val", Whole(lines * 100000, 0, 13200000, nameof(format.Lines))))), ParagraphOrder);
+        if (format.Before is { } before)
+            Place(pPr, new XElement(Ns.A + "spcBef", new XElement(Ns.A + "spcPts", new XAttribute("val", Whole(before * 100, 0, 158400, nameof(format.Before))))), ParagraphOrder);
+        if (format.After is { } after)
+            Place(pPr, new XElement(Ns.A + "spcAft", new XElement(Ns.A + "spcPts", new XAttribute("val", Whole(after * 100, 0, 158400, nameof(format.After))))), ParagraphOrder);
+    }
+
+    /// <summary>The order of a:rPr's children (CT_TextCharacterProperties).</summary>
+    static readonly string[] RunOrder =
+    [
+        "ln", "noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "effectLst", "effectDag", "highlight", "uLnTx", "uLn",
+        "uFillTx", "uFill", "latin", "ea", "cs", "sym", "hlinkClick", "hlinkMouseOver", "rtl", "extLst",
+    ];
+
+    /// <summary>The order of a:pPr's children (CT_TextParagraphProperties).</summary>
+    static readonly string[] ParagraphOrder =
+    [
+        "lnSpc", "spcBef", "spcAft", "buClrTx", "buClr", "buSzTx", "buSzPct", "buSzPts", "buFontTx", "buFont", "buNone", "buAutoNum",
+        "buChar", "buBlip", "tabLst", "defRPr", "extLst",
+    ];
+
+    static readonly string[] Fills = ["noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill"];
+
+    /// <summary>Word's highlight colors by name (w:highlight), as RRGGBB.</summary>
+    static readonly Dictionary<string, string> Highlights = new(StringComparer.Ordinal)
+    {
+        ["yellow"] = "FFFF00", ["green"] = "00FF00", ["cyan"] = "00FFFF", ["magenta"] = "FF00FF", ["blue"] = "0000FF", ["red"] = "FF0000",
+        ["darkBlue"] = "000080", ["darkCyan"] = "008080", ["darkGreen"] = "008000", ["darkMagenta"] = "800080", ["darkRed"] = "800000",
+        ["darkYellow"] = "808000", ["darkGray"] = "808080", ["lightGray"] = "C0C0C0", ["black"] = "000000", ["white"] = "FFFFFF",
+    };
+
+    /// <summary>Word's underlines by name (w:u) as DrawingML's (a:rPr u).</summary>
+    static readonly Dictionary<string, string> Underlines = new(StringComparer.Ordinal)
+    {
+        ["none"] = "none", ["single"] = "sng", ["double"] = "dbl", ["thick"] = "heavy", ["dotted"] = "dotted", ["dottedHeavy"] = "dottedHeavy",
+        ["dash"] = "dash", ["dashedHeavy"] = "dashHeavy", ["dashLong"] = "dashLong", ["dashLongHeavy"] = "dashLongHeavy", ["dotDash"] = "dotDash",
+        ["dashDotHeavy"] = "dotDashHeavy", ["dotDotDash"] = "dotDotDash", ["dashDotDotHeavy"] = "dotDotDashHeavy", ["wave"] = "wavy",
+        ["wavyHeavy"] = "wavyHeavy", ["wavyDouble"] = "wavyDbl", ["words"] = "words",
+    };
+
+    static readonly HashSet<string> DrawingUnderlines =
+        ["none", "words", "sng", "dbl", "heavy", "dotted", "dottedHeavy", "dash", "dashHeavy", "dashLong", "dashLongHeavy", "dotDash",
+         "dotDashHeavy", "dotDotDash", "dotDotDashHeavy", "wavy", "wavyHeavy", "wavyDbl"];
+
+    /// <summary>Character formatting set in a run's, field's, break's or mark's properties (see TextFormatting).</summary>
+    static void Apply(XElement properties, TextFormatting format, string text)
+    {
+        if (format.Bold is { } bold)
+            properties.SetAttributeValue("b", bold ? "1" : "0");
+        if (format.Italic is { } italic)
+            properties.SetAttributeValue("i", italic ? "1" : "0");
+        if (format.Underline is { } underline)
+            properties.SetAttributeValue("u", Underlines.GetValueOrDefault(underline)
+                ?? (DrawingUnderlines.Contains(underline) ? underline : throw new ArgumentException($"No underline is called {underline}.", nameof(format))));
+        if (format.Size is { } size)
+            properties.SetAttributeValue("sz", Whole(size * 100, 100, 400000, nameof(format.Size)));
+        if (format.Font is { } font)
+        {
+            var slots = FreeSlate.Text.Scripts.Split(text).Select(p => p.Slot).ToHashSet();
+            Place(properties, new XElement(Ns.A + "latin", new XAttribute("typeface", font)), RunOrder);
+            if (slots.Contains(FreeSlate.Text.FontSlot.EastAsian))
+                Place(properties, new XElement(Ns.A + "ea", new XAttribute("typeface", font)), RunOrder);
+            if (slots.Contains(FreeSlate.Text.FontSlot.Complex))
+                Place(properties, new XElement(Ns.A + "cs", new XAttribute("typeface", font)), RunOrder);
+        }
+        if (format.Color is { } color)
+        {
+            properties.Elements().Where(e => Fills.Contains(e.Name.LocalName)).Remove();
+            if (color != "auto")
+                Place(properties, new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", Rgb(color)))), RunOrder);
+        }
+        if (format.Highlight is { } highlight)
+        {
+            properties.Element(Ns.A + "highlight")?.Remove();
+            if (highlight != "none")
+                Place(properties, new XElement(Ns.A + "highlight", new XElement(Ns.A + "srgbClr", new XAttribute("val", Highlights.GetValueOrDefault(highlight) ?? Rgb(highlight)))), RunOrder);
+        }
+    }
+
+    /// <summary>A color as RRGGBB, upper case.</summary>
+    static string Rgb(string color) =>
+        color.Length == 6 && color.All(char.IsAsciiHexDigit) ? color.ToUpperInvariant() : throw new ArgumentException($"{color} is no color (RRGGBB).", nameof(color));
+
+    /// <summary>A length in points as EMU, at least <paramref name="least"/> points and at most 4 032 (the schema's 51 206 400 EMU).</summary>
+    static string Emu(double points, double least, string name) => Whole(points * 12700, least * 12700, 51206400, name);
+
+    static string Whole(double value, double least, double most, string name) =>
+        value >= least - 1e-9 && value <= most + 1e-9
+            ? ((long)Math.Round(value)).ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : throw new ArgumentOutOfRangeException(name, "The value lies outside what the schema allows.");
+
+    /// <summary>A child put in its place among an element's children by the schema's order, in place of one of its name.</summary>
+    static void Place(XElement parent, XElement child, string[] order)
+    {
+        var rank = Array.IndexOf(order, child.Name.LocalName);
+        if (parent.Elements(child.Name).FirstOrDefault() is { } old)
+        {
+            old.ReplaceWith(child);
+            return;
+        }
+        if (parent.Elements().FirstOrDefault(e => e.Name.Namespace == Ns.A && Array.IndexOf(order, e.Name.LocalName) > rank) is { } after)
+            after.AddBeforeSelf(child);
+        else
+            parent.Add(child);
+    }
+
+    /// <summary>The properties of a run, field or break (a:rPr), made where it has none.</summary>
+    static XElement Properties(XElement element)
+    {
+        if (element.Element(Ns.A + "rPr") is { } properties)
+            return properties;
+        properties = new XElement(Ns.A + "rPr");
+        element.AddFirst(properties);
+        return properties;
+    }
+
+    /// <summary>
+    /// Cuts the run a place falls inside in two, both in its format; returns the run that ends at the place (the first
+    /// half, or the run there already), null where none does.
+    /// </summary>
+    static XElement? Cut(XElement paragraph, int offset)
+    {
+        foreach (var (element, start) in Pieces(paragraph))
+        {
+            var size = SlideText.Length(element);
+            if (element.Name != Ns.A + "r" || size == 0)
+                continue;
+            if (start + size == offset)
+                return element;
+            if (start < offset && offset < start + size)
+            {
+                var value = Text(element);
+                SetText(element, value[..(offset - start)]);
+                var rest = NewRun(element.Element(Ns.A + "rPr"), copy: true);
+                SetText(rest, value[(offset - start)..]);
+                element.AddAfterSelf(rest);
+                return element;
+            }
+        }
+        return null;
+    }
+
     /// <summary>Checks that a place does not fall between the halves of a character (a surrogate pair).</summary>
     static void Between(string text, int offset)
     {

@@ -25,7 +25,8 @@ public sealed record DeckText(uint Shape, (int Row, int Column)? Cell, IReadOnly
 /// A PowerPoint presentation opened to change it and to save it (catalog: package.opc): its slides by their ids, the text
 /// bodies of their shapes and table cells with their paragraphs by ids unique in the document, which they keep through
 /// changes; text replaced at places of a paragraph's text (Pptx.SlideText), a paragraph split in two, joined with the next
-/// or taken away, as PowerPoint makes these changes (see Pptx.SlideEdits); each change undone and done again; its slides
+/// or taken away, text and paragraphs given direct formatting (TextFormatting, ParagraphFormatting), as PowerPoint makes
+/// these changes (see Pptx.SlideEdits); each change undone and done again; its slides
 /// as scenes with the places of their text (see PlacesItem); and the presentation saved as PPTX: the paragraphs a change
 /// touched written anew in the XML they were read from, every other byte of the package as it was. A change is made in
 /// the XML of its slide's part, parsed afresh; the part is read again and the slide drawn anew, the unit of reading and
@@ -163,6 +164,26 @@ public sealed class PresentationDocument : IDisposable
         });
         return stays;
     }
+
+    /// <summary>
+    /// Gives so many characters of a paragraph's text from a place character formatting (see TextFormatting), as
+    /// PowerPoint's buttons do; a stretch that reaches the paragraph's end formats its mark too, which an empty
+    /// paragraph's formatting is (see SlideEdits.Format).
+    /// </summary>
+    public void Format(int paragraph, int offset, int length, TextFormatting format) =>
+        Change(paragraph, false, (p, _, body) =>
+        {
+            SlideEdits.Format(p, offset, length, format);
+            return ([p], body);
+        });
+
+    /// <summary>Gives a paragraph paragraph formatting (see ParagraphFormatting; slides have no paragraph styles).</summary>
+    public void Format(int paragraph, ParagraphFormatting format) =>
+        Change(paragraph, false, (p, _, body) =>
+        {
+            SlideEdits.Format(p, format);
+            return ([p], body);
+        });
 
     /// <summary>Takes a paragraph away with all its text; the only paragraph of a text body stays.</summary>
     public void Remove(int paragraph) =>

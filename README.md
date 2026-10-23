@@ -191,13 +191,15 @@ var title = deck.Slides[0].Bodies[0].Paragraphs[0];
 deck.Insert(title, 0, "Draft: ");
 var second = deck.Split(title, 7);      // as Enter splits it
 deck.Join(title);                       // as Delete at its end joins it with the next
+deck.Format(title, 0, 5, new TextFormatting { Bold = true, Color = "C00000" });
+deck.Format(title, new ParagraphFormatting { Alignment = "center", Before = 6 });
 deck.Undo();                            // and Redo
 deck.Save("deck-edited.pptx");          // the changed paragraphs written anew, every other byte as it was
 ```
 
 `PresentationDocument` changes the text of slides as PowerPoint does (new text in the format of the text before it,
-a split paragraph's halves with its properties, a joined one with the first's), undoes and redoes each change, and keeps
-the paragraphs' ids. A change is made in the XML of its slide, which is read and drawn again; the slides it draws
+a split paragraph's halves with its properties, a joined one with the first's), gives text and paragraphs direct
+formatting as PowerPoint's buttons do, undoes and redoes each change, and keeps the paragraphs' ids. A change is made in the XML of its slide, which is read and drawn again; the slides it draws
 (`Scenes`) know where each character stands, as Word documents' pages do.
 
 ### The output
