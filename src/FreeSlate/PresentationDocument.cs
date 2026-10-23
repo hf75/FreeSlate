@@ -15,6 +15,13 @@ namespace FreeSlate;
 public sealed record DeckSlide(uint Id, string Part, bool Hidden, IReadOnlyList<DeckText> Bodies);
 
 /// <summary>
+/// A shape at the top of a slide's tree as the presentation reads now: its id on the slide (p:cNvPr/@id), its name, its
+/// kind (sp, pic, cxnSp, graphicFrame, grpSp, contentPart) and its place in points, its own or its placeholder's on the
+/// layout or master (null where it has none).
+/// </summary>
+public sealed record DeckShape(uint Id, string Name, string Kind, (double X, double Y, double Width, double Height)? Place);
+
+/// <summary>
 /// A text body of a slide, of a shape (p:txBody) or of a table's cell (a:txBody; Cell its row and column): its shape by
 /// the id it has on the slide (p:cNvPr/@id), its paragraphs by their ids, which the places of the slide's scene name (see
 /// PlacesItem).
@@ -26,7 +33,8 @@ public sealed record DeckText(uint Shape, (int Row, int Column)? Cell, IReadOnly
 /// bodies of their shapes and table cells with their paragraphs by ids unique in the document, which they keep through
 /// changes; text replaced at places of a paragraph's text (Pptx.SlideText), a paragraph split in two, joined with the next
 /// or taken away, text and paragraphs given direct formatting (TextFormatting, ParagraphFormatting), as PowerPoint makes
-/// these changes (see Pptx.SlideEdits); each change undone and done again; its slides
+/// these changes (see Pptx.SlideEdits); shapes placed, taken away and text boxes added (see Pptx.SlideShapes); each change
+/// undone and done again; its slides
 /// as scenes with the places of their text (see PlacesItem); and the presentation saved as PPTX: the paragraphs a change
 /// touched written anew in the XML they were read from, every other byte of the package as it was. A change is made in
 /// the XML of its slide's part, parsed afresh; the part is read again and the slide drawn anew, the unit of reading and
@@ -196,6 +204,101 @@ public sealed class PresentationDocument : IDisposable
             return ([], body);
         });
 
+    /// <summary>The shapes at the top of a slide's tree (a group as one), by the slide's id, as the presentation reads now.</summary>
+    public IReadOnlyList<DeckShape> Shapes(uint slide)
+    {
+        var s = SlideOf(slide);
+        return [.. (Tree(s)?.Elements() ?? []).Where(IsShape).Select(e => new DeckShape(ShapeId(e), Shape(e)?.Str("name") ?? "", e.Name.LocalName,
+            Transform(s, e) is { } xfrm && xfrm.Element(Ns.A + "off") is { } off && xfrm.Element(Ns.A + "ext") is { } ext
+                ? ((off.Long("x") ?? 0) / Units.EmuPerPoint, (off.Long("y") ?? 0) / Units.EmuPerPoint, (ext.Long("cx") ?? 0) / Units.EmuPerPoint, (ext.Long("cy") ?? 0) / Units.EmuPerPoint)
+                : null))];
+    }
+
+    /// <summary>
+    /// Places a shape at the top of a slide's tree in points, its position and size, keeping its turn and flips: a
+    /// placeholder that takes its place from its layout gets one of its own, a group moves and scales its shapes (see
+    /// SlideShapes.Place).
+    /// </summary>
+    /// <exception cref="NotSupportedException">The shape cannot be placed in its XML (see SlideShapes).</exception>
+    public void PlaceShape(uint slide, uint shape, double x, double y, double width, double height)
+    {
+        if (!(width >= 0 && height >= 0 && double.IsFinite(x) && double.IsFinite(y) && double.IsFinite(width) && double.IsFinite(height)))
+            throw new ArgumentOutOfRangeException(nameof(width), "A shape is placed at a point and is at least empty.");
+        var s = SlideOf(slide);
+        var read = ShapeOf(s, shape);
+        var inherited = Transform(s, read);
+        var raw = Parse(s);
+        // Each alternative of markup compatibility the shape stands in, placed alike.
+        var changed = SlideShapes.Alternatives(raw.Of(read, "shape")).Select(e => SlideShapes.Place(e, Emu(x), Emu(y), Emu(width), Emu(height), inherited)).ToList();
+        Commit(s, raw, changed.Select(raw.Written), Lists(s));
+    }
+
+    /// <summary>
+    /// Takes a shape at the top of a slide's tree away with its text and what animates it, and connectors' connections
+    /// to it (see SlideShapes).
+    /// </summary>
+    public void DeleteShape(uint slide, uint shape)
+    {
+        var s = SlideOf(slide);
+        var read = ShapeOf(s, shape);
+        var raw = Parse(s);
+        var (element, ids) = SlideShapes.Removed(raw.Of(read, "shape"));
+        var (start, end) = raw.Range(element);
+        var changes = new List<(int Start, int End, string Text)> { (start, end, "") };
+        var tree = raw.Xml.Root!.Element(Ns.P + "cSld")!.Element(Ns.P + "spTree")!;
+        var connections = SlideShapes.Connections(tree, ids, element);
+        var holders = connections.Select(c => c.Parent!).Distinct().ToList();
+        var ranges = holders.ToDictionary(h => h, raw.Range);
+        connections.ForEach(c => c.Remove());
+        changes.AddRange(holders.Select(h => (ranges[h].Start, ranges[h].End, PartText.Xml(h))));
+        foreach (var timing in raw.Xml.Root.Descendants(Ns.P + "timing").ToList())
+        {
+            var range = raw.Range(timing);
+            var (timingChanged, gone) = SlideShapes.Unanimate(timing, ids);
+            if (timingChanged)
+                changes.Add((range.Start, range.End, gone ? "" : PartText.Xml(timing)));
+        }
+        var lists = Enumerable.Range(0, s.Bodies.Count).Where(k => !s.Bodies[k].Element.Ancestors().Contains(read)).Select(k => new List<int>(s.Bodies[k].Paragraphs)).ToList();
+        Commit(s, raw, changes, lists);
+    }
+
+    /// <summary>
+    /// Puts a text box on a slide, at the top of its tree, in points (see SlideShapes.TextBox: its paragraphs the
+    /// text's lines, "\n", a line break "\v"); returns its id on the slide.
+    /// </summary>
+    public uint AddTextBox(uint slide, double x, double y, double width, double height, string text)
+    {
+        if (!(width >= 0 && height >= 0 && double.IsFinite(x) && double.IsFinite(y) && double.IsFinite(width) && double.IsFinite(height)))
+            throw new ArgumentOutOfRangeException(nameof(width), "A shape is placed at a point and is at least empty.");
+        if (text.IndexOfAny(['\r', '￼']) >= 0)
+            throw new ArgumentException("A text box's text holds no carriage returns (its lines are paragraphs) and no objects.", nameof(text));
+        var s = SlideOf(slide);
+        var raw = Parse(s);
+        var tree = raw.Xml.Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "spTree") ?? throw new NotSupportedException("The slide has no shape tree.");
+        var greatest = raw.Xml.Descendants().Where(e => e.Name.LocalName == "cNvPr")
+            .Select(e => long.TryParse(e.Attribute("id")?.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : 0).DefaultIfEmpty(0).Max();
+        if (greatest >= uint.MaxValue)
+            throw new NotSupportedException("The slide's shapes have used up the ids.");
+        var id = (uint)(greatest + 1);
+        var box = SlideShapes.TextBox(id, Emu(x), Emu(y), Emu(width), Emu(height), text);
+        int at;
+        if (tree.Element(Ns.P + "extLst") is { } extension)
+        {
+            at = raw.Range(extension).Start;
+            extension.AddBeforeSelf(box);
+        }
+        else
+        {
+            var last = tree.Elements().Last();
+            at = raw.Range(last).End;
+            last.AddAfterSelf(box);
+        }
+        var lists = Lists(s);
+        lists.Add([.. text.Split('\n').Select(_ => ++lastId)]);
+        Commit(s, raw, [(at, at, PartText.Xml(box))], lists);
+        return id;
+    }
+
     /// <summary>Undoes the last change not undone; false where there is none.</summary>
     public bool Undo()
     {
@@ -262,25 +365,59 @@ public sealed class PresentationDocument : IDisposable
         var readNext = withNext
             ? body.Element.Elements(Ns.A + "p").ElementAtOrDefault(index + 1) ?? throw new NotSupportedException("The paragraph is the last of its text body.")
             : null;
-        var text = new PartText(slide.Bytes);
-        var raw = XDocument.Parse(text.Text, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
-        if (raw.Root?.Name != Ns.P + "sld")
-            throw new NotSupportedException("The slide's part is not in the transitional names of PresentationML (a strict presentation).");
-        var starts = new Dictionary<int, XElement>();
-        foreach (var element in raw.Descendants())
-            starts.TryAdd(text.Start(element), element);
-        XElement Raw(XElement element) =>
-            text.Start(element) is var at and >= 0 && starts.TryGetValue(at, out var found) && found.Name == element.Name
-                ? found
-                : throw new NotSupportedException("The paragraph is not where it was read.");
-        var p = Raw(read);
-        var next = readNext != null ? Raw(readNext) : null;
-        var start = text.Start(p);
-        var end = text.End(next != null ? text.Start(next) : start);
+        var raw = Parse(slide);
+        var p = raw.Of(read, "paragraph");
+        var next = readNext != null ? raw.Of(readNext, "paragraph") : null;
+        var start = raw.Text.Start(p);
+        var end = raw.Text.End(next != null ? raw.Text.Start(next) : start);
         var (written, ids) = edit(p, next, [.. body.Paragraphs]);
         var lists = Lists(slide);
         lists[bodyIndex] = ids;
-        Apply(slide, text.Spliced([(start, end, string.Concat(written.Select(PartText.Xml)))]), lists);
+        Commit(slide, raw, [(start, end, string.Concat(written.Select(PartText.Xml)))], lists);
+    }
+
+    /// <summary>
+    /// A slide's part as it reads now, parsed afresh with line info (no alternatives of markup compatibility chosen):
+    /// its text, its XML, and the element of it each element read from it is.
+    /// </summary>
+    sealed class Raw(PartText text, XDocument xml)
+    {
+        readonly Dictionary<int, XElement> starts = xml.Descendants().GroupBy(text.Start).ToDictionary(g => g.Key, g => g.First());
+
+        public PartText Text => text;
+        public XDocument Xml => xml;
+
+        /// <summary>The element a read element of the part is in the XML parsed afresh.</summary>
+        public XElement Of(XElement read, string what) =>
+            text.Start(read) is var at and >= 0 && starts.TryGetValue(at, out var found) && found.Name == read.Name
+                ? found
+                : throw new NotSupportedException($"The {what} is not where it was read.");
+
+        /// <summary>Where an element of the XML parsed afresh stands in the part's text, from its start to its end.</summary>
+        public (int Start, int End) Range(XElement element) => text.Start(element) is var start and >= 0
+            ? (start, text.End(start))
+            : throw new InvalidOperationException("The element was made after the part was read.");
+
+        /// <summary>The element written anew in its place.</summary>
+        public (int Start, int End, string Text) Written(XElement element) => Range(element) is var (start, end) ? (start, end, PartText.Xml(element)) : default;
+    }
+
+    static Raw Parse(Slide slide)
+    {
+        var text = new PartText(slide.Bytes);
+        var xml = XDocument.Parse(text.Text, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
+        if (xml.Root?.Name != Ns.P + "sld")
+            throw new NotSupportedException("The slide's part is not in the transitional names of PresentationML (a strict presentation).");
+        return new Raw(text, xml);
+    }
+
+    /// <summary>
+    /// A slide's part changed: stretches of its text replaced, read again with the ids of its bodies' paragraphs, the
+    /// slide drawn anew; the change is a version.
+    /// </summary>
+    void Commit(Slide slide, Raw raw, IEnumerable<(int Start, int End, string Text)> changes, List<List<int>> lists)
+    {
+        Apply(slide, raw.Text.Spliced(changes), lists);
         versions.RemoveRange(version + 1, versions.Count - version - 1);
         var now = versions[version];
         versions.Add(new Version(new Dictionary<string, byte[]>(now.Parts) { [slide.Part] = slide.Bytes },
@@ -392,6 +529,60 @@ public sealed class PresentationDocument : IDisposable
 
     /// <summary>A shape's id on its slide (p:cNvPr/@id), 0 where it has none.</summary>
     static uint ShapeId(XElement shape) =>
-        uint.TryParse(shape.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("nv", StringComparison.Ordinal))?.Element(Ns.P + "cNvPr").Str("id"),
-            NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0;
+        uint.TryParse(Shape(shape).Str("id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0;
+
+    /// <summary>A shape's non-visual properties (p:cNvPr): its id, name, description.</summary>
+    static XElement? Shape(XElement shape) =>
+        shape.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("nv", StringComparison.Ordinal))?.Element(Ns.P + "cNvPr");
+
+    static bool IsShape(XElement element) => element.Name.Namespace == Ns.P && element.Name.LocalName is "sp" or "pic" or "cxnSp" or "graphicFrame" or "grpSp" or "contentPart";
+
+    static long Emu(double points) => (long)Math.Round(points * Units.EmuPerPoint);
+
+    Slide SlideOf(uint id) => slides.FirstOrDefault(s => s.Id == id) ?? throw new ArgumentException($"No slide has the id {id}.", nameof(id));
+
+    XElement? Tree(Slide slide) => context.Load(slide.Part).Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "spTree");
+
+    /// <summary>The shape of an id at the top of a slide's tree, as the presentation reads now.</summary>
+    XElement ShapeOf(Slide slide, uint id)
+    {
+        var found = (Tree(slide)?.Elements() ?? []).Where(e => IsShape(e) && ShapeId(e) == id).ToList();
+        return found.Count switch
+        {
+            1 => found[0],
+            0 => throw new ArgumentException($"The slide has no shape {id} at the top of its tree.", nameof(id)),
+            _ => throw new NotSupportedException($"Several shapes of the slide have the id {id}."),
+        };
+    }
+
+    /// <summary>
+    /// The transform a shape takes its place from: its own, else that of the placeholder on its layout or master it
+    /// inherits from (as SlideRenderer chains them); null where it has none.
+    /// </summary>
+    XElement? Transform(Slide slide, XElement shape)
+    {
+        static XElement? Own(XElement element) => element.Name.LocalName switch
+        {
+            "graphicFrame" => element.Element(Ns.P + "xfrm"),
+            "grpSp" => element.Element(Ns.P + "grpSpPr")?.Element(Ns.A + "xfrm"),
+            _ => element.Element(Ns.P + "spPr")?.Element(Ns.A + "xfrm"),
+        };
+        if (Own(shape) is { } own && own.Element(Ns.A + "ext") != null)
+            return own;
+        if (Placeholders.Ph(shape) is not { } ph)
+            return null;
+        var at = new SlideContext(context, slide.Part, slides.IndexOf(slide) + 1);
+        if (at.Layout != null)
+        {
+            if (Placeholders.InLayout(at.Layout, ph) is { } layoutShape)
+            {
+                if (Own(layoutShape) is { } layoutOwn && layoutOwn.Element(Ns.A + "ext") != null)
+                    return layoutOwn;
+                ph = Placeholders.Ph(layoutShape)!;
+            }
+            else if (!Placeholders.Unindexed(ph))
+                return null;
+        }
+        return Placeholders.InMaster(at.Master, ph) is { } masterShape && Own(masterShape) is { } masterOwn && masterOwn.Element(Ns.A + "ext") != null ? masterOwn : null;
+    }
 }
