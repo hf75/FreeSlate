@@ -17,134 +17,207 @@ public sealed partial class ModelReader
     readonly Dictionary<XElement, (int Steps, bool Fresh)> rereadPoints = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
-    /// The body's blocks after some of its children changed, read anew where they changed: the blocks
-    /// <paramref name="first"/> to <paramref name="first"/> + <paramref name="count"/> - 1 of <paramref name="body"/> (as
-    /// this reader read it, each from a child of the body of its own) are replaced in the XML loaded for the document by
-    /// <paramref name="children"/> (none to take them away), prepared as the document's XML is when it is loaded. The new
-    /// children are read with the state reading left before the old ones, their number steps replayed with the body's
-    /// others (see NumberStep), and the blocks after them whose numbers change are read anew too; blocks that stand for the
-    /// old ones keep their ids, new ones take ids of their own. Null, the XML left as it was, where reading cannot begin
-    /// afresh before the change or after it (a field, a paragraph whose mark is hidden or deleted, a bookmark reaching
-    /// across), where a note reference is involved (the notes' marks are read with the notes) or in the markup view: the
-    /// document has to be read again.
+    /// The body's blocks after some of its children changed, read anew where they changed: the children
+    /// <paramref name="old"/> of the body (one after the other, white space aside) are replaced in the XML loaded for the
+    /// document by <paramref name="children"/>, prepared as the document's XML is when it is loaded
+    /// (DocumentContext.Prepare); where there are no old ones, the new go before <paramref name="before"/>. They are read
+    /// from the last child before them where reading could begin afresh up to the first after them where it goes on as it
+    /// did, the children between read anew with them (what a field over paragraphs, a deleted mark or a bookmark between
+    /// paragraphs joins); their number steps are replayed with the body's others (see NumberStep), and the children after
+    /// them whose numbers change are read anew too. The blocks read anew keep the ids of the blocks they stand for (see
+    /// Keep), or of <paramref name="like"/> where given (another version of the body, the same but for the change); new
+    /// ones take ids of their own. Null, the XML left as it was, where reading cannot so begin or go on (a paragraph whose
+    /// mark is hidden, a field to the body's end, children the reader made of others), where a note reference is involved
+    /// (the notes' marks are read with the notes), where sections would begin or end elsewhere, where a content control
+    /// shows its placeholder (which later ones show too) or in the markup view: the document has to be read again.
     /// </summary>
-    public List<Block>? Reread(List<Block> body, int first, int count, IReadOnlyList<XElement> children)
+    public List<Block>? Reread(List<Block> body, IReadOnlyList<XElement> old, XElement? before, IReadOnlyList<XElement> children, IReadOnlyList<Block>? like = null)
     {
-        if (context.Markup || bodyElement == null || count < 1 || first < 0 || first + count > body.Count)
+        if (context.Markup || bodyElement == null || old.Count == 0 && (before == null || children.Count == 0)
+            || old.Append(before).OfType<XElement>().Any(e => e.Parent != bodyElement || !bodyPoints.ContainsKey(e)))
             return null;
-        var old = body.GetRange(first, count);
-        if (old.Any(b => Of(b).Parent != bodyElement || !bodyPoints.ContainsKey(Of(b)))
-            || old.OfType<ParagraphBlock>().Any(p => p.MarkFormat.Vanish == true)
-            || first > 0 && body[first - 1] is ParagraphBlock { MarkFormat.Vanish: true })
-            return null;
-        // The old blocks' children are one after the other, with nothing between them.
+        // The old children one after the other, with nothing but white space between them.
         for (var k = 1; k < old.Count; k++)
         {
-            if (Of(old[k]).PreviousNode is not XElement before || before != Of(old[k - 1]))
+            if (Before(old[k]) != old[k - 1])
                 return null;
         }
-        // What goes with them: marks between paragraphs before them, which the first takes, and after them, which the
-        // last takes, up to the next block.
+        // Sections end where they did: only the last old child and the last new one may end one, both or neither, with
+        // the same properties.
+        var (oldEnd, newEnd) = (old.Count > 0 ? SectionEnd(old[^1]) : null, children.Count > 0 ? SectionEnd(children[^1]) : null);
+        if (old.SkipLast(1).Any(e => SectionEnd(e) != null) || children.SkipLast(1).Any(c => SectionEnd(c) != null) || old.Concat(children).Any(BreaksWithin)
+            || (oldEnd == null) != (newEnd == null) || oldEnd != null && !XNode.DeepEquals(oldEnd, newEnd))
+            return null;
+        // Whether a field reaches beyond its paragraphs is worked out from the field characters of the whole body (see
+        // Unclosed): where the change's are not those it had, children before it read otherwise.
+        if (!old.SelectMany(FieldCharacters).SequenceEqual(children.SelectMany(FieldCharacters)))
+            return null;
+        // What a content control showing its placeholder shows, the later ones show too (see Shown); what a document of
+        // another kind or a subdocument brings in (w:altChunk, w:subDoc) is not read again alone.
+        if (old.Concat(children).Any(Elsewhere))
+            return null;
+        // Reading begins at the last child up to the first changed one where it could begin afresh.
+        var first = old.Count > 0 ? old[0] : before!;
         var leading = new List<XElement>();
-        if (!bodyPoints[Of(old[0])].Fresh)
+        for (var e = first; !bodyPoints[e].Fresh;)
         {
-            for (var node = Of(old[0]).PreviousNode; ; node = node.PreviousNode)
+            if (Before(e) is not { } previous || !bodyPoints.ContainsKey(previous))
+                return null;
+            leading.Insert(0, e = previous);
+        }
+        // It goes on as it did at the first child after them where it could begin afresh, the children up to it read
+        // anew; further on where the new children do not end afresh.
+        var trailing = new List<XElement>();
+        var next = old.Count > 0 ? After(old[^1]) : before;
+        void Further()
+        {
+            while (next != null && !(bodyPoints.TryGetValue(next, out var point) && point.Fresh))
             {
-                if (node == null)
-                    return null;
-                if (node is not XElement e)
-                    continue;
-                if (e.Name.LocalName is "p" or "tbl" || !bodyPoints.TryGetValue(e, out var point))
-                    return null;
-                leading.Insert(0, e);
-                if (point.Fresh)
-                    break;
+                trailing.Add(next);
+                next = After(next);
             }
         }
-        var next = first + count < body.Count ? body[first + count] : null;
-        if (next != null && (Of(next).Parent != bodyElement || !bodyPoints.TryGetValue(Of(next), out var nextPoint) || !nextPoint.Fresh))
-            return null;
-        var trailing = Trailing(Of(old[^1]), next != null ? Of(next) : null);
-        // Marks between paragraphs need a paragraph to go into.
-        if (trailing == null || children.Count == 0 && (leading.Count > 0 || trailing.Count > 0))
+        Further();
+        // The blocks read from those children (each block from the child of the body it stands in), one after the other;
+        // where there are none, the new ones go before the blocks of the children after them.
+        var tops = body.Select(b => Top(Of(b))).ToList();
+        var blockTops = tops.OfType<XElement>().ToHashSet(ReferenceEqualityComparer.Instance);
+        var place = body.Count;
+        for (var e = first; e != null; e = After(e))
+        {
+            if (tops.IndexOf(e) is var k and >= 0)
+            {
+                place = k;
+                break;
+            }
+        }
+        (int From, int To)? Range()
+        {
+            var read = leading.Concat(old).Concat(trailing).ToHashSet<XElement>(ReferenceEqualityComparer.Instance);
+            var (from, to) = (-1, -1);
+            for (var k = 0; k < tops.Count; k++)
+            {
+                if (tops[k] is { } top && read.Contains(top))
+                    (from, to) = (from < 0 ? k : from, k + 1);
+            }
+            if (from < 0)
+                (from, to) = (place, place);
+            // The block before them took nothing of them (a paragraph whose mark is hidden takes in the next one, see
+            // JoinHidden: a paragraph read that stands for no block of its own, its mark not deleted, went into it), nor
+            // does it stay as it is only before what they were (a hidden mark's before a table).
+            read.Add(first);
+            return trailing.All(bodyPoints.ContainsKey) && !leading.Concat(trailing).Any(Elsewhere) && Enumerable.Range(from, to - from).All(k => tops[k] is { } top && read.Contains(top))
+                && !read.Any(e => e.Name == Wml.W + "p" && !blockTops.Contains(e) && e.Child("pPr").Child("rPr") is var mark
+                    && mark.Child("del") == null && mark.Child("moveFrom") == null)
+                && !(from > 0 && body[from - 1] is ParagraphBlock previous
+                    && (previous.MarkFormat.Vanish == true || previous.Content.Any(i => i.Xml is { } xml && Top(xml) is { } top && read.Contains(top))))
+                ? (from, to) : null;
+        }
+        if (Range() is not { } range)
             return null;
         var steps = numberSteps.GetValueOrDefault(context.MainPart) ?? [];
-        var start = bodyPoints[leading.Count > 0 ? leading[0] : Of(old[0])].Steps;
-        var end = next != null ? bodyPoints[Of(next)].Steps : steps.Count;
-        if (steps.Skip(start).Take(end - start).Any(s => s.Step is NoteStep))
-            return null;
+        var start = bodyPoints[leading.Count > 0 ? leading[0] : first].Steps;
         // The new children in place of the old ones, in their section.
-        var section = sectionOf.GetValueOrDefault(Of(old[0]));
-        var anchor = Of(old[0]).PreviousNode;
+        var section = sectionOf.GetValueOrDefault(first);
+        var anchor = first.PreviousNode;
         foreach (var child in children)
         {
             sectionOf[child] = section;
-            Of(old[0]).AddBeforeSelf(child);
+            first.AddBeforeSelf(child);
         }
-        foreach (var b in old)
-            Of(b).Remove();
-        // Which fields of the body end in it is worked out anew (see Unclosed).
+        foreach (var e in old)
+            e.Remove();
+        // Which fields of the body end in it and how its drawings stack are worked out anew (see Unclosed, StackingOrder).
         unclosed.Remove(bodyElement);
-        var elements = leading.Concat(children).Concat(trailing).ToList();
-        // Their steps first, asked of throwaway counters; then the body's steps with them replayed, and the children read
-        // with their answers.
-        List<(NumberStep Step, object? Answer)> all = [];
-        List<object?> answers = [];
-        (List<Block> Blocks, List<(NumberStep Step, object? Answer)> Steps, Dictionary<XElement, (int Steps, bool Fresh)> Points)? read = null;
-        if (Read(elements, null) is { } probe && !probe.Steps.Any(s => s.Step is NoteStep))
-        {
-            all = [.. steps.Take(start), .. probe.Steps, .. steps.Skip(end)];
-            answers = Numbers.Replay(all.Select(s => s.Step), context.Numbering, new NoteNumbers(context.Settings));
-            read = Read(elements, answers.Skip(start).Take(probe.Steps.Count));
-        }
+        context.Changed(bodyElement.Document!);
         // Back as it was, where reading the change does not come out so.
         List<Block>? Undone()
         {
             foreach (var child in children)
                 child.Remove();
-            foreach (var b in Enumerable.Reverse(old))
+            foreach (var e in Enumerable.Reverse(old))
             {
                 if (anchor != null)
-                    anchor.AddAfterSelf(Of(b));
+                    anchor.AddAfterSelf(e);
                 else
-                    bodyElement.AddFirst(Of(b));
+                    bodyElement.AddFirst(e);
             }
             unclosed.Remove(bodyElement);
+            context.Changed(bodyElement.Document!);
             return null;
         }
-        if (read is not { } got)
-            return Undone();
-        Keep(old, got.Blocks);
-        var result = new List<Block>(body.Count + got.Blocks.Count - count);
-        result.AddRange(body.Take(first));
-        result.AddRange(got.Blocks);
-        // The blocks after them whose numbers changed, read anew with their answers.
-        var shift = got.Steps.Count - (end - start);
-        for (var i = first + count; i < body.Count; i++)
+        // Their steps first, asked of throwaway counters; then the body's steps with them replayed, and the children read
+        // with their answers.
+        var probe = Read([.. leading, .. children, .. trailing], null);
+        for (var further = 0; probe == null && next != null && further < 4; further++)
         {
-            var block = body[i];
-            var from = bodyPoints.TryGetValue(Of(block), out var point) ? point.Steps : -1;
-            var to = i + 1 < body.Count && bodyPoints.TryGetValue(Of(body[i + 1]), out var following) ? following.Steps : steps.Count;
-            if (from < 0 || Enumerable.Range(from, to - from).All(k => Equals(Answer(steps[k].Answer), Answer(answers[k + shift]))))
+            trailing.Add(next);
+            next = After(next);
+            Further();
+            if (Range() is not { } wider)
+                return Undone();
+            range = wider;
+            probe = Read([.. leading, .. children, .. trailing], null);
+        }
+        var end = next != null ? bodyPoints[next].Steps : steps.Count;
+        if (probe is not { } asked || asked.Steps.Any(s => s.Step is NoteStep) || steps.Skip(start).Take(end - start).Any(s => s.Step is NoteStep))
+            return Undone();
+        List<(NumberStep Step, object? Answer)> all = [.. steps.Take(start), .. asked.Steps, .. steps.Skip(end)];
+        var answers = Numbers.Replay(all.Select(s => s.Step), context.Numbering, new NoteNumbers(context.Settings));
+        if (Read([.. leading, .. children, .. trailing], answers.Skip(start).Take(asked.Steps.Count)) is not { } got)
+            return Undone();
+        var (from, to) = range;
+        Keep(like != null ? [.. like.Skip(from).Take(like.Count - (body.Count - (to - from)))] : body.GetRange(from, to - from), got.Blocks);
+        var result = new List<Block>(body.Count + got.Blocks.Count - (to - from));
+        result.AddRange(body.Take(from));
+        result.AddRange(got.Blocks);
+        // The children after them whose numbers changed, read anew with their answers, each with the blocks read from it.
+        var shift = got.Steps.Count - (end - start);
+        bool Changed(int at, int until) => Enumerable.Range(at, until - at).Any(k => !Equals(Answer(steps[k].Answer), Answer(answers[k + shift])));
+        for (var i = to; i < body.Count;)
+        {
+            var top = tops[i];
+            var j = i;
+            while (j < body.Count && tops[j] == top)
+                j++;
+            var until = j < body.Count && tops[j] is { } after && bodyPoints.TryGetValue(after, out var following) ? following.Steps : steps.Count;
+            if (top == null || !bodyPoints.TryGetValue(top, out var point) || until < point.Steps)
             {
-                result.Add(block);
+                // What the reader made of several children (a field over paragraphs joined) and what stands elsewhere (a
+                // placeholder shown from an earlier control) is not read alone: the numbers after it stay as they were.
+                if (Changed(Math.Min(end, steps.Count), steps.Count))
+                    return Undone();
+                result.AddRange(body.Skip(i));
+                break;
+            }
+            if (!Changed(point.Steps, until))
+            {
+                result.AddRange(body.Skip(i).Take(j - i));
+                i = j;
                 continue;
             }
-            // Read anew, it keeps its own state: the steps it asked, the points of its children.
-            var again = point.Fresh && Trailing(Of(block), i + 1 < body.Count ? Of(body[i + 1]) : null) is { } after
-                ? Read([Of(block), .. after], answers.Skip(from + shift).Take(to - from)) : null;
-            if (again is not { Blocks: [_] })
+            // Read anew from where reading could begin afresh before it, with the marks between paragraphs it takes.
+            var marks = new List<XElement>();
+            for (var e = top; !bodyPoints[e].Fresh;)
+            {
+                if (Before(e) is not { } previous || !bodyPoints.ContainsKey(previous) || tops.Contains(previous))
+                    return Undone();
+                marks.Insert(0, e = previous);
+            }
+            if (Read([.. marks, top], answers.Skip(point.Steps + shift).Take(until - point.Steps)) is not { } again || again.Blocks.Count != j - i)
                 return Undone();
-            Keep([block], again.Value.Blocks);
-            result.Add(again.Value.Blocks[0]);
+            Keep(body.GetRange(i, j - i), again.Blocks);
+            result.AddRange(again.Blocks);
+            i = j;
         }
-        // What reading leaves for the next change: the body's steps and answers, and the points of its children.
+        // What reading leaves for the next change: the body's steps and answers, and the points of its children, those
+        // after the change moved on by the steps it added.
         numberSteps[context.MainPart] = [.. all.Select((s, k) => (s.Step, answers[k]))];
-        foreach (var e in old.Select(b => Of(b)).Concat(leading).Concat(trailing))
+        foreach (var e in old.Concat(leading).Concat(trailing))
             bodyPoints.Remove(e);
-        foreach (var (e, point) in bodyPoints.ToList())
+        for (var e = next; e != null; e = After(e))
         {
-            if (point.Steps >= end)
+            if (bodyPoints.TryGetValue(e, out var point))
                 bodyPoints[e] = (point.Steps + shift, point.Fresh);
         }
         foreach (var (e, point) in got.Points)
@@ -152,24 +225,52 @@ public sealed partial class ModelReader
         return result;
     }
 
-    /// <summary>
-    /// The children of the body after a block's own up to the next block's (marks between paragraphs, which the block
-    /// takes), the body's own section properties aside; null where a paragraph or table stands among them.
-    /// </summary>
-    List<XElement>? Trailing(XElement block, XElement? next)
+    /// <summary>The child of the body an element stands in (itself, or one around it), or null for one outside it (made by the reader).</summary>
+    XElement? Top(XElement element)
     {
-        var trailing = new List<XElement>();
-        foreach (var e in block.ElementsAfterSelf())
-        {
-            if (e == next)
-                break;
-            if (e.Name.LocalName is "p" or "tbl")
-                return null;
-            if (e.Name.LocalName != "sectPr")
-                trailing.Add(e);
-        }
-        return trailing;
+        var top = element;
+        while (top.Parent is { } parent && parent != bodyElement)
+            top = parent;
+        return top.Parent == bodyElement ? top : null;
     }
+
+    /// <summary>The element before one among its siblings, white space and comments aside.</summary>
+    static XElement? Before(XElement element)
+    {
+        for (var node = element.PreviousNode; node != null; node = node.PreviousNode)
+        {
+            if (node is XElement before)
+                return before;
+        }
+        return null;
+    }
+
+    /// <summary>The element after one among its siblings, white space and comments aside.</summary>
+    static XElement? After(XElement element)
+    {
+        for (var node = element.NextNode; node != null; node = node.NextNode)
+        {
+            if (node is XElement after)
+                return after;
+        }
+        return null;
+    }
+
+    /// <summary>The properties of the section a child of the body ends, a paragraph's (w:sectPr in its w:pPr), or null.</summary>
+    static XElement? SectionEnd(XElement child) => child.Name == Wml.W + "p" ? child.Child("pPr").Child("sectPr") : null;
+
+    /// <summary>
+    /// Whether a child of the body shows what stands elsewhere: a content control showing its placeholder (the first
+    /// such control's content, see Shown), a document of another kind or a subdocument (w:altChunk, w:subDoc).
+    /// </summary>
+    static bool Elsewhere(XElement child) =>
+        child.DescendantsAndSelf().Any(d => d.Name == Wml.W + "showingPlcHdr" || d.Name == Wml.W + "altChunk" || d.Name == Wml.W + "subDoc");
+
+    /// <summary>The kinds of the field characters a child of the body holds (w:fldChar begin, separate, end), in order.</summary>
+    static IEnumerable<string?> FieldCharacters(XElement child) => child.Descendants(Wml.W + "fldChar").Select(c => c.Attr("fldCharType"));
+
+    /// <summary>Whether a child of the body other than a paragraph holds a paragraph that ends a section (in a content control).</summary>
+    static bool BreaksWithin(XElement child) => child.Name != Wml.W + "p" && child.Descendants(Wml.W + "sectPr").Any(s => s.Parent?.Name.LocalName == "pPr");
 
     /// <summary>The element a block of the body was read from.</summary>
     static XElement Of(Block block) => block switch
@@ -217,35 +318,51 @@ public sealed partial class ModelReader
     }
 
     /// <summary>
-    /// Blocks read anew keep the ids of the blocks they stand for: a block of the same kind in the same place, the blocks
-    /// within it (a table's cells', a text box's) where they are as many.
+    /// Blocks read anew (<paramref name="read"/>, changed in place) keep the ids of the blocks they stand for (see Kept):
+    /// the same blocks at the beginning and at the end (of the same kind and text), those between them by place.
     /// </summary>
-    static void Keep(List<Block> old, List<Block> read)
+    internal static void Keep(IReadOnlyList<Block> old, List<Block> read)
     {
-        for (var i = 0; i < Math.Min(old.Count, read.Count); i++)
+        var head = 0;
+        while (head < old.Count && head < read.Count && Same(old[head], read[head]))
+            head++;
+        var tail = 0;
+        while (tail < old.Count - head && tail < read.Count - head && Same(old[old.Count - 1 - tail], read[read.Count - 1 - tail]))
+            tail++;
+        for (var i = 0; i < read.Count; i++)
         {
-            if (old[i].GetType() != read[i].GetType())
-                continue;
-            var (was, now) = (Ids(old[i]), Ids(read[i]));
-            read[i] = was.Count == now.Count ? Renumbered(read[i], now.Zip(was).ToDictionary(p => p.First, p => p.Second)) : read[i] with { Id = old[i].Id };
+            var k = i >= read.Count - tail ? i + old.Count - read.Count : i < old.Count - tail ? i : -1;
+            if (k >= 0)
+                read[i] = Kept(old[k], read[i]);
         }
     }
 
-    /// <summary>The ids of a block and of the blocks within it, in order.</summary>
-    static List<int> Ids(Block block)
+    /// <summary>
+    /// A block read anew with the ids of the block it stands for: of the same kind, it takes that block's id, and the
+    /// blocks within it (a table's cells', a text box's) keep theirs list by list where it has as many lists; else it
+    /// stays as read.
+    /// </summary>
+    static Block Kept(Block old, Block read)
     {
-        var ids = new List<int>();
-        foreach (var list in Inner(block))
+        if (old.GetType() != read.GetType())
+            return read;
+        var (was, now) = (Inner(old).ToList(), Inner(read).ToList());
+        if (was.Count == now.Count)
         {
-            foreach (var inner in list)
-                ids.AddRange(Ids(inner));
+            for (var k = 0; k < now.Count; k++)
+                Keep(was[k], now[k]);
         }
-        ids.Add(block.Id);
-        return ids;
+        return read.Id == old.Id ? read : read with { Id = old.Id };
     }
+
+    /// <summary>Whether a block read anew reads as one read before: of the same kind, with the same text (a table: all its paragraphs').</summary>
+    static bool Same(Block old, Block read) => old.GetType() == read.GetType() && Signature(old) == Signature(read);
+
+    static string Signature(Block block) =>
+        block is ParagraphBlock paragraph ? ParagraphText.Of(paragraph) : string.Join((char)1, Inner(block).SelectMany(list => list).Select(Signature));
 
     /// <summary>The lists of blocks within a block: a paragraph's text boxes', a table's cells'.</summary>
-    static IEnumerable<List<Block>> Inner(Block block)
+    internal static IEnumerable<List<Block>> Inner(Block block)
     {
         if (block is ParagraphBlock paragraph)
         {
@@ -268,16 +385,5 @@ public sealed partial class ModelReader
             foreach (var cell in table.Table.Rows.SelectMany(r => r.Cells))
                 yield return cell.Blocks;
         }
-    }
-
-    /// <summary>A block read anew with the ids of the one it stands for, the blocks within it too (their lists changed in place).</summary>
-    static Block Renumbered(Block block, Dictionary<int, int> map)
-    {
-        foreach (var list in Inner(block))
-        {
-            for (var k = 0; k < list.Count; k++)
-                list[k] = Renumbered(list[k], map);
-        }
-        return block with { Id = map.GetValueOrDefault(block.Id, block.Id) };
     }
 }

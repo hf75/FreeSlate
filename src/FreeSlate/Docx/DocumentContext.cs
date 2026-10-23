@@ -349,26 +349,31 @@ public sealed class DocumentContext : IDisposable
     }
 
     /// <summary>
-    /// An element for a loaded part made ready as Load makes the part's XML: a Strict element's names made transitional,
-    /// its markup compatibility resolved, its shading's theme colors taken (for elements put into a loaded part in place
-    /// of others, see ModelReader.Reread). The element itself, or what its alternatives chose in its place.
+    /// The children of an element of a part's XML read anew from its text, made ready as Load makes the part's XML (for
+    /// ModelReader.Reread to put them into the loaded part in place of others): <paramref name="parent"/> stands within
+    /// copies of the elements around it in the part, which declare the namespaces its alternatives name; a Strict part's
+    /// names are made transitional, markup compatibility is resolved, the shading's theme colors are taken. The children
+    /// (what their alternatives chose in their place) are taken out of the parent, moved, so that they keep where they
+    /// were read (their line info).
     /// </summary>
-    public List<XElement> Prepare(XElement element)
+    public List<XElement> Prepare(XElement parent)
     {
-        var holder = new XElement("holder");
-        if (element.Parent != null)
-            element = new XElement(element);
-        holder.Add(element);
-        if (Strict.IsStrict(element))
-            Strict.Transition(element);
-        MarkupCompatibility.Process(holder, chartEx: true);
+        if (parent.AncestorsAndSelf().Last() is var root && Strict.IsStrict(root))
+            Strict.Transition(root);
+        MarkupCompatibility.Process(parent, chartEx: true);
         if (Theme != null)
-            ThemeShading(holder);
-        var prepared = holder.Elements().ToList();
+            ThemeShading(parent);
+        var prepared = parent.Elements().ToList();
         foreach (var e in prepared)
             e.Remove();
         return prepared;
     }
+
+    /// <summary>
+    /// What was worked out of a loaded part's XML as a whole (the stacking order of its drawings, see StackingOrder) is
+    /// worked out anew, after some of its elements were put in place of others (see ModelReader.Reread).
+    /// </summary>
+    public void Changed(XDocument part) => stacking.Remove(part);
 
     /// <summary>The part a node of a loaded part stands in (see Load), or null for one made elsewhere.</summary>
     public string? PartOf(XObject node) =>

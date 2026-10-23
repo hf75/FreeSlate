@@ -31,6 +31,11 @@ public sealed class PartText
         }
     }
 
+    /// <summary>XML as text of its own (a stretch of a part's, see WordDocument), its bytes in UTF-8.</summary>
+    public PartText(string text) : this(new UTF8Encoding(false).GetBytes(text))
+    {
+    }
+
     /// <summary>The part's text, without its byte order mark.</summary>
     public string Text { get; }
 
@@ -68,22 +73,7 @@ public sealed class PartText
             }
             else
             {
-                // A start tag runs to its "&gt;" outside quoted values.
-                var quote = '\0';
-                var j = i + 1;
-                for (; j < text.Length; j++)
-                {
-                    var c = text[j];
-                    if (quote != '\0')
-                    {
-                        if (c == quote)
-                            quote = '\0';
-                    }
-                    else if (c is '"' or '\'')
-                        quote = c;
-                    else if (c == '>')
-                        break;
-                }
+                var j = TagClose(text, i);
                 if (j >= text.Length)
                     break;
                 var empty = text[j - 1] == '/';
@@ -97,6 +87,46 @@ public sealed class PartText
         throw new InvalidDataException("The part's XML ends within an element.");
 
         static int After(int found, int length) => found < 0 ? -1 : found + length;
+    }
+
+    /// <summary>Where the start tag that begins at <paramref name="start"/> ends: after its "&gt;".</summary>
+    public int TagEnd(int start) =>
+        TagClose(Text, start) is var close && close < Text.Length ? close + 1 : throw new InvalidDataException("The part's XML ends within a tag.");
+
+    /// <summary>The "&gt;" a start tag runs to, outside quoted values (the text's length where there is none).</summary>
+    static int TagClose(string text, int start)
+    {
+        var quote = '\0';
+        var j = start + 1;
+        for (; j < text.Length; j++)
+        {
+            var c = text[j];
+            if (quote != '\0')
+            {
+                if (c == quote)
+                    quote = '\0';
+            }
+            else if (c is '"' or '\'')
+                quote = c;
+            else if (c == '>')
+                break;
+        }
+        return j;
+    }
+
+    /// <summary>The text with the given stretches of it (from Start to End, not overlapping) replaced by new text.</summary>
+    public string Replaced(IEnumerable<(int Start, int End, string Text)> changes)
+    {
+        var result = new StringBuilder(Text.Length + 1024);
+        var at = 0;
+        foreach (var (start, end, text) in changes.OrderBy(c => c.Start))
+        {
+            if (start < at || end < start)
+                throw new ArgumentException("The changes overlap.", nameof(changes));
+            result.Append(Text, at, start - at).Append(text);
+            at = end;
+        }
+        return result.Append(Text, at, Text.Length - at).ToString();
     }
 
     /// <summary>

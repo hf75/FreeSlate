@@ -353,6 +353,13 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The blocks read so far, which number them (Block.Id; not in their document's order: a table's cells come first).</summary>
     int blocksRead;
 
+    /// <summary>The last id given a block (Block.Id); a reader set to another's numbers its blocks after it.</summary>
+    public int LastId
+    {
+        get => blocksRead;
+        init => blocksRead = value;
+    }
+
     /// <summary>The tracked change whose content is being read, in the markup view (catalog: review.revisions), or null.</summary>
     RevisionMark? revision;
 
