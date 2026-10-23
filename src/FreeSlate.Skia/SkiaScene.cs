@@ -695,6 +695,8 @@ public static class SkiaScene
             var glyphs = font.GlyphsWithFeatures(text.Text, text.Features, text.RightToLeft, text.Language);
             if (glyphs.Length == 0)
                 return;
+            // The glyphs' places before the run's scale (w:w) applies about its start: the positions hold the scale
+            // already, the glyphs' own advances do not.
             var places = new double[glyphs.Length];
             if (!text.RightToLeft)
             {
@@ -704,7 +706,7 @@ public static class SkiaScene
                     if (glyphs[i].Cluster != cluster)
                     {
                         cluster = glyphs[i].Cluster;
-                        (x, inCluster) = (text.Positions[Math.Min(cluster, text.Positions.Length - 1)], 0);
+                        (x, inCluster) = (text.Positions[Math.Min(cluster, text.Positions.Length - 1)] / text.Scale, 0);
                     }
                     places[i] = x + inCluster + glyphs[i].OffsetX * text.Size;
                     inCluster += glyphs[i].Advance * text.Size;
@@ -713,12 +715,12 @@ public static class SkiaScene
             else
             {
                 bool Space(int g) => glyphs[g].Cluster < text.Text.Length && text.Text[glyphs[g].Cluster] == ' ';
-                var total = glyphs.Select((g, i) => g.Advance * text.Size + (Space(i) ? text.WordSpacing : 0)).Sum();
-                var x = text.Width - total;
+                var total = glyphs.Select((g, i) => g.Advance * text.Size + (Space(i) ? text.WordSpacing / text.Scale : 0)).Sum();
+                var x = text.Width / text.Scale - total;
                 for (var i = 0; i < glyphs.Length; i++)
                 {
                     places[i] = x + glyphs[i].OffsetX * text.Size;
-                    x += glyphs[i].Advance * text.Size + (Space(i) ? text.WordSpacing : 0);
+                    x += glyphs[i].Advance * text.Size + (Space(i) ? text.WordSpacing / text.Scale : 0);
                 }
             }
             // A paint of its own (Word's text fills and outlines): the fill and the stroke its SVG attributes give over the

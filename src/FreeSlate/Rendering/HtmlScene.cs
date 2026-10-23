@@ -297,8 +297,12 @@ public static class HtmlScene
         var text = item.Text;
         var (x, positions) = (item.X, item.Positions);
         var on = item.Features.Where(f => !f.StartsWith('-') && f != "kern").ToList();
+        // Scaled text (w:w) is drawn scaled about its start, which scales the places it is written at too: they hold the
+        // scale already, so they are written without it (docx/generated/character-formats: "scaled 150 %" spread out
+        // over the run after it).
+        var scale = Math.Abs(item.Scale - 1) > 1e-6 ? item.Scale : 1;
         string X(int from, int to) => string.Join(' ', Enumerable.Range(from, to - from).Where(i => !char.IsLowSurrogate(text[i]))
-            .Select(i => Units.Css((x + positions[i]) * PxPerPt)));
+            .Select(i => Units.Css((x + positions[i] / scale) * PxPerPt)));
         // Words whose glyphs depend on their neighbors (ligatures, contextual alternates and swashes; catalog:
         // run.openType) must reach the browser whole: it shapes every character that has a position of its own alone
         // (measured: Chrome draws "office" without its ffi ligature when each character has its x). Such a word gets
@@ -311,9 +315,9 @@ public static class HtmlScene
         html.Append("<text");
         if (item.RightToLeft)
         {
-            html.Append($" x=\"{Px(x + item.Width)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\"");
+            html.Append($" x=\"{Px(x + item.Width / scale)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\"");
             if (item.WordSpacing > 0)
-                html.Append($" word-spacing=\"{Px(item.WordSpacing)}\"");
+                html.Append($" word-spacing=\"{Px(item.WordSpacing / scale)}\"");
         }
         else if (words.Count == 0)
             html.Append($" x=\"{X(0, text.Length)}\"");
