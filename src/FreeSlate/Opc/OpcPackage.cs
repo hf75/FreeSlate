@@ -30,15 +30,23 @@ public sealed class OpcPackage : IDisposable
         foreach (var entry in zip.Entries)
             entries[PartName(entry)] = entry;
 
-        if (entries.TryGetValue("/[Content_Types].xml", out var types))
-        {
-            using var s = types.Open();
-            var doc = XDocument.Load(s);
-            foreach (var d in doc.Root!.Elements(XName.Get("Default", ContentTypesNs)))
-                defaults[(string?)d.Attribute("Extension") ?? ""] = (string?)d.Attribute("ContentType") ?? "";
-            foreach (var o in doc.Root!.Elements(XName.Get("Override", ContentTypesNs)))
-                overrides[(string?)o.Attribute("PartName") ?? ""] = (string?)o.Attribute("ContentType") ?? "";
-        }
+        if (entries.ContainsKey(ContentTypesPart))
+            ReadContentTypes();
+    }
+
+    const string ContentTypesPart = "/[Content_Types].xml";
+
+    /// <summary>The content types of the parts (by extension, and by part name where they differ), as the package reads now.</summary>
+    void ReadContentTypes()
+    {
+        defaults.Clear();
+        overrides.Clear();
+        using var s = new MemoryStream(ReadBytes(ContentTypesPart), false);
+        var doc = XDocument.Load(s);
+        foreach (var d in doc.Root!.Elements(XName.Get("Default", ContentTypesNs)))
+            defaults[(string?)d.Attribute("Extension") ?? ""] = (string?)d.Attribute("ContentType") ?? "";
+        foreach (var o in doc.Root!.Elements(XName.Get("Override", ContentTypesNs)))
+            overrides[(string?)o.Attribute("PartName") ?? ""] = (string?)o.Attribute("ContentType") ?? "";
     }
 
     /// <summary>
@@ -75,30 +83,61 @@ public sealed class OpcPackage : IDisposable
         return new OpcPackage(new MemoryStream(OfficeCrypto.Decrypt(file, password)));
     }
 
-    public bool Exists(string partName) => entries.ContainsKey(partName) || replaced.ContainsKey(partName);
+    public bool Exists(string partName) => replaced.ContainsKey(partName) || entries.ContainsKey(partName) && !removed.Contains(partName);
 
     public byte[] ReadBytes(string partName)
     {
         if (replaced.TryGetValue(partName, out var bytes))
             return bytes;
-        using var stream = entries[partName].Open();
+        if (removed.Contains(partName))
+            throw new KeyNotFoundException($"The part {partName} was taken away.");
+        return Original(partName) ?? throw new KeyNotFoundException($"The package has no part {partName}.");
+    }
+
+    /// <summary>A part's bytes as the package had them when it was opened, null for a part it did not have.</summary>
+    public byte[]? Original(string partName)
+    {
+        if (!entries.TryGetValue(partName, out var entry))
+            return null;
+        using var stream = entry.Open();
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();
     }
 
-    /// <summary>The parts given new bytes (see Replace), by part name.</summary>
+    /// <summary>The names of the package's parts as it reads now.</summary>
+    public IEnumerable<string> PartNames => entries.Keys.Where(n => !removed.Contains(n) && !replaced.ContainsKey(n)).Concat(replaced.Keys);
+
+    /// <summary>The parts given new bytes (see Replace), by part name, and those taken away (see Remove).</summary>
     readonly Dictionary<string, byte[]> replaced = new(StringComparer.OrdinalIgnoreCase);
+    readonly HashSet<string> removed = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Gives a part new bytes, or adds it: reading and saving take them from now on (the content types are the ones read
-    /// when the package was opened).
+    /// Gives a part new bytes, or adds it: reading and saving take them from now on; new content types (a part of its
+    /// own) and relationships are read from new bytes of their parts.
     /// </summary>
     public void Replace(string partName, byte[] bytes)
     {
         replaced[partName] = bytes;
+        removed.Remove(partName);
+        Changed(partName);
+    }
+
+    /// <summary>Takes a part away: it no longer exists, and saving leaves it out.</summary>
+    public void Remove(string partName)
+    {
+        replaced.Remove(partName);
+        if (entries.ContainsKey(partName))
+            removed.Add(partName);
+        Changed(partName);
+    }
+
+    void Changed(string partName)
+    {
         if (partName.EndsWith(".rels", StringComparison.OrdinalIgnoreCase))
             relationships.Clear();
+        else if (string.Equals(partName, ContentTypesPart, StringComparison.OrdinalIgnoreCase) && Exists(ContentTypesPart))
+            ReadContentTypes();
     }
 
     /// <summary>
@@ -114,6 +153,8 @@ public sealed class OpcPackage : IDisposable
         {
             var name = PartName(entry);
             written.Add(name);
+            if (removed.Contains(name))
+                continue;
             using var target = Created(archive, entry.FullName, entry.LastWriteTime);
             if (replaced.TryGetValue(name, out var bytes))
                 target.Write(bytes);
@@ -150,7 +191,8 @@ public sealed class OpcPackage : IDisposable
     /// </summary>
     public XDocument ReadXml(string partName, bool lines = false)
     {
-        using var stream = replaced.TryGetValue(partName, out var bytes) ? new MemoryStream(bytes, false) : entries[partName].Open();
+        using var stream = replaced.TryGetValue(partName, out var bytes) ? new MemoryStream(bytes, false)
+            : !removed.Contains(partName) ? entries[partName].Open() : throw new KeyNotFoundException($"The part {partName} was taken away.");
         return Strict.Transition(XDocument.Load(stream, lines ? LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo : LoadOptions.PreserveWhitespace));
     }
 
@@ -171,7 +213,7 @@ public sealed class OpcPackage : IDisposable
         var list = new List<Relationship>();
         var directory = partName == "/" ? "/" : partName[..(partName.LastIndexOf('/') + 1)];
         var relsName = partName == "/" ? "/_rels/.rels" : $"{directory}_rels/{partName[(partName.LastIndexOf('/') + 1)..]}.rels";
-        if (entries.ContainsKey(relsName))
+        if (Exists(relsName))
         {
             foreach (var r in ReadXml(relsName).Root!.Elements(XName.Get("Relationship", RelationshipsNs)))
             {

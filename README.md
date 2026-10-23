@@ -197,6 +197,10 @@ var slide = deck.Slides[0].Id;          // shapes by their ids on a slide, place
 var box = deck.AddTextBox(slide, 40, 40, 240, 30, "Note");
 deck.PlaceShape(slide, box, 60, 50, 240, 30);
 deck.DeleteShape(slide, deck.Shapes(slide)[0].Id);   // with what animates it
+var copy = deck.DuplicateSlide(slide);  // slides by their ids: duplicated, added from a layout, moved, taken away
+deck.AddSlide(1, deck.Layouts[1].Part);
+deck.MoveSlide(copy, 0);
+deck.DeleteSlide(slide);
 deck.Undo();                            // and Redo
 deck.Save("deck-edited.pptx");          // the changed paragraphs written anew, every other byte as it was
 ```
@@ -204,8 +208,9 @@ deck.Save("deck-edited.pptx");          // the changed paragraphs written anew, 
 `PresentationDocument` changes the text of slides as PowerPoint does (new text in the format of the text before it,
 a split paragraph's halves with its properties, a joined one with the first's), gives text and paragraphs direct
 formatting as PowerPoint's buttons do, moves and sizes shapes (a placeholder takes its place from its layout until then,
-a group scales its shapes), takes shapes away with their animations and adds text boxes, undoes and redoes each change,
-and keeps the paragraphs' ids. A change is made in the XML of its slide, which is read and drawn again; the slides it draws
+a group scales its shapes), takes shapes away with their animations and adds text boxes, duplicates slides (with copies
+of their notes, charts and diagrams), adds them from layouts, moves them and takes them away (with their sections,
+custom shows and the links to them), undoes and redoes each change, and keeps the paragraphs' ids. A change is made in the XML of its slide, which is read and drawn again; the slides it draws
 (`Scenes`) know where each character stands, as Word documents' pages do.
 
 ### The output

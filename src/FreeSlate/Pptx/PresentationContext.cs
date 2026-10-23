@@ -22,7 +22,6 @@ public sealed class PresentationContext : IDisposable
         this.lines = lines;
         PresentationPart = package.FirstRelationship("/", "officeDocument")?.Target
                            ?? throw new InvalidDataException("No presentation part (officeDocument relationship) in the package.");
-        Presentation = Load(PresentationPart);
         var root = Presentation.Root!;
         FontLocator = (fonts ?? FontLocator.Default).With(EmbeddedFonts(root), embeddedFontsFirst);
         Fonts = ReferenceEquals(FontLocator, FontLocator.Default) ? FontResolver.Default : new FontResolver(FontLocator);
@@ -31,10 +30,20 @@ public sealed class PresentationContext : IDisposable
         SlideWidth = size.Long("cx") ?? 12192000;
         SlideHeight = size.Long("cy") ?? 6858000;
         DefaultTextStyle = root.Element(Ns.P + "defaultTextStyle") ?? BuiltInTextStyle;
+        ReadSlides();
+    }
 
-        foreach (var id in root.Element(Ns.P + "sldIdLst")?.Elements(Ns.P + "sldId") ?? [])
+    /// <summary>
+    /// Reads the slides of the presentation (p:sldIdLst) into SlideParts, anew where the presentation part changed (see
+    /// Changed).
+    /// </summary>
+    public void ReadSlides()
+    {
+        SlideParts.Clear();
+        slideIds.Clear();
+        foreach (var id in Presentation.Root?.Element(Ns.P + "sldIdLst")?.Elements(Ns.P + "sldId") ?? [])
         {
-            if (id.Attribute(Ns.R + "id") is { } rid && package.Relationship(PresentationPart, rid.Value) is { External: false } rel && package.Exists(rel.Target))
+            if (id.Attribute(Ns.R + "id") is { } rid && Package.Relationship(PresentationPart, rid.Value) is { External: false } rel && Package.Exists(rel.Target))
             {
                 SlideParts.Add(rel.Target);
                 slideIds.Add(id.Str("id") ?? "");
@@ -62,7 +71,8 @@ public sealed class PresentationContext : IDisposable
 
     public OpcPackage Package { get; }
     public string PresentationPart { get; }
-    public XDocument Presentation { get; }
+    /// <summary>The presentation part (presentation.xml) as it reads now.</summary>
+    public XDocument Presentation => Load(PresentationPart);
     public long SlideWidth { get; }
     public long SlideHeight { get; }
     public XElement? DefaultTextStyle { get; }

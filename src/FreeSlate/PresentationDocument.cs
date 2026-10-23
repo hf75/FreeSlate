@@ -40,12 +40,20 @@ public sealed record DeckText(uint Shape, (int Row, int Column)? Cell, IReadOnly
 /// the XML of its slide's part, parsed afresh; the part is read again and the slide drawn anew, the unit of reading and
 /// drawing anew.
 /// </summary>
-public sealed class PresentationDocument : IDisposable
+public sealed partial class PresentationDocument : IDisposable
 {
     readonly OpcPackage package;
     readonly PresentationContext context;
     readonly SvgPaint paint = new();
+
+    /// <summary>The slides in the order the presentation lists them now.</summary>
     readonly List<Slide> slides = [];
+
+    /// <summary>Every slide the document has held, by its part: a slide taken away and brought back is the one it was.</summary>
+    readonly Dictionary<string, Slide> known = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether the slide show leaves each slide out, by its index.</summary>
+    readonly List<bool> hidden = [];
 
     /// <summary>The paragraphs by id, each with its slide, the index of its body there and its index in the body.</summary>
     readonly Dictionary<int, (Slide Slide, int Body, int Index)> paragraphs = [];
@@ -60,22 +68,28 @@ public sealed class PresentationDocument : IDisposable
     int version;
 
     /// <summary>
-    /// A version of the presentation: the bytes of each slide part changed since it was opened, and the ids of the
-    /// paragraphs of their bodies (every other slide reads as it was opened).
+    /// A version of the presentation: the bytes of each part changed since it was opened (null: taken away), and the ids
+    /// of the paragraphs of the bodies of each slide changed (every other part reads as it was opened, every other slide
+    /// with the ids it was read with then).
     /// </summary>
-    sealed record Version(IReadOnlyDictionary<string, byte[]> Parts, IReadOnlyDictionary<string, List<List<int>>> Ids);
+    sealed record Version(IReadOnlyDictionary<string, byte[]?> Parts, IReadOnlyDictionary<string, List<List<int>>> Ids);
+
+    /// <summary>The bytes the parts had when the presentation was opened (null: none), once asked for.</summary>
+    readonly Dictionary<string, byte[]?> originals = new(StringComparer.OrdinalIgnoreCase);
+
+    byte[]? Original(string part) => originals.TryGetValue(part, out var bytes) ? bytes : originals[part] = package.Original(part);
 
     /// <summary>
-    /// A slide as the document holds it: its part's bytes as opened and as it reads now, its text bodies with their
-    /// paragraphs' ids as opened and now, and its scene once drawn.
+    /// A slide as the document holds it: its id in the presentation (p:sldId/@id), its part's bytes as it reads now, its
+    /// text bodies with their paragraphs' ids as opened (for a slide the presentation had then) and now, and its scene
+    /// once drawn.
     /// </summary>
-    sealed class Slide(uint id, string part, byte[] bytes)
+    sealed class Slide(string part)
     {
-        public uint Id { get; } = id;
+        public uint Id { get; set; }
         public string Part { get; } = part;
-        public byte[] Original { get; } = bytes;
-        public byte[] Bytes { get; set; } = bytes;
-        public List<List<int>> Opened { get; set; } = [];
+        public byte[] Bytes { get; set; } = [];
+        public List<List<int>>? Opened { get; set; }
         public List<(uint Shape, (int Row, int Column)? Cell, XElement Element, List<int> Paragraphs)> Bodies { get; } = [];
         public PageScene? Scene { get; set; }
     }
@@ -84,19 +98,45 @@ public sealed class PresentationDocument : IDisposable
     {
         this.package = package;
         context = new PresentationContext(package, fonts, embeddedFontsFirst, lines: true) { Culture = culture, Paragraphs = ids };
-        var deck = new DeckInfo(context);
-        var slideIds = context.Presentation.Root?.Element(Ns.P + "sldIdLst")?.Elements(Ns.P + "sldId")
+        versions.Add(new Version(new Dictionary<string, byte[]?>(), new Dictionary<string, List<List<int>>>()));
+        Order();
+        foreach (var slide in slides)
+            slide.Opened = Lists(slide);
+    }
+
+    /// <summary>
+    /// The slides in the order the presentation lists them now (p:sldIdLst), each the one the document knows by its part
+    /// (read where it is new, with the ids of the version it reads as); slides no longer listed forget their paragraphs,
+    /// and where the order changed every slide is drawn anew (their numbers).
+    /// </summary>
+    void Order()
+    {
+        var before = slides.ToList();
+        slides.Clear();
+        var listed = context.Presentation.Root?.Element(Ns.P + "sldIdLst")?.Elements(Ns.P + "sldId")
             .Where(s => s.Attribute(Ns.R + "id") is { } rid && package.Relationship(context.PresentationPart, rid.Value) is { External: false } rel && package.Exists(rel.Target))
             .Select(s => uint.TryParse(s.Str("id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0).ToList() ?? [];
         for (var i = 0; i < context.SlideParts.Count; i++)
         {
-            var slide = new Slide(i < slideIds.Count ? slideIds[i] : 0, context.SlideParts[i], package.ReadBytes(context.SlideParts[i]));
-            Hidden.Add(deck.IsHidden(slide.Part));
+            var part = context.SlideParts[i];
+            if (!known.TryGetValue(part, out var slide))
+                known[part] = slide = new Slide(part);
+            slide.Id = i < listed.Count ? listed[i] : 0;
+            if (!before.Contains(slide))
+            {
+                slide.Bytes = package.ReadBytes(part);
+                context.Changed(part);
+                Read(slide, versions[version].Ids.GetValueOrDefault(part) ?? slide.Opened);
+            }
             slides.Add(slide);
-            Read(slide, null);
-            slide.Opened = Lists(slide);
         }
-        versions.Add(new Version(new Dictionary<string, byte[]>(), new Dictionary<string, List<List<int>>>()));
+        foreach (var gone in before.Except(slides))
+            Forget(gone);
+        var deck = new DeckInfo(context);
+        hidden.Clear();
+        hidden.AddRange(slides.Select(s => deck.IsHidden(s.Part)));
+        if (!before.SequenceEqual(slides))
+            slides.ForEach(s => s.Scene = null);
     }
 
     /// <summary>
@@ -109,12 +149,9 @@ public sealed class PresentationDocument : IDisposable
         bool embeddedFontsFirst = false) =>
         new(OpcPackage.Open(File.ReadAllBytes(path), password), fonts, culture ?? CultureInfo.CurrentCulture, embeddedFontsFirst);
 
-    /// <summary>Whether the slide show leaves each slide out, by its index.</summary>
-    List<bool> Hidden { get; } = [];
-
     /// <summary>The slides in their order, with their text bodies as the presentation reads now.</summary>
     public IReadOnlyList<DeckSlide> Slides =>
-        [.. slides.Select((s, i) => new DeckSlide(s.Id, s.Part, Hidden[i], [.. s.Bodies.Select(b => new DeckText(b.Shape, b.Cell, [.. b.Paragraphs]))]))];
+        [.. slides.Select((s, i) => new DeckSlide(s.Id, s.Part, hidden[i], [.. s.Bodies.Select(b => new DeckText(b.Shape, b.Cell, [.. b.Paragraphs]))]))];
 
     /// <summary>The text of a paragraph (see SlideText).</summary>
     public string Text(int paragraph) => SlideText.Of(Element(paragraph));
@@ -415,36 +452,74 @@ public sealed class PresentationDocument : IDisposable
     /// A slide's part changed: stretches of its text replaced, read again with the ids of its bodies' paragraphs, the
     /// slide drawn anew; the change is a version.
     /// </summary>
-    void Commit(Slide slide, Raw raw, IEnumerable<(int Start, int End, string Text)> changes, List<List<int>> lists)
+    void Commit(Slide slide, Raw raw, IEnumerable<(int Start, int End, string Text)> changes, List<List<int>> lists) =>
+        Commit(new Dictionary<string, byte[]?> { [slide.Part] = raw.Text.Spliced(changes) }, new Dictionary<string, List<List<int>>> { [slide.Part] = lists });
+
+    /// <summary>
+    /// Parts changed (new bytes, or null: taken away) with the ids of the paragraphs of the slides among them: the change is
+    /// a version, which the presentation then reads as.
+    /// </summary>
+    void Commit(IReadOnlyDictionary<string, byte[]?> parts, IReadOnlyDictionary<string, List<List<int>>> lists)
     {
-        Apply(slide, raw.Text.Spliced(changes), lists);
         versions.RemoveRange(version + 1, versions.Count - version - 1);
         var now = versions[version];
-        versions.Add(new Version(new Dictionary<string, byte[]>(now.Parts) { [slide.Part] = slide.Bytes },
-            new Dictionary<string, List<List<int>>>(now.Ids) { [slide.Part] = lists }));
-        version++;
+        var allParts = new Dictionary<string, byte[]?>(now.Parts, StringComparer.OrdinalIgnoreCase);
+        foreach (var (part, bytes) in parts)
+            allParts[part] = bytes;
+        var allLists = new Dictionary<string, List<List<int>>>(now.Ids, StringComparer.OrdinalIgnoreCase);
+        foreach (var (part, list) in lists)
+            allLists[part] = list;
+        versions.Add(new Version(allParts, allLists));
+        Go(version + 1);
     }
 
-    /// <summary>The presentation as it reads in another of its versions: the slides whose parts differ read anew.</summary>
+    /// <summary>
+    /// The presentation as it reads in another of its versions: the parts whose bytes differ given theirs (or taken away),
+    /// the slides read anew in the order listed where the presentation part changed, those whose parts differ read anew
+    /// with the ids of that version.
+    /// </summary>
     void Go(int target)
     {
-        var to = versions[target];
-        foreach (var slide in slides)
+        var (from, to) = (versions[version], versions[target]);
+        var changed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var part in from.Parts.Keys.Union(to.Parts.Keys, StringComparer.OrdinalIgnoreCase))
         {
-            var bytes = to.Parts.GetValueOrDefault(slide.Part) ?? slide.Original;
-            if (!ReferenceEquals(bytes, slide.Bytes))
-                Apply(slide, bytes, to.Ids.GetValueOrDefault(slide.Part) ?? slide.Opened);
+            var now = from.Parts.TryGetValue(part, out var a) ? a : Original(part);
+            var then = to.Parts.TryGetValue(part, out var b) ? b : Original(part);
+            if (ReferenceEquals(now, then))
+                continue;
+            if (then == null)
+                package.Remove(part);
+            else
+                package.Replace(part, then);
+            context.Changed(part);
+            changed.Add(part);
         }
         version = target;
+        if (changed.Contains(context.PresentationPart) || changed.Contains(SlideList.RelationshipsOf(context.PresentationPart)))
+        {
+            context.ReadSlides();
+            Order();
+        }
+        foreach (var slide in slides.Where(s => changed.Contains(s.Part)))
+        {
+            slide.Bytes = package.ReadBytes(slide.Part);
+            Read(slide, to.Ids.GetValueOrDefault(slide.Part) ?? slide.Opened);
+        }
     }
 
-    /// <summary>A slide's part given new bytes, read anew with the ids of its bodies' paragraphs.</summary>
-    void Apply(Slide slide, byte[] bytes, List<List<int>> lists)
+    /// <summary>A slide no longer listed: its paragraphs are no longer the presentation's.</summary>
+    void Forget(Slide slide)
     {
-        slide.Bytes = bytes;
-        package.Replace(slide.Part, bytes);
-        context.Changed(slide.Part);
-        Read(slide, lists);
+        foreach (var body in slide.Bodies)
+        {
+            foreach (var p in body.Element.Elements(Ns.A + "p"))
+                ids.Remove(p);
+            foreach (var id in body.Paragraphs)
+                paragraphs.Remove(id);
+        }
+        slide.Bodies.Clear();
+        slide.Scene = null;
     }
 
     /// <summary>The ids of a slide's bodies' paragraphs as it reads now, a list for each body.</summary>
@@ -466,14 +541,7 @@ public sealed class PresentationDocument : IDisposable
     /// </summary>
     void Read(Slide slide, List<List<int>>? lists)
     {
-        foreach (var body in slide.Bodies)
-        {
-            foreach (var p in body.Element.Elements(Ns.A + "p"))
-                ids.Remove(p);
-            foreach (var id in body.Paragraphs)
-                paragraphs.Remove(id);
-        }
-        slide.Bodies.Clear();
+        Forget(slide);
         var tree = context.Load(slide.Part).Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "spTree");
         foreach (var (shape, cell, element) in Bodies(tree))
         {
