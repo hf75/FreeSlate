@@ -127,7 +127,8 @@ static class TextEdits
     /// <summary>
     /// The text of a paragraph from <paramref name="offset"/>, so many characters, replaced by <paramref name="text"/>:
     /// the new text goes into the text it continues (the text before it, else after it, as typing takes the format before
-    /// it), else into a run of its own with the format of the run before it. Returns the stretch's new text.
+    /// it), else into a run of its own where the place is, with the format of the run before it; within text the document
+    /// computes (a date, a field's result) it goes nowhere. Returns the stretch's new text.
     /// </summary>
     public static string Replace(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking? tracking = null)
     {
@@ -145,6 +146,7 @@ static class TextEdits
         var removed = new List<XElement>();
         (XElement T, int Index)? target = null;
         XElement? before = null, after = null;
+        var seen = new HashSet<XElement>();
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
         {
@@ -153,12 +155,22 @@ static class TextEdits
             if (e == s)
                 continue;
             var t = TextOf(stretch, inline, p);
+            // Text shown a second time (a placeholder showing another's) is not where it stands.
+            if (t != null && !seen.Add(t))
+            {
+                if (Math.Max(s, offset) < Math.Min(e, end) || text.Length > 0 && target == null && s <= offset && offset <= e)
+                    throw new NotSupportedException("The range reaches into text shown twice (a placeholder showing another's).");
+                continue;
+            }
             // What was not read from the paragraph (the paragraph's before a deleted mark or after a hidden one, a
             // placeholder shown from elsewhere) stays as it is, and new text does not continue it.
             if (t == null && Foreign(stretch, inline, p))
             {
                 if (Math.Max(s, offset) < Math.Min(e, end) || text.Length > 0 && s < offset && offset <= e)
                     throw new NotSupportedException("The range reaches into content of another paragraph (one whose mark is hidden or deleted, or a placeholder).");
+                // New text before it would belong to the paragraph it comes from.
+                if (text.Length > 0 && s == offset && target == null)
+                    throw new NotSupportedException("The place is before content of another paragraph (one whose mark is hidden or deleted, or a placeholder).");
                 continue;
             }
             if (t != null)
@@ -175,6 +187,8 @@ static class TextEdits
                 else if (after == null && s >= end)
                     after = t;
             }
+            else if (text.Length > 0 && s < offset && offset < e)
+                throw new NotSupportedException($"The place is within text the document computes ({inline.GetType().Name}).");
             else if (Math.Max(s, offset) < Math.Min(e, end))
             {
                 if (!Removable(inline) || stretch.Find(inline.Xml) is not { } element || !element.Ancestors().Contains(p))
@@ -212,9 +226,10 @@ static class TextEdits
     }
 
     /// <summary>
-    /// A run of its own for new text where no text is to continue: after the run of the text before it, before the run
-    /// of what comes after it, else at the paragraph's end; in the format of the run it follows or precedes, else of the
-    /// paragraph's mark. Returns the paragraph it went into.
+    /// A run of its own for new text where no text is to continue: before what comes after the place (its run, or what
+    /// holds it in the paragraph: an equation, a field, a content control), else at the paragraph's end, never past an
+    /// object between the text before and the place; in the format of the run of the text before it or after it, else of
+    /// the paragraph's mark. Returns the paragraph it went into.
     /// </summary>
     static XElement NewRun(XElement p, XElement? before, XElement? after, string text)
     {
@@ -224,9 +239,7 @@ static class TextEdits
         var t = new XElement(w + "t");
         SetText(t, text);
         var run = new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => e.Name.LocalName is not ("ins" or "del" or "rPrChange"))) : null, t);
-        if (before?.AncestorsAndSelf(w + "r").FirstOrDefault() is { } previous)
-            previous.AddAfterSelf(run);
-        else if (after?.AncestorsAndSelf(w + "r").FirstOrDefault() is { } next)
+        if ((after?.AncestorsAndSelf(w + "r").FirstOrDefault() ?? after?.AncestorsAndSelf().FirstOrDefault(a => a.Parent == p)) is { } next)
             next.AddBeforeSelf(run);
         else
             p.Add(run);

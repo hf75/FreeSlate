@@ -24,7 +24,7 @@ namespace FreeSlate;
 /// paragraph whose mark is hidden or deleted, a note reference, a section break that comes or goes), the document is read
 /// again whole. Changes reach the body's paragraphs, in tables and text boxes too.
 /// </summary>
-public sealed class WordDocument : IDisposable
+public sealed class WordDocument : IEditableDocument
 {
     readonly OpcPackage package;
     readonly FontLocator? fonts;
@@ -136,19 +136,58 @@ public sealed class WordDocument : IDisposable
     /// <summary>The text of a paragraph (see ParagraphText).</summary>
     public string Text(int paragraph) => ParagraphText.Of(Find(paragraph).Paragraph);
 
+    /// <summary>Whether a paragraph of that id is the body's (in tables and text boxes too), which the document changes.</summary>
+    public bool Contains(int paragraph) => paragraphs.ContainsKey(paragraph);
+
     /// <summary>Whether a change can be undone, and one undone done again.</summary>
     public bool CanUndo => version > 0;
     public bool CanRedo => version + 1 < versions.Count;
+
+    /// <summary>How many changes the document holds as it reads now: 0 as opened, one more for each change made, one less for each undone.</summary>
+    public int Changes => version;
+
+    /// <summary>
+    /// The paragraph just before or after a paragraph in its body, table cell or text box, or null where none is (at its
+    /// edge, or where a table stands between).
+    /// </summary>
+    public int? Before(int paragraph) => Beside(paragraph, -1);
+    public int? After(int paragraph) => Beside(paragraph, 1);
+
+    int? Beside(int paragraph, int step)
+    {
+        var (p, top) = Find(paragraph);
+        return ListOf(top, p) is var (list, index) && index + step >= 0 && index + step < list.Count && list[index + step] is ParagraphBlock beside
+            ? beside.Id
+            : null;
+    }
 
     /// <summary>
     /// Replaces the text of a paragraph from a place, so many characters, by other text (without breaks): it takes the
     /// format of the text before it.
     /// </summary>
-    /// <exception cref="NotSupportedException">The range holds what cannot be changed so (see TextEdits); nothing changes.</exception>
+    /// <exception cref="NotSupportedException">
+    /// The range holds what cannot be changed so (see TextEdits), or the paragraph would not read so afterwards (the place
+    /// is in what the document computes, such as a table of contents, or keeps, such as an object); nothing changes.
+    /// </exception>
     public void Replace(int paragraph, int offset, int length, string text)
     {
         var (p, top) = Find(paragraph);
+        var expected = markup ? null : ParagraphText.Of(p) is var now && offset - p.TextOffset is var at and >= 0 && at + length <= now.Length
+            ? now.Remove(at, length).Insert(at, text) : null;
         Change(top, top, (stretch, tracking) => TextEdits.Replace(stretch, p, offset, length, text, tracking));
+        if (expected != null && !Reads(paragraph, expected))
+            throw Refused("The paragraph would not read so: the place is in what the document computes or keeps.");
+    }
+
+    /// <summary>Whether a paragraph of the body reads so (as all its tracked changes accepted).</summary>
+    bool Reads(int paragraph, string text) => paragraphs.TryGetValue(paragraph, out var found) && ParagraphText.Of(found.Paragraph) == text;
+
+    /// <summary>The change just made taken back and forgotten, as if it had not been made: a refusal of it.</summary>
+    NotSupportedException Refused(string why)
+    {
+        Go(version - 1);
+        versions.RemoveRange(version + 1, versions.Count - version - 1);
+        return new NotSupportedException(why);
     }
 
     /// <summary>Puts text into a paragraph at a place (see Replace).</summary>
@@ -165,6 +204,7 @@ public sealed class WordDocument : IDisposable
     public int Split(int paragraph, int offset)
     {
         var (p, top) = Find(paragraph);
+        var before = markup ? null : ParagraphText.Of(p);
         var second = 0;
         var where = Change(top, top, (stretch, tracking) =>
         {
@@ -173,30 +213,45 @@ public sealed class WordDocument : IDisposable
             return text;
         });
         bool Second(XElement? element) => element != null && where(element) == second;
-        return (paragraphs.Values.FirstOrDefault(v => Second(v.Paragraph.Element)).Paragraph
-                ?? paragraphs.Values.FirstOrDefault(v => v.Paragraph.Content.Any(i => Second(i.Xml?.Ancestors(v.Paragraph.Element.Name).FirstOrDefault()))).Paragraph)?.Id
-               ?? paragraph;
+        var id = (paragraphs.Values.FirstOrDefault(v => Second(v.Paragraph.Element)).Paragraph
+                  ?? paragraphs.Values.FirstOrDefault(v => v.Paragraph.Content.Any(i => Second(i.Xml?.Ancestors(v.Paragraph.Element.Name).FirstOrDefault()))).Paragraph)?.Id
+                 ?? paragraph;
+        // Two paragraphs that read as the halves, the second where the place was.
+        var at = offset - p.TextOffset;
+        if (before != null && at >= 0 && at <= before.Length && !(Reads(id, before[at..]) && Before(id) is { } first && Reads(first, before[..at])))
+            throw Refused("The paragraph would not split so: the place is in what the document computes or keeps.");
+        return id;
     }
 
     /// <summary>
     /// Joins a paragraph with the paragraph after it in its body, cell or text box, as Delete at its end does (see
-    /// TextEdits.Join); returns the id of the joined paragraph: the first's, or the second's where the first was empty.
+    /// TextEdits.Join); returns the id of the joined paragraph, which stands where the first did.
     /// </summary>
-    /// <exception cref="NotSupportedException">No paragraph follows it there, or the two cannot be joined so; nothing changes.</exception>
+    /// <exception cref="NotSupportedException">
+    /// No paragraph follows it there, or the two cannot be joined so, or the joined paragraph would not read as the two
+    /// one after the other; nothing changes.
+    /// </exception>
     public int Join(int paragraph)
     {
         var (p, top) = Find(paragraph);
         var (list, index) = ListOf(top, p) ?? throw new ArgumentException($"The document's body has no paragraph {paragraph}.", nameof(paragraph));
         if (index + 1 >= list.Count || list[index + 1] is not ParagraphBlock next)
             throw new NotSupportedException("No paragraph follows the paragraph in its body, cell or text box.");
-        var first = true;
-        Change(top, ReferenceEquals(list, blocks) ? next : top, (stretch, tracking) =>
+        var both = markup ? null : ParagraphText.Of(p) + ParagraphText.Of(next);
+        var (first, start) = (true, -1);
+        var where = Change(top, ReferenceEquals(list, blocks) ? next : top, (stretch, tracking) =>
         {
+            start = stretch.Find(p.Element) is { } element ? stretch.Text.Start(element) - stretch.Head : -1;
             var (text, stays) = TextEdits.Join(stretch, p, next, tracking);
             first = stays;
             return text;
         });
-        return first ? paragraph : next.Id;
+        // The joined paragraph begins where the first began (its id goes by its text and place, see ModelReader.Keep).
+        var id = paragraphs.Values.FirstOrDefault(v => v.Paragraph.Element is { } element && start >= 0 && where(element) == start).Paragraph?.Id
+                 ?? (first ? paragraph : next.Id);
+        if (both != null && !Reads(id, both))
+            throw Refused("The paragraphs would not join so: one holds what the document computes or keeps.");
+        return id;
     }
 
     /// <summary>

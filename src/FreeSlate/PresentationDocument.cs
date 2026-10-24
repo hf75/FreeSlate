@@ -40,7 +40,7 @@ public sealed record DeckText(uint Shape, (int Row, int Column)? Cell, IReadOnly
 /// XML of its parts, parsed afresh; the parts are read again and the slides drawn anew, the unit of reading and drawing
 /// anew.
 /// </summary>
-public sealed partial class PresentationDocument : IDisposable
+public sealed partial class PresentationDocument : IEditableDocument
 {
     readonly OpcPackage package;
     readonly PresentationContext context;
@@ -156,9 +156,29 @@ public sealed partial class PresentationDocument : IDisposable
     /// <summary>The text of a paragraph (see SlideText).</summary>
     public string Text(int paragraph) => SlideText.Of(Element(paragraph));
 
+    /// <summary>Whether a paragraph of that id is one of the slides' shapes or tables, which the presentation changes.</summary>
+    public bool Contains(int paragraph) => paragraphs.ContainsKey(paragraph);
+
     /// <summary>Whether a change can be undone, and one undone done again.</summary>
     public bool CanUndo => version > 0;
     public bool CanRedo => version + 1 < versions.Count;
+
+    /// <summary>How many changes the presentation holds as it reads now: 0 as opened, one more for each change made, one less for each undone.</summary>
+    public int Changes => version;
+
+    /// <summary>The paragraph just before or after a paragraph in its shape's (or table cell's) text, or null at its edge.</summary>
+    public int? Before(int paragraph)
+    {
+        var (slide, body, index) = Find(paragraph);
+        return index > 0 ? slide.Bodies[body].Paragraphs[index - 1] : null;
+    }
+
+    public int? After(int paragraph)
+    {
+        var (slide, body, index) = Find(paragraph);
+        var list = slide.Bodies[body].Paragraphs;
+        return index + 1 < list.Count ? list[index + 1] : null;
+    }
 
     /// <summary>
     /// Replaces so many characters of a paragraph's text from a place with new text (a line break as "\v"), as typing
