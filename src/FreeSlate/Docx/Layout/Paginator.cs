@@ -195,6 +195,21 @@ public sealed class PageBox
     /// </summary>
     internal (int Pages, int SectionPages)? Counted { get; set; }
 
+    /// <summary>
+    /// The page without what stands on it (its lines, fills, drawings, notes), as the fields keep a layout they read
+    /// (see FieldEvaluator.Update): its number, section, chapter, headers and paragraphs.
+    /// </summary>
+    internal PageBox Facts()
+    {
+        var facts = new PageBox
+        {
+            Number = Number, Section = Section, DisplayNumber = DisplayNumber, SectionIndex = SectionIndex, FirstOfSection = FirstOfSection,
+            Header = Header, Footer = Footer, Blank = Blank, Chapter = Chapter, BodyTop = BodyTop, BodyBottom = BodyBottom,
+        };
+        facts.Paragraphs.AddRange(Paragraphs);
+        return facts;
+    }
+
     internal PageBox Copy()
     {
         var copy = new PageBox
@@ -372,7 +387,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 while (paginator.pausedHere)
                 {
                     var at = paginator.stoppedAt!;
-                    (laid, checkpoints, finishedPages, settings, paused) = (paginator.pages, points, returned, paginator.settings, at);
+                    (laid, checkpoints, finishedPages, settings, paused) = (paginator.pages, points, returned, paginator.Ended, at);
                     NumberLines(returned, paginator.taken);
                     // Relayout takes a layout up where it paused where nothing of its pages needs another run (see Relayout).
                     firstRun &= run == 0 && Found(returned).Count == 0 && Bands(returned).Count == 0 && paginator.reaching.Count == 0;
@@ -391,7 +406,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 (result, resultTaken) = (returned, paginator.taken);
                 paused = null;
-                settings = paginator.settings;
+                settings = paginator.Ended;
                 checkpoints = KeepCheckpoints ? points : null;
                 laid = paginator.pages;
                 after = (paginator.pages, returned);
@@ -1413,6 +1428,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     public TextSettings Settings => settings;
 
     /// <summary>
+    /// The settings a run ended with, as what comes after it keeps them (the runs after it, Relayout, the text boxes drawn
+    /// later): with the width of its column as it stood at the end, which the run's closure over its column gives from
+    /// then on too, but would keep the run alive with all it holds (its pages, those of the run before it and that run's
+    /// settings, and so on from edit to edit).
+    /// </summary>
+    TextSettings Ended => settings.ColumnWidth is { } width ? settings with { ColumnWidth = Fixed(width()) } : settings;
+
+    static Func<double> Fixed(double width) => () => width;
+
+    /// <summary>
+    /// The width of the column the run stands in, as its paragraphs ask for it (TextSettings.ColumnWidth): a closure over
+    /// the run alone, where one made in a method with closures of its own would hold what they hold too (Take's the run
+    /// it takes over, which a checkpoint's run would keep alive).
+    /// </summary>
+    Func<double> OwnColumn() => () => Column(column).Width;
+
+    /// <summary>
     /// Whether the runs take checkpoints to resume from (see Checkpoint, Relayout); off unless asked for, as each
     /// checkpoint copies the page in hand and the state of the flow.
     /// </summary>
@@ -1707,7 +1739,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
                 else if (!reread)
                     fieldPasses = 0;
-                settings = run.settings;
+                settings = run.Ended;
                 NumberLines(pages, run.taken);
                 finishedPages = pages;
                 return new Relaid(pages, from.Page, run.pausedHere ? 0 : stop?.Page ?? 0);
@@ -2039,7 +2071,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         frameLines.UnionWith(source.frameLines);
         continuedEndnotes = source.continuedEndnotes;
         settled = source.settled;
-        settings = source.settings with { ColumnWidth = source.settings.ColumnWidth != null ? () => Column(column).Width : null, BreakUnseen = null };
+        settings = source.settings with { ColumnWidth = source.settings.ColumnWidth != null ? OwnColumn() : null, BreakUnseen = null };
         Copy(reaching, source.reaching);
         Copy(heldInTable, source.heldInTable);
         (endnotesFrom, nextContinuous, chapter, columnsRightToLeft, footnotes) = (source.endnotesFrom, source.nextContinuous, source.chapter, source.columnsRightToLeft, source.footnotes);
@@ -2768,7 +2800,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page.Passed.AddRange(passedOver);
             passedOver.Clear();
         }
-        settings = settings with { ColumnWidth = () => Column(column).Width };
+        settings = settings with { ColumnWidth = OwnColumn() };
         // A header that reaches below the top margin pushes the body down, a footer above the bottom margin pushes
         // its end up, each with the space before and after its paragraphs, unless the margin is negative (fixed;
         // measured with docx/local/hf-tall, hf-short).
@@ -5495,7 +5527,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (paragraph.EndsSection != null)
             sectionBreakAfter = pendingAfter;
         // Bar tabs reach down through the space after the paragraph (measured with docx/generated/tabs).
-        lines[^1].BarExtension = pendingAfter;
+        if (lines[^1].Bars != null)
+            lines[^1].BarExtension = pendingAfter;
         if (flow.Count > 0 && flow[^1].Paragraph == paragraphNumber)
             flow[^1].After = pendingAfter;
         page!.TrailingSpace = pendingAfter;

@@ -108,6 +108,38 @@ public sealed class Line
 {
     public List<Piece> Pieces { get; } = [];
 
+    /// <summary>
+    /// What few lines have (hanging punctuation, room beside floating objects, alignment moves, notes, anchors, marks of
+    /// the markup view, bar tabs), apart from the line, so that a line without it takes little room: a long document
+    /// holds hundreds of thousands of lines.
+    /// </summary>
+    sealed class Rare
+    {
+        public double Hanging, RaisedAbove, LoweredBelow, RubyAbove, BarExtension;
+        public double? Start, Limit;
+        public List<(double Start, double End)>? Cut;
+        public (bool Center, double Left, double Right, double Width)? Alignment;
+        public (string Justification, double Left, double Right, double Width)? Mirrored;
+        public (string Justification, double Start, double End, double Width)? Room;
+        public List<string>? Notes;
+        public List<AnchorInline>? Anchors;
+        public Dictionary<AnchorInline, double>? AnchorX;
+        public List<(double X, bool Start)>? Brackets;
+        public List<(double X, string Id, bool Start)>? Comments;
+        public FormatChange? BlockChange;
+        public List<(double X, FormatChange Change)>? HiddenChanges;
+        public List<double>? Bars;
+
+        public Rare Copy() => (Rare)MemberwiseClone();
+    }
+
+    Rare? rare;
+
+    Rare Rarely => rare ??= new();
+
+    /// <summary>Whether a value is +0, which needs no room of its own (-0 does, as it is another value).</summary>
+    static bool IsZero(double value) => BitConverter.DoubleToInt64Bits(value) == 0;
+
     /// <summary>Whether the line ends with the hyphen of a word broken at its end (automatic or soft hyphenation).</summary>
     public bool Hyphenated { get; set; }
 
@@ -115,7 +147,7 @@ public sealed class Line
     public bool AutoHyphenated { get; set; }
 
     /// <summary>The width of punctuation that hangs past the line's end (paragraph.eastAsian), which alignment leaves out.</summary>
-    public double Hanging { get; set; }
+    public double Hanging { get => rare?.Hanging ?? 0; set { if (rare != null || !IsZero(value)) Rarely.Hanging = value; } }
 
     /// <summary>Whether the line took its last character by squeezing its East Asian punctuation (see ParagraphLayout.CompressesPunctuation).</summary>
     public bool PunctuationSqueezed { get; set; }
@@ -127,12 +159,20 @@ public sealed class Line
     public bool HangsHalf { get; set; }
 
     /// <summary>A copy of the line, its pieces shared.</summary>
-    internal Line Copy() => (Line)MemberwiseClone();
+    internal Line Copy() => Copied();
+
+    /// <summary>A copy of the line, of what few lines have too (see Rare), its pieces and lists shared.</summary>
+    Line Copied()
+    {
+        var copy = (Line)MemberwiseClone();
+        copy.rare = rare?.Copy();
+        return copy;
+    }
 
     /// <summary>A copy of the line with less room above its text, its height and baseline <paramref name="by"/> less.</summary>
     public Line Trimmed(double by)
     {
-        var copy = (Line)MemberwiseClone();
+        var copy = Copied();
         copy.Height -= by;
         copy.Baseline -= by;
         return copy;
@@ -145,7 +185,7 @@ public sealed class Line
     /// </summary>
     public Line Flipped()
     {
-        var copy = (Line)MemberwiseClone();
+        var copy = Copied();
         copy.Baseline = Height - Baseline + Above - Below;
         return copy;
     }
@@ -157,14 +197,14 @@ public sealed class Line
     public double Below { get; set; }
 
     /// <summary>How far raised and lowered text (w:position, super- and subscript) reaches beyond Above and Below.</summary>
-    public double RaisedAbove { get; set; }
-    public double LoweredBelow { get; set; }
+    public double RaisedAbove { get => rare?.RaisedAbove ?? 0; set { if (rare != null || !IsZero(value)) Rarely.RaisedAbove = value; } }
+    public double LoweredBelow { get => rare?.LoweredBelow ?? 0; set { if (rare != null || !IsZero(value)) Rarely.LoweredBelow = value; } }
 
     /// <summary>The largest single line height of the line's fonts, which multiple line spacing multiplies.</summary>
     public double LargestNatural { get; set; }
 
     /// <summary>How far ruby reaches above Above, which multiple line spacing multiplies too.</summary>
-    public double RubyAbove { get; set; }
+    public double RubyAbove { get => rare?.RubyAbove ?? 0; set { if (rare != null || !IsZero(value)) Rarely.RubyAbove = value; } }
 
     /// <summary>
     /// The part of the height below the text that may hang past the bottom of the page: the extra space of multiple
@@ -180,15 +220,15 @@ public sealed class Line
     public double Skip { get; set; }
 
     /// <summary>Where the line's room around floating objects begins and ends (from the column's left edge), or null.</summary>
-    public double? Start { get; set; }
-    public double? Limit { get; set; }
+    public double? Start { get => rare?.Start; set { if (rare != null || value != null) Rarely.Start = value; } }
+    public double? Limit { get => rare?.Limit; set { if (rare != null || value != null) Rarely.Limit = value; } }
 
     /// <summary>
     /// The segments of a line that floating objects cut (from the column's left edge), where its paragraph's shading
     /// stands; a segment that begins at the line's natural start begins at the paragraph's indent. Null for lines of
     /// their whole width.
     /// </summary>
-    public List<(double Start, double End)>? Cut { get; set; }
+    public List<(double Start, double End)>? Cut { get => rare?.Cut; set { if (rare != null || value != null) Rarely.Cut = value; } }
 
     /// <summary>
     /// Whether justification leaves the line's spacing as it is: a line a tab stop past the right indent took further
@@ -203,32 +243,32 @@ public sealed class Line
     /// How a centered or right aligned line was moved (from the column's left edge): the room's left and right edge
     /// and the width of its content, by which Word places it on its device (PageRenderer.OnDots); null for others.
     /// </summary>
-    public (bool Center, double Left, double Right, double Width)? Alignment { get; set; }
+    public (bool Center, double Left, double Right, double Width)? Alignment { get => rare?.Alignment; set { if (rare != null || value != null) Rarely.Alignment = value; } }
 
     /// <summary>
     /// For a line of a right-to-left paragraph: its alignment (w:jc), the edges of its room as it shows (from the
     /// column's left edge) and its content's width, by which Word places it from the page's right edge
     /// (PageRenderer.OnDots); null for others.
     /// </summary>
-    public (string Justification, double Left, double Right, double Width)? Mirrored { get; set; }
+    public (string Justification, double Left, double Right, double Width)? Mirrored { get => rare?.Mirrored; set { if (rare != null || value != null) Rarely.Mirrored = value; } }
 
     /// <summary>The line's room as laid out before mirroring (w:jc, its start and end edge, its content's width).</summary>
-    internal (string Justification, double Start, double End, double Width)? Room { get; set; }
+    internal (string Justification, double Start, double End, double Width)? Room { get => rare?.Room; set { if (rare != null || value != null) Rarely.Room = value; } }
 
     /// <summary>The footnotes whose references stand in the line (catalog: note.footnotes).</summary>
-    public List<string>? Notes { get; set; }
+    public List<string>? Notes { get => rare?.Notes; set { if (rare != null || value != null) Rarely.Notes = value; } }
 
     /// <summary>The floating drawings anchored in the line, which wp:positionV relativeFrom="line" places from its top.</summary>
-    public List<AnchorInline>? Anchors { get; set; }
+    public List<AnchorInline>? Anchors { get => rare?.Anchors; set { if (rare != null || value != null) Rarely.Anchors = value; } }
 
     /// <summary>Where in the line (from the column's left edge) each of its drawings is anchored, for relativeFrom="character".</summary>
-    public Dictionary<AnchorInline, double>? AnchorX { get; set; }
+    public Dictionary<AnchorInline, double>? AnchorX { get => rare?.AnchorX; set { if (rare != null || value != null) Rarely.AnchorX = value; } }
 
     /// <summary>The brackets of editable ranges in the line: where (from the column's left edge) and whether they open.</summary>
-    public List<(double X, bool Start)>? Brackets { get; set; }
+    public List<(double X, bool Start)>? Brackets { get => rare?.Brackets; set { if (rare != null || value != null) Rarely.Brackets = value; } }
 
     /// <summary>Where comments' ranges begin and end in the line, in the markup view (catalog: review.comments).</summary>
-    public List<(double X, string Id, bool Start)>? Comments { get; set; }
+    public List<(double X, string Id, bool Start)>? Comments { get => rare?.Comments; set { if (rare != null || value != null) Rarely.Comments = value; } }
 
     /// <summary>
     /// In the markup view (catalog: review.revisions): whether the line has a change bar beside it whatever its text
@@ -236,16 +276,16 @@ public sealed class Line
     /// the formatting change of its paragraph or table whose balloon it anchors.
     /// </summary>
     public bool Changed { get; set; }
-    public FormatChange? BlockChange { get; set; }
+    public FormatChange? BlockChange { get => rare?.BlockChange; set { if (rare != null || value != null) Rarely.BlockChange = value; } }
 
     /// <summary>The formatting changes of hidden text in the line and where it would stand (markup view).</summary>
-    public List<(double X, FormatChange Change)>? HiddenChanges { get; set; }
+    public List<(double X, FormatChange Change)>? HiddenChanges { get => rare?.HiddenChanges; set { if (rare != null || value != null) Rarely.HiddenChanges = value; } }
 
     /// <summary>Bar tab stops (w:tab w:val="bar"): vertical lines at these positions from the column's left edge.</summary>
-    public List<double>? Bars { get; set; }
+    public List<double>? Bars { get => rare?.Bars; set { if (rare != null || value != null) Rarely.Bars = value; } }
 
     /// <summary>How far below the line its bars reach: the space after the paragraph, on its last line.</summary>
-    public double BarExtension { get; set; }
+    public double BarExtension { get => rare?.BarExtension ?? 0; set { if (rare != null || !IsZero(value)) Rarely.BarExtension = value; } }
 
     /// <summary>The break that ends the line: none, a line break, a page break or a column break.</summary>
     public string? EndBreak { get; set; }
@@ -270,10 +310,79 @@ public sealed class Line
     /// the paragraph's text (ParagraphText; -1 for what the layout adds), the same for all its lines (set by
     /// <see cref="ParagraphLayout.Layout"/>).
     /// </summary>
-    public int[]? Sources { get; set; }
+    public SourceMap? Sources { get; set; }
 
     /// <summary>Where the line's text begins in its paragraph's text.</summary>
     public int TextStart { get; init; }
+}
+
+/// <summary>
+/// Where each character of a paragraph's laid out text comes from in the paragraph's text (Line.Sources): as stretches
+/// of characters whose offsets count up from the first's, or that all come from one (a field's result, an object; -1
+/// for what the layout adds), of which a paragraph has few, where an offset for each character took four bytes a
+/// character for all of the document's paragraphs.
+/// </summary>
+public sealed class SourceMap : IReadOnlyList<int>
+{
+    /// <summary>For each stretch, where it begins in the laid out text, the offset of its first character and what each further one adds (1 or 0).</summary>
+    readonly int[] stretches;
+
+    SourceMap(int[] stretches, int count) => (this.stretches, Count) = (stretches, count);
+
+    /// <summary>The offsets, for each character of the laid out text one.</summary>
+    public static SourceMap Of(List<int> offsets)
+    {
+        var stretches = new List<int>();
+        for (var i = 0; i < offsets.Count; i++)
+        {
+            if (stretches.Count > 0)
+            {
+                var (start, first, step) = (stretches[^3], stretches[^2], stretches[^1]);
+                // A stretch of one character goes on as its second says: counting up from the first or coming from its offset too.
+                if (i - start == 1 && (offsets[i] == first || offsets[i] == first + 1))
+                {
+                    stretches[^1] = offsets[i] - first;
+                    continue;
+                }
+                if (i - start > 1 && offsets[i] == first + step * (i - start))
+                    continue;
+            }
+            stretches.AddRange([i, offsets[i], 0]);
+        }
+        return new SourceMap([.. stretches], offsets.Count);
+    }
+
+    /// <summary>The number of characters of the laid out text.</summary>
+    public int Count { get; }
+
+    /// <summary>The offset in the paragraph's text the character at <paramref name="index"/> of the laid out text comes from.</summary>
+    public int this[int index]
+    {
+        get
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint)index, (uint)Count, nameof(index));
+            // The last stretch that begins at or before the character.
+            var (low, high) = (0, stretches.Length / 3 - 1);
+            while (low < high)
+            {
+                var middle = (low + high + 1) / 2;
+                if (stretches[3 * middle] <= index)
+                    low = middle;
+                else
+                    high = middle - 1;
+            }
+            var k = 3 * low;
+            return stretches[k + 1] + stretches[k + 2] * (index - stretches[k]);
+        }
+    }
+
+    public IEnumerator<int> GetEnumerator()
+    {
+        for (var i = 0; i < Count; i++)
+            yield return this[i];
+    }
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 /// <summary>
@@ -857,7 +966,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     int labelTab = -1;
 
     /// <summary>Where the characters of the paragraph laid out last come from (Line.Sources).</summary>
-    int[]? laidSources;
+    SourceMap? laidSources;
 
     /// <summary>The Word 6 numbering of the paragraph's list number (NumberingLevel.Legacy), or null.</summary>
     (double Indent, double Space)? legacyLabel;
@@ -1020,7 +1129,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         displayWidth = width - (format.Left ?? 0) - (format.Right ?? 0);
         unseenBreak = settings.BreakUnseen?.Invoke(paragraph) == true;
         var (text, charStyles, labelLength, sources) = Flatten(paragraph, fields);
-        laidSources = [.. sources];
+        laidSources = SourceMap.Of(sources);
         labelTab = paragraph.Label?.Suffix == "tab" ? labelLength : -1;
         legacyLabel = paragraph.Label?.Level.Legacy;
         levels = BidiLevels(text, charStyles, format.Bidi == true, labelLength);
@@ -3578,7 +3687,8 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         // Right-to-left paragraphs are laid out from their start edge and mirrored afterwards (Visual): left and
         // start align at the start, right and end at the end (measured with docx/local/bidi).
         var jc = format.Justification ?? "left";
-        line.Room = (jc, startX, Math.Min(limit, edge ?? limit), end - line.Pieces[0].X);
+        if (format.Bidi == true)
+            line.Room = (jc, startX, Math.Min(limit, edge ?? limit), end - line.Pieces[0].X);
         // Centered and right aligned lines are laid out as left aligned, tabs and list numbers with them, and move as
         // a whole (measured with docx/local/numcenter: "a", a tab and "b" centered with the tab to the first default
         // stop after the line's start; a number, its tab to the indent and the text, its following lines from the

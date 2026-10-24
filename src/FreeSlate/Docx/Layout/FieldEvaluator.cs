@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace FreeSlate.Docx.Layout;
@@ -383,24 +384,42 @@ public sealed class FieldEvaluator
             before[field] = Value(field, null);
         var again = guessed || newlyEmptied;
         (guessed, newlyEmptied) = (false, false);
-        pages = laid;
+        // The layout's pages as the fields read them from now on: without what stands on them (see PageBox.Facts), as
+        // the checkpoints of the next layout keep them (see Take), which would else keep this layout alive whole; but
+        // where a header or footer reads the lines of pages (STYLEREF, see CharacterReference).
+        pages = StoriesReadLines(context) ? laid : laid.ConvertAll(FactsOf);
         // New maps: snapshots and evaluators share the old ones (see Take, Restore).
         (bookmarkPages, paragraphPages) = (new(StringComparer.Ordinal), []);
-        foreach (var page in laid)
+        for (var k = 0; k < laid.Count; k++)
         {
+            var (page, kept) = (laid[k], pages[k]);
             foreach (var (name, _, _) in page.Bookmarks)
-                bookmarkPages.TryAdd(name, page);
+                bookmarkPages.TryAdd(name, kept);
             if (pagedParagraphs.Count == 0)
                 continue;
             foreach (var paragraph in page.Paragraphs)
             {
                 if (pagedParagraphs.Contains(paragraph.Id))
-                    paragraphPages.TryAdd(paragraph.Id, page);
+                    paragraphPages.TryAdd(paragraph.Id, kept);
             }
         }
         changed = [.. before.Where(f => Value(f.Key, null) != f.Value).Select(f => f.Key)];
         return again || changed.Count > 0;
     }
+
+    /// <summary>A page as the fields keep it (see Update), made once for each page: a page laid out is not changed after.</summary>
+    static PageBox FactsOf(PageBox page) => facts.GetValue(page, p => p.Facts());
+
+    static readonly ConditionalWeakTable<PageBox, PageBox> facts = new();
+
+    /// <summary>Whether a header or footer of the document holds a STYLEREF field, which may read the lines of pages (see CharacterReference).</summary>
+    static bool StoriesReadLines(DocumentContext context) => (bool)storiesReadLines.GetValue(context, c =>
+        c.Package.Relationships(c.MainPart).Where(r => !r.External && (r.Is("header") || r.Is("footer")) && c.Package.Exists(r.Target))
+            .Any(r => c.Load(r.Target).Root?.Descendants().Any(e =>
+                (e.Name == Wml.W + "instrText" ? e.Value : e.Name == Wml.W + "fldSimple" ? (string?)e.Attribute(Wml.W + "instr") : null)
+                ?.Contains("STYLEREF", StringComparison.OrdinalIgnoreCase) == true) == true));
+
+    static readonly ConditionalWeakTable<DocumentContext, object> storiesReadLines = new();
 
     /// <summary>A field's result, or null where it keeps the one Word saved; <paramref name="on"/> is the page of a header or footer.</summary>
     public string? Value(FieldInline field, PageBox? on)

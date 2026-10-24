@@ -353,6 +353,102 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The blocks read so far, which number them (Block.Id; not in their document's order: a table's cells come first).</summary>
     int blocksRead;
 
+    /// <summary>
+    /// The formats of the runs and marks read so far, one of each (see Shared): a document's runs have few formats between
+    /// them, and a format the model holds is not changed once it is read.
+    /// </summary>
+    readonly Dictionary<RunFormat, RunFormat> formats = new(new SharedFormats());
+
+    /// <summary>
+    /// For each format of formats, the copies of it that further runs of one paragraph take where more than one of them
+    /// has it (see taken).
+    /// </summary>
+    readonly Dictionary<RunFormat, List<RunFormat>> copies = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// How many runs of the paragraph being read took each format of formats, null outside paragraphs: the layout tells
+    /// a paragraph's runs apart by their formats (a piece of a line is one run's, see ParagraphLayout.LayoutLines), so
+    /// each run of a paragraph keeps a format of its own, as each read its own before formats were shared, among the
+    /// runs of the paragraphs before it too where they run into it (their marks hidden or deleted, see JoinHidden).
+    /// </summary>
+    Dictionary<RunFormat, int>? taken;
+
+    /// <summary>What the paragraph read last took (see taken), where its mark is hidden or deleted: it runs into the next one.</summary>
+    Dictionary<RunFormat, int>? runsOn;
+
+    /// <summary>
+    /// A run's or mark's format as it was read before where an equal one was (see formats), else this one; in a paragraph
+    /// a copy of it where another run of the paragraph took it (see taken); outside paragraphs this one.
+    /// </summary>
+    RunFormat Shared(RunFormat format)
+    {
+        if (taken == null)
+            return format;
+        if (!formats.TryGetValue(format, out var shared))
+            formats[shared = format] = format;
+        var before = taken.GetValueOrDefault(shared);
+        taken[shared] = before + 1;
+        if (before == 0)
+            return shared;
+        if (!copies.TryGetValue(shared, out var made))
+            copies[shared] = made = [];
+        while (made.Count < before)
+        {
+            var copy = shared.Clone();
+            copy.Origin = shared.Origin is { } origin ? origin with { Resolved = copy } : null;
+            made.Add(copy);
+        }
+        return made[before - 1];
+    }
+
+    /// <summary>The format of a separator's paragraph: single spacing, no space before or after (a copy, as formats are shared).</summary>
+    ParagraphFormat SeparatorFormat(ParagraphFormat format)
+    {
+        var f = format.Clone();
+        (f.Before, f.After, f.BeforeLines, f.AfterLines, f.BeforeAuto, f.AfterAuto, f.Line, f.LineRule) = (0, 0, null, null, false, false, 240, "auto");
+        return Shared(f);
+    }
+
+    /// <summary>The paragraphs' formats read so far, one of each, as formats holds the runs' (see Shared).</summary>
+    readonly Dictionary<ParagraphFormat, ParagraphFormat> paragraphFormats = new(new SharedParagraphFormats());
+
+    ParagraphFormat Shared(ParagraphFormat format)
+    {
+        if (paragraphFormats.TryGetValue(format, out var shared))
+            return shared;
+        paragraphFormats[format] = format;
+        return format;
+    }
+
+    sealed class SharedParagraphFormats : IEqualityComparer<ParagraphFormat>
+    {
+        public bool Equals(ParagraphFormat? a, ParagraphFormat? b) => ReferenceEquals(a, b) || a != null && b != null && FormatValues<ParagraphFormat>.Equal(a, b);
+
+        public int GetHashCode(ParagraphFormat format) => FormatValues<ParagraphFormat>.Hash(format);
+    }
+
+    /// <summary>
+    /// Formats equal where their values are and they were resolved from equal values (RunFormat.Origin: the run's own
+    /// properties, its character style and the table level by reference), which reading them anew under another
+    /// paragraph style resolves the same (see Restyled).
+    /// </summary>
+    sealed class SharedFormats : IEqualityComparer<RunFormat>
+    {
+        public bool Equals(RunFormat? a, RunFormat? b) =>
+            ReferenceEquals(a, b) || a != null && b != null && FormatValues<RunFormat>.Equal(a, b) && (a.Origin, b.Origin) switch
+            {
+                (null, null) => true,
+                ({ } x, { } y) => FormatValues<RunFormat>.Equal(x.Direct, y.Direct) && x.CharacterStyle == y.CharacterStyle && ReferenceEquals(x.Table, y.Table),
+                _ => false,
+            };
+
+        // With where they were resolved from: formats of equal values resolved in many tables would else share a hash.
+        public int GetHashCode(RunFormat format) => format.Origin is { } origin
+            ? HashCode.Combine(FormatValues<RunFormat>.Hash(format), FormatValues<RunFormat>.Hash(origin.Direct), origin.CharacterStyle,
+                origin.Table is { } table ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(table) : 0)
+            : FormatValues<RunFormat>.Hash(format);
+    }
+
     /// <summary>The last id given a block (Block.Id); a reader set to another's numbers its blocks after it.</summary>
     public int LastId
     {
@@ -541,8 +637,17 @@ public sealed partial class ModelReader(DocumentContext context)
     static string Text(XElement t)
     {
         var space = t.Attribute(XNamespace.Xml + "space")?.Value ?? t.Document?.Root?.Attribute(XNamespace.Xml + "space")?.Value;
-        return space == "preserve" ? t.Value : t.Value.Trim(' ', '\t', '\r', '\n').Replace('\t', ' ');
+        var value = Value(t);
+        return space == "preserve" ? value : value.Trim(' ', '\t', '\r', '\n').Replace('\t', ' ');
     }
+
+    /// <summary>
+    /// An element's text: of one read with line info the string of its one text node where it has one, which the model
+    /// then shares with the XML where XElement.Value would copy it (an element read without line info holds its text as
+    /// such a string already, which reading its nodes would make a node of).
+    /// </summary>
+    static string Value(XElement e) =>
+        ((System.Xml.IXmlLineInfo)e).HasLineInfo() && e.FirstNode is XText text && text.NextNode == null ? text.Value : e.Value;
 
     /// <summary>
     /// Paragraphs whose mark is hidden (w:vanish on the mark, catalog: run.hidden) as Word prints them (measured with
@@ -752,10 +857,10 @@ public sealed partial class ModelReader(DocumentContext context)
             // paragraph at 1.5 lines and 10 pt after, the line 17.3 pt higher; tdf123262, three paragraphs).
             if (type is "separator" or "continuationSeparator" && blocks.Count == 1)
             {
-                foreach (var paragraph in blocks.OfType<ParagraphBlock>().Where(p => p.Element.Descendants().Any(e => e.Name.LocalName is "separator" or "continuationSeparator")))
+                for (var k = 0; k < blocks.Count; k++)
                 {
-                    var f = paragraph.Format;
-                    (f.Before, f.After, f.BeforeLines, f.AfterLines, f.BeforeAuto, f.AfterAuto, f.Line, f.LineRule) = (0, 0, null, null, false, false, 240, "auto");
+                    if (blocks[k] is ParagraphBlock paragraph && paragraph.Element.Descendants().Any(e => e.Name.LocalName is "separator" or "continuationSeparator"))
+                        blocks[k] = paragraph with { Format = SeparatorFormat(paragraph.Format) };
                 }
             }
             // The continuation notice counts only where the settings list it among the special notes (see
@@ -773,10 +878,10 @@ public sealed partial class ModelReader(DocumentContext context)
                 continue;
             var blocks = new List<Block>();
             ReadBlocks(new XElement(Wml.W + (endnotes ? "endnote" : "footnote"), new XElement(Wml.W + "p", new XElement(Wml.W + "r", new XElement(Wml.W + kind)))), blocks);
-            foreach (var paragraph in blocks.OfType<ParagraphBlock>())
+            for (var k = 0; k < blocks.Count; k++)
             {
-                var f = paragraph.Format;
-                (f.Before, f.After, f.BeforeLines, f.AfterLines, f.BeforeAuto, f.AfterAuto, f.Line, f.LineRule) = (0, 0, null, null, false, false, 240, "auto");
+                if (blocks[k] is ParagraphBlock paragraph)
+                    blocks[k] = paragraph with { Format = SeparatorFormat(paragraph.Format) };
             }
             notes[kind] = blocks;
         }
@@ -1055,7 +1160,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     // gap is those 3.5 pt, the joined one's 18 pt and the first one's 24 pt gone; dmk-a: without
                     // contextual spacing its own 18 pt; docx/external/libreoffice/extras-uiwriter/tdf125916).
                     if (paragraph.Format.ContextualSpacing == true)
-                        (paragraph.Format.Before, paragraph.Format.BeforeLines, paragraph.Format.BeforeAuto) = (0, null, false);
+                    {
+                        var joined = paragraph.Format.Clone();
+                        (joined.Before, joined.BeforeLines, joined.BeforeAuto) = (0, null, false);
+                        paragraph = paragraph with { Format = Shared(joined) };
+                    }
                 }
                 if (markDeleted)
                     pending = paragraph;
@@ -1274,6 +1383,25 @@ public sealed partial class ModelReader(DocumentContext context)
 
     ParagraphBlock Paragraph(XElement p, bool number = true)
     {
+        // The runs of a paragraph take formats of their own among them, and among those of the paragraph before it where
+        // that one runs into it (see taken); a paragraph in a text box of one of its runs among its own.
+        var outer = taken;
+        (taken, runsOn) = (runsOn ?? new(ReferenceEqualityComparer.Instance), null);
+        try
+        {
+            var paragraph = ReadParagraph(p, number);
+            runsOn = paragraph.MarkFormat.Vanish == true
+                || p.Child("pPr")?.Child("rPr") is { } markRun && (markRun.Child("del") ?? markRun.Child("moveFrom")) != null ? taken : null;
+            return paragraph;
+        }
+        finally
+        {
+            taken = outer;
+        }
+    }
+
+    ParagraphBlock ReadParagraph(XElement p, bool number)
+    {
         var pPr = p.Child("pPr");
         var direct = new ParagraphFormat();
         direct.Apply(pPr);
@@ -1366,7 +1494,7 @@ public sealed partial class ModelReader(DocumentContext context)
             mark = mark.Clone();
             mark.Vanish = true;
         }
-        return new ParagraphBlock(p, format, content, mark)
+        return new ParagraphBlock(p, Shared(format), content, Shared(mark))
         {
             Id = ++blocksRead,
             EndsSection = pPr.Child("sectPr") is { } sectPr ? SectionProperties.Read(sectPr, Resolve, context.Culture) : null,
@@ -1886,10 +2014,12 @@ public sealed partial class ModelReader(DocumentContext context)
         if (deleting)
         {
             (format.Vanish, format.Deleted) = (true, true);
+            format = Shared(format);
             foreach (var deleted in r.Elements(Wml.W + "delText"))
                 deletedText?.Add(new TextInline(Text(deleted).Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), format));
             return;
         }
+        format = Shared(format);
         foreach (var e in r.Elements())
         {
             if (e.Name.Namespace != Wml.W)

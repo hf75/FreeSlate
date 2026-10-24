@@ -10,6 +10,7 @@ using FreeSlate.Editing;
 using FreeSlate.Rendering;
 using FreeSlate.Skia;
 using SkiaSharp;
+using System.Runtime.CompilerServices;
 
 namespace FreeSlate.Viewer;
 
@@ -660,7 +661,10 @@ sealed class ScenesView : Control
     /// <summary>A slice of the pages left to lay out was laid out (see LayOutLater).</summary>
     public event Action? LaidOut;
 
-    /// <summary>All pages laid out and drawn, for printing or writing them (in a long document this takes its time).</summary>
+    /// <summary>
+    /// All pages laid out and drawn, for printing or writing them (in a long document this takes its time): a list of its
+    /// own, as the document keeps only so many of them drawn (see IEditableDocument.Scene).
+    /// </summary>
     public IReadOnlyList<PageScene> Finished()
     {
         if (Session?.Document is not { } document)
@@ -668,9 +672,10 @@ sealed class ScenesView : Control
         while (document.LayingOut)
             document.LayOut(int.MaxValue);
         Update(document.Scenes());
+        var drawn = new PageScene[scenes.Count];
         for (var k = 0; k < scenes.Count; k++)
-            Page(k);
-        return scenes;
+            drawn[k] = Page(k);
+        return drawn;
     }
 
     /// <summary>A page drawn, for what its items tell (see Page).</summary>
@@ -820,7 +825,8 @@ sealed class ScenesView : Control
     /// <summary>The pages' recorded drawings and links and Word's pictures, made once and drawn on the render thread.</summary>
     sealed class Pictures
     {
-        readonly Dictionary<PageScene, Recording> pages = new(ReferenceEqualityComparer.Instance);
+        /// <summary>The recordings, as long as their scenes live: a document keeps only so many pages drawn (see IEditableDocument.Scene).</summary>
+        readonly ConditionalWeakTable<PageScene, Recording> pages = new();
         readonly Dictionary<string, SKImage?> images = [];
 
         /// <summary>
@@ -833,7 +839,7 @@ sealed class ScenesView : Control
         {
             lock (this)
             {
-                foreach (var recording in pages.Values)
+                foreach (var (_, recording) in pages)
                     recording.Picture.Dispose();
                 pages.Clear();
             }
@@ -855,7 +861,7 @@ sealed class ScenesView : Control
             lock (this)
             {
                 var kept = scenes.ToHashSet(ReferenceEqualityComparer.Instance);
-                foreach (var gone in pages.Keys.Where(scene => !kept.Contains(scene)).ToList())
+                foreach (var gone in pages.Select(page => page.Key).Where(scene => !kept.Contains(scene)).ToList())
                     pages.Remove(gone);
             }
         }
@@ -889,7 +895,9 @@ sealed class ScenesView : Control
                 var starts = new int[lines.Count];
                 for (var k = 1; k < lines.Count; k++)
                     starts[k] = starts[k - 1] + lines[k - 1].Line.Offsets.Length;
-                return pages[scene] = new Recording(recorder.EndRecording(), links, places, places.Spots(), starts);
+                var recording = new Recording(recorder.EndRecording(), links, places, places.Spots(), starts);
+                pages.AddOrUpdate(scene, recording);
+                return recording;
             }
         }
 

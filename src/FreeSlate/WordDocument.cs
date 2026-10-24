@@ -78,6 +78,16 @@ public sealed class WordDocument : IEditableDocument
     List<PageScene>? scenes;
     List<(int Paper, double Budget, double Cost)> drawnAs = [];
 
+    /// <summary>
+    /// How many pages drawn when they were asked for stay drawn (see Scene): those nearest the page asked for last, the
+    /// others back to their sketches, to be drawn again when they are asked for again; so a long document scrolled
+    /// through or written out keeps the drawings of so many pages, not of all of them.
+    /// </summary>
+    const int PagesKeptDrawn = 32;
+
+    /// <summary>How many of the scenes are drawn (see PagesKeptDrawn).</summary>
+    int drawnScenes;
+
     /// <summary>The budget of 3D text the document's pages are drawn with, from the first (see DocumentContext.Text3DBudget).</summary>
     double budget;
 
@@ -445,6 +455,7 @@ public sealed class WordDocument : IEditableDocument
             how.Add((paper, left, left - context.Text3DBudget));
         }
         (scenes, drawnAs, shown) = (drawn, how, pages);
+        drawnScenes = drawn.Count(scene => scene.Drawn);
     }
 
     /// <summary>
@@ -470,6 +481,21 @@ public sealed class WordDocument : IEditableDocument
             renderer!.Settings = paginator!.Settings;
             context.Text3DBudget = budget;
             scenes![page] = renderer.Scene(shown[page], sketch.Paper);
+            if (++drawnScenes > PagesKeptDrawn)
+            {
+                // The drawn page farthest from this one goes back to its sketch.
+                var far = -1;
+                for (var k = 0; k < scenes.Count; k++)
+                {
+                    if (k != page && scenes[k].Drawn && (far < 0 || Math.Abs(k - page) > Math.Abs(far - page)))
+                        far = k;
+                }
+                if (far >= 0)
+                {
+                    scenes[far] = renderer.Sketch(shown[far], scenes[far].Paper);
+                    drawnScenes--;
+                }
+            }
         }
         return scenes![page];
     }

@@ -1056,7 +1056,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     }
 
     /// <summary>The places of a line's characters as its pieces are drawn, gathered into its PlacesItem.</summary>
-    sealed class Places(int[] sources)
+    sealed class Places(SourceMap sources)
     {
         readonly List<int> offsets = [];
         readonly List<double> starts = [], ends = [];
@@ -1072,7 +1072,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                                 | (piece.Style.Underline is { } underline && underline != "none" ? PlacesItem.Underlined : 0));
             for (var i = 0; i < piece.Text.Length; i++)
             {
-                if (piece.Start + i >= sources.Length || piece.AddedHyphen && i == piece.Text.Length - 1 || sources[piece.Start + i] < 0)
+                if (piece.Start + i >= sources.Count || piece.AddedHyphen && i == piece.Text.Length - 1 || sources[piece.Start + i] < 0)
                     continue;
                 var (start, end) = piece.RightToLeft ? (width - positions[i], width - positions[i + 1]) : (positions[i], positions[i + 1]);
                 offsets.Add(sources[piece.Start + i]);

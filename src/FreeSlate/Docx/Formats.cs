@@ -553,3 +553,62 @@ static class Overlays
         return Expression.Lambda<Action<T, T>>(steps.Count > 0 ? Expression.Block(steps) : Expression.Empty(), target, top).Compile();
     }
 }
+
+/// <summary>
+/// Formats compared by the values of their public fields, as Overlays reads them, compiled once for a type: lists by
+/// their items, what else a format holds by reference (elements a style or a run states, arrays) as the reference.
+/// </summary>
+static class FormatValues<T> where T : class
+{
+    public static readonly Func<T, T, bool> Equal = CompileEqual();
+    public static readonly Func<T, int> Hash = CompileHash();
+
+    static Func<T, T, bool> CompileEqual()
+    {
+        var (a, b) = (Expression.Parameter(typeof(T), "a"), Expression.Parameter(typeof(T), "b"));
+        Expression all = Expression.Constant(true);
+        foreach (var field in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
+        {
+            Expression equal;
+            if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(List<>))
+                equal = Expression.Call(typeof(FormatValues<T>).GetMethod(nameof(ListEqual), BindingFlags.NonPublic | BindingFlags.Static)!
+                    .MakeGenericMethod(field.FieldType.GetGenericArguments()), Expression.Field(a, field), Expression.Field(b, field));
+            else
+            {
+                var comparer = typeof(EqualityComparer<>).MakeGenericType(field.FieldType);
+                equal = Expression.Call(Expression.Property(null, comparer.GetProperty(nameof(EqualityComparer<object>.Default))!),
+                    comparer.GetMethod(nameof(EqualityComparer<object>.Equals), [field.FieldType, field.FieldType])!, Expression.Field(a, field), Expression.Field(b, field));
+            }
+            all = Expression.AndAlso(all, equal);
+        }
+        return Expression.Lambda<Func<T, T, bool>>(all, a, b).Compile();
+    }
+
+    static bool ListEqual<TItem>(List<TItem>? a, List<TItem>? b) => a == null ? b == null : b != null && a.SequenceEqual(b);
+
+    /// <summary>A list's items hashed, as ListEqual compares them: formats of lists alike in length (tab stops) would else share a hash.</summary>
+    static int ListHash<TItem>(List<TItem>? list)
+    {
+        if (list == null)
+            return -1;
+        var hash = new HashCode();
+        foreach (var item in list)
+            hash.Add(item);
+        return hash.ToHashCode();
+    }
+
+    static Func<T, int> CompileHash()
+    {
+        var a = Expression.Parameter(typeof(T), "a");
+        var hash = Expression.Variable(typeof(HashCode), "hash");
+        var steps = new List<Expression>();
+        var add = typeof(HashCode).GetMethods().Single(m => m.Name == nameof(HashCode.Add) && m.GetParameters().Length == 1);
+        foreach (var field in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
+            steps.Add(field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(List<>)
+                ? Expression.Call(hash, add.MakeGenericMethod(typeof(int)), Expression.Call(typeof(FormatValues<T>).GetMethod(nameof(ListHash), BindingFlags.NonPublic | BindingFlags.Static)!
+                    .MakeGenericMethod(field.FieldType.GetGenericArguments()), Expression.Field(a, field)))
+                : Expression.Call(hash, add.MakeGenericMethod(field.FieldType), Expression.Field(a, field)));
+        steps.Add(Expression.Call(hash, typeof(HashCode).GetMethod(nameof(HashCode.ToHashCode))!));
+        return Expression.Lambda<Func<T, int>>(Expression.Block([hash], steps), a).Compile();
+    }
+}

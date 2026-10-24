@@ -17,7 +17,11 @@ public interface IEditableDocument : IDisposable
     /// </summary>
     IReadOnlyList<PageScene> Scenes();
 
-    /// <summary>A page or slide drawn: a page Scenes gave not drawn yet is drawn now, in its place in the list Scenes gave.</summary>
+    /// <summary>
+    /// A page or slide drawn: a page Scenes gave not drawn yet is drawn now, in its place in the list Scenes gave. A
+    /// document may keep only so many of the pages it drew so drawn, those nearest the page asked for last: the others
+    /// go back to not drawn in that list, to be drawn again when they are wanted.
+    /// </summary>
     PageScene Scene(int page);
 
     /// <summary>
