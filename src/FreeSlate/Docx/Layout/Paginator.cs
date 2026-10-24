@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Xml.Linq;
 using FreeSlate.Drawing;
@@ -306,6 +307,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         List<(int Section, List<Block> Blocks)>? endnotes = null, List<Block>? endnoteSeparator = null)
     {
         input = (blocks, lastSection, footnotes, endnotes, endnoteSeparator);
+        sectionEnds = Ends(blocks);
         List<PageBox> Run()
         {
             settledRun = false;
@@ -323,6 +325,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var paginator = new Paginator(context, layout, reader)
                 {
                     settled = settled, EndnoteContinuation = EndnoteContinuation, settings = settings, checkpoints = KeepCheckpoints ? [] : null,
+                    knownEnds = sectionEnds,
                 };
                 result = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
                 settings = paginator.settings;
@@ -410,8 +413,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         continue;
                     settled.ForcedBreaks.Add(anchorParagraph.Id);
                     var earlier = Math.Min(pages[^1], pages[^2]);
-                    if (found.TryGetValue(earlier, out var stale))
-                        stale.RemoveAll(e => ReferenceEquals(e.Source, source));
+                    if (found.TryGetValue(earlier, out var stale) && stale.RemoveAll(e => ReferenceEquals(e.Source, source)) > 0 && stale.Count == 0)
+                        found.Remove(earlier);
                 }
                 settled.Floats = found;
                 settled.NoteBands = foundBands;
@@ -435,6 +438,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             pages = Run();
         }
         NumberLines(pages);
+        finishedPages = pages;
         return pages;
 
         // The body paragraph an object is anchored in, or null.
@@ -445,9 +449,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Whether the last run of Paginate settled: its floating objects and the room its notes took were those it was laid out with.</summary>
     bool settledRun;
 
-    /// <summary>The floating objects of each page of a run that the next run's lines go around (see Settled.Floats).</summary>
-    Dictionary<int, List<Exclusion>> Found(List<PageBox> run) => run.ToDictionary(p => p.Number, p => p.Drawings.Select(ExclusionOf).OfType<Exclusion>()
-        .Concat(p.FloatingTables.Where(e => e.Frame && !e.WithText || e.Banded != null)).ToList());
+    /// <summary>
+    /// The floating objects of each page of a run that the next run's lines go around (see Settled.Floats), of the pages
+    /// that have some.
+    /// </summary>
+    Dictionary<int, List<Exclusion>> Found(List<PageBox> run)
+    {
+        var found = new Dictionary<int, List<Exclusion>>();
+        foreach (var p in run)
+        {
+            if (p.Drawings.Count == 0 && p.FloatingTables.Count == 0)
+                continue;
+            List<Exclusion> floats = [.. p.Drawings.Select(ExclusionOf).OfType<Exclusion>().Concat(p.FloatingTables.Where(e => e.Frame && !e.WithText || e.Banded != null))];
+            if (floats.Count > 0)
+                found[p.Number] = floats;
+        }
+        return found;
+    }
 
     /// <summary>The room the footnotes of each page of a run with columns took (see Settled.NoteBands).</summary>
     static Dictionary<int, double> Bands(List<PageBox> run) => run.Where(p => p.NoteBand > 0).ToDictionary(p => p.Number, p => p.NoteBand);
@@ -490,18 +508,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// (continuous); every w:countBy-th number shows, right-aligned w:distance (0.25 in by default) left of its
     /// column, on the line's baseline, in the Line Number style (not the paragraph's formatting).
     /// </summary>
-    void NumberLines(List<PageBox> pages)
+    void NumberLines(List<PageBox> pages, bool[]? taken = null)
     {
         var count = 0;
         var section = -1;
-        var styleId = context.Styles.Find("LineNumber") is { Type: "character" } ? "LineNumber" : null;
-        var style = layout.Styles.Style(context.Styles.Run(context.Styles.DefaultParagraphStyle, styleId, null), WordSlot.Ascii);
-        foreach (var page in pages)
+        RunStyle? style = null;
+        var (properties, numbering) = ((SectionProperties?)null, (XElement?)null);
+        for (var k = 0; k < pages.Count; k++)
         {
-            if (page.Section.Element.Child("lnNumType") is not { } numbering || (numbering.Number("countBy") ?? 0) < 1)
+            var page = pages[k];
+            if (!ReferenceEquals(page.Section, properties))
+                (properties, numbering) = (page.Section, page.Section.Element.Child("lnNumType"));
+            if (numbering == null || (numbering.Number("countBy") ?? 0) < 1)
             {
                 section = -1;
                 continue;
+            }
+            if (style == null)
+            {
+                var styleId = context.Styles.Find("LineNumber") is { Type: "character" } ? "LineNumber" : null;
+                style = layout.Styles.Style(context.Styles.Run(context.Styles.DefaultParagraphStyle, styleId, null), WordSlot.Ascii);
             }
             var start = (int)(numbering.Number("start") ?? 0);
             var every = (int)(numbering.Number("countBy") ?? 1);
@@ -513,8 +539,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             foreach (var placed in page.Lines.Where(l => l.Numbered))
             {
                 count++;
-                if (count % every == 0)
-                    page.LineNumbers.Add((count.ToString(System.Globalization.CultureInfo.InvariantCulture), style, placed.Left - distance, placed.Top + placed.Line.Baseline));
+                if (count % every == 0 && taken?[k] != true)
+                    page.LineNumbers.Add((count.ToString(System.Globalization.CultureInfo.InvariantCulture), style!, placed.Left - distance, placed.Top + placed.Line.Baseline));
             }
         }
     }
@@ -1406,7 +1432,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (laid is not { } done || done.Count < from.Page - 1)
             throw new InvalidOperationException("Resume needs the pages the checkpoint was taken on.");
         var run = new Paginator(context, layout, reader) { EndnoteContinuation = EndnoteContinuation };
-        run.Take(from.State, done.Take(from.Page - 1));
+        run.Take(from.State, CollectionsMarshal.AsSpan(done)[..(from.Page - 1)]);
         if (from.Fields != null)
             layout.Evaluator?.Restore(from.Fields);
         var resumed = run.PaginateOnce(blocks ?? given, lastSection, footnotes, endnotes, endnoteSeparator, from);
@@ -1427,11 +1453,54 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// the run settles as the run before it did: its floating objects, the room its notes took, the fields that depend
     /// on pages, the headers and footers that hold fields and the numbers of notes counted per page are those it was
     /// laid out with. Otherwise the blocks are paginated anew (Paginate). It keeps the checkpoints for the next edit.
+    /// With <paramref name="pages"/>, the run pauses at the first checkpoint so many pages after the one it began on where
+    /// it has not met the pages before by then: the pages from there on stay as they were laid out before the change,
+    /// until Continue lays them out (see Paused); where a layout paused before, the run begins where it paused at the
+    /// latest.
     /// </summary>
-    public Relaid Relayout(List<Block> blocks)
+    public Relaid Relayout(List<Block> blocks, int pages = int.MaxValue)
     {
         var (given, lastSection, footnotes, endnotes, endnoteSeparator) = input ?? throw new InvalidOperationException("Relayout needs a pagination.");
-        var (from, after) = settledRun && laid != null && checkpoints is { Count: > 0 } ? Changed(given, blocks) : (null, []);
+        var (from, after, head, tail, ends, held) = settledRun && laid != null && checkpoints is { Count: > 0 } ? Changed(given, blocks) : (null, [], 0, 0, sectionEnds, null);
+        // The pages after where the layout paused are not laid out with the blocks it was given yet.
+        if (from != null && held != null && Position(held).CompareTo(Position(from)) < 0)
+            from = held;
+        return Lay(blocks, from, after, head, tail, ends, pages, held);
+    }
+
+    /// <summary>
+    /// Lays out more of the pages a layout that paused left as they were (see Relayout, Paused): from where it paused, so
+    /// many pages or until they begin as they began before; null where none are left.
+    /// </summary>
+    public Relaid? Continue(int pages)
+    {
+        if (paused is not { } at || input is not var (given, _, _, _, _))
+            return null;
+        return Lay(given, at, [.. checkpoints!.SkipWhile(c => c != at).Skip(1)], given.Count, 0, sectionEnds, pages, null);
+    }
+
+    /// <summary>
+    /// Where the last layout paused (see Relayout): the checkpoint its flow goes on from, the pages from its page on as
+    /// they were laid out before; null where the layout went to the end or met the pages before (SameFlow).
+    /// </summary>
+    Checkpoint? paused;
+
+    /// <summary>Whether pages are left as they were laid out before the last changes (see Relayout, Continue).</summary>
+    public bool Paused => paused != null;
+
+    /// <summary>Where a checkpoint stands in the flow, to compare with another's.</summary>
+    static (int Section, int Block, int Row) Position(Checkpoint c) => (c.Section, c.Block, c.Row);
+
+    /// <summary>
+    /// Lays out the blocks from a checkpoint (see Relayout) until the run meets the pages laid out before at one of
+    /// <paramref name="after"/> (those after the blocks that differ, the first <paramref name="head"/> and the last
+    /// <paramref name="tail"/> of them the same), pauses after <paramref name="limit"/> pages, or ends;
+    /// <paramref name="held"/> is where a layout before paused, at the place it has after the change, which a run that
+    /// does not go past it leaves paused.
+    /// </summary>
+    Relaid Lay(List<Block> blocks, Checkpoint? from, List<Checkpoint> after, int head, int tail, List<int> ends, int limit, Checkpoint? held)
+    {
+        var (given, lastSection, footnotes, endnotes, endnoteSeparator) = input!.Value;
         // A header's field that came out empty on some page prints plain on every page (FieldInline.Unmerged): whether it
         // still does after the change shows only on all pages again (found with docx/local/fsf3-e).
         if (from?.Fields is { Emptied.Count: > 0 })
@@ -1439,7 +1508,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (from != null)
         {
             // The fields read the edited blocks (bookmarks' text, sequences) and know of the pages what the checkpoint's did.
-            var fields = new FieldEvaluator(context, blocks);
+            var differing = given.Skip(head).Take(given.Count - tail - head).Concat(blocks.Skip(head).Take(blocks.Count - tail - head));
+            var fields = layout.Evaluator?.For(blocks, differing) ?? new FieldEvaluator(context, blocks);
             if (from.Fields != null)
                 fields.Restore(from.Fields);
             var before = layout.Evaluator;
@@ -1447,12 +1517,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var run = new Paginator(context, layout, reader)
             {
                 EndnoteContinuation = EndnoteContinuation, checkpoints = [], settledCopy = from.State.settled, stopPages = laid, stopSettings = settings,
+                knownEnds = ends, stopFinished = FinishedAlone() ? finishedPages : null,
                 // The run stops only after the last block that differs, and not where the fields of the pages after it
                 // may read otherwise (the text of a bookmark, a sequence's numbers) or headers look back over the pages
                 // before theirs (STYLEREF).
                 stops = StoriesLookBack() || before == null || !fields.ReadsAs(before) ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
+                pauseAt = limit == int.MaxValue ? null : from.Page + limit,
             };
-            run.Take(from.State, laid!.Take(from.Page - 1));
+            run.Take(from.State, CollectionsMarshal.AsSpan(laid)[..Math.Min(from.Page - 1, laid!.Count)]);
             var pages = run.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator, from);
             var settled = from.State.settled;
             // Objects text goes around settle over several runs, and where they go back and forth between pages they
@@ -1464,14 +1536,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 && !fields.Update(pages) && run.StoriesKept() && !fields.Pending && (footnotes is not { Count: > 0 } || NotesKept(PageNoteMarks(pages))))
             {
                 input = (blocks, lastSection, footnotes, endnotes, endnoteSeparator);
-                laid = run.pages;
-                checkpoints = [.. checkpoints!.TakeWhile(c => c != from), .. run.checkpoints!, .. run.stoppedAt is { } stop ? after.SkipWhile(c => c != stop) : []];
+                (laid, sectionEnds) = (run.pages, ends);
+                // Where the run paused, the checkpoints after its pause stay, of the pages laid out before, for a run going on
+                // from there to meet them, but those up to where a layout paused before after it: the pages after that one
+                // are not laid out with the blocks yet, a run meeting the pages before them would leave them so. Where it
+                // stopped at or before where a layout paused before, that one stays paused.
+                var stop = run.stoppedAt;
+                checkpoints = [.. checkpoints!.TakeWhile(c => c != from), .. run.checkpoints!,
+                    .. run.pausedHere ? after.Where(c => Position(c).CompareTo(Position(stop!)) > 0 && (held == null || Position(c).CompareTo(Position(held)) > 0))
+                        : stop != null ? after.SkipWhile(c => c != stop) : []];
+                paused = run.pausedHere ? stop : stop != null && held != null && Position(stop).CompareTo(Position(held)) <= 0 ? held : null;
                 settings = run.settings;
-                NumberLines(pages);
-                return new Relaid(pages, from.Page, run.stoppedAt?.Page ?? 0);
+                NumberLines(pages, run.taken);
+                finishedPages = pages;
+                return new Relaid(pages, from.Page, run.pausedHere ? 0 : stop?.Page ?? 0);
             }
         }
         // Paginated anew, as a document opened with these blocks.
+        paused = null;
         settings = new TextSettings();
         layout.Evaluator = null;
         layout.NoteMarks = null;
@@ -1484,17 +1566,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// null), and the checkpoints at the blocks after the last one, at the sections and places those blocks have in
     /// <paramref name="blocks"/>.
     /// </summary>
-    (Checkpoint? From, List<Checkpoint> After) Changed(List<Block> given, List<Block> blocks)
+    (Checkpoint? From, List<Checkpoint> After, int Head, int Tail, List<int> Ends, Checkpoint? Held) Changed(List<Block> given, List<Block> blocks)
     {
+        var a = CollectionsMarshal.AsSpan(given);
+        var b = CollectionsMarshal.AsSpan(blocks);
         var head = 0;
-        while (head < given.Count && head < blocks.Count && ReferenceEquals(given[head], blocks[head]))
+        while (head < a.Length && head < b.Length && ReferenceEquals(a[head], b[head]))
             head++;
-        if (head == given.Count && head == blocks.Count)
-            return (checkpoints![^1], []);
+        if (head == a.Length && head == b.Length)
+            return (checkpoints![^1], [], head, 0, sectionEnds, paused);
         var tail = 0;
-        while (tail < given.Count - head && tail < blocks.Count - head && ReferenceEquals(given[^(tail + 1)], blocks[^(tail + 1)]))
+        while (tail < a.Length - head && tail < b.Length - head && ReferenceEquals(a[^(tail + 1)], b[^(tail + 1)]))
             tail++;
-        var (was, now) = (Places(given), Places(blocks));
+        var ends = Ends(sectionEnds, blocks, head, tail, given.Count);
         // The first checkpoint, before any block, knows nothing of the blocks; the others may know the block they
         // stand before (the one before looked ahead at it), and the blocks kept with the next one stand where the blocks
         // after them put them (a chain of them goes to the next page where it does not fit): the run begins before the
@@ -1503,33 +1587,83 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var first = head;
         while (first > 0 && KeptWithNext(given[first - 1]))
             first--;
-        var at = first < given.Count ? was[first] : (Section: int.MaxValue, Block: 0);
+        var at = first < given.Count ? Place(sectionEnds, first) : (Section: int.MaxValue, Block: 0);
         var from = checkpoints!.LastOrDefault(c => c.Section < at.Section || c.Section == at.Section && c.Block < at.Block)
             ?? (checkpoints![0] is { Section: 0, Block: 0 } start ? start : null);
-        var index = Enumerable.Range(0, was.Count).ToDictionary(k => was[k]);
         var after = new List<Checkpoint>();
+        // Where a layout paused: as it is before the blocks that differ, moved after them, gone among them.
+        var held = paused != null && Index(sectionEnds, given.Count, paused.Section, paused.Block) is { } pausedAt && pausedAt < head ? paused : null;
         foreach (var c in checkpoints!)
         {
-            if (!index.TryGetValue((c.Section, c.Block), out var k) || k < given.Count - tail)
+            if (Index(sectionEnds, given.Count, c.Section, c.Block) is not { } k || k < given.Count - tail)
                 continue;
-            var moved = now[k + blocks.Count - given.Count];
+            var moved = Place(ends, k + blocks.Count - given.Count);
             after.Add(moved == (c.Section, c.Block) ? c : c.At(moved.Section, moved.Block));
+            if (c == paused)
+                held = after[^1];
         }
-        return (from, after);
+        return (from, after, head, tail, ends, held);
     }
 
-    /// <summary>The section and the place in it of each block (sections end with the paragraph that holds their break, see PaginateRun).</summary>
-    static List<(int Section, int Block)> Places(List<Block> blocks)
+    /// <summary>The places of the blocks Paginate was given (see input) that end sections, the paragraphs that hold their breaks, in order.</summary>
+    List<int> sectionEnds = [];
+
+    /// <summary>The places of the blocks that end sections (see sectionEnds).</summary>
+    static List<int> Ends(List<Block> blocks)
     {
-        var places = new List<(int Section, int Block)>(blocks.Count);
-        var (section, index) = (0, 0);
-        foreach (var block in blocks)
+        var ends = new List<int>();
+        for (var k = 0; k < blocks.Count; k++)
         {
-            places.Add((section, index++));
-            if (block is ParagraphBlock { EndsSection: not null })
-                (section, index) = (section + 1, 0);
+            if (blocks[k] is ParagraphBlock { EndsSection: not null })
+                ends.Add(k);
         }
-        return places;
+        return ends;
+    }
+
+    /// <summary>
+    /// The places of the blocks that end sections after some blocks were replaced, added or taken away between the
+    /// first <paramref name="head"/> and the last <paramref name="tail"/>, which stay: those before as they were, those
+    /// between found, those after moved on.
+    /// </summary>
+    static List<int> Ends(List<int> before, List<Block> blocks, int head, int tail, int count)
+    {
+        var ends = new List<int>(before.Count);
+        foreach (var end in before)
+        {
+            if (end >= head)
+                break;
+            ends.Add(end);
+        }
+        for (var k = head; k < blocks.Count - tail; k++)
+        {
+            if (blocks[k] is ParagraphBlock { EndsSection: not null })
+                ends.Add(k);
+        }
+        foreach (var end in before)
+        {
+            if (end >= count - tail)
+                ends.Add(end + blocks.Count - count);
+        }
+        return ends;
+    }
+
+    /// <summary>The section a block stands in and its place in it, from the places of the blocks that end sections.</summary>
+    static (int Section, int Block) Place(List<int> ends, int block)
+    {
+        var section = ends.BinarySearch(block);
+        if (section < 0)
+            section = ~section;
+        return (section, block - (section > 0 ? ends[section - 1] + 1 : 0));
+    }
+
+    /// <summary>The place among all blocks of a block of a section, or null where the section has none there.</summary>
+    static int? Index(List<int> ends, int count, int section, int block)
+    {
+        if (section > ends.Count)
+            return null;
+        var start = section > 0 ? ends[section - 1] + 1 : 0;
+        var last = section < ends.Count ? ends[section] : count - 1;
+        return block >= 0 && start + block <= last ? start + block : null;
     }
 
     /// <summary>
@@ -1550,8 +1684,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     bool StoriesKept()
     {
-        foreach (var p in pages)
+        for (var k = 0; k < pages.Count; k++)
         {
+            var p = pages[k];
+            if (taken?[k] == true)
+                continue;
             if (p is { HeaderBottom: { } bottom, Header: { } header } && Reads(header))
             {
                 if (layout.Evaluator != null)
@@ -1584,6 +1721,40 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     List<PageBox>? stopPages;
     TextSettings? stopSettings;
     Checkpoint? stoppedAt;
+
+    /// <summary>
+    /// For a run that lays edited blocks out again: the pages the run before returned (see finishedPages), where a page
+    /// is finished by itself and the counts alone (see FinishedAlone), else null; the pages this run returned as they were
+    /// (see PaginateRun), which line numbers count but do not number again; the places of the blocks that end sections.
+    /// </summary>
+    List<PageBox>? stopFinished;
+    bool[]? taken;
+    List<int>? knownEnds;
+
+    /// <summary>The pages Paginate or Relayout returned last.</summary>
+    List<PageBox>? finishedPages;
+
+    /// <summary>
+    /// For a run that lays edited blocks out again: the page from which on it pauses at the first checkpoint it takes, or
+    /// null; whether it paused (at stoppedAt, the pages from there on those the run before laid out).
+    /// </summary>
+    int? pauseAt;
+    bool pausedHere;
+
+    /// <summary>
+    /// Whether a page comes out finished (see PaginateRun) by itself and the counts of pages alone: the headers and footers
+    /// hold no fields but page numbers and counts (PAGE, NUMPAGES, SECTIONPAGES), and line numbers count on no page
+    /// before (restarting on every page or none at all).
+    /// </summary>
+    bool FinishedAlone() => finishedAlone ??= laid!.SelectMany(p => new[] { p.Header, p.Footer }).OfType<string>().Distinct(StringComparer.Ordinal)
+            .All(part => context.Load(part).Root is not { } root || root.Descendants().All(e =>
+                (e.Name == Wml.W + "instrText" ? e.Value : e.Name == Wml.W + "fldSimple" ? (string?)e.Attribute(Wml.W + "instr") : null) is not { } instruction
+                || instruction.Trim() is var code && (code.Length == 0 || code.StartsWith('\\')
+                    || code.Split(' ', 2)[0].ToUpperInvariant() is "PAGE" or "NUMPAGES" or "SECTIONPAGES")))
+        && laid!.Select(p => p.Section).Distinct().All(section => section.Element.Child("lnNumType") is not { } numbering || (numbering.Number("countBy") ?? 0) < 1
+            || (numbering.Attr("restart") ?? "newPage") == "newPage");
+
+    bool? finishedAlone;
 
     /// <summary>
     /// Whether this run's flow stands as a checkpoint's run stood there, value by value (see LayoutValues): the page in
@@ -1622,7 +1793,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             or nameof(keptLines) or nameof(laidTables)
             or nameof(noteBoxes) or nameof(storyOwners) or nameof(checkpoints) or nameof(checkpointPage) or nameof(settledCopy) or nameof(fieldsCopy)
             or nameof(input) or nameof(laid) or nameof(settledRun) or nameof(lookBack) or nameof(reads) or nameof(stops) or nameof(stopPages)
-            or nameof(stopSettings) or nameof(stoppedAt)))
+            or nameof(stopSettings) or nameof(stoppedAt) or nameof(stopFinished) or nameof(taken) or nameof(knownEnds) or nameof(finishedPages)
+            or nameof(finishedAlone) or nameof(sectionEnds) or nameof(paused) or nameof(pauseAt) or nameof(pausedHere)))
         .ToArray();
 
     /// <summary>
@@ -1652,14 +1824,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// PaginateOnce gives this run its own BreakUnseen. The paragraphs, tables and notes a run keeps laid out are not
     /// taken: they are laid out again the same.
     /// </summary>
-    void Take(Paginator source, IEnumerable<PageBox> earlier)
+    void Take(Paginator source, ReadOnlySpan<PageBox> earlier)
     {
         if (source.floatingRests.Count > 0 || source.mergedDown.Count > 0)
             throw new InvalidOperationException("A flow with parts of tables in hand cannot be taken over.");
         var current = source.page?.Copy();
         PageBox Copied(PageBox p) => ReferenceEquals(p, source.page) ? current! : throw new InvalidOperationException("The flow refers to a page before the one in hand.");
+        // The pages before the one in hand are done: the run reads them but does not change them.
         pages.Clear();
-        pages.AddRange(earlier.Select(p => p.Copy()));
+        pages.AddRange(earlier);
         if (current != null)
             pages.Add(current);
         page = current;
@@ -2009,17 +2182,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             layout.Evaluator.Current = pages;
         // Each section's properties are given at its end.
         var sections = new List<(List<Block> Blocks, SectionProperties Properties)>();
-        var current = new List<Block>();
-        foreach (var block in blocks)
+        var starts = 0;
+        foreach (var end in knownEnds ?? Ends(blocks))
         {
-            current.Add(block);
-            if (block is ParagraphBlock { EndsSection: { } ends })
-            {
-                sections.Add((current, ends));
-                current = [];
-            }
+            sections.Add((blocks.GetRange(starts, end + 1 - starts), ((ParagraphBlock)blocks[end]).EndsSection!));
+            starts = end + 1;
         }
-        sections.Add((current, lastSection));
+        sections.Add((starts == 0 ? blocks : blocks.GetRange(starts, blocks.Count - starts), lastSection));
         foreach (var (_, own) in sections)
         {
             foreach (var part in own.Headers.Values.Concat(own.Footers.Values))
@@ -2072,6 +2241,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                         break;
                     }
                     Keep(s, i, sectionBlocks[i].Id);
+                    // A run laying edited blocks out again pauses after so many pages (see Relayout).
+                    if (pauseAt is { } limit && page!.Number >= limit && checkpointPage == page.Number)
+                    {
+                        (stoppedAt, pausedHere) = (checkpoints![^1], true);
+                        break;
+                    }
                 }
                 if (sectionBlocks[i] is TableBlock)
                 {
@@ -2150,22 +2325,42 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
         }
         // The pages as laid out stay as they are, for a run resumed from a checkpoint to go on from; the pages it returns
-        // are copies, aligned, mirrored and with their headers and footers, whose fields look back on them (STYLEREF).
-        var finished = pages.Select(p => p.Copy()).ToList();
+        // are copies, aligned, mirrored and with their headers and footers, whose fields look back on them (STYLEREF). A
+        // run laying edited blocks out again takes the pages it shares with the run before as that one returned them,
+        // where they are finished by themselves and the counts alone and the counts stay (see FinishedAlone).
+        // NUMPAGES counts the blank pages, SECTIONPAGES does not (measured with docx/local/hf-parity).
+        var sectionPages = Counts(pages);
+        var shares = stopFinished != null && stopPages != null && stopFinished.Count == stopPages.Count && pages.Count == stopPages.Count
+            && Counts(stopPages) is var before && sectionPages.Count == before.Count && before.All(c => sectionPages.GetValueOrDefault(c.Key) == c.Value);
+        var finished = new List<PageBox>(pages.Count);
+        for (var k = 0; k < pages.Count; k++)
+        {
+            if (shares && ReferenceEquals(pages[k], stopPages![k]))
+            {
+                finished.Add(stopFinished![k]);
+                (taken ??= new bool[pages.Count])[k] = true;
+            }
+            else
+                finished.Add(pages[k].Copy());
+        }
         if (layout.Evaluator != null)
             layout.Evaluator.Current = finished;
-        foreach (var p in finished)
+        for (var k = 0; k < finished.Count; k++)
         {
+            if (taken?[k] == true)
+                continue;
+            var p = finished[k];
             AlignVertically(p);
             if (p.Section is { Upright: not null, LinesFromLeft: true })
                 Mirror(p);
         }
         if (reader != null)
         {
-            // NUMPAGES counts the blank pages, SECTIONPAGES does not (measured with docx/local/hf-parity).
-            var sectionPages = finished.Where(p => !p.Blank).GroupBy(p => p.SectionIndex).ToDictionary(g => g.Key, g => g.Count());
-            foreach (var p in finished)
+            for (var k = 0; k < finished.Count; k++)
             {
+                if (taken?[k] == true)
+                    continue;
+                var p = finished[k];
                 var fields = new PageFields(p.DisplayNumber, p.Section.PageNumberFormat, finished.Count, sectionPages.GetValueOrDefault(p.SectionIndex)) { Chapter = p.ChapterPrefix, On = p };
                 // Headers and footers of pages of vertical text stand upright (measured with docx/local/vertical2).
                 var on = p.Upright ?? p;
@@ -2176,6 +2371,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
         }
         return finished;
+
+        static Dictionary<int, int> Counts(List<PageBox> run)
+        {
+            var counts = new Dictionary<int, int>();
+            foreach (var p in run)
+            {
+                if (!p.Blank)
+                    counts[p.SectionIndex] = counts.GetValueOrDefault(p.SectionIndex) + 1;
+            }
+            return counts;
+        }
     }
 
     /// <summary>The first section whose endnotes are still to come.</summary>

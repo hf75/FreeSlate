@@ -126,6 +126,9 @@ public sealed class Line
     /// </summary>
     public bool HangsHalf { get; set; }
 
+    /// <summary>A copy of the line, its pieces shared.</summary>
+    internal Line Copy() => (Line)MemberwiseClone();
+
     /// <summary>A copy of the line with less room above its text, its height and baseline <paramref name="by"/> less.</summary>
     public Line Trimmed(double by)
     {
@@ -915,12 +918,62 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         this.settings = settings;
         try
         {
-            return LaidOut(paragraph, width, fields, room, from, unhyphenated);
+            if (fields != null || room != null || paragraph.Content.Any(i => i is FieldInline or NoteReferenceInline))
+                return LaidOut(paragraph, width, fields, room, from, unhyphenated);
+            var key = new LaidKey(paragraph, width, settings with { ColumnWidth = null, BreakUnseen = null }, settings.BreakUnseen?.Invoke(paragraph) == true,
+                settings.ColumnWidth?.Invoke(), from, unhyphenated);
+            if (laidParagraphs.TryGetValue(key, out var known))
+            {
+                laidOrder.Remove(known);
+                laidOrder.AddFirst(known);
+                return Handed(known.Value.Lines);
+            }
+            var laid = LaidOut(paragraph, width, fields, room, from, unhyphenated);
+            laidParagraphs[key] = laidOrder.AddFirst((key, laid));
+            if (laidOrder.Count > LaidCapacity && laidOrder.Last is { } oldest)
+            {
+                laidOrder.RemoveLast();
+                laidParagraphs.Remove(oldest.Value.Key);
+            }
+            return Handed(laid);
         }
         finally
         {
             this.settings = outer;
         }
+
+        // The lines as a list of the caller's own, the last one a copy: the paginator sets how far its bar tabs reach.
+        static List<Line> Handed(List<Line> lines)
+        {
+            List<Line> own = [.. lines];
+            if (own.Count > 0)
+                own[^1] = own[^1].Copy();
+            return own;
+        }
+    }
+
+    /// <summary>
+    /// The lines of the paragraphs laid out last (see Layout), the most recent first: a page laid out again after an edit
+    /// lays out the paragraphs it laid out before, at the same width under the same settings. Paragraphs laid out with a
+    /// page's fields or beside floating objects, and those with fields or note references (whose results the evaluator
+    /// and the notes' marks give), are laid out every time.
+    /// </summary>
+    readonly Dictionary<LaidKey, LinkedListNode<(LaidKey Key, List<Line> Lines)>> laidParagraphs = [];
+    readonly LinkedList<(LaidKey Key, List<Line> Lines)> laidOrder = [];
+    const int LaidCapacity = 1024;
+
+    /// <summary>
+    /// What a paragraph's lines are laid out from: the paragraph (the block itself), the width, the settings without what
+    /// they ask of the run laying them out, and what that answered: whether a page break before the paragraph goes
+    /// unseen, how wide the column is.
+    /// </summary>
+    readonly record struct LaidKey(ParagraphBlock Paragraph, double Width, TextSettings Settings, bool Unseen, double? ColumnWidth, int From, bool Unhyphenated)
+    {
+        public bool Equals(LaidKey other) =>
+            ReferenceEquals(Paragraph, other.Paragraph) && Width == other.Width && Unseen == other.Unseen && ColumnWidth == other.ColumnWidth && From == other.From
+            && Unhyphenated == other.Unhyphenated && Settings.Equals(other.Settings);
+
+        public override int GetHashCode() => HashCode.Combine(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Paragraph), Width, From);
     }
 
     List<Line> LaidOut(ParagraphBlock paragraph, double width, PageFields? fields, Func<LineSlot, LineRoom>? room, int from, bool unhyphenated)

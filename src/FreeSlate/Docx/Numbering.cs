@@ -302,6 +302,12 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     }
 
     /// <summary>
+    /// Whether a paragraph of a numbering instance at a level counts (see Next): the instance and the level exist. One
+    /// that does not has no number and changes no count.
+    /// </summary>
+    public bool Counts(string? numId, int ilvl) => definitions.Find(numId) is { } instance && ilvl is >= 0 and <= 8 && instance.Levels[ilvl] != null;
+
+    /// <summary>
     /// The number of the next paragraph of a numbering instance at a level, with the number of the level alone, or null
     /// where it has none.
     /// </summary>

@@ -28,6 +28,25 @@ public sealed class FontData : IDisposable
     readonly Dictionary<uint, short>? kerningPairs;
     readonly ConcurrentDictionary<uint, string> outlines = new();
 
+    /// <summary>
+    /// The texts shaped last (see GlyphsWithFeatures), the most recent first, with at most so many glyphs in all: a page
+    /// laid out and drawn again (in an editor after a keystroke) shapes the texts it shaped before.
+    /// </summary>
+    readonly Dictionary<ShapeKey, LinkedListNode<(ShapeKey Key, ShapedGlyph[] Glyphs)>> shaped = [];
+    readonly LinkedList<(ShapeKey Key, ShapedGlyph[] Glyphs)> shapedOrder = [];
+    int shapedGlyphs;
+    const int ShapedCapacity = 1 << 16;
+
+    /// <summary>What GlyphsWithFeatures shapes a text with; the features compared one by one.</summary>
+    readonly record struct ShapeKey(string Text, IReadOnlyList<string> Features, bool RightToLeft, string? Language, string? Before, string? After)
+    {
+        public bool Equals(ShapeKey other) =>
+            Text == other.Text && RightToLeft == other.RightToLeft && Language == other.Language && Before == other.Before && After == other.After
+            && (ReferenceEquals(Features, other.Features) || Features.SequenceEqual(other.Features));
+
+        public override int GetHashCode() => HashCode.Combine(Text, RightToLeft, Language, Before, After, Features.Count);
+    }
+
     /// <param name="index">The face's place in a font collection (.ttc).</param>
     public FontData(string path, string family, int index = 0) : this(File.ReadAllBytes(path), path, family, index, inMemory: false)
     {
@@ -511,6 +530,37 @@ public sealed class FontData : IDisposable
     {
         if (text.Length == 0)
             return [];
+        var key = new ShapeKey(text, features, rightToLeft, language, before, after);
+        lock (shapedOrder)
+        {
+            if (shaped.TryGetValue(key, out var known))
+            {
+                shapedOrder.Remove(known);
+                shapedOrder.AddFirst(known);
+                return known.Value.Glyphs;
+            }
+        }
+        var glyphs = Shape(text, features, rightToLeft, language, before, after);
+        lock (shapedOrder)
+        {
+            if (!shaped.ContainsKey(key))
+            {
+                var kept = key with { Features = [.. features] };
+                shaped[kept] = shapedOrder.AddFirst((kept, glyphs));
+                shapedGlyphs += glyphs.Length + 1;
+                while (shapedGlyphs > ShapedCapacity && shapedOrder.Last is { } oldest)
+                {
+                    shapedOrder.RemoveLast();
+                    shaped.Remove(oldest.Value.Key);
+                    shapedGlyphs -= oldest.Value.Glyphs.Length + 1;
+                }
+            }
+        }
+        return glyphs;
+    }
+
+    ShapedGlyph[] Shape(string text, IReadOnlyList<string> features, bool rightToLeft, string? language, string? before, string? after)
+    {
         var parsed = features.Select(f => Feature.TryParse(f, out var feature) ? feature : throw new ArgumentException(f)).ToArray();
         List<string> pieces = rightToLeft ? [text] : Scripts.Split(text).Select(p => p.Text).ToList();
         var result = new List<ShapedGlyph>();

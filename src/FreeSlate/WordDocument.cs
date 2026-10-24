@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Linq;
 using FreeSlate.Docx;
@@ -38,6 +39,9 @@ public sealed class WordDocument : IEditableDocument
     List<Block> blocks = [];
     readonly Dictionary<int, (ParagraphBlock Paragraph, Block Top)> paragraphs = [];
 
+    /// <summary>The blocks of the body the last change read anew (all of them where it read the document whole).</summary>
+    List<Block> fresh = [];
+
     /// <summary>
     /// The main part's bytes as the document was read from them whole last, their text, its loaded body, and the start
     /// tags of its root and body with end tags for them, which stretches of the body are parsed within (see Stretch).
@@ -63,17 +67,16 @@ public sealed class WordDocument : IEditableDocument
 
     /// <summary>
     /// The layout of the body as it read when its pages were laid out last: the blocks, the paginator (which lays them out
-    /// again from its checkpoints), the pages drawn, the papers they name and the budget of 3D text each had and took
-    /// (see DocumentContext.Text3DBudget); null before the first or after the document was read whole.
+    /// again from its checkpoints), the pages it gave, their scenes, the papers they name and the budget of 3D text each
+    /// had and took (see DocumentContext.Text3DBudget); null before the first or after the document was read whole.
     /// </summary>
     List<Block>? laid;
     ParagraphLayout? layout;
     Paginator? paginator;
     PageRenderer? renderer;
+    List<PageBox> shown = [];
     List<PageScene>? scenes;
     List<(int Paper, double Budget, double Cost)> drawnAs = [];
-    (int Pages, string Sections) counts;
-    bool? storiesRead;
 
     /// <summary>The budget of 3D text the document's pages are drawn with, from the first (see DocumentContext.Text3DBudget).</summary>
     double budget;
@@ -82,15 +85,17 @@ public sealed class WordDocument : IEditableDocument
     sealed record Island(int Start, int End, string Text);
 
     /// <summary>
-    /// A stretch of the main part's text as read whole (Start to End) that the body read anew from Text: the line info of
-    /// its children is where they stand in Read, the text within the start and end tags around it.
+    /// A stretch of the main part's text as read whole (Start to End) that the body read anew from Text: the children of
+    /// the body read from it, one after the other, whose line info is where they stand in Read, the text within the start
+    /// and end tags around it.
     /// </summary>
-    sealed class Piece(int start, int end, string text, PartText read)
+    sealed class Piece(int start, int end, string text, PartText read, IReadOnlyList<XElement> children)
     {
         public int Start { get; } = start;
         public int End { get; } = end;
         public string Text { get; } = text;
         public PartText Read { get; } = read;
+        public IReadOnlyList<XElement> Children { get; } = children;
     }
 
     /// <summary>
@@ -179,6 +184,14 @@ public sealed class WordDocument : IEditableDocument
             throw Refused("The paragraph would not read so: the place is in what the document computes or keeps.");
     }
 
+    /// <summary>The paragraphs the last change read anew (see fresh), of tables and text boxes too.</summary>
+    IEnumerable<ParagraphBlock> Fresh()
+    {
+        IEnumerable<ParagraphBlock> Within(Block block) =>
+            (block is ParagraphBlock paragraph ? [paragraph] : Enumerable.Empty<ParagraphBlock>()).Concat(ModelReader.Inner(block).SelectMany(list => list).SelectMany(Within));
+        return fresh.SelectMany(Within);
+    }
+
     /// <summary>Whether a paragraph of the body reads so (as all its tracked changes accepted).</summary>
     bool Reads(int paragraph, string text) => paragraphs.TryGetValue(paragraph, out var found) && ParagraphText.Of(found.Paragraph) == text;
 
@@ -213,8 +226,7 @@ public sealed class WordDocument : IEditableDocument
             return text;
         });
         bool Second(XElement? element) => element != null && where(element) == second;
-        var id = (paragraphs.Values.FirstOrDefault(v => Second(v.Paragraph.Element)).Paragraph
-                  ?? paragraphs.Values.FirstOrDefault(v => v.Paragraph.Content.Any(i => Second(i.Xml?.Ancestors(v.Paragraph.Element.Name).FirstOrDefault()))).Paragraph)?.Id
+        var id = (Fresh().FirstOrDefault(p => Second(p.Element)) ?? Fresh().FirstOrDefault(p => p.Content.Any(i => Second(i.Xml?.Ancestors(p.Element.Name).FirstOrDefault()))))?.Id
                  ?? paragraph;
         // Two paragraphs that read as the halves, the second where the place was.
         var at = offset - p.TextOffset;
@@ -247,8 +259,7 @@ public sealed class WordDocument : IEditableDocument
             return text;
         });
         // The joined paragraph begins where the first began (its id goes by its text and place, see ModelReader.Keep).
-        var id = paragraphs.Values.FirstOrDefault(v => v.Paragraph.Element is { } element && start >= 0 && where(element) == start).Paragraph?.Id
-                 ?? (first ? paragraph : next.Id);
+        var id = Fresh().FirstOrDefault(p => p.Element is { } element && start >= 0 && where(element) == start)?.Id ?? (first ? paragraph : next.Id);
         if (both != null && !Reads(id, both))
             throw Refused("The paragraphs would not join so: one holds what the document computes or keeps.");
         return id;
@@ -300,15 +311,22 @@ public sealed class WordDocument : IEditableDocument
     }
 
     /// <summary>
+    /// How many pages after the one a change begins on are laid out with it before the rest is left as it was, to be laid
+    /// out by LayOut (see LayingOut).
+    /// </summary>
+    public const int PagesAtOnce = 3;
+
+    /// <summary>
     /// The pages of the document as it reads now, laid out and drawn as DocxConverter does (see PageScene): after a change
-    /// laid out again from the last checkpoint before it, the pages that come out as they were kept as they were drawn.
+    /// laid out again from the last checkpoint before it, the pages the paginator gives as it gave them kept as they were
+    /// drawn (see Paginator.Relayout); after a change that moves what follows on, so many pages (PagesAtOnce), the rest
+    /// as they were until LayOut lays them out.
     /// </summary>
     public IReadOnlyList<PageScene> Scenes()
     {
         if (scenes != null && ReferenceEquals(laid, blocks))
             return scenes;
         List<PageBox> pages;
-        var (from, until) = (0, 0);
         if (paginator == null || layout == null || renderer == null)
         {
             layout = new ParagraphLayout(context, new RunStyles(context));
@@ -323,18 +341,35 @@ public sealed class WordDocument : IEditableDocument
             scenes = null;
         }
         else
-        {
-            var relaid = paginator.Relayout(blocks);
-            (pages, from, until) = (relaid.Pages, relaid.From, relaid.Until);
-        }
-        renderer.Settings = paginator.Settings;
-        // The pages before the one laid out again from and from the one the layout before followed on are drawn as they
-        // were, unless what their headers and footers show may have changed with them: their number, a section's number
-        // of pages, fields that read the body; those after it also not where line numbers count on over pages.
-        var now = (pages.Count, string.Join(",", pages.Where(p => !p.Blank).GroupBy(p => p.SectionIndex).Select(g => $"{g.Key}:{g.Count()}")));
-        var keep = scenes != null && from > 0 && now == counts && !StoriesRead(pages);
-        var counted = pages.Any(p => p.Section.Element.Child("lnNumType") is { } numbering && (numbering.Number("countBy") ?? 0) >= 1
-            && numbering.Attr("restart") is "newSection" or "continuous");
+            pages = paginator.Relayout(blocks, PagesAtOnce).Pages;
+        Draw(pages);
+        laid = blocks;
+        return scenes!;
+    }
+
+    /// <summary>Whether pages after those the last change laid out still stand as they did before it (see LayOut).</summary>
+    public bool LayingOut => paginator?.Paused == true || !ReferenceEquals(laid, blocks);
+
+    /// <summary>
+    /// Lays out about so many more of the pages the last change left as they were (see LayingOut), and draws those that
+    /// come out otherwise; whether more are left. Scenes gives the pages as they then stand.
+    /// </summary>
+    public bool LayOut(int pages = PagesAtOnce)
+    {
+        if (scenes == null || !ReferenceEquals(laid, blocks))
+            Scenes();
+        else if (paginator?.Continue(pages) is { } relaid)
+            Draw(relaid.Pages);
+        return LayingOut;
+    }
+
+    /// <summary>
+    /// The scenes of the pages laid out: a page the paginator gives as it gave it before is kept as it was drawn, where the
+    /// pages before it took the same budget of 3D text.
+    /// </summary>
+    void Draw(List<PageBox> pages)
+    {
+        renderer!.Settings = paginator!.Settings;
         var sizes = new List<(double Width, double Height)>();
         var drawn = new List<PageScene>(pages.Count);
         var how = new List<(int Paper, double Budget, double Cost)>(pages.Count);
@@ -344,14 +379,14 @@ public sealed class WordDocument : IEditableDocument
         for (var k = 0; k < pages.Count; k++)
         {
             var page = pages[k];
-            var paper = sizes.FindIndex(p => Math.Abs(p.Width - page.PaperWidth) < 0.01 && Math.Abs(p.Height - page.PaperHeight) < 0.01);
-            if (paper < 0)
-            {
-                sizes.Add((page.PaperWidth, page.PaperHeight));
-                paper = sizes.Count - 1;
-            }
+            var (width, height) = (page.PaperWidth, page.PaperHeight);
+            var paper = 0;
+            while (paper < sizes.Count && !(Math.Abs(sizes[paper].Width - width) < 0.01 && Math.Abs(sizes[paper].Height - height) < 0.01))
+                paper++;
+            if (paper == sizes.Count)
+                sizes.Add((width, height));
             var left = context.Text3DBudget;
-            if (keep && k < scenes!.Count && drawnAs[k].Paper == paper && drawnAs[k].Budget == left && (k < from - 1 || until > 0 && k >= until - 1 && !counted))
+            if (scenes != null && k < scenes.Count && k < shown.Count && ReferenceEquals(page, shown[k]) && drawnAs[k].Paper == paper && drawnAs[k].Budget == left)
             {
                 drawn.Add(scenes[k]);
                 context.Text3DBudget -= drawnAs[k].Cost;
@@ -360,8 +395,7 @@ public sealed class WordDocument : IEditableDocument
                 drawn.Add(renderer.Scene(page, $"paper{paper}"));
             how.Add((paper, left, left - context.Text3DBudget));
         }
-        (scenes, drawnAs, counts, laid) = (drawn, how, now, blocks);
-        return scenes;
+        (scenes, drawnAs, shown) = (drawn, how, pages);
     }
 
     /// <summary>Writes the document as DOCX (see OpcPackage.Save).</summary>
@@ -463,7 +497,7 @@ public sealed class WordDocument : IEditableDocument
         var children = xml.Root?.Elements().FirstOrDefault() is { } parent ? context.Prepare(parent) : [];
         if (head.Length > 0 && reader.Reread(blocks, old, before, children, like) is { } result)
         {
-            var piece = new Piece(start, end, text, read);
+            var piece = new Piece(start, end, text, read, children);
             pieces.RemoveAll(p => p.Start >= start && p.End <= end);
             pieces.Insert(pieces.FindIndex(p => p.Start >= end) is var k and >= 0 ? k : pieces.Count, piece);
             foreach (var e in old)
@@ -576,18 +610,16 @@ public sealed class WordDocument : IEditableDocument
             throw new NotSupportedException("The paragraph is not where it was read.");
         var (start, end) = (from.Start, to.End);
         // The children of the pieces they were read from, whole.
-        while (Previous(a) is { } previous && pieceOf.TryGetValue(a, out var piece) && pieceOf.GetValueOrDefault(previous) == piece)
-            a = previous;
+        if (pieceOf.TryGetValue(a, out var firstPiece))
+            a = firstPiece.Children[0];
+        if (pieceOf.TryGetValue(b, out var lastPiece))
+            b = lastPiece.Children[^1];
         var old = new List<XElement>();
         for (var e = a; e != null; e = Next(e))
         {
             old.Add(e);
             if (e == b)
-            {
-                while (Next(e) is { } next && pieceOf.TryGetValue(b, out var piece) && pieceOf.GetValueOrDefault(next) == piece)
-                    old.Add(e = next);
                 break;
-            }
         }
         var within = pieces.Where(p => p.Start >= start && p.End <= end).ToList();
         var text = new StringBuilder();
@@ -668,17 +700,6 @@ public sealed class WordDocument : IEditableDocument
         return start < 0 ? null : (start, wholeText.End(start));
     }
 
-    /// <summary>The element before one among its siblings, white space aside.</summary>
-    static XElement? Previous(XElement element)
-    {
-        for (var node = element.PreviousNode; node != null; node = node.PreviousNode)
-        {
-            if (node is XElement previous)
-                return previous;
-        }
-        return null;
-    }
-
     /// <summary>The element after one among its siblings, white space aside.</summary>
     static XElement? Next(XElement element)
     {
@@ -742,16 +763,6 @@ public sealed class WordDocument : IEditableDocument
     byte[] Spliced(byte[] bytes, IReadOnlyList<Island> changed) =>
         changed.Count == 0 ? bytes : (ReferenceEquals(bytes, whole) ? wholeText : new PartText(bytes)).Spliced(changed.Select(i => (i.Start, i.End, i.Text)));
 
-    /// <summary>
-    /// Whether the headers and footers of the pages hold fields other than PAGE, which may read what changed elsewhere
-    /// (NUMPAGES, SECTIONPAGES, REF, STYLEREF): their pages are then drawn anew after each change.
-    /// </summary>
-    bool StoriesRead(List<PageBox> pages) =>
-        storiesRead ??= pages.SelectMany(p => new[] { p.Header, p.Footer }).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase)
-            .Any(part => context.Load(part).Root is { } root && root.Descendants().Any(e =>
-                (e.Name == Wml.W + "instrText" ? e.Value : e.Name == Wml.W + "fldSimple" ? (string?)e.Attribute(Wml.W + "instr") : null) is { } instruction
-                && instruction.Trim() is { Length: > 0 } code && !code.StartsWith('\\') && !(code.StartsWith("PAGE", StringComparison.OrdinalIgnoreCase) && (code.Length == 4 || !char.IsLetter(code[4])))));
-
     /// <summary>Reads the document whole as its package has it now: its body's blocks, numbered after the ids given before, and its paragraphs by id.</summary>
     void ReadWhole()
     {
@@ -775,7 +786,7 @@ public sealed class WordDocument : IEditableDocument
         islands = [];
         pieces.Clear();
         pieceOf.Clear();
-        (laid, layout, paginator, renderer, scenes, storiesRead) = (null, null, null, null, null, null);
+        (laid, layout, paginator, renderer, scenes, shown) = (null, null, null, null, null, []);
         Index();
     }
 
@@ -785,16 +796,28 @@ public sealed class WordDocument : IEditableDocument
         paragraphs.Clear();
         foreach (var block in blocks)
             Collect(block, block);
+        fresh = blocks;
     }
 
-    /// <summary>The paragraphs by id after some blocks of the body were read anew: those of the blocks gone forgotten, those of the new ones known.</summary>
+    /// <summary>
+    /// The paragraphs by id after some blocks of the body were read anew, which stand between the same blocks at the
+    /// beginning and the end: those of the blocks gone forgotten, those of the new ones known.
+    /// </summary>
     void Reindex(List<Block> before)
     {
-        var (was, now) = (new HashSet<Block>(before, ReferenceEqualityComparer.Instance), new HashSet<Block>(blocks, ReferenceEqualityComparer.Instance));
-        foreach (var block in before.Where(b => !now.Contains(b)))
+        var was = CollectionsMarshal.AsSpan(before);
+        var now = CollectionsMarshal.AsSpan(blocks);
+        var head = 0;
+        while (head < was.Length && head < now.Length && ReferenceEquals(was[head], now[head]))
+            head++;
+        var tail = 0;
+        while (tail < was.Length - head && tail < now.Length - head && ReferenceEquals(was[^(tail + 1)], now[^(tail + 1)]))
+            tail++;
+        foreach (var block in was[head..^tail])
             Forget(block);
-        foreach (var block in blocks.Where(b => !was.Contains(b)))
+        foreach (var block in now[head..^tail])
             Collect(block, block);
+        fresh = [.. now[head..^tail]];
     }
 
     void Collect(Block block, Block top)

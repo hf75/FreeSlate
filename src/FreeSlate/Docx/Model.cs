@@ -452,8 +452,12 @@ public sealed partial class ModelReader(DocumentContext context)
             bodyElement = body;
             var pending = new List<XElement>();
             var index = 0;
+            XElement? before = null;
+            childBefore.Clear();
             foreach (var e in body.Elements())
             {
+                childBefore[e] = before;
+                before = e;
                 pending.Add(e);
                 if (e.Name == Wml.W + "p" && e.Child("pPr").Child("sectPr") is { } properties)
                 {
@@ -463,11 +467,13 @@ public sealed partial class ModelReader(DocumentContext context)
                     index++;
                 }
             }
+            var last = body.Child("sectPr");
             foreach (var p in pending)
-                sectionOf[p] = (body.Child("sectPr"), index);
+                sectionOf[p] = (last, index);
             currentSection = sectionOf.Count > 0 ? sectionOf[body.Elements().First()] : (body.Child("sectPr"), 0);
             ReadBlocks(body, blocks);
             JoinHidden(blocks, cell: false);
+            Tops(blocks);
         }
         return blocks;
     }
@@ -552,9 +558,14 @@ public sealed partial class ModelReader(DocumentContext context)
     /// <summary>The parts whose stories asked for numbers, in the order they first asked.</summary>
     public IEnumerable<string> NumberedParts => numberSteps.Keys;
 
-    /// <summary>Asks the story's list counter or the document's note numbers a step, recording it with its answer.</summary>
+    /// <summary>
+    /// Asks the story's list counter or the document's note numbers a step, recording it with its answer; a paragraph of
+    /// no list (see ListCounter.Counts) asks nothing, so that paragraphs without numbers come and go without steps.
+    /// </summary>
     object? Ask(NumberStep step)
     {
+        if (step is ListStep list && !counter.Counts(list.List, list.Level))
+            return null;
         // A re-read records its steps apart and takes their answers from the body's steps replayed (see Reread).
         if (rereadSteps != null)
         {

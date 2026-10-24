@@ -139,6 +139,11 @@ public partial class MainWindow : Window
             pageCount = ScenePages.Scenes.Count;
             PageCount.Text = $"von {pageCount}";
         };
+        ScenePages.Drawn += milliseconds =>
+        {
+            if (view != null && StatusText.Text?.Contains(" · bearbeitet in ", StringComparison.Ordinal) == true)
+                StatusText.Text += $", Bild nach {milliseconds.ToString("0", CultureInfo.CurrentCulture)} ms";
+        };
         ScenePages.Refused += reason => StatusText.Text = $"Nicht möglich: {reason}";
         ScenePages.PlaceChanged += place => PlaceText.Text = place is var (block, offset, selected)
             ? $"Absatz {block.ToString(CultureInfo.CurrentCulture)}, Stelle {offset.ToString(CultureInfo.CurrentCulture)}"

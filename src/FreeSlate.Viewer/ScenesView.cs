@@ -82,6 +82,15 @@ sealed class ScenesView : Control
     /// <summary>An edit was made, in so many milliseconds with the pages drawn after it.</summary>
     public event Action<double>? Edited;
 
+    /// <summary>The frame after an edit was drawn, so many milliseconds after the key (on the render thread).</summary>
+    public event Action<double>? Drawn;
+
+    /// <summary>When the last edit began (Stopwatch ticks) until the frame after it is drawn, else 0.</summary>
+    long editedAt;
+
+    /// <summary>Whether a slice of the layout an edit left waits to run (see LayOutLater).</summary>
+    bool layingOut;
+
     /// <summary>The document could not make an edit, for this reason.</summary>
     public event Action<string>? Refused;
 
@@ -269,8 +278,12 @@ sealed class ScenesView : Control
         var view = scroller != null ? new Rect(scroller.Offset.X, scroller.Offset.Y, scroller.Viewport.Width, scroller.Viewport.Height) : new Rect(Bounds.Size);
         var visible = rows.Where(r => r.Top * factor < view.Bottom && (r.Top + r.Height) * factor > view.Top)
             .Select(r => (Row: r, Left: Left(r))).ToList();
+        // The first frame after an edit tells when it is drawn.
+        var (since, drawn) = (editedAt, Drawn);
+        editedAt = 0;
         if (visible.Count > 0)
-            context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, word, comparison, blend, pictures, Marks(visible)));
+            context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, word, comparison, blend, pictures, Marks(visible),
+                since == 0 || drawn == null ? null : () => Avalonia.Threading.Dispatcher.UIThread.Post(() => drawn(System.Diagnostics.Stopwatch.GetElapsedTime(since).TotalMilliseconds))));
     }
 
     /// <summary>What a page shows over its text: the areas of the selection and the cursor (from its top to its bottom), in CSS pixels of the page.</summary>
@@ -595,7 +608,7 @@ sealed class ScenesView : Control
     {
         if (Session is not { } session)
             return;
-        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         try
         {
             change();
@@ -607,14 +620,52 @@ sealed class ScenesView : Control
         }
         Update(session.Document.Scenes());
         Show(session.Caret, session.Anchor);
-        Edited?.Invoke(clock.Elapsed.TotalMilliseconds);
+        editedAt = started;
+        Edited?.Invoke(System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        LayOutLater();
+    }
+
+    /// <summary>
+    /// Lays out what an edit left of the pages (see IEditableDocument.LayingOut) slice by slice while the window waits:
+    /// at the dispatcher's background priority, after input and rendering; the pages drawn and the cursor placed anew
+    /// after each slice.
+    /// </summary>
+    void LayOutLater()
+    {
+        if (layingOut || Session?.Document is not { LayingOut: true })
+            return;
+        layingOut = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            layingOut = false;
+            if (Session is not { Document: { LayingOut: true } document } session)
+                return;
+            document.LayOut();
+            Update(document.Scenes());
+            Show(session.Caret, session.Anchor);
+            LayOutLater();
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     /// <summary>The pages as the document reads now: recordings kept for the scenes that stayed, the rows laid out again where pages came, went or changed size.</summary>
     public void Update(IReadOnlyList<PageScene> changed)
     {
-        var resized = changed.Count != scenes.Count || changed.Where((scene, i) => scene.Width != scenes[i].Width || scene.Height != scenes[i].Height).Any();
-        pictures.Keep(changed);
+        var resized = changed.Count != scenes.Count;
+        if (resized)
+            pictures.Keep(changed);
+        else
+        {
+            // As many pages as before: those whose scene changed forget their recording, those that changed size are laid out anew.
+            var gone = new List<PageScene>();
+            for (var i = 0; i < changed.Count; i++)
+            {
+                if (ReferenceEquals(changed[i], scenes[i]))
+                    continue;
+                gone.Add(scenes[i]);
+                resized |= changed[i].Width != scenes[i].Width || changed[i].Height != scenes[i].Height;
+            }
+            pictures.Forget(gone);
+        }
         scenes = changed;
         if (resized)
             Arrange();
@@ -756,6 +807,16 @@ sealed class ScenesView : Control
             }
         }
 
+        /// <summary>Forgets the recordings of those pages (not disposed: a frame may still draw them).</summary>
+        public void Forget(List<PageScene> scenes)
+        {
+            lock (this)
+            {
+                foreach (var gone in scenes)
+                    pages.Remove(gone);
+            }
+        }
+
         /// <summary>Forgets the recordings of pages not among <paramref name="scenes"/> (not disposed: a frame may still draw them).</summary>
         public void Keep(IReadOnlyList<PageScene> scenes)
         {
@@ -823,7 +884,7 @@ sealed class ScenesView : Control
 
     /// <summary>The rows in view drawn on Avalonia's Skia canvas.</summary>
     sealed class Drawing(Rect bounds, List<(Row Row, double Left)> rows, double factor, IReadOnlyList<PageScene> scenes, IReadOnlyList<WordPicture> word,
-        string comparison, double blend, Pictures pictures, Dictionary<int, Mark> marks) : ICustomDrawOperation
+        string comparison, double blend, Pictures pictures, Dictionary<int, Mark> marks, Action? done) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -907,6 +968,8 @@ sealed class ScenesView : Control
                 }
                 canvas.Restore();
             }
+            // A frame may draw the operation again: what waits for its first drawing hears of that once.
+            Interlocked.Exchange(ref done, null)?.Invoke();
         }
     }
 }

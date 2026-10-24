@@ -15,6 +15,15 @@ public interface IEditableDocument : IDisposable
     IReadOnlyList<PageScene> Scenes();
 
     /// <summary>
+    /// Whether pages after those a change laid out stand as they did before it: a long document is laid out again bit by
+    /// bit after a change (see LayOut), as an editor does while it waits for input.
+    /// </summary>
+    bool LayingOut { get; }
+
+    /// <summary>Lays out about so many more of the pages a change left as they were (see LayingOut); whether more are left.</summary>
+    bool LayOut(int pages = 4);
+
+    /// <summary>
     /// Whether the document changes a paragraph of that id: in a Word document those of its body (in tables and text boxes
     /// too), not of headers, footers, notes or comments; on slides those of shapes and tables.
     /// </summary>

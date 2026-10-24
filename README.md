@@ -237,6 +237,18 @@ them, each handling one step to undo and redo, however many changes of the docum
 cannot make (within a field's result, a table of contents, an object, text that is not the body's) throws
 `NotSupportedException` and leaves the document as it was.
 
+After a change, `Scenes()` lays out and draws again only the pages it changed, also in documents of thousands of pages
+(a keystroke on page 4 000 of 5 000 within a frame). Where a change moves everything after it on (a paragraph one line
+longer), it lays out the next few pages and leaves the rest as they were (`LayingOut`); `LayOut()` lays them out bit by
+bit, as an editor does while it waits for input:
+
+```csharp
+session.Type("x");
+var pages = document.Scenes();                               // the pages the change touched, at once
+while (document.LayingOut)
+    document.LayOut();                                       // the rest, a few pages at a time
+```
+
 ### The output
 
 - `deck.html` shows all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
