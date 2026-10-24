@@ -319,7 +319,16 @@ public sealed record HiddenTextItem(string Text, double X, double[] Positions, d
 /// characters of a field's result or a note's mark have the field's or the reference's offset; what the layout added (a
 /// list number, a bullet, a hyphen of automatic hyphenation, an ellipsis) has none.
 /// </summary>
-public sealed record PlacesItem(int Block, double Top, double Bottom, int[] Offsets, double[] Starts, double[] Ends) : SceneItem;
+public sealed record PlacesItem(int Block, double Top, double Bottom, int[] Offsets, double[] Starts, double[] Ends) : SceneItem
+{
+    /// <summary>
+    /// For each place the formatting its character shows, which an editor's buttons go by: <see cref="Bold"/>,
+    /// <see cref="Italic"/> and <see cref="Underlined"/> together; a mark or a break as the character before it.
+    /// </summary>
+    public byte[] Formats { get; init; } = [];
+
+    public const byte Bold = 1, Italic = 2, Underlined = 4;
+}
 
 /// <summary>
 /// Characters drawn invisibly in points, stretched over Width from X on the baseline Y at the font size Size, for

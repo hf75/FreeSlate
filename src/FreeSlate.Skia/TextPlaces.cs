@@ -123,6 +123,24 @@ public sealed class TextPlaces(IReadOnlyList<(SKMatrix ToPage, PlacesItem Line)>
 
     int Offset(Spot spot) => lines[spot.Line].Line.Offsets[spot.Index];
 
+    /// <summary>The formatting a spot's character shows (PlacesItem.Formats: bold, italic, underlined); 0 where its line gives none.</summary>
+    public byte FormatAt(Spot spot) => lines[spot.Line].Line.Formats is { } formats && spot.Index < formats.Length ? formats[spot.Index] : (byte)0;
+
+    /// <summary>Whether a page shows a place: a character at its offset.</summary>
+    public Spot? Exact(int block, int offset)
+    {
+        for (var k = 0; k < lines.Count; k++)
+        {
+            var line = lines[k].Line;
+            if (line.Block != block)
+                continue;
+            var i = Array.IndexOf(line.Offsets, offset);
+            if (i >= 0)
+                return new Spot(k, i);
+        }
+        return null;
+    }
+
     /// <summary>The cursor of a place: from its line's top to its bottom at the place's x, on the page; null where the page does not show it.</summary>
     public (SKPoint Top, SKPoint Bottom)? Caret(int block, int offset) => Find(block, offset) is var (spot, after) ? CaretAt(spot, after) : null;
 

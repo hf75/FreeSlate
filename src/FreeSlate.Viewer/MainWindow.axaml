@@ -40,6 +40,8 @@
         <Slider Name="BlendSlider" Minimum="0" Maximum="100" Width="140" IsVisible="False"
                 ValueChanged="OnBlendChanged" ToolTip.Tip="Links FreeSlate, rechts Word" />
         <Button Name="PrintButton" Content="Drucken …" IsEnabled="False" Click="OnPrintClick" ToolTip.Tip="Strg+P" />
+        <Button Name="StoreButton" Content="Speichern" IsEnabled="False" Click="OnStoreClick"
+                ToolTip.Tip="Speichert die Änderungen ins Dokument (Strg+S); Strg+Z macht rückgängig, Strg+Y wiederholt" />
         <Button Name="SaveButton" Content="Als HTML speichern …" IsEnabled="False" Click="OnSaveClick" />
         <Button Name="PdfButton" Content="Als PDF speichern …" IsEnabled="False" Click="OnPdfClick" />
         <CheckBox Name="WatchBox" Content="Bei Änderung neu laden" IsCheckedChanged="OnWatchChanged"

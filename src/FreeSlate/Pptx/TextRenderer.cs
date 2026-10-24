@@ -771,7 +771,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// </summary>
     static PlacesItem Places(int id, LaidOutLine line, double left, double baseline, List<double> origins)
     {
-        var placed = new List<(int Index, double Start, double End)>();
+        var placed = new List<(int Index, double Start, double End, byte Format)>();
         for (var k = 0; k < line.Runs.Count; k++)
         {
             var run = line.Runs[k];
@@ -783,33 +783,36 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var advances = style.Inline != null ? [run.Width] : style.Font.Data.LayoutAdvances(run.Text, style.Size, style.Kerning, style.LetterSpacing);
             var from = run.X - origins[k];
             var before = 0.0;
+            var format = (byte)((style.Bold ? PlacesItem.Bold : 0) | (style.Italic ? PlacesItem.Italic : 0) | (style.Underline != null ? PlacesItem.Underlined : 0));
             for (var i = 0; i < run.Text.Length - (run.Ellipsis ? 1 : 0); i++)
             {
                 var after = before + advances[i];
                 var (start, end) = run.RightToLeft ? (from + run.Width - before, from + run.Width - after) : (from + before, from + after);
-                placed.Add((run.Start + i, At(start), At(end)));
+                placed.Add((run.Start + i, At(start), At(end), format));
                 before = after;
             }
         }
         // Tabs stand only on lines without right-to-left text, whose runs are in reading order.
         if (line.Tabs.Count > 0)
         {
-            placed.AddRange(line.Tabs.Select(t => (t.Index, left + t.From, left + t.To)));
+            placed.AddRange(line.Tabs.Select(t => (t.Index, left + t.From, left + t.To, (byte)0)));
             placed.Sort((a, b) => a.Index.CompareTo(b.Index));
         }
         var offsets = new List<int>(placed.Count + 1);
         var starts = new List<double>(placed.Count + 1);
         var ends = new List<double>(placed.Count + 1);
-        var (last, at) = (-1, left + line.Origin);
-        foreach (var (index, start, end) in placed)
+        var formats = new List<byte>(placed.Count + 1);
+        var (last, at, lastFormat) = (-1, left + line.Origin, (byte)0);
+        foreach (var (index, start, end, format) in placed)
         {
             if (index >= line.Sources.Length || line.Sources[index] < 0)
                 continue;
             offsets.Add(line.Sources[index]);
             starts.Add(start);
             ends.Add(end);
+            formats.Add(format);
             if (index > last)
-                (last, at) = (index, end);
+                (last, at, lastFormat) = (index, end, format);
         }
         var marks = new List<int>(2);
         if (line.Break >= 0 && line.Break < line.Sources.Length && line.Sources[line.Break] >= 0)
@@ -821,8 +824,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             offsets.Add(mark);
             starts.Add(at);
             ends.Add(at);
+            formats.Add(lastFormat);
         }
-        return new PlacesItem(id, baseline - line.Ascent, baseline + line.Descent, [.. offsets], [.. starts], [.. ends]);
+        return new PlacesItem(id, baseline - line.Ascent, baseline + line.Descent, [.. offsets], [.. starts], [.. ends]) { Formats = [.. formats] };
     }
 
     /// <summary>

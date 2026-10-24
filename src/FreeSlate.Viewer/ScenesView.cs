@@ -6,6 +6,7 @@ using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Avalonia.VisualTree;
+using FreeSlate.Editing;
 using FreeSlate.Rendering;
 using FreeSlate.Skia;
 using SkiaSharp;
@@ -18,7 +19,8 @@ sealed record WordPicture(string File, double Width, double Height);
 /// <summary>
 /// The document's pages drawn by Skia from their scenes (catalog: engine.output), one below the other in a scroll viewer,
 /// only those in view; zoomed as the viewer's page script zooms (a fit or a factor), with Word's pages beside them,
-/// over them or against them as the compare box says.
+/// over them or against them as the compare box says. With an editing session (see Session) keys and typed text change
+/// the document at the cursor, and the pages the change touched are drawn again.
 /// </summary>
 sealed class ScenesView : Control
 {
@@ -70,6 +72,21 @@ sealed class ScenesView : Control
 
     /// <summary>Whether the left button is down after a click into text: moving selects.</summary>
     bool selecting;
+
+    /// <summary>
+    /// The editing session over the document the pages show (see Editing.EditSession), or null where it is only shown:
+    /// it follows the cursor and the selection, and keys and typed text go to it.
+    /// </summary>
+    public EditSession? Session { get; set; }
+
+    /// <summary>An edit was made, in so many milliseconds with the pages drawn after it.</summary>
+    public event Action<double>? Edited;
+
+    /// <summary>The document could not make an edit, for this reason.</summary>
+    public event Action<string>? Refused;
+
+    /// <summary>Whether the cursor is being set from the session, which it then does not follow back.</summary>
+    bool fromSession;
 
     /// <summary>Whether the blinking cursor shows.</summary>
     bool blink = true;
@@ -436,6 +453,30 @@ sealed class ScenesView : Control
         base.OnKeyDown(e);
         if (caret is not var (page, at) || page >= scenes.Count)
             return;
+        if (Session is { } session)
+        {
+            var control = (e.KeyModifiers & KeyModifiers.Control) != 0;
+            var shift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
+            Action? edit = e.Key switch
+            {
+                Key.Back => session.Backspace,
+                Key.Delete => session.Delete,
+                Key.Enter when !control && !shift => session.Enter,
+                Key.Z when control && !shift => () => session.Undo(),
+                Key.Y when control => () => session.Redo(),
+                Key.Z when control && shift => () => session.Redo(),
+                Key.B when control => () => Toggle(PlacesItem.Bold),
+                Key.I when control => () => Toggle(PlacesItem.Italic),
+                Key.U when control => () => Toggle(PlacesItem.Underlined),
+                _ => null,
+            };
+            if (edit != null)
+            {
+                e.Handled = true;
+                Edit(edit);
+                return;
+            }
+        }
         var places = pictures.Places(scenes[page]);
         var spots = pictures.Spots(scenes[page]);
         (int Page, int At, bool End)? moved = e.Key switch
@@ -535,6 +576,124 @@ sealed class ScenesView : Control
         var (spot, after) = CaretSpot(spots, at);
         var (block, offset) = places.PlaceAt(spot, after);
         PlaceChanged?.Invoke((block, offset, Selected().Sum(s => s.Count)));
+        // The session's cursor and anchor follow the view's, unless they came from it.
+        if (Session != null && !fromSession && anchor is var (anchorPage, anchorAt) && anchorPage < scenes.Count
+            && pictures.Spots(scenes[anchorPage]) is { Count: > 0 } anchorSpots)
+        {
+            var (from, fromAfter) = anchorAt >= anchorSpots.Count ? (anchorSpots[^1], true) : (anchorSpots[anchorAt], false);
+            var (anchorBlock, anchorOffset) = pictures.Places(scenes[anchorPage]).PlaceAt(from, fromAfter);
+            Session.Place(new TextPlace(anchorBlock, anchorOffset));
+            Session.Place(new TextPlace(block, offset), extend: true);
+        }
+    }
+
+    /// <summary>
+    /// Makes an edit through the session: the pages after it drawn (those it left as they were from their recordings), the
+    /// cursor and the selection where the session has them; a refusal is reported and changes nothing.
+    /// </summary>
+    void Edit(Action change)
+    {
+        if (Session is not { } session)
+            return;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            change();
+        }
+        catch (Exception e) when (e is NotSupportedException or ArgumentException)
+        {
+            Refused?.Invoke(e.Message);
+            return;
+        }
+        Update(session.Document.Scenes());
+        Show(session.Caret, session.Anchor);
+        Edited?.Invoke(clock.Elapsed.TotalMilliseconds);
+    }
+
+    /// <summary>The pages as the document reads now: recordings kept for the scenes that stayed, the rows laid out again where pages came, went or changed size.</summary>
+    public void Update(IReadOnlyList<PageScene> changed)
+    {
+        var resized = changed.Count != scenes.Count || changed.Where((scene, i) => scene.Width != scenes[i].Width || scene.Height != scenes[i].Height).Any();
+        pictures.Keep(changed);
+        scenes = changed;
+        if (resized)
+            Arrange();
+        else
+            InvalidateVisual();
+    }
+
+    /// <summary>Puts the cursor and the selection's anchor at places of the document's text, on the pages that show them.</summary>
+    public void Show(TextPlace caretAt, TextPlace anchorAt)
+    {
+        var near = caret?.Page ?? 0;
+        if (Locate(caretAt, near) is not var (page, at, end))
+            return;
+        (caret, lineEnd) = ((page, at), end);
+        anchor = anchorAt == caretAt ? (page, at) : Locate(anchorAt, page) is var (anchorPage, anchorIndex, _) ? (anchorPage, anchorIndex) : (page, at);
+        fromSession = true;
+        try
+        {
+            Moved();
+        }
+        finally
+        {
+            fromSession = false;
+        }
+        Reveal((page, at));
+    }
+
+    /// <summary>
+    /// Where a page shows a place: the character at its offset on the page nearest to <paramref name="near"/> that shows it,
+    /// else the character before it (a place within a field's result); null where no page shows its paragraph.
+    /// </summary>
+    (int Page, int At, bool End)? Locate(TextPlace place, int near)
+    {
+        for (var step = 0; step < scenes.Count; step++)
+        {
+            foreach (var page in step == 0 ? [near] : new[] { near + step, near - step })
+            {
+                if (page >= 0 && page < scenes.Count && pictures.Places(scenes[page]).Exact(place.Paragraph, place.Offset) is { } spot)
+                    return Placed(page, spot, false);
+            }
+        }
+        for (var page = 0; page < scenes.Count; page++)
+        {
+            if (pictures.Places(scenes[page]).Find(place.Paragraph, place.Offset) is var (spot, after))
+                return Placed(page, spot, after);
+        }
+        return null;
+    }
+
+    /// <summary>The formatting the selection's first character shows, else the character before the cursor (see PlacesItem.Formats).</summary>
+    byte FormatHere()
+    {
+        if (Selected() is [var (page, from, _), ..])
+            return pictures.Places(scenes[page]).FormatAt(pictures.Spots(scenes[page])[from]);
+        if (caret is not var (cursorPage, at) || pictures.Spots(scenes[cursorPage]) is not { Count: > 0 } spots)
+            return 0;
+        return pictures.Places(scenes[cursorPage]).FormatAt(spots[Math.Clamp(at - 1, 0, spots.Count - 1)]);
+    }
+
+    /// <summary>Turns bold, italic or underline on for the selection where its first character lacks it, else off (Ctrl+B, I, U).</summary>
+    void Toggle(byte flag)
+    {
+        var on = (FormatHere() & flag) != 0;
+        Session!.Format(flag switch
+        {
+            PlacesItem.Bold => new TextFormatting { Bold = !on },
+            PlacesItem.Italic => new TextFormatting { Italic = !on },
+            _ => new TextFormatting { Underline = on ? "none" : "single" },
+        });
+    }
+
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        base.OnTextInput(e);
+        if (Session == null || caret == null || string.IsNullOrEmpty(e.Text) || e.Text.Any(char.IsControl))
+            return;
+        e.Handled = true;
+        var text = e.Text;
+        Edit(() => Session.Type(text));
     }
 
     /// <summary>The selection page by page: the page and the range of its characters (from the index, so many), in order.</summary>
@@ -594,6 +753,17 @@ sealed class ScenesView : Control
                 foreach (var recording in pages.Values)
                     recording.Picture.Dispose();
                 pages.Clear();
+            }
+        }
+
+        /// <summary>Forgets the recordings of pages not among <paramref name="scenes"/> (not disposed: a frame may still draw them).</summary>
+        public void Keep(IReadOnlyList<PageScene> scenes)
+        {
+            lock (this)
+            {
+                var kept = scenes.ToHashSet(ReferenceEqualityComparer.Instance);
+                foreach (var gone in pages.Keys.Where(scene => !kept.Contains(scene)).ToList())
+                    pages.Remove(gone);
             }
         }
 

@@ -9,6 +9,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using FreeSlate.Editing;
 using FreeSlate.Opc;
 using FreeSlate.Rendering;
 using FreeSlate.Skia;
@@ -53,6 +54,14 @@ public partial class MainWindow : Window
     int renders;
     int retries;
     FileSystemWatcher? watcher;
+
+    /// <summary>
+    /// The document shown, open to change it (Skia only): a Word document or a presentation, and the editing session over
+    /// it; and when it was last saved from here, whose own change of the file is not a reason to load it again.
+    /// </summary>
+    IEditableDocument? document;
+    EditSession? session;
+    DateTime savedAt;
 
     /// <summary>A document as shown: the file, the file FreeSlate and Word read (a copy when another program holds
     /// the document open), its password, whether with markup, its HTML or its pages' scenes (as Skia draws them), its
@@ -122,6 +131,15 @@ public partial class MainWindow : Window
                 PageBox.Text = n.ToString(CultureInfo.CurrentCulture);
         };
         ScenePages.LinkClicked += Follow;
+        ScenePages.Edited += milliseconds =>
+        {
+            ShowChanged();
+            if (view != null)
+                StatusText.Text = $"{Path.GetFileName(view.Path)} · {(view.Slides ? Slides(ScenePages.Scenes.Count) : Pages(ScenePages.Scenes.Count))} · bearbeitet in {milliseconds.ToString("0", CultureInfo.CurrentCulture)} ms";
+            pageCount = ScenePages.Scenes.Count;
+            PageCount.Text = $"von {pageCount}";
+        };
+        ScenePages.Refused += reason => StatusText.Text = $"Nicht möglich: {reason}";
         ScenePages.PlaceChanged += place => PlaceText.Text = place is var (block, offset, selected)
             ? $"Absatz {block.ToString(CultureInfo.CurrentCulture)}, Stelle {offset.ToString(CultureInfo.CurrentCulture)}"
               + (selected > 0 ? $" · {selected.ToString(CultureInfo.CurrentCulture)} Zeichen markiert" : "")
@@ -131,6 +149,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             watcher?.Dispose();
+            document?.Dispose();
             server.Dispose();
             if (OperatingSystem.IsWindows())
                 WordPages.Abort();
@@ -193,6 +212,51 @@ public partial class MainWindow : Window
             e.Handled = true;
             await PrintAsync();
         }
+        else if (control && e.Key == Key.S && session != null)
+        {
+            e.Handled = true;
+            SaveDocument();
+        }
+    }
+
+    void OnStoreClick(object? sender, RoutedEventArgs e) => SaveDocument();
+
+    /// <summary>Saves the document changed here over its file (a password goes; a copy read in its place saves to the document itself).</summary>
+    void SaveDocument()
+    {
+        if (session == null || view == null)
+            return;
+        try
+        {
+            savedAt = DateTime.UtcNow;
+            session.Save(view.Path);
+            savedAt = DateTime.UtcNow;
+            ShowChanged();
+            StatusText.Text = $"{Path.GetFileName(view.Path)} gespeichert";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            StatusText.Text = $"{Path.GetFileName(view.Path)} lässt sich nicht speichern: {e.Message}";
+        }
+    }
+
+    /// <summary>Whether the document has changes not saved: in the title and on the save button.</summary>
+    void ShowChanged()
+    {
+        if (view == null)
+            return;
+        StoreButton.IsEnabled = session?.Changed == true;
+        Title = $"{Path.GetFileName(view.Path)}{(session?.Changed == true ? " •" : "")} – FreeSlate Viewer";
+    }
+
+    /// <summary>Lets go of the document open to change it.</summary>
+    void CloseDocument()
+    {
+        ScenePages.Session = null;
+        session = null;
+        document?.Dispose();
+        document = null;
+        StoreButton.IsEnabled = false;
     }
 
     void OnPageMessage(string? message)
@@ -461,15 +525,17 @@ public partial class MainWindow : Window
             var (source, key) = await Task.Run(() => Readable(path, markup));
             if (BrowserToggle.IsChecked != true || slides)
             {
-                // The pages drawn by Skia from their scenes, no web view; a presentation's slides with the places of
-                // their text.
-                var scenes = await Task.Run(() =>
+                // The pages drawn by Skia from their scenes, no web view, with the places of their text; the document
+                // stays open to change it, typing going to an editing session over it.
+                var (opened, scenes) = await Task.Run(() =>
                 {
-                    if (!slides)
-                        return DocxConverter.ToScenes(source, password: password, markup: markup);
-                    using var presentation = PresentationDocument.Open(source, password);
-                    return presentation.Scenes().ToList();
+                    IEditableDocument editable = slides ? PresentationDocument.Open(source, password) : WordDocument.Open(source, password, markup: markup);
+                    return (editable, editable.Scenes().ToList());
                 });
+                CloseDocument();
+                this.document = opened;
+                session = new EditSession(opened);
+                ScenePages.Session = session;
                 seconds = clock.Elapsed.TotalSeconds;
                 view = new View(path, source, password, markup, null, scenes, key, slides);
                 locked = failed = null;
@@ -483,7 +549,7 @@ public partial class MainWindow : Window
                 Dispatcher.UIThread.Post(() => ScenePages.Restore(drawnAt), DispatcherPriority.Loaded);
                 pageCount = scenes.Count;
                 PageCount.Text = $"von {pageCount}";
-                Title = $"{name} – FreeSlate Viewer";
+                ShowChanged();
                 StatusText.Text = $"{name} · {(slides ? Slides(pageCount) : Pages(pageCount))} · in {seconds.ToString("0.00", CultureInfo.CurrentCulture)} s umgesetzt (Skia)";
                 PrintButton.IsEnabled = SaveButton.IsEnabled = PdfButton.IsEnabled = true;
                 settings.Folder = Path.GetDirectoryName(path);
@@ -492,6 +558,7 @@ public partial class MainWindow : Window
                 return;
             }
             var html = await Task.Run(() => DocxConverter.ToHtml(source, password: password, markup: markup));
+            CloseDocument();
             seconds = clock.Elapsed.TotalSeconds;
             // A file, not NavigateToString: the document carries its pictures and fonts and is often large.
             Directory.CreateDirectory(work);
@@ -566,6 +633,7 @@ public partial class MainWindow : Window
     void Fail(string path, Exception error)
     {
         var name = Path.GetFileName(path);
+        CloseDocument();
         view = null;
         locked = null;
         failed = path;
@@ -597,6 +665,14 @@ public partial class MainWindow : Window
         };
         void Changed() => Dispatcher.UIThread.Post(() =>
         {
+            // Saved from here: nothing to load. Changes not saved here are not given up for another program's.
+            if (DateTime.UtcNow - savedAt < TimeSpan.FromSeconds(3))
+                return;
+            if (session?.Changed == true)
+            {
+                StatusText.Text = $"{Path.GetFileName(wanted)} wurde geändert – nicht neu geladen, weil die Änderungen hier nicht gespeichert sind";
+                return;
+            }
             retries = 0;
             reloadTimer.Stop();
             reloadTimer.Start();

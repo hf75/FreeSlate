@@ -213,6 +213,30 @@ of their notes, charts and diagrams), adds them from layouts, moves them and tak
 custom shows and the links to them), undoes and redoes each change, and keeps the paragraphs' ids. A change is made in the XML of its slide, which is read and drawn again; the slides it draws
 (`Scenes`) know where each character stands, as Word documents' pages do.
 
+### Editing as a word processor does
+
+```csharp
+using FreeSlate;
+using FreeSlate.Editing;
+
+using var document = WordDocument.Open("report.docx");      // or PresentationDocument.Open("deck.pptx")
+var session = new EditSession(document);
+session.Place(new TextPlace(paragraph, 0));                  // where a click put the cursor (a place its pages show)
+session.Type("Hello ");                                      // in place of the selection; line feeds split paragraphs
+session.Backspace();                                         // and Delete: at a paragraph's edge it joins
+session.Enter();
+session.Place(new TextPlace(paragraph, 5), extend: true);    // a selection, over paragraphs too
+session.Format(new TextFormatting { Bold = true });
+session.Undo();                                              // one handling at a time, typing on counts as one
+session.Save("report-edited.docx");
+```
+
+`EditSession` is an editor's work without its surface, over either kind of document (`IEditableDocument`): the cursor
+and the selection as places in the text, typing, Backspace, Delete, Enter and formats as a word processor's keys do
+them, each handling one step to undo and redo, however many changes of the document it took. A handling the document
+cannot make (within a field's result, a table of contents, an object, text that is not the body's) throws
+`NotSupportedException` and leaves the document as it was.
+
 ### The output
 
 - `deck.html` shows all slides one below the other; `deck.html#slide-3` shows a single slide at its original size.
@@ -247,8 +271,10 @@ The viewer is the presenter's counterpart for Word documents (its interface is G
 draws its pages with Skia (*Browser* shows FreeSlate's HTML in the platform's web view instead), zooms (automatic,
 page width, whole page, 50 to 200 %), jumps to a page, follows links (to bookmarks of the document or to the web),
 puts a cursor where one clicks and selects by dragging or with Shift and the arrow keys (the status bar names the
-paragraph and the place), shows the document with its markup, prints it, saves it as PDF (or PDF/A for archiving) or
-HTML, and loads it again when it is saved (F5 does too). A document that cannot be converted shows the whole exception.
+paragraph and the place), edits the text there (typing, Backspace, Delete, Enter, Ctrl+B, I and U for bold, italic and
+underline, Ctrl+Z and Ctrl+Y to undo and redo; only the pages a change touches are drawn again) and saves it with
+Ctrl+S, shows the document with its markup, prints it, saves it as PDF (or PDF/A for archiving) or HTML, and loads it
+again when it is saved elsewhere (F5 does too). A document that cannot be converted shows the whole exception.
 It opens presentations too, their slides drawn by Skia with a cursor and selections in their text. On Windows with Word
 installed, *Word daneben* puts Word's own pages beside FreeSlate's, *Word überblendet* lays them over FreeSlate's with
 a slider between the two, and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM,

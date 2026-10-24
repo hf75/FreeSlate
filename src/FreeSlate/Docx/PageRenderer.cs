@@ -1052,6 +1052,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         readonly List<int> offsets = [];
         readonly List<double> starts = [], ends = [];
+        readonly List<byte> formats = [];
 
         /// <summary>A piece's characters at their positions from x (see Positions), right-to-left text from the piece's right end.</summary>
         public void Add(Piece piece, double x, double[] positions)
@@ -1059,6 +1060,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             if (piece.Start < 0)
                 return;
             var width = positions[^1];
+            var format = (byte)((piece.Style.Bold ? PlacesItem.Bold : 0) | (piece.Style.Italic ? PlacesItem.Italic : 0)
+                                | (piece.Style.Underline is { } underline && underline != "none" ? PlacesItem.Underlined : 0));
             for (var i = 0; i < piece.Text.Length; i++)
             {
                 if (piece.Start + i >= sources.Length || piece.AddedHyphen && i == piece.Text.Length - 1 || sources[piece.Start + i] < 0)
@@ -1067,6 +1070,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 offsets.Add(sources[piece.Start + i]);
                 starts.Add(x + start);
                 ends.Add(x + end);
+                formats.Add(format);
             }
         }
 
@@ -1079,8 +1083,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 offsets.Add(ParagraphText.End(line.Paragraph!));
                 starts.Add(at);
                 ends.Add(at);
+                formats.Add(formats.Count > 0 ? formats[^1] : (byte)0);
             }
-            return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends]);
+            return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends]) { Formats = [.. formats] };
         }
     }
 
