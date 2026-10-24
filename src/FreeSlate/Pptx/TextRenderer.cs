@@ -11,6 +11,13 @@ using FreeSlate.Text;
 namespace FreeSlate.Pptx;
 
 /// <summary>Where a shape's text properties come from, in priority order after the paragraph/run itself.</summary>
+/// <summary>
+/// How text fits its shape anew (see TextRenderer.Refit): the scale and line spacing reduction of text that shrinks to
+/// fit (normAutofit), or the height in points of a shape that grows to its text (spAutoFit) and where the text is
+/// anchored (t, ctr, b), which edge or middle of the shape stays.
+/// </summary>
+public sealed record TextFit(double Scale, double Reduction, double? Height, string Anchor = "t");
+
 public sealed class TextChain
 {
     /// <summary>The shape, then the layout and master placeholders it inherits from.</summary>
@@ -74,6 +81,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     /// <summary>The shape's box in pixels: scaled or skewed shadows of its text align on it, as the shape's own do.</summary>
     public (double Width, double Height)? ShapeSize { get; set; }
+
+    /// <summary>
+    /// Whether the text being rendered fits itself to its shape anew, as PowerPoint fits it when the text is edited (see
+    /// Fit), instead of taking the scale stored (set by the slide's renderer for a shape whose text changed); how it
+    /// fitted is <see cref="Fitted"/>, null where it neither shrinks to fit nor grows its shape, or is laid out otherwise
+    /// (vertical, in columns, warped).
+    /// </summary>
+    public bool Refit { get; set; }
+    public TextFit? Fitted { get; set; }
 
     int nextClip;
 
@@ -196,7 +212,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var wrap = wraps && !(warpDefinition != null && TextWarp.FollowsPaths(warpDefinition));
         // Space before the first paragraph and after the last counts only when the body asks for it (measured).
         var spaceFirstLast = Body("spcFirstLastPara") is "1" or "true";
+        var refit = Refit && columns == 1 && warp == null;
+        if (refit && autofit?.Name.LocalName == "normAutofit")
+        {
+            (fontScale, spacingReduction) = Fit(txBody, sources, Math.Max(0, columnWidth), wrap, spaceFirstLast, height);
+            Fitted = new TextFit(fontScale, spacingReduction, null);
+        }
         var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast);
+        // A shape that grows to its text is as high as the text (Bound) and its insets, by 517/512 (measured with
+        // PowerPoint 365's object model: 144 boxes of 1 to 6 lines in four fonts, three sizes and three spacings, all to 0.001 pt).
+        if (refit && autofit?.Name.LocalName == "spAutoFit")
+            Fitted = new TextFit(1, 0, (layout.Bound + Inset("tIns", 45720) + Inset("bIns", 45720)) * 517 / 512, Body("anchor") ?? "t");
         if (columns > 1)
             layout = Columns(layout, columns, columnWidth, columnGap, Body("rtlCol") is "1" or "true", height);
         else if (Body("anchorCtr") is "1" or "true")
@@ -961,6 +987,29 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var decorations = Decorations(run, style, style.Font.Data, x, y);
         var fill = $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
         return decorations.Count > 0 ? [new SvgGroupItem(fill, decorations)] : [];
+    }
+
+    /// <summary>
+    /// The steps PowerPoint shrinks text by to fit its shape (normAutofit), in its order (measured with PowerPoint 365's
+    /// object model: 8 lines of 24 pt in boxes 200 pt to 24 pt high, each taking the first step whose
+    /// text's height is within the box less its insets, the last whatever its height): line spacing 10 % less, the text at
+    /// 92.5 % with it, line spacing 20 % less, then the text 7.5 % smaller a step down to 25 %.
+    /// </summary>
+    static readonly (double Scale, double Reduction)[] FitSteps =
+    [
+        (1, 0), (1, 0.1), (0.925, 0.1), (0.925, 0.2), (0.85, 0.2), (0.775, 0.2), (0.7, 0.2), (0.625, 0.2), (0.55, 0.2), (0.475, 0.2), (0.4, 0.2),
+        (0.325, 0.2), (0.25, 0.2),
+    ];
+
+    /// <summary>The first of FitSteps at which the text's height as PowerPoint measures it (LaidOutText.Bound) is within a height (points), else the last.</summary>
+    (double Scale, double Reduction) Fit(XElement txBody, List<Source> sources, double width, bool wrap, bool spaceFirstLast, double height)
+    {
+        foreach (var step in FitSteps)
+        {
+            if (Layout(txBody, sources, width, wrap, step.Scale, step.Reduction, spaceFirstLast).Bound <= height + 0.01)
+                return step;
+        }
+        return FitSteps[^1];
     }
 
     LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction,

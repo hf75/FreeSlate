@@ -21,6 +21,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// shapes carry their names (data-name), and by words or letters its text is drawn in units.
     /// </summary>
     public string? Morph { get; init; }
+
+    /// <summary>
+    /// Shapes (by id) whose text fits itself to them anew as the slide is drawn (see TextRenderer.Refit): those whose text
+    /// was just edited; how each fitted is in Fitted.
+    /// </summary>
+    public IReadOnlySet<uint>? Refitting { get; init; }
+    public Dictionary<uint, TextFit> Fitted { get; } = [];
     TableRenderer Tables => tables ??= new TableRenderer(slide, paint, text);
     TableRenderer? tables;
 
@@ -605,7 +612,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             // Text that stays as laid out in its box lines its underlines up with the slide's pixels; upright, turned
             // and 3D text and a Word page's drawings leave them in the box.
             text.Grid = textCamera == null && !solidBody && !(upright && turn != 0) && Math.Abs(textTurn) < 1e-9 ? Grid(slideMatrix) : null;
+            var refitted = shapeId != null && uint.TryParse(shapeId, out var refit) && Refitting?.Contains(refit) == true ? refit : (uint?)null;
+            text.Refit = refitted != null;
             var textItems = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
+            if (refitted is { } fitted && text.Fitted is { } fit)
+                Fitted[fitted] = fit;
+            (text.Refit, text.Fitted) = (false, null);
             var glyphOutlines = text.Outlines;
             text.Outlines = null;
             // Text the slide show restyles is drawn in each formatting too (not 3D text).

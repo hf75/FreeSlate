@@ -321,7 +321,8 @@ public sealed partial class PresentationDocument : IEditableDocument
 
     /// <summary>
     /// Puts a text box on a slide, at the top of its tree, in points (see SlideShapes.TextBox: its paragraphs the
-    /// text's lines, "\n", a line break "\v"); returns its id on the slide.
+    /// text's lines, "\n", a line break "\v"), as high as its text as PowerPoint makes a box that resizes to its text
+    /// (see Refit); returns its id on the slide.
     /// </summary>
     public uint AddTextBox(uint slide, double x, double y, double width, double height, string text)
     {
@@ -353,6 +354,7 @@ public sealed partial class PresentationDocument : IEditableDocument
         var lists = Lists(s);
         lists.Add([.. text.Split('\n').Select(_ => ++lastId)]);
         Commit(s, raw, [(at, at, PartText.Xml(box))], lists);
+        Refit(s, id);
         return id;
     }
 
@@ -436,6 +438,78 @@ public sealed partial class PresentationDocument : IEditableDocument
         var lists = Lists(slide);
         lists[bodyIndex] = ids;
         Commit(slide, raw, [(start, end, string.Concat(written.Select(PartText.Xml)))], lists);
+        if (body.Cell == null)
+            Refit(slide, body.Shape);
+    }
+
+    /// <summary>
+    /// A shape whose text changed fitted to its text anew, as PowerPoint fits it when the text is edited: text that shrinks
+    /// to fit (normAutofit) takes the scale and line spacing reduction it fits at, a shape that grows to its text
+    /// (spAutoFit, with its own size, neither turned nor flipped) the height of its text and insets, its top, middle or
+    /// bottom where it was as its text is anchored (measured with PowerPoint 365's object model: rectangles of centered
+    /// text keep their middles). Part of the change just made, as PowerPoint
+    /// makes it one with the text.
+    /// </summary>
+    void Refit(Slide slide, uint shape)
+    {
+        var index = slides.IndexOf(slide);
+        var renderer = new SlideRenderer(new SlideContext(context, slide.Part, index + 1), paint) { Refitting = new HashSet<uint> { shape } };
+        var (width, height, items) = renderer.Scene();
+        if (!renderer.Fitted.TryGetValue(shape, out var fit))
+            return;
+        var raw = Parse(slide);
+        var id = shape.ToString(CultureInfo.InvariantCulture);
+        var sp = raw.Xml.Descendants(Ns.P + "sp").FirstOrDefault(s => s.Element(Ns.P + "nvSpPr")?.Element(Ns.P + "cNvPr")?.Attribute("id")?.Value == id);
+        if (sp?.Element(Ns.P + "txBody")?.Element(Ns.A + "bodyPr") is not { } bodyPr)
+            return;
+        XElement? changed = null;
+        if (fit.Height is { } textHeight)
+        {
+            if (sp.Element(Ns.P + "spPr")?.Element(Ns.A + "xfrm") is { } xfrm && (xfrm.Long("rot") ?? 0) == 0 && xfrm.Attribute("flipV")?.Value is not ("1" or "true")
+                && xfrm.Element(Ns.A + "ext") is { } ext && ext.Long("cy") is { } cy && Math.Abs(cy / Units.EmuPerPoint - textHeight) > 0.05)
+            {
+                var made = (long)Math.Round(textHeight * Units.EmuPerPoint);
+                ext.SetAttributeValue("cy", made.ToString(CultureInfo.InvariantCulture));
+                if (xfrm.Element(Ns.A + "off") is { } off && off.Long("y") is { } y && fit.Anchor is "ctr" or "b")
+                    off.SetAttributeValue("y", (y + (cy - made) / (fit.Anchor == "ctr" ? 2 : 1)).ToString(CultureInfo.InvariantCulture));
+                changed = xfrm;
+            }
+        }
+        else
+        {
+            // Stored on the shape's own body (where it inherits the autofit, a normAutofit of its own where it shrinks).
+            var own = bodyPr.Element(Ns.A + "normAutofit");
+            var (scale, reduction) = ((long)Math.Round(fit.Scale * 100000), (long)Math.Round(fit.Reduction * 100000));
+            if (own == null && (scale != 100000 || reduction != 0))
+            {
+                own = new XElement(Ns.A + "normAutofit");
+                if (bodyPr.Element(Ns.A + "prstTxWarp") is { } warp)
+                    warp.AddAfterSelf(own);
+                else
+                    bodyPr.AddFirst(own);
+            }
+            if (own != null && ((own.Long("fontScale") ?? 100000) != scale || (own.Long("lnSpcReduction") ?? 0) != reduction))
+            {
+                own.SetAttributeValue("fontScale", scale != 100000 ? scale.ToString(CultureInfo.InvariantCulture) : null);
+                own.SetAttributeValue("lnSpcReduction", reduction != 0 ? reduction.ToString(CultureInfo.InvariantCulture) : null);
+                changed = bodyPr;
+            }
+        }
+        if (changed == null)
+        {
+            // As drawn: the scene drawn to fit is the slide's.
+            var scene = new PageScene { Number = index + 1, Paper = "", Width = width * 72 / 96, Height = height * 72 / 96, Glyphs = context.Glyphs };
+            scene.Items.AddRange(items);
+            slide.Scene = scene;
+            return;
+        }
+        var bytes = raw.Text.Spliced([raw.Written(changed)]);
+        var now = versions[version];
+        versions[version] = new Version(new Dictionary<string, byte[]?>(now.Parts, StringComparer.OrdinalIgnoreCase) { [slide.Part] = bytes }, now.Ids);
+        package.Replace(slide.Part, bytes);
+        context.Changed(slide.Part);
+        slide.Bytes = bytes;
+        Read(slide, now.Ids.GetValueOrDefault(slide.Part) ?? slide.Opened);
     }
 
     /// <summary>

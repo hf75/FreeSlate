@@ -206,7 +206,8 @@ deck.Save("deck-edited.pptx");          // the changed paragraphs written anew, 
 ```
 
 `PresentationDocument` changes the text of slides as PowerPoint does (new text in the format of the text before it,
-a split paragraph's halves with its properties, a joined one with the first's), gives text and paragraphs direct
+a split paragraph's halves with its properties, a joined one with the first's, text that shrinks to fit its shape and
+shapes that grow to their text fitted anew), gives text and paragraphs direct
 formatting as PowerPoint's buttons do, moves and sizes shapes (a placeholder takes its place from its layout until then,
 a group scales its shapes), takes shapes away with their animations and adds text boxes, duplicates slides (with copies
 of their notes, charts and diagrams), adds them from layouts, moves them and takes them away (with their sections,

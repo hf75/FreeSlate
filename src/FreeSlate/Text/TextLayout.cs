@@ -184,6 +184,9 @@ public sealed class LaidOutLine
     public double Baseline { get; set; }
     public double Ascent { get; init; }
     public double Descent { get; init; }
+
+    /// <summary>The descent the line would have at single spacing, which its glyphs reach below its baseline (see LaidOutText.Bound).</summary>
+    public double SingleDescent { get; init; }
     public double Width { get; init; }
 
     /// <summary>The paragraph's alignment (l, ctr, r, just …).</summary>
@@ -239,7 +242,7 @@ public sealed class LaidOutLine
     {
         var moved = new LaidOutLine
         {
-            Paragraph = Paragraph, ParagraphText = ParagraphText, Baseline = baseline, Ascent = Ascent, Descent = Descent, Width = Width, Align = Align,
+            Paragraph = Paragraph, ParagraphText = ParagraphText, Baseline = baseline, Ascent = Ascent, Descent = Descent, SingleDescent = SingleDescent, Width = Width, Align = Align,
             Start = Start, Id = Id, Sources = Sources, Last = Last, Mark = Mark, Break = Break, Origin = Origin,
         };
         moved.Runs.AddRange(Runs);
@@ -255,6 +258,14 @@ public sealed class LaidOutText
 
     /// <summary>Height of the text block from the top of the first line to the bottom of the last, in points.</summary>
     public double Height { get; set; }
+
+    /// <summary>
+    /// The text block's height as PowerPoint measures it to fit text to its shape (TextRange.BoundHeight): to the last
+    /// line's baseline and the descent it has at single spacing (measured with PowerPoint 365's object model: Aptos,
+    /// Calibri, Arial and Times New Roman at 12, 24 and 48 pt, at 80, 100 and 150 % line spacing, all to 0.001 pt),
+    /// where Height takes the descent of its spacing.
+    /// </summary>
+    public double Bound { get; set; }
 }
 
 /// <summary>
@@ -299,6 +310,7 @@ public static class TextLayout
             }
         }
         result.Height = cursor + (spaceFirstLast ? pendingAfter : 0);
+        result.Bound = result.Lines.Count > 0 ? result.Height - result.Lines[^1].Descent + result.Lines[^1].SingleDescent : result.Height;
         return result;
     }
 
@@ -556,18 +568,21 @@ public static class TextLayout
         var characters = pieces.Where(p => p.End > p.Start).SelectMany(p => Enumerable.Range(p.Start, p.End - p.Start))
             .Where(i => i < styles.Count).ToList();
         var lineStyles = characters.Select(i => styles[i]).Distinct().ToList();
-        double ascent, descent;
+        double ascent, descent, singleDescent;
         if (lineStyles.Count == 0)
         {
             lineStyles = pieces.Count > 0 && pieces[0].Start < styles.Count ? [styles[pieces[0].Start]] : [paragraph.EndStyle];
             (ascent, descent) = Metrics(lineStyles[0], paragraph.Spacing);
+            (_, singleDescent) = Metrics(lineStyles[0], LineSpacing.Single);
         }
         else
         {
             var terminator = pieces[^1] is var (breakAt, breakEnd, _) && breakEnd == breakAt && breakAt < all.Length && all[breakAt] == '\n'
                 ? styles[breakAt]
                 : last ? paragraph.MarkStyle : null;
-            (ascent, descent) = LineMetrics(lineStyles, terminator is { } end ? end with { Size = styles[characters[^1]].Size } : null, paragraph.Spacing);
+            var ending = terminator is { } end ? end with { Size = styles[characters[^1]].Size } : null;
+            (ascent, descent) = LineMetrics(lineStyles, ending, paragraph.Spacing);
+            (_, singleDescent) = LineMetrics(lineStyles, ending, LineSpacing.Single);
         }
         // An equation in the line makes room for itself.
         foreach (var style in lineStyles)
@@ -580,7 +595,7 @@ public static class TextLayout
         }
 
         if (paragraph.RightToLeft || pieces.Any(p => Enumerable.Range(p.Start, p.End - p.Start).Any(i => i < levels.Length && levels[i] > 0)))
-            return BuildBidiLine(paragraph, all, styles, levels, pieces, lineStart, width, first, last, bulletWidth, ascent, descent);
+            return BuildBidiLine(paragraph, all, styles, levels, pieces, lineStart, width, first, last, bulletWidth, ascent, descent, singleDescent);
 
         var lineWidth = contentEnd - lineStart;
         var available = width - paragraph.MarginRight - lineStart;
@@ -597,7 +612,10 @@ public static class TextLayout
         if (justify && available > lineWidth && CountInnerSpaces(all, pieces) is var spaces and > 0)
             spaceExtra = (available - lineWidth) / spaces;
 
-        var line = new LaidOutLine { Ascent = ascent, Descent = descent, Width = lineWidth, Align = paragraph.Align, Start = lineStart, Origin = lineStart + offset };
+        var line = new LaidOutLine
+        {
+            Ascent = ascent, Descent = descent, SingleDescent = singleDescent, Width = lineWidth, Align = paragraph.Align, Start = lineStart, Origin = lineStart + offset,
+        };
         if (first && paragraph.Bullet is { } bullet)
             line.Runs.Add(new PlacedRun(bullet.Text, bullet.Style, BulletAt(paragraph) + offset, bulletWidth)
             {
@@ -642,7 +660,7 @@ public static class TextLayout
     /// </summary>
     static LaidOutLine BuildBidiLine(ParagraphInput paragraph, string all, List<TextStyle> styles, byte[] levels,
         List<(int Start, int End, double X)> pieces, double lineStart, double width, bool first, bool last, double bulletWidth,
-        double ascent, double descent)
+        double ascent, double descent, double singleDescent)
     {
         var justify = (paragraph.Align is "just" or "justLow" && !last) || paragraph.Align is "dist" or "thaiDist";
         // Logical items without the line's trailing spaces.
@@ -696,7 +714,7 @@ public static class TextLayout
 
         var line = new LaidOutLine
         {
-            Ascent = ascent, Descent = descent, Width = used, Align = paragraph.Align, Start = lineStart, Origin = paragraph.RightToLeft ? x + used : x,
+            Ascent = ascent, Descent = descent, SingleDescent = singleDescent, Width = used, Align = paragraph.Align, Start = lineStart, Origin = paragraph.RightToLeft ? x + used : x,
         };
         if (first && paragraph.Bullet is { } bullet)
         {
