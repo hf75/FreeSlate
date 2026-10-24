@@ -37,6 +37,12 @@ public sealed class PageScene
     /// </summary>
     public bool ExactDashes { get; init; }
 
+    /// <summary>
+    /// Whether the page is drawn: a Word document draws its pages when they are asked for (IEditableDocument.Scene),
+    /// giving them as scenes of their size without items until then.
+    /// </summary>
+    public bool Drawn { get; init; } = true;
+
     public List<SceneItem> Items { get; } = [];
 }
 

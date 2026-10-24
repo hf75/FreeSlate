@@ -107,8 +107,7 @@ public sealed class WordDocument : IEditableDocument
     WordDocument(OpcPackage package, FontLocator? fonts, CultureInfo culture, DateTime? printed, bool markup)
     {
         (this.package, this.fonts, this.culture, this.printed, this.markup) = (package, fonts, culture, printed, markup);
-        ReadWhole();
-        versions.Add(new Version(whole, islands, blocks));
+        ReadWhole(portions: true);
     }
 
     /// <summary>
@@ -120,7 +119,13 @@ public sealed class WordDocument : IEditableDocument
     /// <exception cref="PasswordException">The document needs a password, or the password is wrong.</exception>
     public static WordDocument Open(string path, string? password = null, FontLocator? fonts = null, CultureInfo? culture = null, DateTime? printed = null,
         bool markup = false) =>
-        new(OpcPackage.Open(File.ReadAllBytes(path), password), fonts, culture ?? CultureInfo.CurrentCulture, printed, markup);
+        Open(File.ReadAllBytes(path), password, fonts, culture, printed, markup);
+
+    /// <summary>Opens a Word document from its bytes, as Open opens a file.</summary>
+    /// <exception cref="PasswordException">The document needs a password, or the password is wrong.</exception>
+    public static WordDocument Open(byte[] bytes, string? password = null, FontLocator? fonts = null, CultureInfo? culture = null, DateTime? printed = null,
+        bool markup = false) =>
+        new(OpcPackage.Open(bytes, password), fonts, culture ?? CultureInfo.CurrentCulture, printed, markup);
 
     /// <summary>
     /// The author whose changes are tracked changes (Word's Track Changes: see Docx.Tracking), or null: changes are made
@@ -133,16 +138,31 @@ public sealed class WordDocument : IEditableDocument
     int changeId = -1;
 
     /// <summary>The body's blocks as the document reads now.</summary>
-    public IReadOnlyList<Block> Blocks => blocks;
+    public IReadOnlyList<Block> Blocks
+    {
+        get
+        {
+            Read();
+            return blocks;
+        }
+    }
 
     /// <summary>A paragraph of the body (of its tables and text boxes too) by its id, or null.</summary>
-    public ParagraphBlock? Paragraph(int id) => paragraphs.TryGetValue(id, out var found) ? found.Paragraph : null;
+    public ParagraphBlock? Paragraph(int id)
+    {
+        Read();
+        return paragraphs.TryGetValue(id, out var found) ? found.Paragraph : null;
+    }
 
     /// <summary>The text of a paragraph (see ParagraphText).</summary>
     public string Text(int paragraph) => ParagraphText.Of(Find(paragraph).Paragraph);
 
     /// <summary>Whether a paragraph of that id is the body's (in tables and text boxes too), which the document changes.</summary>
-    public bool Contains(int paragraph) => paragraphs.ContainsKey(paragraph);
+    public bool Contains(int paragraph)
+    {
+        Read();
+        return paragraphs.ContainsKey(paragraph);
+    }
 
     /// <summary>Whether a change can be undone, and one undone done again.</summary>
     public bool CanUndo => version > 0;
@@ -295,6 +315,7 @@ public sealed class WordDocument : IEditableDocument
     /// <summary>Undoes the last change not undone; false where there is none.</summary>
     public bool Undo()
     {
+        Read();
         if (!CanUndo)
             return false;
         Go(version - 1);
@@ -304,6 +325,7 @@ public sealed class WordDocument : IEditableDocument
     /// <summary>Does the last change undone again; false where there is none.</summary>
     public bool Redo()
     {
+        Read();
         if (!CanRedo)
             return false;
         Go(version + 1);
@@ -317,13 +339,18 @@ public sealed class WordDocument : IEditableDocument
     public const int PagesAtOnce = 3;
 
     /// <summary>
-    /// The pages of the document as it reads now, laid out and drawn as DocxConverter does (see PageScene): after a change
-    /// laid out again from the last checkpoint before it, the pages the paginator gives as it gave them kept as they were
-    /// drawn (see Paginator.Relayout); after a change that moves what follows on, so many pages (PagesAtOnce), the rest
-    /// as they were until LayOut lays them out.
+    /// The pages of the document as it reads now, laid out and drawn as DocxConverter does (see PageScene): at first so
+    /// many pages (PagesAtOnce), the rest laid out by LayOut (see LayingOut); after a change laid out again from the last
+    /// checkpoint before it, the pages the paginator gives as it gave them kept as they were drawn (see
+    /// Paginator.Relayout); after a change that moves what follows on, so many pages, the rest as they were until LayOut
+    /// lays them out.
     /// </summary>
     public IReadOnlyList<PageScene> Scenes()
     {
+        if (reading)
+            return Early();
+        if (early)
+            return scenes!;
         if (scenes != null && ReferenceEquals(laid, blocks))
             return scenes;
         List<PageBox> pages;
@@ -336,7 +363,7 @@ public sealed class WordDocument : IEditableDocument
             var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
                 .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
             paginator = new Paginator(context, layout, reader) { EndnoteContinuation = endnoteParts.GetValueOrDefault("continuationSeparator"), KeepCheckpoints = true };
-            pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"));
+            pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"), PagesAtOnce);
             renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
             scenes = null;
         }
@@ -347,8 +374,11 @@ public sealed class WordDocument : IEditableDocument
         return scenes!;
     }
 
-    /// <summary>Whether pages after those the last change laid out still stand as they did before it (see LayOut).</summary>
-    public bool LayingOut => paginator?.Paused == true || !ReferenceEquals(laid, blocks);
+    /// <summary>
+    /// Whether pages after those the last change laid out still stand as they did before it, or are not laid out yet where
+    /// the document's layout grows from its first pages (see LayOut).
+    /// </summary>
+    public bool LayingOut => reading || early || paginator?.Paused == true || !ReferenceEquals(laid, blocks);
 
     /// <summary>
     /// Lays out about so many more of the pages the last change left as they were (see LayingOut), and draws those that
@@ -356,6 +386,25 @@ public sealed class WordDocument : IEditableDocument
     /// </summary>
     public bool LayOut(int pages = PagesAtOnce)
     {
+        // A long body is read bit by bit first, then laid out from its first page (see reading).
+        if (reading)
+        {
+            var many = pages == int.MaxValue ? int.MaxValue : childrenAtOnce;
+            if (context.Loading)
+            {
+                if (!context.LoadBody(many))
+                    blocks = reader.BeginBody();
+            }
+            else if (!reader.ReadBody(many))
+                Done();
+            return LayingOut;
+        }
+        if (early)
+        {
+            Leave();
+            Scenes();
+            return LayingOut;
+        }
         if (scenes == null || !ReferenceEquals(laid, blocks))
             Scenes();
         else if (paginator?.Continue(pages) is { } relaid)
@@ -365,7 +414,7 @@ public sealed class WordDocument : IEditableDocument
 
     /// <summary>
     /// The scenes of the pages laid out: a page the paginator gives as it gave it before is kept as it was drawn, where the
-    /// pages before it took the same budget of 3D text.
+    /// pages before it took the same budget of 3D text; the others drawn, or left to be drawn by Scene (see drawLater).
     /// </summary>
     void Draw(List<PageBox> pages)
     {
@@ -392,10 +441,37 @@ public sealed class WordDocument : IEditableDocument
                 context.Text3DBudget -= drawnAs[k].Cost;
             }
             else
-                drawn.Add(renderer.Scene(page, $"paper{paper}"));
+                drawn.Add(drawLater ? renderer.Sketch(page, $"paper{paper}") : renderer.Scene(page, $"paper{paper}"));
             how.Add((paper, left, left - context.Text3DBudget));
         }
         (scenes, drawnAs, shown) = (drawn, how, pages);
+    }
+
+    /// <summary>
+    /// Whether pages are drawn when they are asked for (see Scene) rather than as they are laid out: unless the document
+    /// shows its markup, whose pane widens a page as far as its comments reach, or a part holds 3D text (w14:props3d),
+    /// which takes a budget the pages share in their order (DocumentContext.Text3DBudget).
+    /// </summary>
+    bool drawLater;
+
+    /// <summary>The page the layout puts a bookmark on (0-based), of those laid out so far; null where none has it.</summary>
+    public int? PageOf(string bookmark)
+    {
+        Scenes();
+        var page = shown.FindIndex(p => p.Bookmarks.Any(b => b.Name == bookmark));
+        return page >= 0 ? page : null;
+    }
+
+    public PageScene Scene(int page)
+    {
+        var all = Scenes();
+        if (all[page] is { Drawn: false } sketch)
+        {
+            renderer!.Settings = paginator!.Settings;
+            context.Text3DBudget = budget;
+            scenes![page] = renderer.Scene(shown[page], sketch.Paper);
+        }
+        return scenes![page];
     }
 
     /// <summary>Writes the document as DOCX (see OpcPackage.Save).</summary>
@@ -419,8 +495,11 @@ public sealed class WordDocument : IEditableDocument
 
     public void Dispose() => package.Dispose();
 
-    (ParagraphBlock Paragraph, Block Top) Find(int id) =>
-        paragraphs.TryGetValue(id, out var found) ? found : throw new ArgumentException($"The document's body has no paragraph {id}.", nameof(id));
+    (ParagraphBlock Paragraph, Block Top) Find(int id)
+    {
+        Read();
+        return paragraphs.TryGetValue(id, out var found) ? found : throw new ArgumentException($"The document's body has no paragraph {id}.", nameof(id));
+    }
 
     /// <summary>
     /// A change made in the stretch of the body the blocks from <paramref name="from"/> to <paramref name="to"/> were
@@ -763,17 +842,102 @@ public sealed class WordDocument : IEditableDocument
     byte[] Spliced(byte[] bytes, IReadOnlyList<Island> changed) =>
         changed.Count == 0 ? bytes : (ReferenceEquals(bytes, whole) ? wholeText : new PartText(bytes)).Spliced(changed.Select(i => (i.Start, i.End, i.Text)));
 
-    /// <summary>Reads the document whole as its package has it now: its body's blocks, numbered after the ids given before, and its paragraphs by id.</summary>
-    void ReadWhole()
+    /// <summary>
+    /// Whether the body is being read bit by bit (see LayOut): a long body when the document opens, from its children
+    /// read so far laid out as the first pages (see Early); the rest read before anything needs it whole (see Read).
+    /// </summary>
+    bool reading;
+
+    /// <summary>How many children of a long body LayOut reads at once, and the first pages are laid out from while it reads.</summary>
+    static int childrenAtOnce = 1000;
+
+    /// <summary>
+    /// The rest of the body read where it is read bit by bit (see reading): its XML, then its blocks; the first pages laid
+    /// out meanwhile given up (see early).
+    /// </summary>
+    void Read()
+    {
+        if (reading)
+        {
+            if (context.Loading)
+            {
+                context.LoadBody(int.MaxValue);
+                blocks = reader.BeginBody();
+            }
+            while (reader.ReadBody(int.MaxValue))
+            {
+            }
+            Done();
+        }
+        Leave();
+    }
+
+    /// <summary>
+    /// Whether the pages are still the first ones laid out while the body was read (see Early): until LayOut lays the
+    /// body out from its first page, the slice after the one that read its end.
+    /// </summary>
+    bool early;
+
+    /// <summary>The first pages laid out while the body was read given up: the next Scenes lays the body out from its first page.</summary>
+    void Leave()
+    {
+        if (!early)
+            return;
+        early = false;
+        (laid, layout, paginator, renderer) = (null, null, null, null);
+    }
+
+    /// <summary>
+    /// The body read to its end: its paragraphs found by id, its pages to be laid out anew from the first (the first ones
+    /// were laid out from what was read first, see early).
+    /// </summary>
+    void Done()
+    {
+        reading = false;
+        early = scenes != null;
+        if (!early)
+            (laid, layout, paginator, renderer) = (null, null, null, null);
+        Index();
+        // The version the document opened as.
+        if (versions.Count == 0)
+            versions.Add(new Version(whole, islands, blocks));
+    }
+
+    /// <summary>
+    /// The first pages while the body is being read (see reading): laid out from the first children of the body by a
+    /// reader of their own, which numbers their blocks as the body's reader does, so many pages (PagesAtOnce), without
+    /// notes (whose numbers follow all of the body).
+    /// </summary>
+    IReadOnlyList<PageScene> Early()
+    {
+        if (scenes != null)
+            return scenes;
+        var own = new ModelReader(context);
+        var first = own.BeginBody(childrenAtOnce);
+        own.ReadBody(int.MaxValue);
+        layout = new ParagraphLayout(context, new RunStyles(context));
+        paginator = new Paginator(context, layout, own);
+        renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
+        Draw(paginator.Paginate(first, own.ReadingSection(), pages: PagesAtOnce));
+        return scenes!;
+    }
+
+    /// <summary>
+    /// Reads the document whole as its package has it now: its body's blocks, numbered after the ids given before, and its
+    /// paragraphs by id; a long body bit by bit where asked (see reading).
+    /// </summary>
+    void ReadWhole(bool portions = false)
     {
         var last = reader?.LastId ?? 0;
         wholeReads++;
-        context = new DocumentContext(package, fonts) { Culture = culture, Printed = printed, Markup = markup };
+        // The main part's bytes kept by the package, so that the context reads its XML from them: unpacked once.
+        if (package.FirstRelationship("/", "officeDocument")?.Target is { } main && package.Exists(main))
+            package.ReadBytes(main, keep: true);
+        context = new DocumentContext(package, fonts, bodyBitByBit: portions) { Culture = culture, Printed = printed, Markup = markup };
         budget = context.Text3DBudget;
         reader = new ModelReader(context) { LastId = last };
-        blocks = reader.Body();
         whole = package.ReadBytes(context.MainPart);
-        wholeText = new PartText(whole);
+        wholeText = context.MainText;
         body = context.Document.Root.Child("body");
         (head, tail) = ("", "");
         if (context.Document.Root is { } root && body != null && wholeText.Start(root) is var rootStart and >= 0 && wholeText.Start(body) is var bodyStart and >= 0
@@ -787,7 +951,16 @@ public sealed class WordDocument : IEditableDocument
         pieces.Clear();
         pieceOf.Clear();
         (laid, layout, paginator, renderer, scenes, shown) = (null, null, null, null, null, []);
-        Index();
+        drawLater = !markup && !package.PartNames.Any(part => part.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
+            && (part == context.MainPart ? whole : package.ReadBytes(part)).AsSpan().IndexOf("props3d"u8) >= 0);
+        // A long body is read bit by bit (see reading): its XML, then its blocks; a short one at once.
+        reading = true;
+        if (!context.LoadBody(2 * childrenAtOnce))
+        {
+            blocks = reader.BeginBody();
+            if (!portions || reader.BodyChildren <= 2 * childrenAtOnce)
+                Read();
+        }
     }
 
     /// <summary>The paragraphs of the body by id, each with the block of the body it stands in.</summary>

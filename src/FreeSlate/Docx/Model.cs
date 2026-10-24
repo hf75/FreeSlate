@@ -440,12 +440,29 @@ public sealed partial class ModelReader(DocumentContext context)
     (XElement? Properties, int Index) currentSection;
     XElement? bodyElement;
 
+    /// <summary>The body's blocks, read whole (see BeginBody).</summary>
     public List<Block> Body()
+    {
+        var blocks = BeginBody();
+        while (ReadBody(int.MaxValue))
+        {
+        }
+        return blocks;
+    }
+
+    /// <summary>
+    /// Begins to read the body in portions, as Body reads it whole: the list its blocks go into, which ReadBody fills,
+    /// complete once it is done (the paragraphs whose marks are hidden joined, see JoinHidden). With
+    /// <paramref name="children"/> only so many of its first children (for its first pages), those after the last
+    /// section break among them in the section the next break ends.
+    /// </summary>
+    public List<Block> BeginBody(int children = int.MaxValue)
     {
         var body = context.Document.Root.Child("body");
         var blocks = new List<Block>();
         counter = new ListCounter(context.Numbering);
         currentPart = context.MainPart;
+        bodyReading = null;
         if (body != null)
         {
             // Each section's properties stand at its end.
@@ -454,7 +471,7 @@ public sealed partial class ModelReader(DocumentContext context)
             var index = 0;
             XElement? before = null;
             childBefore.Clear();
-            foreach (var e in body.Elements())
+            foreach (var e in body.Elements().Take(children))
             {
                 childBefore[e] = before;
                 before = e;
@@ -467,16 +484,52 @@ public sealed partial class ModelReader(DocumentContext context)
                     index++;
                 }
             }
-            var last = body.Child("sectPr");
+            // Where the body is still being read (see DocumentContext.Loading), the section ahead of its children so far.
+            var last = (children < int.MaxValue ? body.Elements().Skip(children) : []).Select(e => e.Name == Wml.W + "p" ? e.Child("pPr").Child("sectPr") : null)
+                .FirstOrDefault(properties => properties != null) ?? body.Child("sectPr") ?? context.SectionAhead();
             foreach (var p in pending)
                 sectionOf[p] = (last, index);
             currentSection = sectionOf.Count > 0 ? sectionOf[body.Elements().First()] : (body.Child("sectPr"), 0);
-            ReadBlocks(body, blocks);
-            JoinHidden(blocks, cell: false);
-            Tops(blocks);
+            BodyChildren = childBefore.Count;
+            bodyReading = (body, blocks, JoinedFields(SplitTables(body.Elements().Take(children))).GetEnumerator(), null);
         }
         return blocks;
     }
+
+    /// <summary>
+    /// The body being read in portions (see BeginBody): its element, its blocks so far, the children left to read (as
+    /// ReadBlocks reads them) and a paragraph whose mark is gone, waiting for the next.
+    /// </summary>
+    (XElement Body, List<Block> Blocks, IEnumerator<XElement> Children, ParagraphBlock? Pending)? bodyReading;
+
+    /// <summary>How many children the body read last has (see BeginBody).</summary>
+    public int BodyChildren { get; private set; }
+
+    /// <summary>Reads so many more children of the body (see BeginBody); whether any are left.</summary>
+    public bool ReadBody(int children)
+    {
+        if (bodyReading is not var (body, blocks, rest, pending))
+            return false;
+        for (var k = 0; k < children; k++)
+        {
+            if (!rest.MoveNext())
+            {
+                rest.Dispose();
+                bodyReading = null;
+                if (pending != null)
+                    blocks.Add(pending);
+                JoinHidden(blocks, cell: false);
+                Tops(blocks);
+                return false;
+            }
+            ReadBlock(body, rest.Current, blocks, ref pending);
+        }
+        bodyReading = (body, blocks, rest, pending);
+        return true;
+    }
+
+    /// <summary>The properties of the section the body's reading stands in (see ReadBody).</summary>
+    public SectionProperties ReadingSection() => SectionProperties.Read(currentSection.Properties, Resolve, context.Culture);
 
     /// <summary>
     /// The text of a w:t: without xml:space="preserve" on the element itself or on its part's root Word drops the
@@ -531,7 +584,9 @@ public sealed partial class ModelReader(DocumentContext context)
     }
 
     /// <summary>The properties of the document's last section (the body's own w:sectPr).</summary>
-    public SectionProperties LastSection() => SectionProperties.Read(context.Document.Root.Child("body").Child("sectPr"), Resolve, context.Culture);
+    public SectionProperties LastSection() =>
+        SectionProperties.Read(context.Document.Root.Child("body") is { } body ? body.LastNode as XElement is { } last && last.Name == Wml.W + "sectPr" ? last : body.Child("sectPr") : null,
+            Resolve, context.Culture);
 
     /// <summary>The part a relationship id of the main document points to, where it exists.</summary>
     string? Resolve(string id) =>
@@ -934,129 +989,133 @@ public sealed partial class ModelReader(DocumentContext context)
     void ReadBlocks(XElement container, IEnumerable<XElement> elements, List<Block> blocks, ref ParagraphBlock? pending)
     {
         foreach (var e in JoinedFields(SplitTables(elements)))
+            ReadBlock(container, e, blocks, ref pending);
+    }
+
+    /// <summary>An element of a container read into its blocks (see ReadBlocks).</summary>
+    void ReadBlock(XElement container, XElement e, List<Block> blocks, ref ParagraphBlock? pending)
+    {
+        if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
+            currentSection = section;
+        // Where reading stood before each child of the body, for reading some of them anew (see Reread).
+        if (container == bodyElement && e.Parent == bodyElement)
         {
-            if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
-                currentSection = section;
-            // Where reading stood before each child of the body, for reading some of them anew (see Reread).
-            if (container == bodyElement && e.Parent == bodyElement)
+            var fresh = pending == null && openFields.Count == 0 && strayBreaks.Count == 0 && blockBookmarks.Count == 0;
+            if (rereadSteps != null)
+                rereadPoints[e] = (rereadSteps.Count, fresh);
+            else
+                bodyPoints[e] = (numberSteps.TryGetValue(currentPart, out var asked) ? asked.Count : 0, fresh);
+        }
+        if (e.Name.Namespace != Wml.W)
+            return;
+        // A table whose rows were all deleted is gone (docx/external/powertools/RA001-Tracked-Revisions-01: a moved
+        // and deleted table between paragraphs whose marks were deleted too).
+        if (e.Name.LocalName == "tbl" && Gone(e, context.Markup))
+            return;
+        // Marks of ranges between paragraphs (moves, bookmarks, comments, permissions) leave a paragraph whose mark
+        // is gone waiting for the next (docx/external/powertools/RP/RP015-MoveFrom-MoveTo: a moveFromRangeEnd
+        // after the paragraph a move left).
+        if (pending != null && e.Name.LocalName != "p" && !e.Name.LocalName.EndsWith("RangeStart", StringComparison.Ordinal)
+            && !e.Name.LocalName.EndsWith("RangeEnd", StringComparison.Ordinal)
+            && e.Name.LocalName is not ("bookmarkStart" or "bookmarkEnd" or "permStart" or "permEnd" or "proofErr")
+            && !(e.Name.LocalName is "sdt" && (e.Child("sdtPr") is not { } controlPr || Binding.Text(controlPr) == null)
+                 || e.Name.LocalName is "customXml" or "smartTag" or "ins" or "moveTo"))
+        {
+            blocks.Add(pending);
+            pending = null;
+        }
+        switch (e.Name.LocalName)
+        {
+            case "br":
+                strayBreaks.Add(e);
+                break;
+            case "p" when context.Markup:
             {
-                var fresh = pending == null && openFields.Count == 0 && strayBreaks.Count == 0 && blockBookmarks.Count == 0;
-                if (rereadSteps != null)
-                    rereadPoints[e] = (rereadSteps.Count, fresh);
+                // In the markup view a paragraph whose mark was deleted stays apart, its mark marked.
+                var mark = e.Child("pPr")?.Child("rPr");
+                var markRevision = mark?.Child("del") is { } deleted ? new RevisionMark("del", context.Author(deleted.Attr("author")))
+                    : mark?.Child("ins") is { } inserted ? new RevisionMark("ins", context.Author(inserted.Attr("author"))) : revision;
+                var change = e.Child("pPr")?.Child("pPrChange") is { } pPrChange
+                    ? new FormatChange(context.Describe.Paragraph(e.Child("pPr"), pPrChange.Child("pPr")), context.Author(pPrChange.Attr("author"))) : null;
+                blocks.Add(WithBlockBookmarks(Paragraph(e) with { MarkRevision = markRevision, Change = change }));
+                break;
+            }
+            case "p":
+            {
+                // A mark moved away (w:moveFrom) is gone as a deleted one is (docx/external/powertools/RP/
+                // RP015-MoveFrom-MoveTo: the paragraph a move left joins the next).
+                var markDeleted = e.Child("pPr")?.Child("rPr") is { } markRun && (markRun.Child("del") ?? markRun.Child("moveFrom")) != null;
+                var paragraph = WithBlockBookmarks(Paragraph(e, number: !markDeleted));
+                if (pending != null)
+                {
+                    paragraph = paragraph with { Content = [.. Restyled(pending, paragraph.Format.Style), .. paragraph.Content] };
+                    pending = null;
+                    // Joined so, a paragraph of contextual spacing loses its space before, whatever the styles
+                    // (measured with docx/local/dmk-f, dmk-h, dmk-j, dmk-k: after a paragraph of 3.5 pt after the
+                    // gap is those 3.5 pt, the joined one's 18 pt and the first one's 24 pt gone; dmk-a: without
+                    // contextual spacing its own 18 pt; docx/external/libreoffice/extras-uiwriter/tdf125916).
+                    if (paragraph.Format.ContextualSpacing == true)
+                        (paragraph.Format.Before, paragraph.Format.BeforeLines, paragraph.Format.BeforeAuto) = (0, null, false);
+                }
+                if (markDeleted)
+                    pending = paragraph;
                 else
-                    bodyPoints[e] = (numberSteps.TryGetValue(currentPart, out var asked) ? asked.Count : 0, fresh);
+                    blocks.Add(paragraph);
+                break;
             }
-            if (e.Name.Namespace != Wml.W)
-                continue;
-            // A table whose rows were all deleted is gone (docx/external/powertools/RA001-Tracked-Revisions-01: a moved
-            // and deleted table between paragraphs whose marks were deleted too).
-            if (e.Name.LocalName == "tbl" && Gone(e, context.Markup))
-                continue;
-            // Marks of ranges between paragraphs (moves, bookmarks, comments, permissions) leave a paragraph whose mark
-            // is gone waiting for the next (docx/external/powertools/RP/RP015-MoveFrom-MoveTo: a moveFromRangeEnd
-            // after the paragraph a move left).
-            if (pending != null && e.Name.LocalName != "p" && !e.Name.LocalName.EndsWith("RangeStart", StringComparison.Ordinal)
-                && !e.Name.LocalName.EndsWith("RangeEnd", StringComparison.Ordinal)
-                && e.Name.LocalName is not ("bookmarkStart" or "bookmarkEnd" or "permStart" or "permEnd" or "proofErr")
-                && !(e.Name.LocalName is "sdt" && (e.Child("sdtPr") is not { } controlPr || Binding.Text(controlPr) == null)
-                     || e.Name.LocalName is "customXml" or "smartTag" or "ins" or "moveTo"))
-            {
-                blocks.Add(pending);
-                pending = null;
-            }
-            switch (e.Name.LocalName)
-            {
-                case "br":
-                    strayBreaks.Add(e);
-                    break;
-                case "p" when context.Markup:
+            case "tbl" when tableDepth < MaxTableDepth:
+                tableDepth++;
+                try
                 {
-                    // In the markup view a paragraph whose mark was deleted stays apart, its mark marked.
-                    var mark = e.Child("pPr")?.Child("rPr");
-                    var markRevision = mark?.Child("del") is { } deleted ? new RevisionMark("del", context.Author(deleted.Attr("author")))
-                        : mark?.Child("ins") is { } inserted ? new RevisionMark("ins", context.Author(inserted.Attr("author"))) : revision;
-                    var change = e.Child("pPr")?.Child("pPrChange") is { } pPrChange
-                        ? new FormatChange(context.Describe.Paragraph(e.Child("pPr"), pPrChange.Child("pPr")), context.Author(pPrChange.Attr("author"))) : null;
-                    blocks.Add(WithBlockBookmarks(Paragraph(e) with { MarkRevision = markRevision, Change = change }));
-                    break;
+                    blocks.Add(Table(e));
                 }
-                case "p":
+                finally
                 {
-                    // A mark moved away (w:moveFrom) is gone as a deleted one is (docx/external/powertools/RP/
-                    // RP015-MoveFrom-MoveTo: the paragraph a move left joins the next).
-                    var markDeleted = e.Child("pPr")?.Child("rPr") is { } markRun && (markRun.Child("del") ?? markRun.Child("moveFrom")) != null;
-                    var paragraph = WithBlockBookmarks(Paragraph(e, number: !markDeleted));
-                    if (pending != null)
-                    {
-                        paragraph = paragraph with { Content = [.. Restyled(pending, paragraph.Format.Style), .. paragraph.Content] };
-                        pending = null;
-                        // Joined so, a paragraph of contextual spacing loses its space before, whatever the styles
-                        // (measured with docx/local/dmk-f, dmk-h, dmk-j, dmk-k: after a paragraph of 3.5 pt after the
-                        // gap is those 3.5 pt, the joined one's 18 pt and the first one's 24 pt gone; dmk-a: without
-                        // contextual spacing its own 18 pt; docx/external/libreoffice/extras-uiwriter/tdf125916).
-                        if (paragraph.Format.ContextualSpacing == true)
-                            (paragraph.Format.Before, paragraph.Format.BeforeLines, paragraph.Format.BeforeAuto) = (0, null, false);
-                    }
-                    if (markDeleted)
-                        pending = paragraph;
-                    else
-                        blocks.Add(paragraph);
-                    break;
+                    tableDepth--;
                 }
-                case "tbl" when tableDepth < MaxTableDepth:
-                    tableDepth++;
-                    try
+                break;
+            case "tbl":
+                foreach (var nested in e.Descendants(Wml.W + "p").Where(p => !p.Ancestors(Wml.W + "p").Any()))
+                    blocks.Add(Paragraph(nested));
+                break;
+            case "sdt":
+                if (e.Child("sdtContent") is { } content)
+                {
+                    var start = blocks.Count;
+                    // A bound control shows its node's value in its first paragraph's formatting.
+                    if (e.Child("sdtPr") is { } sdtPr && Binding.Text(sdtPr) is { } bound)
                     {
-                        blocks.Add(Table(e));
-                    }
-                    finally
-                    {
-                        tableDepth--;
-                    }
-                    break;
-                case "tbl":
-                    foreach (var nested in e.Descendants(Wml.W + "p").Where(p => !p.Ancestors(Wml.W + "p").Any()))
-                        blocks.Add(Paragraph(nested));
-                    break;
-                case "sdt":
-                    if (e.Child("sdtContent") is { } content)
-                    {
-                        var start = blocks.Count;
-                        // A bound control shows its node's value in its first paragraph's formatting.
-                        if (e.Child("sdtPr") is { } sdtPr && Binding.Text(sdtPr) is { } bound)
+                        ReadBlocks(content, blocks);
+                        if (blocks.Skip(start).OfType<ParagraphBlock>().FirstOrDefault() is { } first)
                         {
-                            ReadBlocks(content, blocks);
-                            if (blocks.Skip(start).OfType<ParagraphBlock>().FirstOrDefault() is { } first)
-                            {
-                                var format = first.Content.FirstOrDefault()?.Format ?? first.MarkFormat;
-                                first.Content.Clear();
-                                first.Content.Add(new TextInline(bound, format));
-                            }
+                            var format = first.Content.FirstOrDefault()?.Format ?? first.MarkFormat;
+                            first.Content.Clear();
+                            first.Content.Add(new TextInline(bound, format));
                         }
-                        else
-                            ReadBlocks(Shown(e, content, block: true), blocks, ref pending);
                     }
-                    break;
-                case "customXml" or "smartTag" or "ins" or "moveTo":
-                    ReadBlocks(e, blocks, ref pending);
-                    break;
-                // A bookmark between paragraphs starts at the next one and ends after the last (measured with docx/
-                // external/libreoffice/extras-ooxmlexport/tdf154478: PAGEREF finds a table of contents heading by the
-                // bookmark before the first paragraph of its content control, page 3 in Word).
-                case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
-                    blockBookmarks.Add(new BookmarkInline(name, context.Styles.Run(null, null, null, tableRun)) { Id = e.Attr("id") });
-                    break;
-                case "bookmarkEnd" when e.Attr("id") is { } endId && blocks.LastOrDefault() is ParagraphBlock last:
-                    last.Content.Add(new BookmarkEndInline(endId, last.MarkFormat));
-                    break;
-                case "subDoc" when e.Attr(Wml.R + "id") is { } subId && context.Package.Relationship(currentPart, subId) is { } sub:
-                    blocks.Add(SubDocument(sub.Target));
-                    break;
-                case "altChunk" when e.Attr(Wml.R + "id") is { } chunkId && context.Package.Relationship(currentPart, chunkId) is { External: false } chunk
-                                     && context.Package.Exists(chunk.Target):
-                    ReadBlocks(AltChunk(chunk.Target), blocks);
-                    break;
-            }
+                    else
+                        ReadBlocks(Shown(e, content, block: true), blocks, ref pending);
+                }
+                break;
+            case "customXml" or "smartTag" or "ins" or "moveTo":
+                ReadBlocks(e, blocks, ref pending);
+                break;
+            // A bookmark between paragraphs starts at the next one and ends after the last (measured with docx/
+            // external/libreoffice/extras-ooxmlexport/tdf154478: PAGEREF finds a table of contents heading by the
+            // bookmark before the first paragraph of its content control, page 3 in Word).
+            case "bookmarkStart" when e.Attr("name") is { } name && !name.StartsWith("_GoBack", StringComparison.Ordinal):
+                blockBookmarks.Add(new BookmarkInline(name, context.Styles.Run(null, null, null, tableRun)) { Id = e.Attr("id") });
+                break;
+            case "bookmarkEnd" when e.Attr("id") is { } endId && blocks.LastOrDefault() is ParagraphBlock last:
+                last.Content.Add(new BookmarkEndInline(endId, last.MarkFormat));
+                break;
+            case "subDoc" when e.Attr(Wml.R + "id") is { } subId && context.Package.Relationship(currentPart, subId) is { } sub:
+                blocks.Add(SubDocument(sub.Target));
+                break;
+            case "altChunk" when e.Attr(Wml.R + "id") is { } chunkId && context.Package.Relationship(currentPart, chunkId) is { External: false } chunk
+                                 && context.Package.Exists(chunk.Target):
+                ReadBlocks(AltChunk(chunk.Target), blocks);
+                break;
         }
     }
 

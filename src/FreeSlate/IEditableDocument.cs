@@ -11,8 +11,14 @@ namespace FreeSlate;
 /// </summary>
 public interface IEditableDocument : IDisposable
 {
-    /// <summary>The pages or slides as the document reads now; those a change left as they were keep their scene.</summary>
+    /// <summary>
+    /// The pages or slides as the document reads now; those a change left as they were keep their scene. Pages may come
+    /// not drawn yet (PageScene.Drawn), to be drawn by Scene when they are wanted.
+    /// </summary>
     IReadOnlyList<PageScene> Scenes();
+
+    /// <summary>A page or slide drawn: a page Scenes gave not drawn yet is drawn now, in its place in the list Scenes gave.</summary>
+    PageScene Scene(int page);
 
     /// <summary>
     /// Whether pages after those a change laid out stand as they did before it: a long document is laid out again bit by

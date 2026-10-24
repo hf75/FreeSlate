@@ -85,12 +85,26 @@ public sealed class OpcPackage : IDisposable
 
     public bool Exists(string partName) => replaced.ContainsKey(partName) || entries.ContainsKey(partName) && !removed.Contains(partName);
 
+    /// <summary>A part's bytes as ReadBytes gives them, kept where asked: reading the part as XML takes them then (see ReadXml), not unpacking it again.</summary>
+    public byte[] ReadBytes(string partName, bool keep)
+    {
+        var bytes = ReadBytes(partName);
+        if (keep)
+            kept[partName] = bytes;
+        return bytes;
+    }
+
+    /// <summary>The bytes of parts kept as they were read (see ReadBytes).</summary>
+    readonly Dictionary<string, byte[]> kept = new(StringComparer.OrdinalIgnoreCase);
+
     public byte[] ReadBytes(string partName)
     {
         if (replaced.TryGetValue(partName, out var bytes))
             return bytes;
         if (removed.Contains(partName))
             throw new KeyNotFoundException($"The part {partName} was taken away.");
+        if (kept.TryGetValue(partName, out var read))
+            return read;
         return Original(partName) ?? throw new KeyNotFoundException($"The package has no part {partName}.");
     }
 
@@ -118,6 +132,7 @@ public sealed class OpcPackage : IDisposable
     /// </summary>
     public void Replace(string partName, byte[] bytes)
     {
+        kept.Remove(partName);
         replaced[partName] = bytes;
         removed.Remove(partName);
         Changed(partName);
@@ -126,6 +141,7 @@ public sealed class OpcPackage : IDisposable
     /// <summary>Takes a part away: it no longer exists, and saving leaves it out.</summary>
     public void Remove(string partName)
     {
+        kept.Remove(partName);
         replaced.Remove(partName);
         if (entries.ContainsKey(partName))
             removed.Add(partName);
@@ -192,7 +208,8 @@ public sealed class OpcPackage : IDisposable
     public XDocument ReadXml(string partName, bool lines = false)
     {
         using var stream = replaced.TryGetValue(partName, out var bytes) ? new MemoryStream(bytes, false)
-            : !removed.Contains(partName) ? entries[partName].Open() : throw new KeyNotFoundException($"The part {partName} was taken away.");
+            : removed.Contains(partName) ? throw new KeyNotFoundException($"The part {partName} was taken away.")
+            : kept.TryGetValue(partName, out var read) ? new MemoryStream(read, false) : entries[partName].Open();
         return Strict.Transition(XDocument.Load(stream, lines ? LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo : LoadOptions.PreserveWhitespace));
     }
 

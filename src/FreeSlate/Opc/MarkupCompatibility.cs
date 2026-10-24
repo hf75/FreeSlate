@@ -55,12 +55,20 @@ public static class MarkupCompatibility
     /// fallback picture, as Word draws such charts itself (measured with openxml-sdk's Of16-01 to Of16-07: Word's
     /// waterfalls, box plots, sunburst and treemap, not Excel's pictures of them).
     /// </summary>
-    public static void Process(XContainer document, bool chartEx = false)
+    public static void Process(XContainer document, bool chartEx = false) => Resolve(document.Descendants(Mc + "AlternateContent"), chartEx);
+
+    /// <summary>
+    /// The alternatives of an element and within it resolved, as Process resolves a part's (for a part read bit by bit,
+    /// see Docx.BodyStream): an element that is an alternative itself is replaced by what it chooses.
+    /// </summary>
+    public static void ProcessElement(XElement element, bool chartEx = false) => Resolve(element.DescendantsAndSelf(Mc + "AlternateContent"), chartEx);
+
+    static void Resolve(IEnumerable<XElement> alternates, bool chartEx)
     {
         // Innermost first: an alternative inside a chosen one (a wp14 position inside a Word 2010 drawing) is resolved
         // before the chosen content is moved into its place. Moved, not copied: it keeps where it was read (its line
         // info), which writing a document back needs.
-        foreach (var alternate in document.Descendants(Mc + "AlternateContent").Reverse().ToList())
+        foreach (var alternate in alternates.Reverse().ToList())
         {
             if (alternate.Parent == null)
                 continue;   // inside an alternative that was already removed

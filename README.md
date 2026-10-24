@@ -240,13 +240,16 @@ cannot make (within a field's result, a table of contents, an object, text that 
 After a change, `Scenes()` lays out and draws again only the pages it changed, also in documents of thousands of pages
 (a keystroke on page 4 000 of 5 000 within a frame). Where a change moves everything after it on (a paragraph one line
 longer), it lays out the next few pages and leaves the rest as they were (`LayingOut`); `LayOut()` lays them out bit by
-bit, as an editor does while it waits for input:
+bit, as an editor does while it waits for input. A Word document lays out its first pages so when it opens, the rest
+following, and draws its pages when they are asked for: `Scenes()` gives a page not drawn yet as a scene of its size
+without items (`Drawn` false), `Scene(page)` draws it:
 
 ```csharp
 session.Type("x");
 var pages = document.Scenes();                               // the pages the change touched, at once
 while (document.LayingOut)
     document.LayOut();                                       // the rest, a few pages at a time
+var shown = document.Scene(3);                               // page 4 drawn, as it comes into view
 ```
 
 ### The output

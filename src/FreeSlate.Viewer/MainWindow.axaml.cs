@@ -60,13 +60,16 @@ public partial class MainWindow : Window
     /// it; and when it was last saved from here, whose own change of the file is not a reason to load it again.
     /// </summary>
     IEditableDocument? document;
+
+    /// <summary>The engine made ready while the window waits for a document (see WarmUp); opening one waits for it.</summary>
+    readonly Task warmedUp = Task.Run(WarmUp.Run);
     EditSession? session;
     DateTime savedAt;
 
     /// <summary>A document as shown: the file, the file FreeSlate and Word read (a copy when another program holds
     /// the document open), its password, whether with markup, its HTML or its pages' scenes (as Skia draws them), its
     /// version, which Word's renderings belong to, and whether it is a presentation (its pages slides).</summary>
-    sealed record View(string Path, string Source, string? Password, bool Markup, string? Html, List<PageScene>? Scenes, string Key, bool Slides = false);
+    sealed record View(string Path, string Source, string? Password, bool Markup, string? Html, IReadOnlyList<PageScene>? Scenes, string Key, bool Slides = false);
 
     public MainWindow()
     {
@@ -138,6 +141,16 @@ public partial class MainWindow : Window
                 StatusText.Text = $"{Path.GetFileName(view.Path)} · {(view.Slides ? Slides(ScenePages.Scenes.Count) : Pages(ScenePages.Scenes.Count))} · bearbeitet in {milliseconds.ToString("0", CultureInfo.CurrentCulture)} ms";
             pageCount = ScenePages.Scenes.Count;
             PageCount.Text = $"von {pageCount}";
+        };
+        ScenePages.LaidOut += () =>
+        {
+            if (pageCount == ScenePages.Scenes.Count)
+                return;
+            pageCount = ScenePages.Scenes.Count;
+            PageCount.Text = $"von {pageCount}";
+            // The pages as they come while the document is laid out after it opened.
+            if (view != null && StatusText.Text?.EndsWith(" umgesetzt (Skia)", StringComparison.Ordinal) == true)
+                StatusText.Text = $"{Path.GetFileName(view.Path)} · {(view.Slides ? Slides(pageCount) : Pages(pageCount))} · in {seconds.ToString("0.00", CultureInfo.CurrentCulture)} s umgesetzt (Skia)";
         };
         ScenePages.Drawn += milliseconds =>
         {
@@ -335,7 +348,10 @@ public partial class MainWindow : Window
         if (target.StartsWith('#'))
         {
             var name = target[1..];
-            if (view?.Scenes is { } scenes && scenes.Select((scene, i) => (Page: i + 1, Mark: Bookmark(scene.Items, name))).FirstOrDefault(m => m.Mark != null) is { Mark: { } mark } found)
+            // The page the document lays the bookmark out on, drawn; else the first drawn page that has it.
+            if (document is WordDocument word && word.PageOf(name) is { } page && Bookmark(ScenePages.DrawnPage(page).Items, name) is { } placed)
+                ScenePages.GoTo(page + 1, placed.Y);
+            else if (view?.Scenes != null && ScenePages.Scenes.Select((scene, i) => (Page: i + 1, Mark: Bookmark(scene.Items, name))).FirstOrDefault(m => m.Mark != null) is { Mark: { } mark } found)
                 ScenePages.GoTo(found.Page, mark.Y);
             return;
         }
@@ -400,7 +416,7 @@ public partial class MainWindow : Window
         var pdf = Path.Combine(work, Path.GetFileNameWithoutExtension(view.Path) + ".pdf");
         try
         {
-            await WritePdfAsync(view, pdf);
+            await WritePdfAsync(view with { Scenes = ScenePages.Finished() }, pdf);
             await Launcher.LaunchFileInfoAsync(new FileInfo(pdf));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -442,7 +458,7 @@ public partial class MainWindow : Window
         try
         {
             StatusText.Text = $"{Path.GetFileName(target)} wird geschrieben …";
-            await WritePdfAsync(view, target, chosen.SelectedFileType?.Name == ArchiveType.Name);
+            await WritePdfAsync(view.Scenes != null ? view with { Scenes = ScenePages.Finished() } : view, target, chosen.SelectedFileType?.Name == ArchiveType.Name);
             StatusText.Text = $"Gespeichert: {target}";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -528,6 +544,7 @@ public partial class MainWindow : Window
             var clock = Stopwatch.StartNew();
             var slides = IsPresentation(path);
             var (source, key) = await Task.Run(() => Readable(path, markup));
+            await warmedUp;
             if (BrowserToggle.IsChecked != true || slides)
             {
                 // The pages drawn by Skia from their scenes, no web view, with the places of their text; the document
@@ -535,7 +552,7 @@ public partial class MainWindow : Window
                 var (opened, scenes) = await Task.Run(() =>
                 {
                     IEditableDocument editable = slides ? PresentationDocument.Open(source, password) : WordDocument.Open(source, password, markup: markup);
-                    return (editable, editable.Scenes().ToList());
+                    return (editable, editable.Scenes());
                 });
                 CloseDocument();
                 this.document = opened;
@@ -549,6 +566,8 @@ public partial class MainWindow : Window
                 PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = Web.IsVisible = false;
                 SkiaScroll.IsVisible = true;
                 ScenePages.Scenes = scenes;
+                // The pages after the first laid out while the window waits (see IEditableDocument.LayingOut).
+                ScenePages.LayOutLater();
                 ScenePages.Blend = BlendSlider.Value / 100;
                 await ApplyZoom();
                 Dispatcher.UIThread.Post(() => ScenePages.Restore(drawnAt), DispatcherPriority.Loaded);

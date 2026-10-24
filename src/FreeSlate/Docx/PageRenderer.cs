@@ -54,6 +54,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>The page as it is drawn (see PageScene), from back to front.</summary>
     /// <param name="paper">The named @page of the page's size, so that printing keeps every page at its size.</param>
+    /// <summary>
+    /// A page's scene as Scene sizes it, not drawn (PageScene.Drawn): without the markup pane, which grows with the
+    /// page's comments.
+    /// </summary>
+    public PageScene Sketch(PageBox page, string paper) =>
+        context.Markup && MarkupPane ? throw new InvalidOperationException("A page with the markup pane is sized as it is drawn.")
+            : new PageScene { Number = page.Number, Paper = paper, Width = page.PaperWidth, Height = page.PaperHeight, Glyphs = context.Glyphs, ExactDashes = true, Drawn = false };
+
     public PageScene Scene(PageBox page, string paper)
     {
         defs.Clear();

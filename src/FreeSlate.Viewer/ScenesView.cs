@@ -278,6 +278,12 @@ sealed class ScenesView : Control
         var view = scroller != null ? new Rect(scroller.Offset.X, scroller.Offset.Y, scroller.Viewport.Width, scroller.Viewport.Height) : new Rect(Bounds.Size);
         var visible = rows.Where(r => r.Top * factor < view.Bottom && (r.Top + r.Height) * factor > view.Top)
             .Select(r => (Row: r, Left: Left(r))).ToList();
+        // The pages in view drawn before the frame records them: the document draws its pages when they are wanted.
+        foreach (var (row, _) in visible)
+        {
+            if (row.Index < scenes.Count)
+                Page(row.Index);
+        }
         // The first frame after an edit tells when it is drawn.
         var (since, drawn) = (editedAt, Drawn);
         editedAt = 0;
@@ -300,13 +306,13 @@ sealed class ScenesView : Control
         {
             if (!inView.Contains(page))
                 continue;
-            var spots = pictures.Spots(scenes[page]);
-            marks[page] = new Mark(pictures.Places(scenes[page]).Selection(spots[from], spots[from + count - 1]), null);
+            var spots = pictures.Spots(Page(page));
+            marks[page] = new Mark(pictures.Places(Page(page)).Selection(spots[from], spots[from + count - 1]), null);
         }
-        if (caret is var (cursorPage, at) && blink && inView.Contains(cursorPage) && pictures.Spots(scenes[cursorPage]) is { Count: > 0 } all)
+        if (caret is var (cursorPage, at) && blink && inView.Contains(cursorPage) && pictures.Spots(Page(cursorPage)) is { Count: > 0 } all)
         {
             var (spot, after) = CaretSpot(all, at);
-            var bar = pictures.Places(scenes[cursorPage]).CaretAt(spot, after);
+            var bar = pictures.Places(Page(cursorPage)).CaretAt(spot, after);
             marks[cursorPage] = new Mark(marks.TryGetValue(cursorPage, out var selected) ? selected.Areas : [], bar);
         }
         return marks;
@@ -359,7 +365,7 @@ sealed class ScenesView : Control
             var (x, y) = ((point.X - Left(row)) / factor - row.Ours.X, point.Y / factor - row.Top - row.Ours.Y);
             if (x < 0 || y < 0 || x > row.Ours.Width || y > row.Ours.Height)
                 continue;
-            return pictures.Links(scenes[row.Index]).LastOrDefault(l => l.Area.Contains((float)x, (float)y)).Target;
+            return pictures.Links(Page(row.Index)).LastOrDefault(l => l.Area.Contains((float)x, (float)y)).Target;
         }
         return null;
     }
@@ -435,7 +441,7 @@ sealed class ScenesView : Control
         var local = new SKPoint((float)((point.X - Left(best)) / factor - best.Ours.X), (float)(point.Y / factor - best.Top - best.Ours.Y));
         if (!near && (local.X < 0 || local.X > best.Ours.Width))
             return null;
-        var places = pictures.Places(scenes[best.Index]);
+        var places = pictures.Places(Page(best.Index));
         if (places.HitPlace(local) is not var (spot, after))
             return null;
         if (!near)
@@ -456,8 +462,8 @@ sealed class ScenesView : Control
     /// <summary>The place before or after a character of a page, and whether that is after its line's last one.</summary>
     (int Page, int At, bool End) Placed(int page, TextPlaces.Spot spot, bool after)
     {
-        var spots = pictures.Spots(scenes[page]);
-        var at = pictures.Index(scenes[page], spot) + (after ? 1 : 0);
+        var spots = pictures.Spots(Page(page));
+        var at = pictures.Index(Page(page), spot) + (after ? 1 : 0);
         return (page, at, after && (at >= spots.Count || spots[at].Line != spot.Line));
     }
 
@@ -490,11 +496,11 @@ sealed class ScenesView : Control
                 return;
             }
         }
-        var places = pictures.Places(scenes[page]);
-        var spots = pictures.Spots(scenes[page]);
+        var places = pictures.Places(Page(page));
+        var spots = pictures.Spots(Page(page));
         (int Page, int At, bool End)? moved = e.Key switch
         {
-            Key.Left => at > 0 ? (page, at - 1, false) : page > 0 ? (page - 1, pictures.Spots(scenes[page - 1]).Count, true) : null,
+            Key.Left => at > 0 ? (page, at - 1, false) : page > 0 ? (page - 1, pictures.Spots(Page(page - 1)).Count, true) : null,
             Key.Right => at < spots.Count ? (page, at + 1, false) : page + 1 < scenes.Count ? (page + 1, 0, false) : null,
             Key.Home or Key.End when spots.Count > 0 => LineEdge(page, at, e.Key == Key.End),
             Key.Up or Key.Down when spots.Count > 0 => LineAcross(page, at, e.Key == Key.Down),
@@ -513,21 +519,21 @@ sealed class ScenesView : Control
     /// <summary>The first or the last place of the cursor's line: after its last character, before the paragraph's mark.</summary>
     (int Page, int At, bool End)? LineEdge(int page, int at, bool end)
     {
-        var spots = pictures.Spots(scenes[page]);
+        var spots = pictures.Spots(Page(page));
         var line = CaretSpot(spots, at).Spot.Line;
         var first = spots.FindIndex(s => s.Line == line);
         var last = spots.FindLastIndex(s => s.Line == line);
         if (!end)
             return (page, first, false);
-        var places = pictures.Places(scenes[page]).Lines[line].Line;
+        var places = pictures.Places(Page(page)).Lines[line].Line;
         return places.Starts[spots[last].Index] == places.Ends[spots[last].Index] ? (page, last, false) : (page, last + 1, true);
     }
 
     /// <summary>The place in the line above or below the cursor's that stands nearest to it, on the next page over its edge.</summary>
     (int Page, int At, bool End)? LineAcross(int page, int at, bool down)
     {
-        var places = pictures.Places(scenes[page]);
-        var spots = pictures.Spots(scenes[page]);
+        var places = pictures.Places(Page(page));
+        var spots = pictures.Spots(Page(page));
         var (current, currentAfter) = CaretSpot(spots, at);
         var (top, bottom) = places.CaretAt(current, currentAfter);
         var x = top.X;
@@ -540,7 +546,7 @@ sealed class ScenesView : Control
             var next = page + (down ? 1 : -1);
             if (next < 0 || next >= scenes.Count)
                 return null;
-            var nextSpots = pictures.Spots(scenes[next]);
+            var nextSpots = pictures.Spots(Page(next));
             return nextSpots.Count == 0 ? null : (next, down ? 0 : nextSpots.Count, !down);
         }
         var (toPage, line) = places.Lines[lineIndex];
@@ -555,11 +561,11 @@ sealed class ScenesView : Control
         if (scroller == null || place.Page >= rows.Count)
             return;
         var row = rows[place.Page];
-        var spots = pictures.Spots(scenes[place.Page]);
+        var spots = pictures.Spots(Page(place.Page));
         if (spots.Count == 0)
             return;
         var (spot, after) = CaretSpot(spots, place.At);
-        var (top, bottom) = pictures.Places(scenes[place.Page]).CaretAt(spot, after);
+        var (top, bottom) = pictures.Places(Page(place.Page)).CaretAt(spot, after);
         var (y1, y2) = ((row.Top + row.Ours.Y + top.Y) * factor, (row.Top + row.Ours.Y + bottom.Y) * factor);
         if (y1 < scroller.Offset.Y)
             scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0, y1 - 24));
@@ -579,22 +585,22 @@ sealed class ScenesView : Control
             PlaceChanged?.Invoke(null);
             return;
         }
-        var spots = pictures.Spots(scenes[page]);
+        var spots = pictures.Spots(Page(page));
         if (spots.Count == 0)
         {
             PlaceChanged?.Invoke(null);
             return;
         }
-        var places = pictures.Places(scenes[page]);
+        var places = pictures.Places(Page(page));
         var (spot, after) = CaretSpot(spots, at);
         var (block, offset) = places.PlaceAt(spot, after);
         PlaceChanged?.Invoke((block, offset, Selected().Sum(s => s.Count)));
         // The session's cursor and anchor follow the view's, unless they came from it.
         if (Session != null && !fromSession && anchor is var (anchorPage, anchorAt) && anchorPage < scenes.Count
-            && pictures.Spots(scenes[anchorPage]) is { Count: > 0 } anchorSpots)
+            && pictures.Spots(Page(anchorPage)) is { Count: > 0 } anchorSpots)
         {
             var (from, fromAfter) = anchorAt >= anchorSpots.Count ? (anchorSpots[^1], true) : (anchorSpots[anchorAt], false);
-            var (anchorBlock, anchorOffset) = pictures.Places(scenes[anchorPage]).PlaceAt(from, fromAfter);
+            var (anchorBlock, anchorOffset) = pictures.Places(Page(anchorPage)).PlaceAt(from, fromAfter);
             Session.Place(new TextPlace(anchorBlock, anchorOffset));
             Session.Place(new TextPlace(block, offset), extend: true);
         }
@@ -626,11 +632,12 @@ sealed class ScenesView : Control
     }
 
     /// <summary>
-    /// Lays out what an edit left of the pages (see IEditableDocument.LayingOut) slice by slice while the window waits:
-    /// at the dispatcher's background priority, after input and rendering; the pages drawn and the cursor placed anew
-    /// after each slice.
+    /// Lays out what the document left of its pages, after an edit or as it opens (see IEditableDocument.LayingOut),
+    /// slice by slice while the window waits: at the dispatcher's background priority, after input and rendering; the
+    /// pages shown anew after each slice, the cursor and the selection placed anew where the slice changed the cursor's
+    /// page.
     /// </summary>
-    void LayOutLater()
+    public void LayOutLater()
     {
         if (layingOut || Session?.Document is not { LayingOut: true })
             return;
@@ -641,11 +648,36 @@ sealed class ScenesView : Control
             if (Session is not { Document: { LayingOut: true } document } session)
                 return;
             document.LayOut();
+            var shown = caret is var (page, _) && page < scenes.Count ? scenes[page] : null;
             Update(document.Scenes());
-            Show(session.Caret, session.Anchor);
+            if (shown != null && (caret is not var (now, _) || now >= scenes.Count || !ReferenceEquals(scenes[now], shown)))
+                Show(session.Caret, session.Anchor);
+            LaidOut?.Invoke();
             LayOutLater();
         }, Avalonia.Threading.DispatcherPriority.Background);
     }
+
+    /// <summary>A slice of the pages left to lay out was laid out (see LayOutLater).</summary>
+    public event Action? LaidOut;
+
+    /// <summary>All pages laid out and drawn, for printing or writing them (in a long document this takes its time).</summary>
+    public IReadOnlyList<PageScene> Finished()
+    {
+        if (Session?.Document is not { } document)
+            return scenes;
+        while (document.LayingOut)
+            document.LayOut(int.MaxValue);
+        Update(document.Scenes());
+        for (var k = 0; k < scenes.Count; k++)
+            Page(k);
+        return scenes;
+    }
+
+    /// <summary>A page drawn, for what its items tell (see Page).</summary>
+    public PageScene DrawnPage(int page) => Page(page);
+
+    /// <summary>A page's scene drawn: the document draws its pages when they are wanted (see IEditableDocument.Scene).</summary>
+    PageScene Page(int index) => scenes[index] is { Drawn: false } && Session?.Document is { } document ? document.Scene(index) : scenes[index];
 
     /// <summary>The pages as the document reads now: recordings kept for the scenes that stayed, the rows laid out again where pages came, went or changed size.</summary>
     public void Update(IReadOnlyList<PageScene> changed)
@@ -703,13 +735,13 @@ sealed class ScenesView : Control
         {
             foreach (var page in step == 0 ? [near] : new[] { near + step, near - step })
             {
-                if (page >= 0 && page < scenes.Count && pictures.Places(scenes[page]).Exact(place.Paragraph, place.Offset) is { } spot)
+                if (page >= 0 && page < scenes.Count && pictures.Places(Page(page)).Exact(place.Paragraph, place.Offset) is { } spot)
                     return Placed(page, spot, false);
             }
         }
         for (var page = 0; page < scenes.Count; page++)
         {
-            if (pictures.Places(scenes[page]).Find(place.Paragraph, place.Offset) is var (spot, after))
+            if (pictures.Places(Page(page)).Find(place.Paragraph, place.Offset) is var (spot, after))
                 return Placed(page, spot, after);
         }
         return null;
@@ -719,10 +751,10 @@ sealed class ScenesView : Control
     byte FormatHere()
     {
         if (Selected() is [var (page, from, _), ..])
-            return pictures.Places(scenes[page]).FormatAt(pictures.Spots(scenes[page])[from]);
-        if (caret is not var (cursorPage, at) || pictures.Spots(scenes[cursorPage]) is not { Count: > 0 } spots)
+            return pictures.Places(Page(page)).FormatAt(pictures.Spots(Page(page))[from]);
+        if (caret is not var (cursorPage, at) || pictures.Spots(Page(cursorPage)) is not { Count: > 0 } spots)
             return 0;
-        return pictures.Places(scenes[cursorPage]).FormatAt(spots[Math.Clamp(at - 1, 0, spots.Count - 1)]);
+        return pictures.Places(Page(cursorPage)).FormatAt(spots[Math.Clamp(at - 1, 0, spots.Count - 1)]);
     }
 
     /// <summary>Turns bold, italic or underline on for the selection where its first character lacks it, else off (Ctrl+B, I, U).</summary>
@@ -756,7 +788,7 @@ sealed class ScenesView : Control
         var result = new List<(int, int, int)>();
         for (var p = p1; p <= p2 && p < scenes.Count; p++)
         {
-            var count = pictures.Spots(scenes[p]).Count;
+            var count = pictures.Spots(Page(p)).Count;
             var (from, to) = (p == p1 ? a1 : 0, p == p2 ? a2 : count);
             if (to > from)
                 result.Add((p, from, to - from));

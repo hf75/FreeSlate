@@ -95,6 +95,13 @@ public static class Vml
     /// <summary>The shape types of a part by their ids, the first of each id (Types).</summary>
     static readonly System.Runtime.CompilerServices.ConditionalWeakTable<XDocument, Dictionary<string, XElement>> PartTypes = new();
 
+    /// <summary>What was worked out of a part as a whole (its shape types, its chains of text boxes) forgotten (see DocumentContext.Changed).</summary>
+    internal static void Forget(XDocument part)
+    {
+        PartTypes.Remove(part);
+        Chains.Remove(part);
+    }
+
     /// <summary>
     /// The shape types a w:pict or w:object can refer to: its own, then the others of its part, as Word resolves them
     /// across the document (docx/external/poi/WordWithAttachments: a picture frame type defined in the first w:object

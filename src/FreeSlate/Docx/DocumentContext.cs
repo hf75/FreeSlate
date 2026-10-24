@@ -88,7 +88,11 @@ public sealed class DocumentContext : IDisposable
             first.Add(section);
     }
 
-    public DocumentContext(OpcPackage package, FontLocator? fonts = null)
+    /// <param name="bodyBitByBit">
+    /// Whether the main part's body is read bit by bit (see Loading), for a long document's first pages to stand before all
+    /// of it is read.
+    /// </param>
+    public DocumentContext(OpcPackage package, FontLocator? fonts = null, bool bodyBitByBit = false)
     {
         Package = package;
         MainPart = package.FirstRelationship("/", "officeDocument")?.Target
@@ -98,8 +102,16 @@ public sealed class DocumentContext : IDisposable
         // The settings and the theme first: the parts loaded after them take their shading's theme colors (Load).
         Settings = Related("settings")?.Root;
         Theme = Related("theme") is { } theme ? Theme.Load(theme) : Theme.WordDefault();
-        Document = Load(MainPart);
-        JoinBodies(Document);
+        if (bodyBitByBit && Stream() is { } stream)
+        {
+            (main, Document) = (stream, stream.Document);
+            documents[MainPart] = Document;
+        }
+        else
+        {
+            Document = Load(MainPart);
+            JoinBodies(Document);
+        }
         // Styles linked to the template without one attached update from Word's Normal template (StyleSheet).
         Styles = new StyleSheet(Related("styles"), Settings.Child("linkStyles").OnOff() == true && Settings.Child("attachedTemplate") == null,
             Related("stylesWithEffects"));
@@ -157,6 +169,59 @@ public sealed class DocumentContext : IDisposable
         && (background.Attr("color") != null || background.Attr("themeColor") != null) ? background : null;
     public XDocument Document { get; }
     public StyleSheet Styles { get; }
+
+    /// <summary>The main part's body being read bit by bit (see LoadBody), null once it is read or where it is read whole.</summary>
+    BodyStream? main;
+
+    /// <summary>The main part read bit by bit, each element made ready as Load makes a part's; null where it cannot be (it is read whole then).</summary>
+    BodyStream? Stream()
+    {
+        try
+        {
+            return BodyStream.Open(Package.ReadBytes(MainPart), element =>
+            {
+                if (Theme != null)
+                    ThemeShading(element);
+                MarkupCompatibility.ProcessElement(element, chartEx: true);
+            });
+        }
+        catch (InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Whether the main part's body is being read bit by bit: Document holds the children read so far (see LoadBody).</summary>
+    public bool Loading => main != null;
+
+    /// <summary>
+    /// Reads so many more children of the main part's body where it is read bit by bit (see Loading); whether more are
+    /// left. Once all are read, the part is as Load reads it whole.
+    /// </summary>
+    public bool LoadBody(int children)
+    {
+        if (main == null)
+            return false;
+        if (main.Read(children))
+            return true;
+        main.Dispose();
+        main = null;
+        JoinBodies(Document);
+        // What was worked out of the part as a whole while it was read (see StackingOrder).
+        Changed(Document);
+        return false;
+    }
+
+    /// <summary>
+    /// While the main part's body is read bit by bit: the properties of the first section break after its children read
+    /// so far, as a copy read from the part's text (see BodyStream.SectionAhead); else null.
+    /// </summary>
+    public XElement? SectionAhead() => main?.SectionAhead(MainText);
+
+    /// <summary>The main part's text as it was read (see PartText).</summary>
+    public PartText MainText => mainText ??= new PartText(Package.ReadBytes(MainPart));
+
+    PartText? mainText;
     public XElement? Settings { get; }
     public Theme Theme { get; }
     public NumberingDefinitions Numbering { get; }
@@ -370,10 +435,15 @@ public sealed class DocumentContext : IDisposable
     }
 
     /// <summary>
-    /// What was worked out of a loaded part's XML as a whole (the stacking order of its drawings, see StackingOrder) is
-    /// worked out anew, after some of its elements were put in place of others (see ModelReader.Reread).
+    /// What was worked out of a loaded part's XML as a whole (the stacking order of its drawings, see StackingOrder; its
+    /// VML shape types and chains of text boxes, see Vml) is worked out anew, after some of its elements were put in place
+    /// of others (see ModelReader.Reread) or more of them were read (see LoadBody).
     /// </summary>
-    public void Changed(XDocument part) => stacking.Remove(part);
+    public void Changed(XDocument part)
+    {
+        stacking.Remove(part);
+        Vml.Forget(part);
+    }
 
     /// <summary>The part a node of a loaded part stands in (see Load), or null for one made elsewhere.</summary>
     public string? PartOf(XObject node) =>
