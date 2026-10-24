@@ -47,7 +47,39 @@ public sealed class StyleSheet
     /// docx/external/libreoffice/extras-ooxmlexport/tdf118812_tableStyles-comprehensive; tdf90906_colAutoB, tsx-*:
     /// Table Grid of 10 pt).
     /// </summary>
-    public bool TableStyleOverridesNormal { get; set; }
+    public bool TableStyleOverridesNormal
+    {
+        get => tableStyleOverridesNormal;
+        set
+        {
+            tableStyleOverridesNormal = value;
+            Forget();
+        }
+    }
+
+    bool tableStyleOverridesNormal;
+
+    /// <summary>
+    /// What Paragraph and Run resolve below a paragraph's or run's own formatting, by what they resolve it from: a
+    /// document's paragraphs and runs are many, their styles few. Those under a table style's level are kept for the
+    /// level asked with last only, as each cell has its own (TableReader).
+    /// </summary>
+    readonly Dictionary<(string? Style, XElement? Numbering, bool UnderStyle), ParagraphFormat> paragraphBases = [];
+    readonly Dictionary<(string? Style, XElement? Numbering, bool UnderStyle), ParagraphFormat> tableParagraphBases = [];
+    ParagraphFormat? tableParagraphLevel;
+    readonly Dictionary<(string? ParagraphStyle, string? CharacterStyle), RunFormat> runBases = [];
+    readonly Dictionary<(string? ParagraphStyle, string? CharacterStyle), RunFormat> tableRunBases = [];
+    RunFormat? tableRunLevel;
+
+    /// <summary>Forgets what Paragraph and Run resolved, where the styles or the way they resolve change.</summary>
+    void Forget()
+    {
+        paragraphBases.Clear();
+        tableParagraphBases.Clear();
+        runBases.Clear();
+        tableRunBases.Clear();
+        (tableParagraphLevel, tableRunLevel) = (null, null);
+    }
 
     /// <summary>The default character style ("Default Paragraph Font").</summary>
     public string? DefaultCharacterStyle { get; }
@@ -237,6 +269,7 @@ public sealed class StyleSheet
         {
             Id = id, Type = "paragraph", Name = name, ParagraphProperties = element.Element(Wml.W + "pPr"), RunProperties = element.Element(Wml.W + "rPr"), Element = element,
         };
+        Forget();
         return id;
     }
 
@@ -268,6 +301,23 @@ public sealed class StyleSheet
     /// </param>
     public ParagraphFormat Paragraph(string? styleId, ParagraphFormat? direct, XElement? numbering = null, ParagraphFormat? table = null,
         bool numberingUnderStyle = false)
+    {
+        if (table != null && !ReferenceEquals(table, tableParagraphLevel))
+        {
+            tableParagraphBases.Clear();
+            tableParagraphLevel = table;
+        }
+        var bases = table != null ? tableParagraphBases : paragraphBases;
+        if (!bases.TryGetValue((styleId, numbering, numberingUnderStyle), out var resolved))
+            bases[(styleId, numbering, numberingUnderStyle)] = resolved = Styled(styleId, numbering, table, numberingUnderStyle);
+        var result = resolved.Clone();
+        if (direct != null)
+            result.Overlay(direct);
+        return result;
+    }
+
+    /// <summary>The paragraph formatting of a paragraph with this style and no direct formatting (see Paragraph).</summary>
+    ParagraphFormat Styled(string? styleId, XElement? numbering, ParagraphFormat? table, bool numberingUnderStyle)
     {
         var result = DefaultParagraph.Clone();
         if (table != null)
@@ -325,8 +375,6 @@ public sealed class StyleSheet
             level.Apply(numbering);
             result.Overlay(level);
         }
-        if (direct != null)
-            result.Overlay(direct);
         return result;
     }
 
@@ -335,6 +383,24 @@ public sealed class StyleSheet
     /// then the run's own (<paramref name="direct"/>), with toggle properties combined per ISO/IEC 29500 17.7.3.
     /// </summary>
     public RunFormat Run(string? paragraphStyleId, string? characterStyleId, RunFormat? direct, RunFormat? extraLevel = null)
+    {
+        if (extraLevel != null && !ReferenceEquals(extraLevel, tableRunLevel))
+        {
+            tableRunBases.Clear();
+            tableRunLevel = extraLevel;
+        }
+        var bases = extraLevel != null ? tableRunBases : runBases;
+        if (!bases.TryGetValue((paragraphStyleId, characterStyleId), out var resolved))
+            bases[(paragraphStyleId, characterStyleId)] = resolved = Styled(paragraphStyleId, characterStyleId, extraLevel);
+        // The run's own formatting laid over the styles' as Combine lays it: toggle properties it sets are its own.
+        var result = resolved.Clone();
+        if (direct != null)
+            result.Overlay(direct);
+        return result;
+    }
+
+    /// <summary>The character formatting of a run without formatting of its own (see Run).</summary>
+    RunFormat Styled(string? paragraphStyleId, string? characterStyleId, RunFormat? extraLevel)
     {
         var levels = new List<RunFormat>();
         if (extraLevel != null)
@@ -352,7 +418,7 @@ public sealed class StyleSheet
         var characterLevel = Level(Chain(character), s => s.RunProperties);
         characterLevel.Highlight = null;
         levels.Add(characterLevel);
-        return RunFormat.Combine(DefaultRun, levels, direct);
+        return RunFormat.Combine(DefaultRun, levels, null);
     }
 
     /// <summary>One level of the hierarchy: the run properties along a basedOn chain, the nearest style winning.</summary>

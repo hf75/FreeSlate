@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -288,16 +289,12 @@ public sealed class RunFormat
         return result;
     }
 
-    static readonly FieldInfo[] Fields = typeof(RunFormat).GetFields(BindingFlags.Public | BindingFlags.Instance);
+    static readonly Action<RunFormat, RunFormat> Overlaid = Overlays.Of<RunFormat>();
 
     /// <summary>The properties <paramref name="top"/> sets laid over this format.</summary>
     public void Overlay(RunFormat top)
     {
-        foreach (var field in Fields)
-        {
-            if (field.GetValue(top) is { } value)
-                field.SetValue(this, value);
-        }
+        Overlaid(this, top);
         // A color replaces the one below whole, its theme color, tint and shade (docx/external/powertools/HW010-*:
         // accent1 shaded 7F over defaults of text1 tinted A6 prints 234824, not tinted too).
         if (top.Color != null || top.ThemeColor != null)
@@ -486,10 +483,16 @@ public sealed class ParagraphFormat
         }
     }
 
+    static readonly Action<ParagraphFormat, ParagraphFormat> Overlaid = Overlays.Of<ParagraphFormat>(nameof(Tabs), nameof(ClearedTabs));
+
     /// <summary>The properties <paramref name="top"/> sets laid over this format; tab stops accumulate.</summary>
     public void Overlay(ParagraphFormat top)
     {
-        var tabs = Tabs?.ToList() ?? [];
+        // Tab stops in order already stay as they are where the format laid over sets none.
+        var sorted = true;
+        for (var k = 1; k < (Tabs?.Count ?? 0); k++)
+            sorted &= Tabs![k - 1].Position <= Tabs[k].Position;
+        var tabs = top.Tabs is not { Count: > 0 } && top.ClearedTabs is not { Count: > 0 } && sorted ? null : Tabs?.ToList() ?? [];
         // Frame properties override those below them attribute by attribute (measured with docx/external/libreoffice/
         // extras-ooxmlexport/special_styles: a paragraph's w:framePr saying only w:wrap keeps its style's width, height
         // and centering on the page).
@@ -506,15 +509,15 @@ public sealed class ParagraphFormat
                 frame.Attribute(Wml.W + other)?.Remove();
             frame.SetAttributeValue(attribute.Name, attribute.Value);
         }
-        foreach (var field in typeof(ParagraphFormat).GetFields(BindingFlags.Public | BindingFlags.Instance))
-        {
-            if (field.Name is nameof(Tabs) or nameof(ClearedTabs))
-                continue;
-            if (field.GetValue(top) is { } value)
-                field.SetValue(this, value);
-        }
+        Overlaid(this, top);
         if (frame != null)
             Frame = frame;
+        if (tabs == null)
+        {
+            if (Tabs is { Count: 0 })
+                Tabs = null;
+            return;
+        }
         foreach (var cleared in top.ClearedTabs ?? [])
             tabs.RemoveAll(t => Math.Abs(t.Position - cleared) < 0.01);
         foreach (var tab in top.Tabs ?? [])
@@ -523,5 +526,30 @@ public sealed class ParagraphFormat
             tabs.Add(tab);
         }
         Tabs = tabs.Count > 0 ? tabs.OrderBy(t => t.Position).ToList() : null;
+    }
+}
+
+/// <summary>
+/// Lays the public fields of one format that are set over those of another, as reflection does field by field (a null
+/// reference or nullable value is skipped, a plain value always laid over), compiled once for a type: reflection takes
+/// a fraction of a microsecond a field, and reading a document lays formats over one another for every run.
+/// </summary>
+static class Overlays
+{
+    public static Action<T, T> Of<T>(params string[] skipped)
+    {
+        var (target, top) = (Expression.Parameter(typeof(T), "target"), Expression.Parameter(typeof(T), "top"));
+        var steps = new List<Expression>();
+        foreach (var field in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (Array.IndexOf(skipped, field.Name) >= 0)
+                continue;
+            var value = Expression.Field(top, field);
+            var assign = Expression.Assign(Expression.Field(target, field), value);
+            steps.Add(Nullable.GetUnderlyingType(field.FieldType) != null ? Expression.IfThen(Expression.Property(value, "HasValue"), assign)
+                : !field.FieldType.IsValueType ? Expression.IfThen(Expression.ReferenceNotEqual(value, Expression.Constant(null, field.FieldType)), assign)
+                : assign);
+        }
+        return Expression.Lambda<Action<T, T>>(steps.Count > 0 ? Expression.Block(steps) : Expression.Empty(), target, top).Compile();
     }
 }
