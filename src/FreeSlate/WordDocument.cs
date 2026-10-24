@@ -256,8 +256,8 @@ public sealed class WordDocument : IEditableDocument
             return text;
         });
         bool Second(XElement? element) => element != null && where(element) == second;
-        var id = (Fresh().FirstOrDefault(p => Second(p.Element)) ?? Fresh().FirstOrDefault(p => p.Content.Any(i => Second(i.Xml?.Ancestors(p.Element.Name).FirstOrDefault()))))?.Id
-                 ?? paragraph;
+        // The second half may be a part of a paragraph the reader joins (a mark deleted or hidden).
+        var id = Fresh().FirstOrDefault(p => (p.Parts ?? [p.Element]).Any(Second))?.Id ?? paragraph;
         // Two paragraphs that read as the halves, the second where the place was.
         var at = offset - p.TextOffset;
         if (before != null && at >= 0 && at <= before.Length && !(Reads(id, before[at..]) && Before(id) is { } first && Reads(first, before[..at])))
@@ -283,13 +283,13 @@ public sealed class WordDocument : IEditableDocument
         var (first, start) = (true, -1);
         var where = Change(top, ReferenceEquals(list, blocks) ? next : top, (stretch, tracking) =>
         {
-            start = stretch.Find(p.Element) is { } element ? stretch.Text.Start(element) - stretch.Head : -1;
+            start = stretch.Find(First(p)) is { } element ? stretch.Text.Start(element) - stretch.Head : -1;
             var (text, stays) = TextEdits.Join(stretch, p, next, tracking);
             first = stays;
             return text;
         });
         // The joined paragraph begins where the first began (its id goes by its text and place, see ModelReader.Keep).
-        var id = Fresh().FirstOrDefault(p => p.Element is { } element && start >= 0 && where(element) == start)?.Id ?? (first ? paragraph : next.Id);
+        var id = Fresh().FirstOrDefault(p => start >= 0 && where(First(p)) == start)?.Id ?? (first ? paragraph : next.Id);
         if (both != null && !Reads(id, both))
             throw Refused("The paragraphs would not join so: one holds what the document computes or keeps.");
         return id;
@@ -710,7 +710,7 @@ public sealed class WordDocument : IEditableDocument
     /// </summary>
     (int Start, int End, List<XElement> Old, Stretch Stretch) StretchOf(int first, int last)
     {
-        if (head.Length == 0 || Top(Element(blocks[first])) is not { } a || Top(Element(blocks[last])) is not { } b || RangeOf(a) is not { } from
+        if (head.Length == 0 || Top(First(blocks[first])) is not { } a || Top(Last(blocks[last])) is not { } b || RangeOf(a) is not { } from
             || RangeOf(b) is not { } to)
             throw new NotSupportedException("The paragraph is not where it was read.");
         var (start, end) = (from.Start, to.End);
@@ -825,9 +825,17 @@ public sealed class WordDocument : IEditableDocument
         return top.Parent == body && body != null ? top : null;
     }
 
-    static XElement Element(Block block) => block switch
+    /// <summary>The first and the last element a block was read from: a paragraph's parts where the reader joined several (see ParagraphBlock.Parts).</summary>
+    static XElement First(Block block) => block switch
     {
-        ParagraphBlock paragraph => paragraph.Element,
+        ParagraphBlock paragraph => paragraph.Parts?[0] ?? paragraph.Element,
+        TableBlock table => table.Element,
+        _ => throw new ArgumentOutOfRangeException(nameof(block)),
+    };
+
+    static XElement Last(Block block) => block switch
+    {
+        ParagraphBlock paragraph => paragraph.Parts?[^1] ?? paragraph.Element,
         TableBlock table => table.Element,
         _ => throw new ArgumentOutOfRangeException(nameof(block)),
     };

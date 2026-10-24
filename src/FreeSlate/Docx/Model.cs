@@ -155,6 +155,13 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
     public SectionProperties? EndsSection { get; init; }
 
     /// <summary>
+    /// The paragraphs (w:p) the paragraph was read from where the reader joined several, in their order: those whose
+    /// marks are deleted (a tracked change) with the one they run into, which is Element, or one whose mark is hidden,
+    /// which is Element, with the ones it runs into (see ModelReader.JoinHidden); null for a paragraph of its own.
+    /// </summary>
+    public IReadOnlyList<XElement>? Parts { get; init; }
+
+    /// <summary>
     /// The paragraph's tracked deleted text outside the markup view, which is not shown but counts where autofit tables
     /// measure their cells (see RunFormat.Deleted), or null.
     /// </summary>
@@ -673,7 +680,11 @@ public sealed partial class ModelReader(DocumentContext context)
             }
             if (k + 1 < blocks.Count && blocks[k + 1] is ParagraphBlock next)
             {
-                blocks[k] = paragraph with { Content = [.. paragraph.Content, .. next.Content], MarkFormat = next.MarkFormat, EndsSection = next.EndsSection };
+                blocks[k] = paragraph with
+                {
+                    Content = [.. paragraph.Content, .. next.Content], MarkFormat = next.MarkFormat, EndsSection = next.EndsSection,
+                    Parts = [.. paragraph.Parts ?? [paragraph.Element], .. next.Parts ?? [next.Element]],
+                };
                 blocks.RemoveAt(k + 1);
                 k--;
             }
@@ -1153,7 +1164,11 @@ public sealed partial class ModelReader(DocumentContext context)
                 var paragraph = WithBlockBookmarks(Paragraph(e, number: !markDeleted));
                 if (pending != null)
                 {
-                    paragraph = paragraph with { Content = [.. Restyled(pending, paragraph.Format.Style), .. paragraph.Content] };
+                    paragraph = paragraph with
+                    {
+                        Content = [.. Restyled(pending, paragraph.Format.Style), .. paragraph.Content],
+                        Parts = [.. pending.Parts ?? [pending.Element], .. paragraph.Parts ?? [paragraph.Element]],
+                    };
                     pending = null;
                     // Joined so, a paragraph of contextual spacing loses its space before, whatever the styles
                     // (measured with docx/local/dmk-f, dmk-h, dmk-j, dmk-k: after a paragraph of 3.5 pt after the
