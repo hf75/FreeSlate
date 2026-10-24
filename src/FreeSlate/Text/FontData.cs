@@ -35,7 +35,7 @@ public sealed class FontData : IDisposable
     readonly Dictionary<ShapeKey, LinkedListNode<(ShapeKey Key, ShapedGlyph[] Glyphs)>> shaped = [];
     readonly LinkedList<(ShapeKey Key, ShapedGlyph[] Glyphs)> shapedOrder = [];
     int shapedGlyphs;
-    const int ShapedCapacity = 1 << 16;
+    const int ShapedCapacity = 1 << 18;
 
     /// <summary>What GlyphsWithFeatures shapes a text with; the features compared one by one.</summary>
     readonly record struct ShapeKey(string Text, IReadOnlyList<string> Features, bool RightToLeft, string? Language, string? Before, string? After)

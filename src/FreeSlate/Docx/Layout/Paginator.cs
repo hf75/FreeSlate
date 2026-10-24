@@ -1465,6 +1465,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // The pages after where the layout paused are not laid out with the blocks it was given yet.
         if (from != null && held != null && Position(held).CompareTo(Position(from)) < 0)
             from = held;
+        fieldPasses = 0;
         return Lay(blocks, from, after, head, tail, ends, pages, held);
     }
 
@@ -1474,9 +1475,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     public Relaid? Continue(int pages)
     {
-        if (paused is not { } at || input is not var (given, _, _, _, _))
+        if (input is not var (given, _, _, _, _))
             return null;
-        return Lay(given, at, [.. checkpoints!.SkipWhile(c => c != at).Skip(1)], given.Count, 0, sectionEnds, pages, null);
+        if (paused is { } at)
+            return Lay(given, at, [.. checkpoints!.SkipWhile(c => c != at).Skip(1)], given.Count, 0, sectionEnds, pages, null);
+        // Fields to lay out again (see refields): from the first page that holds one, meeting the pages before only after
+        // the last.
+        if (refields is var (fieldsAt, through))
+            return Lay(given, fieldsAt, [.. checkpoints!.SkipWhile(c => c != through).Skip(1)], given.Count, 0, sectionEnds, pages, through);
+        return null;
     }
 
     /// <summary>
@@ -1486,10 +1493,49 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     Checkpoint? paused;
 
     /// <summary>Whether pages are left as they were laid out before the last changes (see Relayout, Continue).</summary>
-    public bool Paused => paused != null;
+    public bool Paused => paused != null || refields != null;
+
+    /// <summary>
+    /// Fields of the body that read the pages and came out otherwise in the last layout (a table of contents' page
+    /// numbers): the checkpoints on or before the first page and the last that hold one, from which Continue lays them
+    /// out with what the pages tell now (not with what the checkpoint knew); null where none wait. And how many such
+    /// layouts followed one another (Paginate lays the document out again for fields twice at most).
+    /// </summary>
+    (Checkpoint At, Checkpoint Through)? refields;
+    int fieldPasses;
 
     /// <summary>Where a checkpoint stands in the flow, to compare with another's.</summary>
     static (int Section, int Block, int Row) Position(Checkpoint c) => (c.Section, c.Block, c.Row);
+
+    /// <summary>
+    /// The first and the last page that hold a field of the body whose result came out otherwise (FieldEvaluator.Changed):
+    /// those its paragraph stands on; null where one does not stand on any.
+    /// </summary>
+    static (int First, int Last)? FieldPages(FieldEvaluator fields, List<PageBox> pages)
+    {
+        var wanted = new HashSet<int>();
+        foreach (var field in fields.Changed)
+        {
+            if (fields.ParagraphOf(field) is not { } paragraph)
+                return null;
+            wanted.Add(paragraph.Id);
+        }
+        var (first, last, seen) = (0, 0, new HashSet<int>());
+        foreach (var page in pages)
+        {
+            foreach (var paragraph in page.Paragraphs)
+            {
+                if (!wanted.Contains(paragraph.Id))
+                    continue;
+                seen.Add(paragraph.Id);
+                (first, last) = (first == 0 ? page.Number : first, page.Number);
+            }
+            // All found, and none of them the page's last, which may go on on the next page.
+            if (seen.Count == wanted.Count && !(page.Paragraphs.Count > 0 && wanted.Contains(page.Paragraphs[^1].Id)))
+                break;
+        }
+        return seen.Count == wanted.Count && first > 0 ? (first, last) : null;
+    }
 
     /// <summary>
     /// Lays out the blocks from a checkpoint (see Relayout) until the run meets the pages laid out before at one of
@@ -1510,8 +1556,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // The fields read the edited blocks (bookmarks' text, sequences) and know of the pages what the checkpoint's did.
             var differing = given.Skip(head).Take(given.Count - tail - head).Concat(blocks.Skip(head).Take(blocks.Count - tail - head));
             var fields = layout.Evaluator?.For(blocks, differing) ?? new FieldEvaluator(context, blocks);
+            var refielding = from == refields?.At;
             if (from.Fields != null)
-                fields.Restore(from.Fields);
+                fields.Restore(refielding && layout.Evaluator is { } latest
+                    ? latest.Take(null) with { Guessed = from.Fields.Guessed, NewlyEmptied = from.Fields.NewlyEmptied } : from.Fields);
             var before = layout.Evaluator;
             layout.Evaluator = fields;
             var run = new Paginator(context, layout, reader)
@@ -1531,9 +1579,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // end where the runs' way took them (Settled.Pins, ForcedBreaks): pages from the checkpoint on that have them,
             // before or now, are paginated anew, as the way from a fresh start may end elsewhere.
             var found = Found(pages);
-            if (!found.Concat(settled.Floats).Any(f => f.Key >= from.Page && f.Value.Count > 0)
-                && Settles(found, Bands(pages), settled) && run.reaching.All(r => settled.Pins.TryGetValue(r.Key, out var pin) && pin.Page == r.Value.Page)
-                && !fields.Update(pages) && run.StoriesKept() && !fields.Pending && (footnotes is not { Count: > 0 } || NotesKept(PageNoteMarks(pages))))
+            var kept = !found.Concat(settled.Floats).Any(f => f.Key >= from.Page && f.Value.Count > 0)
+                && Settles(found, Bands(pages), settled) && run.reaching.All(r => settled.Pins.TryGetValue(r.Key, out var pin) && pin.Page == r.Value.Page);
+            // Fields of the body that read the pages and came out otherwise (a table of contents' page numbers) are laid out
+            // again later from the first page that holds one (see refields), twice in a row at most: then they stay as they
+            // came out, as Paginate leaves them after its last run.
+            var reread = kept && fields.Update(pages);
+            var fieldPages = reread && fieldPasses < 2 ? FieldPages(fields, pages) : null;
+            if (kept && (!reread || fieldPasses >= 2 || fieldPages != null) && run.StoriesKept() && !fields.Pending
+                && (footnotes is not { Count: > 0 } || NotesKept(PageNoteMarks(pages))))
             {
                 input = (blocks, lastSection, footnotes, endnotes, endnoteSeparator);
                 (laid, sectionEnds) = (run.pages, ends);
@@ -1546,6 +1600,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     .. run.pausedHere ? after.Where(c => Position(c).CompareTo(Position(stop!)) > 0 && (held == null || Position(c).CompareTo(Position(held)) > 0))
                         : stop != null ? after.SkipWhile(c => c != stop) : []];
                 paused = run.pausedHere ? stop : stop != null && held != null && Position(stop).CompareTo(Position(held)) <= 0 ? held : null;
+                if (refielding)
+                    refields = null;
+                if (fieldPages is var (firstPage, lastPage) && checkpoints.LastOrDefault(c => c.Page <= firstPage) is { } fieldsAt)
+                {
+                    refields = (fieldsAt, checkpoints.LastOrDefault(c => c.Page <= lastPage) ?? fieldsAt);
+                    fieldPasses++;
+                }
+                else if (!reread)
+                    fieldPasses = 0;
                 settings = run.settings;
                 NumberLines(pages, run.taken);
                 finishedPages = pages;
@@ -1553,7 +1616,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             }
         }
         // Paginated anew, as a document opened with these blocks.
-        paused = null;
+        (paused, refields, fieldPasses) = (null, null, 0);
         settings = new TextSettings();
         layout.Evaluator = null;
         layout.NoteMarks = null;
@@ -1794,7 +1857,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             or nameof(noteBoxes) or nameof(storyOwners) or nameof(checkpoints) or nameof(checkpointPage) or nameof(settledCopy) or nameof(fieldsCopy)
             or nameof(input) or nameof(laid) or nameof(settledRun) or nameof(lookBack) or nameof(reads) or nameof(stops) or nameof(stopPages)
             or nameof(stopSettings) or nameof(stoppedAt) or nameof(stopFinished) or nameof(taken) or nameof(knownEnds) or nameof(finishedPages)
-            or nameof(finishedAlone) or nameof(sectionEnds) or nameof(paused) or nameof(pauseAt) or nameof(pausedHere)))
+            or nameof(finishedAlone) or nameof(sectionEnds) or nameof(paused) or nameof(pauseAt) or nameof(pausedHere) or nameof(refields)
+            or nameof(fieldPasses)))
         .ToArray();
 
     /// <summary>

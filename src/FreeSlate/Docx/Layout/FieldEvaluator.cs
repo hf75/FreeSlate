@@ -87,6 +87,24 @@ public sealed class FieldEvaluator
     /// <summary>The first note reference in every bookmark (NOTEREF).</summary>
     readonly Dictionary<string, NoteReferenceInline> noteMarks = new(StringComparer.Ordinal);
 
+    /// <summary>The paragraphs that stand where bookmarks are open: their text is the bookmarks' (see For).</summary>
+    readonly HashSet<ParagraphBlock> covered = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>The words of the instructions of fields (see Words), each split once.</summary>
+    readonly Dictionary<string, List<string>> instructionWords = new(StringComparer.Ordinal);
+
+    List<string> WordsOf(FieldInline field) =>
+        instructionWords.TryGetValue(field.Instruction, out var words) ? words : instructionWords[field.Instruction] = Words(field.Instruction);
+
+    /// <summary>The type and the number format of the instructions of fields (FieldInline.Type, NumberFormat), each worked out once.</summary>
+    readonly Dictionary<string, (string Type, string? Format)> instructionKinds = new(StringComparer.Ordinal);
+
+    (string Type, string? Format) KindOf(FieldInline field) =>
+        instructionKinds.TryGetValue(field.Instruction, out var kind) ? kind : instructionKinds[field.Instruction] = (field.Type, field.NumberFormat);
+
+    /// <summary>The fields of the body whose results depend on the pages (see Paged), which Update compares.</summary>
+    readonly List<FieldInline> pagedFields = [];
+
     /// <summary>The body's blocks, and its paragraphs in their order with the place of each (by Block.Id), worked out where asked.</summary>
     readonly List<Block> blocks;
     List<ParagraphBlock>? paragraphs;
@@ -177,7 +195,7 @@ public sealed class FieldEvaluator
     internal Snapshot Take(Snapshot? before)
     {
         var same = before != null && ReferenceEquals(before.Pages, pages);
-        return new(pages, same ? before!.BookmarkPages : new(bookmarkPages, StringComparer.Ordinal), same ? before!.ParagraphPages : new(paragraphPages),
+        return new(pages, same ? before!.BookmarkPages : bookmarkPages, same ? before!.ParagraphPages : paragraphPages,
             new(emptied, ReferenceEqualityComparer.Instance), guessed, newlyEmptied);
     }
 
@@ -186,7 +204,8 @@ public sealed class FieldEvaluator
     /// with the same text and notes, and the same sequence numbers; what depends on pages aside.
     /// </summary>
     internal bool ReadsAs(FieldEvaluator other) =>
-        bookmarks.Count == other.bookmarks.Count
+        ReferenceEquals(bookmarks, other.bookmarks) && ReferenceEquals(noteMarks, other.noteMarks) && ReferenceEquals(sequences, other.sequences)
+        || bookmarks.Count == other.bookmarks.Count
         && bookmarks.All(b => other.bookmarks.TryGetValue(b.Key, out var o) && o.Text.ToString() == b.Value.Text.ToString())
         && noteMarks.Count == other.noteMarks.Count && noteMarks.All(n => other.noteMarks.TryGetValue(n.Key, out var o) && ReferenceEquals(o, n.Value))
         && sequences.Count == other.sequences.Count && sequences.All(s => other.sequences.TryGetValue(s.Key, out var o) && o == s.Value);
@@ -198,12 +217,7 @@ public sealed class FieldEvaluator
     internal void Restore(Snapshot snapshot)
     {
         pages = snapshot.Pages;
-        bookmarkPages.Clear();
-        foreach (var (name, page) in snapshot.BookmarkPages)
-            bookmarkPages[name] = page;
-        paragraphPages.Clear();
-        foreach (var (id, page) in snapshot.ParagraphPages)
-            paragraphPages[id] = page;
+        (bookmarkPages, paragraphPages) = (snapshot.BookmarkPages, snapshot.ParagraphPages);
         emptied.Clear();
         emptied.UnionWith(snapshot.Emptied);
         (guessed, newlyEmptied) = (snapshot.Guessed, snapshot.NewlyEmptied);
@@ -235,9 +249,9 @@ public sealed class FieldEvaluator
         for (var p = index - 1; p >= 0; p--)
             yield return list[p];
     }
-    readonly Dictionary<string, PageBox> bookmarkPages = new(StringComparer.Ordinal);
+    Dictionary<string, PageBox> bookmarkPages = new(StringComparer.Ordinal);
     /// <summary>The page each paragraph of the last layout began on, by Block.Id (its copies' too).</summary>
-    readonly Dictionary<int, PageBox> paragraphPages = [];
+    Dictionary<int, PageBox> paragraphPages = [];
 
     /// <summary>The time the fields' dates and times show: when the document is printed.</summary>
     readonly DateTime now;
@@ -277,11 +291,14 @@ public sealed class FieldEvaluator
                 if (inline is not FieldInline field)
                     continue;
                 paragraphOf[field] = paragraph;
-                bodyUpdates |= field.Type is not ("IF" or "SYMBOL" or "DOCPROPERTY" or "");
-                if (field.Type is "PAGE" or "SECTIONPAGES" || field.Type == "PAGEREF" && Words(field.Instruction).Contains("\\p"))
+                var type = KindOf(field).Type;
+                bodyUpdates |= type is not ("IF" or "SYMBOL" or "DOCPROPERTY" or "");
+                if (type is "PAGE" or "SECTIONPAGES" || type == "PAGEREF" && WordsOf(field).Contains("\\p"))
                     pagedParagraphs.Add(paragraph.Id);
+                if (Paged(type))
+                    pagedFields.Add(field);
                 sections[field] = section;
-                if (field.Type == "SEQ")
+                if (type == "SEQ")
                     sequences[field] = Sequence(field, counters) ?? T("Error! No sequence specified.", "Fehler! Es wurde keine Folge festgelegt.");
                 Inlines(field.Cached, paragraph);
             }
@@ -293,6 +310,8 @@ public sealed class FieldEvaluator
                 switch (block)
                 {
                     case ParagraphBlock paragraph:
+                        if (open.Count > 0)
+                            covered.Add(paragraph);
                         // A heading resets the sequences that restart at its level (SEQ \s).
                         if (paragraph.Format.OutlineLevel is { } level and < 9 && counters.Count > 0)
                         {
@@ -321,42 +340,52 @@ public sealed class FieldEvaluator
     {
         (context, german, now, this.blocks) = (source.context, source.german, source.now, blocks);
         (bodyUpdates, properties) = (source.bodyUpdates, source.properties);
+        (sequences, sections, paragraphOf, bookmarks, noteMarks) = (source.sequences, source.sections, source.paragraphOf, source.bookmarks, source.noteMarks);
+        (covered, instructionWords, pagedParagraphs) = (source.covered, source.instructionWords, source.pagedParagraphs);
+        (instructionKinds, pagedFields) = (source.instructionKinds, source.pagedFields);
     }
-
-    /// <summary>Whether the body's blocks hold what fields read: bookmarks, fields, note references.</summary>
-    bool Reads => bookmarks.Count > 0 || noteMarks.Count > 0 || paragraphOf.Count > 0;
 
     /// <summary>
     /// The fields of the blocks after an edit (see Paginator.Relayout), <paramref name="differing"/> those that differ
-    /// (the edited ones and the ones they replaced): where neither this evaluator's blocks nor those hold what fields
-    /// read, there is nothing to read in the new ones either (what the pages tell comes from a snapshot, see Restore);
-    /// else they are read whole.
+    /// (the edited ones and the ones they replaced): where none of those holds what fields read (bookmarks, fields, note
+    /// references), stands where a bookmark is open or, with sequences, is a heading, what this evaluator read of its
+    /// blocks holds for the new ones too (what the pages tell comes from a snapshot, see Restore); else they are read
+    /// whole.
     /// </summary>
     internal FieldEvaluator For(List<Block> blocks, IEnumerable<Block> differing) =>
-        !Reads && !differing.Any(Holds) ? new FieldEvaluator(this, blocks) : new FieldEvaluator(context, blocks);
+        differing.Any(Affects) ? new FieldEvaluator(context, blocks) : new FieldEvaluator(this, blocks);
 
-    /// <summary>Whether a block holds what fields read (see Reads), in its paragraphs and its tables' cells.</summary>
-    static bool Holds(Block block) => block switch
+    /// <summary>Whether a block changes what fields read (see For), in its paragraphs and its tables' cells.</summary>
+    bool Affects(Block block) => block switch
     {
-        ParagraphBlock paragraph => paragraph.Content.Any(i => i is BookmarkInline or BookmarkEndInline or FieldInline or NoteReferenceInline),
-        TableBlock table => table.Table.Rows.SelectMany(r => r.Cells).SelectMany(c => c.Blocks).Any(Holds),
+        ParagraphBlock paragraph => paragraph.Content.Any(i => i is BookmarkInline or BookmarkEndInline or FieldInline or NoteReferenceInline)
+            || covered.Contains(paragraph) || sequences.Count > 0 && paragraph.Format.OutlineLevel is < 9,
+        TableBlock table => table.Table.Rows.SelectMany(r => r.Cells).SelectMany(c => c.Blocks).Any(Affects),
         _ => false,
     };
 
+    /// <summary>The fields of the body whose results came out otherwise in the last Update, and the paragraph each stands in.</summary>
+    internal IReadOnlyList<FieldInline> Changed => changed;
+    List<FieldInline> changed = [];
+
+    internal ParagraphBlock? ParagraphOf(FieldInline field) => paragraphOf.GetValueOrDefault(field);
+
     /// <summary>Whether a field's result depends on the pages.</summary>
-    public static bool Paged(FieldInline field) => field.Type is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF" or "STYLEREF";
+    public static bool Paged(FieldInline field) => Paged(field.Type);
+
+    static bool Paged(string type) => type is "PAGE" or "NUMPAGES" or "SECTIONPAGES" or "PAGEREF" or "STYLEREF";
 
     /// <summary>Takes in the pages of a layout; whether a result that depends on them changed.</summary>
     public bool Update(List<PageBox> laid)
     {
         var before = new Dictionary<FieldInline, string?>(ReferenceEqualityComparer.Instance);
-        foreach (var field in paragraphOf.Keys.Where(Paged))
+        foreach (var field in pagedFields)
             before[field] = Value(field, null);
         var again = guessed || newlyEmptied;
         (guessed, newlyEmptied) = (false, false);
         pages = laid;
-        bookmarkPages.Clear();
-        paragraphPages.Clear();
+        // New maps: snapshots and evaluators share the old ones (see Take, Restore).
+        (bookmarkPages, paragraphPages) = (new(StringComparer.Ordinal), []);
         foreach (var page in laid)
         {
             foreach (var (name, _, _) in page.Bookmarks)
@@ -369,17 +398,19 @@ public sealed class FieldEvaluator
                     paragraphPages.TryAdd(paragraph.Id, page);
             }
         }
-        return again || before.Any(f => Value(f.Key, null) != f.Value);
+        changed = [.. before.Where(f => Value(f.Key, null) != f.Value).Select(f => f.Key)];
+        return again || changed.Count > 0;
     }
 
     /// <summary>A field's result, or null where it keeps the one Word saved; <paramref name="on"/> is the page of a header or footer.</summary>
     public string? Value(FieldInline field, PageBox? on)
     {
-        var words = Words(field.Instruction);
-        var format = NumberText.FieldFormat(field.NumberFormat);
+        var words = WordsOf(field);
+        var (type, numberFormat) = KindOf(field);
+        var format = NumberText.FieldFormat(numberFormat);
         var paragraph = paragraphOf.GetValueOrDefault(field);
         var page = on ?? (paragraph != null ? paragraphPages.GetValueOrDefault(paragraph.Id) : null);
-        switch (field.Type)
+        switch (type)
         {
             case "PAGE" when page != null:
                 return page.ChapterPrefix + NumberText.Format(page.DisplayNumber, format ?? page.Section.PageNumberFormat);
@@ -460,7 +491,7 @@ public sealed class FieldEvaluator
     {
         if (field.Type != "SYMBOL")
             return null;
-        var words = Words(field.Instruction);
+        var words = WordsOf(field);
         string? After(string name) => words.IndexOf(name) is var i and >= 0 && i + 1 < words.Count ? words[i + 1] : null;
         var (font, size) = (After("\\f"), After("\\s"));
         if (font == null && size == null)
@@ -482,7 +513,7 @@ public sealed class FieldEvaluator
     /// </summary>
     public string? NoteAlignment(FieldInline field)
     {
-        var words = Words(field.Instruction);
+        var words = WordsOf(field);
         return field.Type == "NOTEREF" && words.Count > 1 && words.Contains("\\f") && noteMarks.TryGetValue(words[1], out var note)
             ? note.Format.VerticalAlign : null;
     }

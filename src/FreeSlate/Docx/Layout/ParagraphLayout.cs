@@ -960,7 +960,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     /// </summary>
     readonly Dictionary<LaidKey, LinkedListNode<(LaidKey Key, List<Line> Lines)>> laidParagraphs = [];
     readonly LinkedList<(LaidKey Key, List<Line> Lines)> laidOrder = [];
-    const int LaidCapacity = 1024;
+    const int LaidCapacity = 4096;
 
     /// <summary>
     /// What a paragraph's lines are laid out from: the paragraph (the block itself), the width, the settings without what
