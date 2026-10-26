@@ -147,10 +147,14 @@ public sealed class DocumentContext : IDisposable
     /// <summary>The authors of tracked changes and comments, in the order they appear (their colors follow it).</summary>
     public List<string> Authors { get; } = [];
 
+    /// <summary>Where given, the authors asked for (see Author) are added to it in their order, known ones too (see ModelReader.Reread).</summary>
+    public List<string>? Named { get; set; }
+
     /// <summary>An author's place among the document's authors.</summary>
     public int Author(string? name)
     {
         name ??= "";
+        Named?.Add(name);
         var index = Authors.IndexOf(name);
         if (index < 0)
         {

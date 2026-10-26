@@ -56,8 +56,7 @@ public sealed partial class ModelReader
         // In the markup view comments are numbered in the order of their ranges in the body (see CommentAnchored), and
         // authors take their colors in the order the body names them first (see DocumentContext.Author): the change keeps
         // the ranges it had, in their order, and names the authors it named, first in the same order.
-        if (context.Markup && (!old.SelectMany(CommentRanges).SequenceEqual(children.SelectMany(CommentRanges))
-            || !old.SelectMany(Authors).Distinct().SequenceEqual(children.SelectMany(Authors).Distinct())))
+        if (context.Markup && !old.SelectMany(CommentRanges).SequenceEqual(children.SelectMany(CommentRanges)))
             return null;
         // The old children one after the other, with nothing but white space between them.
         for (var k = 1; k < old.Count; k++)
@@ -146,6 +145,10 @@ public sealed partial class ModelReader
         var section = sectionOf.GetValueOrDefault(first);
         foreach (var child in children)
             sectionOf[child] = section;
+        // In the markup view authors take their colors in the order reading the body names them first: the new children
+        // name the authors the old ones named, in the same order, or reading them would color otherwise than reading the
+        // body whole (see AuthorsNamed).
+        var named = context.Markup ? AuthorsNamed(old) : null;
         var putBack = Put(first, old, children);
         // Which fields of the body end in it (see Unclosed): the change's field characters are those it had (see above),
         // each new begin in place of the old one. How the body's drawings stack is worked out anew where the change holds
@@ -172,6 +175,8 @@ public sealed partial class ModelReader
                 context.Changed(bodyElement.Document!);
             return null;
         }
+        if (named != null && !AuthorsNamed(children).SequenceEqual(named))
+            return Undone();
         // Their steps first, asked of throwaway counters; then the body's steps with them replayed, and the children read
         // with their answers.
         var probe = Read([.. leading, .. children, .. trailing], null);
@@ -424,11 +429,24 @@ public sealed partial class ModelReader
     static IEnumerable<string?> CommentRanges(XElement child) => child.Descendants(Wml.W + "commentRangeStart").Select(c => c.Attr("id"));
 
     /// <summary>
-    /// The authors a child of the body names, in the order reading it names them: its tracked changes' (w:author) and the
-    /// authors of the comments whose ranges it begins (see CommentAnchored).
+    /// The authors reading children of the body names (see DocumentContext.Named), in its order (which is not the
+    /// document's in tables), each once: read with throwaway counters, the authors it adds to those known taken away again.
     /// </summary>
-    IEnumerable<string> Authors(XElement child) =>
-        child.DescendantsAndSelf().Select(e => e.Name == Wml.W + "commentRangeStart" ? CommentElement(e.Attr("id") ?? "")?.Attr("author") ?? "" : e.Attr("author")).OfType<string>();
+    List<string> AuthorsNamed(IReadOnlyList<XElement> elements)
+    {
+        var known = context.Authors.Count;
+        context.Named = [];
+        try
+        {
+            Read(elements, null);
+            return [.. context.Named.Distinct()];
+        }
+        finally
+        {
+            context.Named = null;
+            context.Authors.RemoveRange(known, context.Authors.Count - known);
+        }
+    }
 
     /// <summary>The kinds of the field characters a child of the body holds (w:fldChar begin, separate, end), in order.</summary>
     static IEnumerable<string?> FieldCharacters(XElement child) => child.Descendants(Wml.W + "fldChar").Select(c => c.Attr("fldCharType"));
@@ -483,7 +501,8 @@ public sealed partial class ModelReader
 
     /// <summary>
     /// Blocks read anew (<paramref name="read"/>, changed in place) keep the ids of the blocks they stand for (see Kept):
-    /// the same blocks at the beginning and at the end (of the same kind and text), those between them by place.
+    /// the same blocks at the beginning and at the end (of the same kind and text), those between them by place; a block
+    /// read where <paramref name="old"/> has a NewBlock keeps the id it was read with.
     /// </summary>
     internal static void Keep(IReadOnlyList<Block> old, List<Block> read)
     {
@@ -518,6 +537,12 @@ public sealed partial class ModelReader
         }
         return read.Id == old.Id ? read : read with { Id = old.Id };
     }
+
+    /// <summary>
+    /// Where a change makes a block, in the blocks a change is known to leave (see WordDocument.Change): no block of before
+    /// gives the block read there its id, which takes one of its own.
+    /// </summary>
+    internal sealed record NewBlock : Block;
 
     /// <summary>Whether a block read anew reads as one read before: of the same kind, with the same text (a table: all its paragraphs').</summary>
     static bool Same(Block old, Block read) => old.GetType() == read.GetType() && Signature(old) == Signature(read);

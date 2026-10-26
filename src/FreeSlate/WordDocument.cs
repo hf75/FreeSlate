@@ -392,12 +392,14 @@ public sealed class WordDocument : IEditableDocument
         var (p, top) = Find(paragraph);
         var before = markup ? null : ParagraphText.Of(p);
         var second = 0;
+        // The new paragraph after the paragraph, whose id stays with its text; split at its start, before it.
+        var made = offset <= p.TextOffset ? 0 : 1;
         var where = Change(top, top, (stretch, tracking) =>
         {
             var (text, at) = TextEdits.Split(stretch, p, offset, tracking);
             second = at;
             return text;
-        });
+        }, () => Plain(top, p) is { } i ? [.. blocks.Take(i + made), new ModelReader.NewBlock(), .. blocks.Skip(i + made)] : null);
         bool Second(XElement? element) => element != null && where(element) == second;
         // The second half may be a part of a paragraph the reader joins (a mark deleted or hidden).
         var id = Fresh().FirstOrDefault(p => (p.Parts ?? [p.Element]).Any(Second))?.Id ?? paragraph;
@@ -430,7 +432,7 @@ public sealed class WordDocument : IEditableDocument
             var (text, stays) = TextEdits.Join(stretch, p, next, tracking);
             first = stays;
             return text;
-        });
+        }, () => Plain(top, p) is { } i && next.Parts == null ? [.. blocks.Take(first ? i + 1 : i), .. blocks.Skip(first ? i + 2 : i + 1)] : null);
         // The joined paragraph begins where the first began (its id goes by its text and place, see ModelReader.Keep).
         var id = Fresh().FirstOrDefault(p => start >= 0 && where(First(p)) == start)?.Id ?? (first ? paragraph : next.Id);
         if (both != null && !Reads(id, both))
@@ -462,8 +464,16 @@ public sealed class WordDocument : IEditableDocument
     public void Remove(int paragraph)
     {
         var (p, top) = Find(paragraph);
-        Change(top, top, (stretch, tracking) => TextEdits.Remove(stretch, p, tracking));
+        Change(top, top, (stretch, tracking) => TextEdits.Remove(stretch, p, tracking), () => Plain(top, p) is { } i ? [.. blocks.Take(i), .. blocks.Skip(i + 1)] : null);
     }
+
+    /// <summary>
+    /// The place among the body's blocks of a paragraph of the body itself, read from a paragraph of its own, which a change
+    /// without tracking takes away, splits or joins block for block (see Change); null for one in a table or text box, one
+    /// the reader joined from several (see ParagraphBlock.Parts), and where changes are tracked.
+    /// </summary>
+    int? Plain(Block top, ParagraphBlock paragraph) =>
+        ReferenceEquals(top, paragraph) && paragraph.Parts == null && Author == null ? IndexOf(top) : null;
 
     /// <summary>
     /// Takes away what stands between two paragraphs of one body, table cell or text box (see TextEdits.RemoveBetween):
@@ -481,11 +491,10 @@ public sealed class WordDocument : IEditableDocument
         var j = !ReferenceEquals(list, blocks) ? list.FindIndex(b => ReferenceEquals(b, q)) : ReferenceEquals(lastTop, q) ? IndexOf(q, walking: true) : -1;
         if (j <= i)
             throw new NotSupportedException("The paragraphs are not of one body, cell or text box, the first before the second.");
-        // The blocks read anew take the ids of the body without those taken away: by their text alone, a paragraph taken
-        // away might give its id to one alike that stays (two empty ones).
+        // The blocks read anew take the ids of the body without those taken away (see Change).
         if (j > i + 1)
             Change(ReferenceEquals(list, blocks) ? p : top, ReferenceEquals(list, blocks) ? q : top, (stretch, tracking) => TextEdits.RemoveBetween(stretch, p, q, tracking),
-                ReferenceEquals(list, blocks) && Author == null ? [.. blocks.Take(i + 1), .. blocks.Skip(j)] : null);
+                () => ReferenceEquals(list, blocks) && Author == null ? [.. blocks.Take(i + 1), .. blocks.Skip(j)] : null);
     }
 
     /// <summary>Undoes the last change not undone; false where there is none.</summary>
@@ -601,6 +610,8 @@ public sealed class WordDocument : IEditableDocument
         // The pages take the budget of 3D text in their order, as a pass over all of them gives it: a page drawn before is
         // kept where it had the same.
         context.Text3DBudget = budget;
+        // The markup view shades comment ranges over the pages they reach: a page drawn takes those the pages before left open.
+        var open = markup ? new HashSet<string>() : null;
         for (var k = 0; k < pages.Count; k++)
         {
             var page = pages[k];
@@ -617,7 +628,13 @@ public sealed class WordDocument : IEditableDocument
                 context.Text3DBudget -= drawnAs[k].Cost;
             }
             else
+            {
+                if (open != null)
+                    renderer.OpenComments(open);
                 drawn.Add(drawLater ? renderer.Sketch(page, $"paper{paper}") : renderer.Scene(page, $"paper{paper}"));
+            }
+            if (open != null)
+                PageRenderer.LeftOpen(page, open);
             how.Add((paper, left, left - context.Text3DBudget));
         }
         (scenes, drawnAs, shown) = (drawn, how, pages);
@@ -646,6 +663,13 @@ public sealed class WordDocument : IEditableDocument
         {
             renderer!.Settings = paginator!.Settings;
             context.Text3DBudget = budget;
+            if (markup)
+            {
+                var open = new HashSet<string>();
+                for (var k = 0; k < page; k++)
+                    PageRenderer.LeftOpen(shown[k], open);
+                renderer.OpenComments(open);
+            }
             scenes![page] = renderer.Scene(shown[page], sketch.Paper);
             if (++drawnScenes > PagesKeptDrawn)
             {
@@ -696,10 +720,13 @@ public sealed class WordDocument : IEditableDocument
     /// <summary>
     /// A change made in the stretch of the body the blocks from <paramref name="from"/> to <paramref name="to"/> were
     /// read from (the children of the body they stand in, see StretchOf): <paramref name="edit"/> gives the stretch's new
-    /// text, which the document then reads (see Apply), a version of its own. Returns where an element of the new text
-    /// stands in it.
+    /// text, which the document then reads (see Apply), a version of its own. <paramref name="like"/> gives, once the edit
+    /// is made, the body's blocks as the change is known to leave them (those it took away left out, a NewBlock where it
+    /// made one), whose ids the blocks read anew take: by their text alone a block taken away could give its id to one
+    /// alike that stays (two empty paragraphs), which the next change read in place would give again. Returns where an
+    /// element of the new text stands in it.
     /// </summary>
-    Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, IReadOnlyList<Block>? like = null)
+    Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, Func<IReadOnlyList<Block>?>? like = null)
     {
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
         var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
@@ -711,7 +738,7 @@ public sealed class WordDocument : IEditableDocument
         var changed = islands.RemoveRange(first, after - first);
         if (text != wholeText.Text[start..end])
             changed = changed.Insert(first, new Island(start, end, text));
-        var where = Apply(start, end, text, old, null, changed, like);
+        var where = Apply(start, end, text, old, null, changed, like?.Invoke());
         versions.RemoveRange(version + 1, versions.Count - version - 1);
         versions.Add(new Version(whole, islands, kept));
         version++;

@@ -787,7 +787,11 @@ public sealed partial class ModelReader(DocumentContext context)
     void CommentAnchored(string id)
     {
         if (commentOrder.Contains(id))
+        {
+            // Its author named again where the authors read are noted (see DocumentContext.Named).
+            context.Named?.Add(CommentElement(id)?.Attr("author") ?? "");
             return;
+        }
         commentOrder.Add(id);
         context.Author(CommentElement(id)?.Attr("author"));
     }

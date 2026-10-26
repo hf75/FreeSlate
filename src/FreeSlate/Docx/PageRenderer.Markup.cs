@@ -39,6 +39,34 @@ public sealed partial class PageRenderer
     readonly Dictionary<string, double> openComments = [];
 
     /// <summary>
+    /// Sets the comments whose ranges are open where the page drawn next begins (see CommentRanges): for a page drawn
+    /// without all the pages before it drawn just before (an editor draws the pages a change touched).
+    /// </summary>
+    public void OpenComments(IEnumerable<string> ids)
+    {
+        openComments.Clear();
+        foreach (var id in ids)
+            openComments[id] = 0;
+    }
+
+    /// <summary>The comments whose ranges a page leaves open, from those open where it begins (as CommentRanges goes over its lines).</summary>
+    public static void LeftOpen(PageBox page, HashSet<string> open)
+    {
+        foreach (var placed in page.Lines)
+        {
+            if (placed.Angle != 0)
+                continue;
+            foreach (var (_, id, start) in (placed.Line.Comments ?? []).OrderBy(m => m.X))
+            {
+                if (start)
+                    open.Add(id);
+                else
+                    open.Remove(id);
+            }
+        }
+    }
+
+    /// <summary>
     /// The paper Word fits a page with its markup pane on when it prints with markup (measured with
     /// docx/local/markup-e and markup-f: 20 page sizes): a standard paper the page's size matches within 10 pt (A5,
     /// ISO and JIS B5, A4, Letter, Legal), else A4 where the page fits on it, else Letter; the page and pane are made
