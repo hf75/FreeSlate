@@ -49,8 +49,17 @@ public interface IEditableDocument : IDisposable
     int? Before(int paragraph);
     int? After(int paragraph);
 
-    /// <summary>Replaces so many characters of a paragraph's text from a place by other text (without breaks).</summary>
+    /// <summary>
+    /// Replaces so many characters of a paragraph's text from a place by other text, its tabs ("\t") and line breaks
+    /// ("\v") as the document's own, as the Tab key and Shift+Enter put them in; it holds no paragraph breaks.
+    /// </summary>
     void Replace(int paragraph, int offset, int length, string text);
+
+    /// <summary>
+    /// The word a place in a paragraph's text stands inside, which the application's character formatting takes where no
+    /// text is selected (see Editing.Words): its offset and length, or null at a word's edge or between words.
+    /// </summary>
+    (int Offset, int Length)? WordAt(int paragraph, int offset);
 
     /// <summary>Splits a paragraph in two at a place, as Enter does; returns the id of the second.</summary>
     int Split(int paragraph, int offset);

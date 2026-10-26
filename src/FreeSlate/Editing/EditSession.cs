@@ -7,10 +7,11 @@ public readonly record struct TextPlace(int Paragraph, int Offset);
 /// An editor's work on a document without its surface: the cursor and the selection as places in its text, and what an
 /// editor's keys do there, as a word processor's do. Typing replaces the selection; Backspace and Delete take the
 /// selection or the character before or after the cursor away, at a paragraph's edge joining it with the one beside it;
-/// Enter splits the paragraph; formats go to the selection's text. Each handling is one step to undo and do again, the
-/// changes it made in the document undone together; typing on from where the last typing ended adds to it. A handling
-/// the document cannot make (see IEditableDocument) leaves it as it was and throws NotSupportedException. A selection
-/// reaches over paragraphs of one body, cell, text box or shape.
+/// Enter splits the paragraph, Shift+Enter breaks the line; formats go to the selection's text, without one to the word
+/// the cursor stands in or to the text typed next; text copied is the selection's, text pasted replaces it. Each
+/// handling is one step to undo and do again, the changes it made in the document undone together; typing on from where
+/// the last typing ended adds to it. A handling the document cannot make (see IEditableDocument) leaves it as it was and
+/// throws NotSupportedException. A selection reaches over paragraphs of one body, cell, text box or shape.
 /// </summary>
 public sealed class EditSession(IEditableDocument document)
 {
@@ -33,6 +34,20 @@ public sealed class EditSession(IEditableDocument document)
 
     /// <summary>Whether text is selected.</summary>
     public bool Selecting => Caret != Anchor;
+
+    /// <summary>
+    /// The character formatting text typed at the cursor takes, given where no text was selected and the cursor stood in no
+    /// word (see Format); null where none is. Placing the cursor forgets it, as undoing and doing again do; typing,
+    /// Backspace and Delete keep it (measured in Word 365 by COM: text typed, taken back and typed again takes it).
+    /// </summary>
+    public TextFormatting? Pending { get; private set; }
+
+    /// <summary>
+    /// The selected text as plain text: the stretches of its paragraphs, a line feed ("\r\n") between them, objects (the
+    /// paragraph texts' U+FFFC) left out; empty where nothing is selected.
+    /// </summary>
+    public string Selected =>
+        Selecting ? string.Join("\r\n", Stretches().Select(s => document.Text(s.Paragraph)[s.From..s.To].Replace("￼", "", StringComparison.Ordinal))) : "";
 
     /// <summary>Whether the document differs from how it was saved or opened.</summary>
     public bool Changed => saved != done.Count;
@@ -58,13 +73,45 @@ public sealed class EditSession(IEditableDocument document)
         if (!extend)
             Anchor = caret;
         placed = true;
+        Pending = null;
     }
 
-    /// <summary>Types text at the cursor in place of the selection; line feeds and returns in it split paragraphs.</summary>
-    public void Type(string text)
+    /// <summary>
+    /// Selects all the text of the body, table cell, text box or shape the cursor stands in, as far as paragraphs follow one
+    /// another there (a table between them ends it).
+    /// </summary>
+    public void SelectAll()
+    {
+        if (!document.Contains(Caret.Paragraph))
+            return;
+        var (first, last) = (Caret.Paragraph, Caret.Paragraph);
+        while (document.Before(first) is { } before)
+            first = before;
+        while (document.After(last) is { } after)
+            last = after;
+        Place(new TextPlace(first, 0));
+        Place(new TextPlace(last, document.Text(last).Length), extend: true);
+    }
+
+    /// <summary>
+    /// Types text at the cursor in place of the selection, in the format given for typing (Pending); line feeds and returns
+    /// in it split paragraphs, tabs and line breaks ("\t", "\v") stand in them.
+    /// </summary>
+    public void Type(string text) => Put(text, typing: true);
+
+    /// <summary>
+    /// Pastes text at the cursor in place of the selection, as Type puts it, a handling of its own: what it holds but text,
+    /// line feeds, tabs and line breaks left out (other control characters and U+FFFC, which stands for an object; a page
+    /// break as a line feed).
+    /// </summary>
+    public void Paste(string text) =>
+        Put(new string([.. text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\f', '\n')
+            .Where(c => (!char.IsControl(c) || c is '\n' or '\r' or '\t' or '\v') && c != '￼')]), typing: false);
+
+    void Put(string text, bool typing)
     {
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
-        Act(lines.Length == 1 && !Selecting, () =>
+        Act(typing && lines.Length == 1 && !Selecting, () =>
         {
             var at = DeleteSelection();
             for (var k = 0; k < lines.Length; k++)
@@ -74,6 +121,8 @@ public sealed class EditSession(IEditableDocument document)
                 if (lines[k].Length > 0)
                 {
                     document.Replace(at.Paragraph, at.Offset, 0, lines[k]);
+                    if (Pending is { } format)
+                        document.Format(at.Paragraph, at.Offset, lines[k].Length, format);
                     at = at with { Offset = at.Offset + lines[k].Length };
                 }
             }
@@ -83,6 +132,9 @@ public sealed class EditSession(IEditableDocument document)
 
     /// <summary>Splits the paragraph at the cursor in place of the selection (Enter).</summary>
     public void Enter() => Type("\n");
+
+    /// <summary>Breaks the line at the cursor in place of the selection, within its paragraph (Shift+Enter).</summary>
+    public void LineBreak() => Type("\v");
 
     /// <summary>Takes the selection away, or the character before the cursor; at a paragraph's start joins it with the one before.</summary>
     public void Backspace() => Act(false, () =>
@@ -121,16 +173,49 @@ public sealed class EditSession(IEditableDocument document)
         return Same(new TextPlace(joined, joined == paragraph ? offset : 0));
     });
 
-    /// <summary>Gives the selected text character formatting; the selection stays.</summary>
-    public void Format(TextFormatting format) => Act(false, () =>
+    /// <summary>
+    /// Gives the selected text character formatting, the selection staying; without a selection, as Word's and
+    /// PowerPoint's buttons do (measured in Word 365 and PowerPoint 365 by COM): the word the cursor stands inside (see
+    /// IEditableDocument.WordAt), else the text typed next there (Pending, with what was given for it before).
+    /// </summary>
+    public void Format(TextFormatting format)
     {
-        foreach (var (paragraph, from, to) in Stretches())
+        if (!Selecting)
         {
-            if (to > from)
-                document.Format(paragraph, from, to - from, format);
+            if ((document.Contains(Caret.Paragraph) ? document.WordAt(Caret.Paragraph, Caret.Offset) : null) is not var (offset, length))
+            {
+                Pending = Pending is { } before ? Merged(before, format) : format;
+                return;
+            }
+            Act(false, () =>
+            {
+                document.Format(Caret.Paragraph, offset, length, format);
+                return (Caret, Anchor);
+            });
+            return;
         }
-        return (Caret, Anchor);
-    });
+        Act(false, () =>
+        {
+            foreach (var (paragraph, from, to) in Stretches())
+            {
+                if (to > from)
+                    document.Format(paragraph, from, to - from, format);
+            }
+            return (Caret, Anchor);
+        });
+    }
+
+    /// <summary>A formatting with the properties another gives in place of its own.</summary>
+    static TextFormatting Merged(TextFormatting format, TextFormatting over) => new()
+    {
+        Bold = over.Bold ?? format.Bold,
+        Italic = over.Italic ?? format.Italic,
+        Underline = over.Underline ?? format.Underline,
+        Size = over.Size ?? format.Size,
+        Font = over.Font ?? format.Font,
+        Color = over.Color ?? format.Color,
+        Highlight = over.Highlight ?? format.Highlight,
+    };
 
     /// <summary>Gives the paragraphs of the selection, or the cursor's, paragraph formatting.</summary>
     public void Format(ParagraphFormatting format) => Act(false, () =>
@@ -150,7 +235,7 @@ public sealed class EditSession(IEditableDocument document)
             document.Undo();
         done.RemoveAt(done.Count - 1);
         undone.Add(step);
-        (Caret, Anchor, placed) = (step.CaretBefore, step.AnchorBefore, true);
+        (Caret, Anchor, placed, Pending) = (step.CaretBefore, step.AnchorBefore, true, null);
         return true;
     }
 
@@ -164,7 +249,7 @@ public sealed class EditSession(IEditableDocument document)
             document.Redo();
         undone.RemoveAt(undone.Count - 1);
         done.Add(step);
-        (Caret, Anchor, placed) = (step.CaretAfter, step.AnchorAfter, true);
+        (Caret, Anchor, placed, Pending) = (step.CaretAfter, step.AnchorAfter, true, null);
         return true;
     }
 

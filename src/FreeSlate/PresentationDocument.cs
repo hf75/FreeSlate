@@ -159,6 +159,9 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>Whether a paragraph of that id is one of the slides' shapes or tables, which the presentation changes.</summary>
     public bool Contains(int paragraph) => paragraphs.ContainsKey(paragraph);
 
+    /// <summary>The word a place stands inside, as PowerPoint's formatting buttons take it, hyphens joining words (see Editing.Words).</summary>
+    public (int Offset, int Length)? WordAt(int paragraph, int offset) => Editing.Words.Around(Text(paragraph), offset, hyphens: true);
+
     /// <summary>Whether a change can be undone, and one undone done again.</summary>
     public bool CanUndo => version > 0;
     public bool CanRedo => version + 1 < versions.Count;

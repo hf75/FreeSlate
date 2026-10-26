@@ -224,6 +224,14 @@ public sealed class WordDocument : IEditableDocument
         return paragraphs.ContainsKey(paragraph);
     }
 
+    /// <summary>The word a place stands inside, as Word's formatting buttons take it (see Editing.Words).</summary>
+    public (int Offset, int Length)? WordAt(int paragraph, int offset)
+    {
+        var p = Find(paragraph).Paragraph;
+        var text = ParagraphText.Of(p);
+        return Editing.Words.Around(text, offset - p.TextOffset) is var (at, length) ? (at + p.TextOffset, length) : null;
+    }
+
     /// <summary>Whether a change can be undone, and one undone done again.</summary>
     public bool CanUndo => version > 0;
     public bool CanRedo => version + 1 < versions.Count;
@@ -241,7 +249,7 @@ public sealed class WordDocument : IEditableDocument
     int? Beside(int paragraph, int step)
     {
         var (p, top) = Find(paragraph);
-        return ListOf(top, p) is var (list, index) && index + step >= 0 && index + step < list.Count && list[index + step] is ParagraphBlock beside
+        return ListOf(top, p, walking: true) is var (list, index) && index + step >= 0 && index + step < list.Count && list[index + step] is ParagraphBlock beside
             ? beside.Id
             : null;
     }
@@ -892,8 +900,24 @@ public sealed class WordDocument : IEditableDocument
         _ => throw new ArgumentOutOfRangeException(nameof(block)),
     };
 
-    int IndexOf(Block block)
+    /// <summary>
+    /// Where each block of the body stands in blocks (see IndexOf), and the blocks it was worked out for: worked out where
+    /// the paragraphs are walked one after the other (a selection over many of them), not for each change.
+    /// </summary>
+    Dictionary<Block, int>? places;
+    List<Block>? placed;
+
+    int IndexOf(Block block, bool walking = false)
     {
+        if (walking && !(ReferenceEquals(placed, blocks) && places!.Count == blocks.Count))
+        {
+            places = new Dictionary<Block, int>(blocks.Count, ReferenceEqualityComparer.Instance);
+            for (var k = 0; k < blocks.Count; k++)
+                places[blocks[k]] = k;
+            placed = blocks;
+        }
+        if (ReferenceEquals(placed, blocks) && places!.Count == blocks.Count)
+            return places.TryGetValue(block, out var at) ? at : throw new InvalidOperationException("The block is not in the body.");
         for (var i = 0; i < blocks.Count; i++)
         {
             if (ReferenceEquals(blocks[i], block))
@@ -903,10 +927,10 @@ public sealed class WordDocument : IEditableDocument
     }
 
     /// <summary>The list of blocks a paragraph stands in within a block of the body (the body's, a cell's, a text box's) and its place there.</summary>
-    (List<Block> List, int Index)? ListOf(Block top, ParagraphBlock paragraph)
+    (List<Block> List, int Index)? ListOf(Block top, ParagraphBlock paragraph, bool walking = false)
     {
         if (ReferenceEquals(top, paragraph))
-            return (blocks, IndexOf(top));
+            return (blocks, IndexOf(top, walking));
         (List<Block>, int)? Search(Block block)
         {
             foreach (var list in ModelReader.Inner(block))
@@ -1056,7 +1080,7 @@ public sealed class WordDocument : IEditableDocument
         foreach (var block in blocks)
             Collect(block, block);
         fresh = blocks;
-        kept = ImmutableList.CreateRange(blocks);
+        (kept, places, placed) = (ImmutableList.CreateRange(blocks), null, null);
     }
 
     /// <summary>
@@ -1096,7 +1120,7 @@ public sealed class WordDocument : IEditableDocument
                 read.Add(block);
             }
         }
-        (kept, fresh) = (list, read);
+        (kept, fresh, places, placed) = (list, read, null, null);
         layout?.Forget(gone);
     }
 

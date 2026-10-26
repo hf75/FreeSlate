@@ -98,6 +98,37 @@ static class TextEdits
             t.SetAttributeValue(XNamespace.Xml + "space", "preserve");
     }
 
+    /// <summary>
+    /// Sets a w:t's text where it may hold tabs and line breaks ("\t", "\v"), as Word's Tab and Shift+Enter write them:
+    /// each a w:tab or a w:br of its own in the run, between w:t of the text around it (none where that is empty).
+    /// </summary>
+    static void SetContent(XElement t, string text)
+    {
+        if (text.IndexOfAny(['\t', '\v']) < 0)
+        {
+            SetText(t, text);
+            return;
+        }
+        var w = t.Name.Namespace;
+        var nodes = new List<XElement>();
+        var start = 0;
+        for (var i = 0; i <= text.Length; i++)
+        {
+            if (i < text.Length && text[i] is not ('\t' or '\v'))
+                continue;
+            if (i > start)
+            {
+                var piece = new XElement(t.Name);
+                SetText(piece, text[start..i]);
+                nodes.Add(piece);
+            }
+            if (i < text.Length)
+                nodes.Add(new XElement(w + (text[i] == '\t' ? "tab" : "br")));
+            start = i + 1;
+        }
+        t.ReplaceWith(nodes);
+    }
+
     /// <summary>Whether an inline is taken away whole with the element it was read from (a tab, a break, a symbol, a drawing).</summary>
     static bool Removable(Inline inline) =>
         inline is TabInline or BreakInline or DrawingInline or AnchorInline
@@ -139,17 +170,18 @@ static class TextEdits
         p.Element(p.Name.Namespace + "pPr")?.Element(p.Name.Namespace + "rPr") is { } mark && (mark.Element(p.Name.Namespace + "del") ?? mark.Element(p.Name.Namespace + "moveFrom")) != null;
 
     /// <summary>
-    /// The text of a paragraph from <paramref name="offset"/>, so many characters, replaced by <paramref name="text"/>:
-    /// the new text goes into the text it continues (the text before it, else after it, as typing takes the format before
-    /// it), else into a run of its own where the place is, with the format of the run before it; within text the document
-    /// computes (a date, a field's result) it goes nowhere. Returns the stretch's new text.
+    /// The text of a paragraph from <paramref name="offset"/>, so many characters, replaced by <paramref name="text"/>
+    /// (its tabs and line breaks, "\t" and "\v", as w:tab and w:br, see SetContent): the new text goes into the text it
+    /// continues (the text before it, else after it, as typing takes the format before it), else into a run of its own
+    /// where the place is, with the format of the run before it; within text the document computes (a date, a field's
+    /// result) it goes nowhere. Returns the stretch's new text.
     /// </summary>
     public static string Replace(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking? tracking = null)
     {
         if (offset < paragraph.TextOffset || length < 0 || offset + length > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The range is not in the paragraph's text.");
-        if (text.Any(c => char.IsControl(c) && c != '\t'))
-            throw new ArgumentException("The text holds control characters; breaks and paragraphs are not text.", nameof(text));
+        if (text.Any(c => char.IsControl(c) && c is not ('\t' or '\v')))
+            throw new ArgumentException("The text holds control characters other than tabs and line breaks; paragraphs are not text.", nameof(text));
         Between(paragraph, offset);
         Between(paragraph, offset + length);
         if (tracking != null)
@@ -222,8 +254,11 @@ static class TextEdits
         {
             if (value == ReadText(t))
                 continue;
-            SetText(t, value);
             paragraphs.Add(ParagraphOf(t));
+            if (target?.T == t)
+                SetContent(t, value);
+            else
+                SetText(t, value);
         }
         foreach (var element in removed)
         {
@@ -252,8 +287,8 @@ static class TextEdits
         var beside = (before ?? after)?.AncestorsAndSelf(w + "r").FirstOrDefault();
         var properties = beside?.Element(w + "rPr") ?? p.Element(w + "pPr")?.Element(w + "rPr");
         var t = new XElement(w + "t");
-        SetText(t, text);
         var run = new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => !IsRevision(e) && e.Name.LocalName != "rPrChange")) : null, t);
+        SetContent(t, text);
         if ((after?.AncestorsAndSelf(w + "r").FirstOrDefault() ?? after?.AncestorsAndSelf().FirstOrDefault(a => a.Parent == p)) is { } next)
             next.AddBeforeSelf(run);
         else
@@ -857,8 +892,8 @@ static class TextEdits
             if (continued is { } into)
             {
                 var value = ReadText(into.T);
-                SetText(into.T, value[..into.Index] + text + value[into.Index..]);
                 touched.Add(PartOf(into.T, parts));
+                SetContent(into.T, value[..into.Index] + text + value[into.Index..]);
             }
             else
                 touched.Add(Inserted(parts, before, after, text, tracking));
@@ -884,9 +919,9 @@ static class TextEdits
         var beside = (before ?? after)?.AncestorsAndSelf(w + "r").FirstOrDefault();
         var properties = beside?.Element(w + "rPr") ?? p.Element(w + "pPr")?.Element(w + "rPr");
         var t = new XElement(w + "t");
-        SetText(t, text);
         var ins = tracking.Mark(w, "ins");
         ins.Add(new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => !IsRevision(e) && e.Name.LocalName != "rPrChange")) : null, t));
+        SetContent(t, text);
         if (before?.AncestorsAndSelf(w + "r").FirstOrDefault() is { } previous)
         {
             if (before.ElementsAfterSelf().FirstOrDefault() is { } rest)

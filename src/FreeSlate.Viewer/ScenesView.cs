@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
@@ -477,11 +478,35 @@ sealed class ScenesView : Control
         {
             var control = (e.KeyModifiers & KeyModifiers.Control) != 0;
             var shift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
+            // Copying, cutting and pasting go through the clipboard as text.
+            if (control && !shift && e.Key is Key.C or Key.X or Key.V && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            {
+                e.Handled = true;
+                if (e.Key == Key.V)
+                    Paste(clipboard);
+                else if (session.Selecting)
+                {
+                    try
+                    {
+                        _ = clipboard.SetTextAsync(session.Selected);
+                    }
+                    catch (NotSupportedException refused)
+                    {
+                        Refused?.Invoke(refused.Message);
+                        return;
+                    }
+                    if (e.Key == Key.X)
+                        Edit(session.Delete);
+                }
+                return;
+            }
             Action? edit = e.Key switch
             {
                 Key.Back => session.Backspace,
                 Key.Delete => session.Delete,
                 Key.Enter when !control && !shift => session.Enter,
+                Key.Enter when shift && !control => session.LineBreak,
+                Key.A when control => session.SelectAll,
                 Key.Z when control && !shift => () => session.Undo(),
                 Key.Y when control => () => session.Redo(),
                 Key.Z when control && shift => () => session.Redo(),
@@ -762,16 +787,33 @@ sealed class ScenesView : Control
         return pictures.Places(Page(cursorPage)).FormatAt(spots[Math.Clamp(at - 1, 0, spots.Count - 1)]);
     }
 
-    /// <summary>Turns bold, italic or underline on for the selection where its first character lacks it, else off (Ctrl+B, I, U).</summary>
+    /// <summary>
+    /// Turns bold, italic or underline on for the selection where its first character lacks it, else off (Ctrl+B, I, U);
+    /// without a selection as the format given for typing has it, else the character before the cursor.
+    /// </summary>
     void Toggle(byte flag)
     {
-        var on = (FormatHere() & flag) != 0;
+        var pending = Session!.Pending;
+        var on = flag switch
+        {
+            PlacesItem.Bold when !Session.Selecting && pending?.Bold is { } bold => bold,
+            PlacesItem.Italic when !Session.Selecting && pending?.Italic is { } italic => italic,
+            PlacesItem.Underlined when !Session.Selecting && pending?.Underline is { } underline => underline != "none",
+            _ => (FormatHere() & flag) != 0,
+        };
         Session!.Format(flag switch
         {
             PlacesItem.Bold => new TextFormatting { Bold = !on },
             PlacesItem.Italic => new TextFormatting { Italic = !on },
             _ => new TextFormatting { Underline = on ? "none" : "single" },
         });
+    }
+
+    /// <summary>Pastes the clipboard's text at the cursor in place of the selection (Ctrl+V).</summary>
+    async void Paste(IClipboard clipboard)
+    {
+        if (await clipboard.TryGetTextAsync() is { Length: > 0 } text && Session is { } session)
+            Edit(() => session.Paste(text));
     }
 
     protected override void OnTextInput(TextInputEventArgs e)
