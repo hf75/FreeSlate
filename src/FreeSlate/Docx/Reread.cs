@@ -44,13 +44,20 @@ public sealed partial class ModelReader
     /// ones take ids of their own. Null, the XML left as it was, where reading cannot so begin or go on (a paragraph whose
     /// mark is hidden, a field to the body's end, children the reader made of others), where note references come, go or
     /// change their order (the notes' marks are read with the notes), where sections would begin or end elsewhere, where a
-    /// content control shows its placeholder (which later ones show too) or in the markup view: the document has to be
-    /// read again.
+    /// content control shows its placeholder (which later ones show too), and in the markup view where comment ranges
+    /// come, go or change their order (comments are numbered by them) or an author comes whom the body did not name
+    /// before (authors take their colors in the body's order): the document has to be read again.
     /// </summary>
     public List<Block>? Reread(List<Block> body, IReadOnlyList<XElement> old, XElement? before, IReadOnlyList<XElement> children, IReadOnlyList<Block>? like = null)
     {
-        if (context.Markup || bodyElement == null || old.Count == 0 && (before == null || children.Count == 0)
+        if (bodyElement == null || old.Count == 0 && (before == null || children.Count == 0)
             || old.Append(before).OfType<XElement>().Any(e => e.Parent != bodyElement || !bodyPoints.ContainsKey(e)))
+            return null;
+        // In the markup view comments are numbered in the order of their ranges in the body (see CommentAnchored), and
+        // authors take their colors in the order the body names them first (see DocumentContext.Author): the change keeps
+        // the ranges it had, in their order, and names the authors it named, first in the same order.
+        if (context.Markup && (!old.SelectMany(CommentRanges).SequenceEqual(children.SelectMany(CommentRanges))
+            || !old.SelectMany(Authors).Distinct().SequenceEqual(children.SelectMany(Authors).Distinct())))
             return null;
         // The old children one after the other, with nothing but white space between them.
         for (var k = 1; k < old.Count; k++)
@@ -412,6 +419,16 @@ public sealed partial class ModelReader
     /// </summary>
     static bool Elsewhere(XElement child) =>
         child.DescendantsAndSelf().Any(d => d.Name == Wml.W + "showingPlcHdr" || d.Name == Wml.W + "altChunk" || d.Name == Wml.W + "subDoc");
+
+    /// <summary>The ids of the comment ranges a child of the body begins (w:commentRangeStart), in order.</summary>
+    static IEnumerable<string?> CommentRanges(XElement child) => child.Descendants(Wml.W + "commentRangeStart").Select(c => c.Attr("id"));
+
+    /// <summary>
+    /// The authors a child of the body names, in the order reading it names them: its tracked changes' (w:author) and the
+    /// authors of the comments whose ranges it begins (see CommentAnchored).
+    /// </summary>
+    IEnumerable<string> Authors(XElement child) =>
+        child.DescendantsAndSelf().Select(e => e.Name == Wml.W + "commentRangeStart" ? CommentElement(e.Attr("id") ?? "")?.Attr("author") ?? "" : e.Attr("author")).OfType<string>();
 
     /// <summary>The kinds of the field characters a child of the body holds (w:fldChar begin, separate, end), in order.</summary>
     static IEnumerable<string?> FieldCharacters(XElement child) => child.Descendants(Wml.W + "fldChar").Select(c => c.Attr("fldCharType"));
