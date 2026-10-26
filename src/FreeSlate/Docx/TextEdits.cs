@@ -329,13 +329,19 @@ static class TextEdits
         }
         if (first != null)
         {
-            // The element and what follows it, out of each element around it up to the paragraph, which is split there.
+            // The element and what follows it, out of each element around it up to the paragraph, which is split there:
+            // where nothing of it but its properties stands before, it goes whole (no empty run stays behind).
             var moved = first;
             while (moved.Parent != p)
             {
                 var around = moved.Parent ?? throw new NotSupportedException("The place stands in no paragraph.");
                 if (around.Name.LocalName is not ("r" or "hyperlink" or "ins" or "moveTo" or "smartTag" or "customXml" or "bdo" or "dir"))
                     throw new NotSupportedException($"The place is within a w:{around.Name.LocalName}, which is not split.");
+                if (moved.ElementsBeforeSelf().All(e => e.Name.LocalName is "rPr" or "smartTagPr" or "customXmlPr"))
+                {
+                    moved = around;
+                    continue;
+                }
                 var copy = new XElement(around.Name, around.Attributes(),
                     around.Elements().Where(e => e.Name.LocalName is "rPr" or "smartTagPr" or "customXmlPr").Select(e => new XElement(e)));
                 var following = moved.NodesAfterSelf().ToList();
