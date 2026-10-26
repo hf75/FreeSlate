@@ -45,11 +45,14 @@ static class SlideEdits
 
     /// <summary>
     /// The text of a paragraph from <paramref name="offset"/>, so many characters, replaced by <paramref name="text"/> (a
-    /// line break as "\v"); see the class.
+    /// line break as "\v", a page or column break, which slides lack, as a line break too); see the class.
     /// </summary>
     public static void Replace(XElement paragraph, int offset, int length, string text)
     {
         Check(paragraph);
+        text = text.Replace('\f', '\v').Replace('\u000E', '\v');
+        if (text.Any(c => char.IsControl(c) && c is not ('\t' or '\v' or '\r' or '\n')))
+            throw new ArgumentException("New text holds control characters other than tabs and line breaks.", nameof(text));
         var all = SlideText.Of(paragraph);
         if (offset < 0 || length < 0 || offset + length > all.Length)
             throw new ArgumentOutOfRangeException(nameof(offset), "The places lie outside the paragraph's text.");

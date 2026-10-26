@@ -99,12 +99,13 @@ static class TextEdits
     }
 
     /// <summary>
-    /// Sets a w:t's text where it may hold tabs and line breaks ("\t", "\v"), as Word's Tab and Shift+Enter write them:
-    /// each a w:tab or a w:br of its own in the run, between w:t of the text around it (none where that is empty).
+    /// Sets a w:t's text where it may hold tabs and breaks, as Word's keys write them: a tab ("\t") a w:tab, a line break
+    /// ("\v", Shift+Enter) a w:br, a page break ("\f", Ctrl+Enter) and a column break ("\u000E") a w:br of their type,
+    /// each of its own in the run, between w:t of the text around it (none where that is empty).
     /// </summary>
     static void SetContent(XElement t, string text)
     {
-        if (text.IndexOfAny(['\t', '\v']) < 0)
+        if (text.IndexOfAny(['\t', '\v', '\f', '\u000E']) < 0)
         {
             SetText(t, text);
             return;
@@ -114,7 +115,7 @@ static class TextEdits
         var start = 0;
         for (var i = 0; i <= text.Length; i++)
         {
-            if (i < text.Length && text[i] is not ('\t' or '\v'))
+            if (i < text.Length && text[i] is not ('\t' or '\v' or '\f' or '\u000E'))
                 continue;
             if (i > start)
             {
@@ -123,7 +124,13 @@ static class TextEdits
                 nodes.Add(piece);
             }
             if (i < text.Length)
-                nodes.Add(new XElement(w + (text[i] == '\t' ? "tab" : "br")));
+                nodes.Add(text[i] switch
+                {
+                    '\t' => new XElement(w + "tab"),
+                    '\f' => new XElement(w + "br", new XAttribute(w + "type", "page")),
+                    '\u000E' => new XElement(w + "br", new XAttribute(w + "type", "column")),
+                    _ => new XElement(w + "br"),
+                });
             start = i + 1;
         }
         t.ReplaceWith(nodes);
@@ -171,7 +178,7 @@ static class TextEdits
 
     /// <summary>
     /// The text of a paragraph from <paramref name="offset"/>, so many characters, replaced by <paramref name="text"/>
-    /// (its tabs and line breaks, "\t" and "\v", as w:tab and w:br, see SetContent): the new text goes into the text it
+    /// (its tabs and breaks, "\t", "\v", "\f" and "\u000E", as w:tab and w:br, see SetContent): the new text goes into the text it
     /// continues (the text before it, else after it, as typing takes the format before it), else into a run of its own
     /// where the place is, with the format of the run before it; within text the document computes (a date, a field's
     /// result) it goes nowhere. Returns the stretch's new text.
@@ -180,8 +187,8 @@ static class TextEdits
     {
         if (offset < paragraph.TextOffset || length < 0 || offset + length > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The range is not in the paragraph's text.");
-        if (text.Any(c => char.IsControl(c) && c is not ('\t' or '\v')))
-            throw new ArgumentException("The text holds control characters other than tabs and line breaks; paragraphs are not text.", nameof(text));
+        if (text.Any(c => char.IsControl(c) && c is not ('\t' or '\v' or '\f' or '\u000E')))
+            throw new ArgumentException("The text holds control characters other than tabs and breaks; paragraphs are not text.", nameof(text));
         Between(paragraph, offset);
         Between(paragraph, offset + length);
         if (tracking != null)

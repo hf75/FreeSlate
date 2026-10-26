@@ -104,12 +104,11 @@ public sealed class EditSession(IEditableDocument document)
 
     /// <summary>
     /// Pastes text at the cursor in place of the selection, as Type puts it, a handling of its own: what it holds but text,
-    /// line feeds, tabs and line breaks left out (other control characters and U+FFFC, which stands for an object; a page
-    /// break as a line feed).
+    /// line feeds, tabs and breaks left out (other control characters and U+FFFC, which stands for an object; page and
+    /// column breaks as the document has them, see IEditableDocument.Replace).
     /// </summary>
     public void Paste(string text) =>
-        Put(new string([.. text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\f', '\n')
-            .Where(c => (!char.IsControl(c) || c is '\n' or '\r' or '\t' or '\v') && c != '\uFFFC')]), typing: false);
+        Put(new string([.. text.Where(c => (!char.IsControl(c) || c is '\n' or '\r' or '\t' or '\v' or '\f' or '\u000E') && c != '\uFFFC')]), typing: false);
 
     void Put(string text, bool typing)
     {

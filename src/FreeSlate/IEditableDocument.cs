@@ -58,8 +58,9 @@ public interface IEditableDocument : IDisposable
     int? Previous(int paragraph);
 
     /// <summary>
-    /// Replaces so many characters of a paragraph's text from a place by other text, its tabs ("\t") and line breaks
-    /// ("\v") as the document's own, as the Tab key and Shift+Enter put them in; it holds no paragraph breaks.
+    /// Replaces so many characters of a paragraph's text from a place by other text, its tabs ("\t"), line breaks ("\v"),
+    /// page and column breaks ("\f", "\u000E") as the document's own, as the Tab key, Shift+Enter and Ctrl+Enter put them
+    /// in (on slides, which lack page and column breaks, as line breaks); it holds no paragraph breaks.
     /// </summary>
     void Replace(int paragraph, int offset, int length, string text);
 
