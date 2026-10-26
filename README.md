@@ -352,13 +352,19 @@ demand and stay out of git.
   in substitutes with different metrics.
 - Slides are matched against PowerPoint and pages against Word for Windows (Microsoft 365); other versions differ in
   details.
-- Word documents are rendered as pages to read and print; FreeSlate does not edit them or reflow them to the window.
-  Word's pictorial art page borders (apples, hearts, …) are Microsoft's own pictures and are not drawn; the basic
-  geometric ones are.
+- Word documents are laid out as pages, as Word prints them; FreeSlate does not reflow them to the window. Word's
+  pictorial art page borders (apples, hearts, …) are Microsoft's own pictures and are not drawn; the basic geometric
+  ones are.
 - A few rare cases still differ visibly, among them pies whose outside labels make PowerPoint shrink them, the axis
   intervals of some radar charts, text on circular WordArt paths, ActiveX controls, and modern oblique 3D cameras
   with a rotation of their own. The feature catalog lists the known deviations per feature.
-- The presenter and the viewer show documents; they do not edit them.
+- Editing changes text, paragraphs and their direct formatting, and on slides shapes and slides; styles are given to
+  paragraphs, not changed. Not edited yet: in Word documents headers, footers, notes and comments, the text fields
+  compute (their results, tables of contents), the rows and columns of tables, pictures, numbering and bullets, and
+  sections; on slides masters and layouts, the text of charts and SmartArt, notes, comments, the rows and columns of
+  tables, pictures, bullets and animations.
+- The viewer edits to try the editing out; it is not meant as an editor. The presenter shows presentations and does
+  not edit them.
 
 ## Contributing
 
