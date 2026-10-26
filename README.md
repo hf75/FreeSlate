@@ -240,9 +240,11 @@ session.Save("report-edited.docx");
 and the selection as places in the text, typing, Backspace, Delete, Enter, line breaks and formats as a word
 processor's keys do them, each handling one step to undo and redo, however many changes of the document it took.
 Formatting without a selection does what Word's and PowerPoint's buttons do: it formats the word the cursor stands in,
-else the text typed next there until the cursor moves. A handling the document cannot make (within a field's result, a
-table of contents, an object, text that is not the body's) throws `NotSupportedException` and leaves the document as it
-was.
+else the text typed next there until the cursor moves. A selection reaches over a Word document's tables; deleting it or
+typing over it treats the paragraphs' marks as Word and PowerPoint do (Word keeps a paragraph the deletion begins inside
+apart from the one it ends in, PowerPoint joins them) and takes the tables it covers whole away. A handling the document
+cannot make (within a field's result, a table of contents, an object, text that is not the body's, a selection that
+ends inside a table it begins outside) throws `NotSupportedException` and leaves the document as it was.
 
 After a change, `Scenes()` lays out and draws again only the pages it changed, also in documents of thousands of pages
 (a keystroke on page 4 000 of 5 000 within a frame). Where a change moves everything after it on (a paragraph one line

@@ -439,6 +439,44 @@ static class TextEdits
     }
 
     /// <summary>
+    /// What stands between two paragraphs of one body, cell or text box taken away, as deleting a selection over it does
+    /// (measured in Word 365 by COM: a selection from within a paragraph over a whole table into the next paragraph
+    /// deleted leaves the two paragraphs' ends joined, the table gone): the paragraphs there, whole tables and content
+    /// controls, the marks between them (the sections those paragraphs end merging with the next one). As a tracked change
+    /// each paragraph's runs and mark are deleted (what the author inserted going away outright, see Remove); tables and
+    /// content controls are not deleted so. Returns the stretch's new text.
+    /// </summary>
+    public static string RemoveBetween(Stretch stretch, ParagraphBlock first, ParagraphBlock last, Tracking? tracking = null)
+    {
+        var (p, q) = (Parts(stretch, first)[^1], Parts(stretch, last)[0]);
+        if (p.Parent != q.Parent || !p.ElementsAfterSelf().Contains(q))
+            throw new NotSupportedException("The paragraphs are not of one body, cell or text box, the first before the second.");
+        var between = p.ElementsAfterSelf().TakeWhile(e => e != q).ToList();
+        // Nor does a field over several paragraphs lose its beginning or its end.
+        if (OpenFields(between.SelectMany(e => e.DescendantsAndSelf())) != 0)
+            throw new NotSupportedException("What stands between the paragraphs holds the beginning or the end of a field over several paragraphs.");
+        if (tracking == null)
+            return stretch.Spliced([(stretch.Text.End(stretch.Text.Start(p)), stretch.Text.Start(q), "")]);
+        if (between.FirstOrDefault(e => e.Name.LocalName != "p" && !IsMark(e)) is { } other)
+            throw new NotSupportedException($"A w:{other.Name.LocalName} is not taken away as a tracked change.");
+        var written = new List<(XElement, IEnumerable<XElement>)>();
+        foreach (var e in between.Where(e => e.Name.LocalName == "p"))
+        {
+            if (OwnMark(e, tracking) && e.Descendants(e.Name.Namespace + "r").All(r => r.Ancestors().FirstOrDefault(IsRevision) is { Name.LocalName: "ins" } ins && tracking.Own(ins)))
+            {
+                written.Add((e, []));
+                continue;
+            }
+            foreach (var run in e.Descendants(e.Name.Namespace + "r").Where(r => ParagraphOf(r) == e).ToList())
+                Deleted(run, tracking);
+            if (!MarkDeleted(e))
+                Marked(e, "del", tracking);
+            written.Add((e, [e]));
+        }
+        return stretch.Written(written);
+    }
+
+    /// <summary>
     /// A paragraph joined with the paragraph after it, as Delete at its end joins them (measured in Word 365 by COM,
     /// Delete, Backspace and Range.Delete alike): the first keeps its properties (its style, alignment, spacing, indents,
     /// list), the second's content goes after its own, and it takes the second's mark (the mark's run properties) and the

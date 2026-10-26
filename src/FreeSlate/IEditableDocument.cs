@@ -50,6 +50,14 @@ public interface IEditableDocument : IDisposable
     int? After(int paragraph);
 
     /// <summary>
+    /// The paragraph just after or before a paragraph in reading order: in a Word document on over the tables of its body,
+    /// cell or text box, their cells row by row; null at the end of its body or text box (on slides: of its shape or
+    /// table cell, as After and Before).
+    /// </summary>
+    int? Next(int paragraph);
+    int? Previous(int paragraph);
+
+    /// <summary>
     /// Replaces so many characters of a paragraph's text from a place by other text, its tabs ("\t") and line breaks
     /// ("\v") as the document's own, as the Tab key and Shift+Enter put them in; it holds no paragraph breaks.
     /// </summary>
@@ -67,8 +75,22 @@ public interface IEditableDocument : IDisposable
     /// <summary>Joins a paragraph with the next, as Delete at its end does; returns the id of the joined paragraph.</summary>
     int Join(int paragraph);
 
+    /// <summary>
+    /// How deleting a selection over paragraphs treats their marks, as the application does (measured in Word 365 and
+    /// PowerPoint 365 by COM, WordBasic.EditClear and TextRange.Delete): in Word (true) the paragraph the selection begins
+    /// inside keeps its mark, it and the paragraph it ends in staying apart, and typing over a selection that ends where a
+    /// paragraph begins keeps the mark before it; in PowerPoint (false) they are joined.
+    /// </summary>
+    bool KeepsMarks { get; }
+
     /// <summary>Takes a paragraph away with all its content.</summary>
     void Remove(int paragraph);
+
+    /// <summary>
+    /// Takes away what stands between two paragraphs of one body, table cell, text box or shape, the first before the
+    /// second: the paragraphs and whole tables there, as deleting a selection over them does.
+    /// </summary>
+    void RemoveBetween(int first, int last);
 
     /// <summary>Gives a stretch of a paragraph's text character formatting, and a paragraph paragraph formatting.</summary>
     void Format(int paragraph, int offset, int length, TextFormatting format);

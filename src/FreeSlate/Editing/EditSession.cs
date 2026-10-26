@@ -11,7 +11,10 @@ public readonly record struct TextPlace(int Paragraph, int Offset);
 /// the cursor stands in or to the text typed next; text copied is the selection's, text pasted replaces it. Each
 /// handling is one step to undo and do again, the changes it made in the document undone together; typing on from where
 /// the last typing ended adds to it. A handling the document cannot make (see IEditableDocument) leaves it as it was and
-/// throws NotSupportedException. A selection reaches over paragraphs of one body, cell, text box or shape.
+/// throws NotSupportedException. A selection reaches over the paragraphs of a story in reading order (a Word document's
+/// body over its tables too); deleting it or typing over it takes the whole tables in it away where its ends stand in
+/// one body, cell or text box (as Word does), and is refused where they do not (where Word takes rows away or empties
+/// cells).
 /// </summary>
 public sealed class EditSession(IEditableDocument document)
 {
@@ -47,7 +50,7 @@ public sealed class EditSession(IEditableDocument document)
     /// paragraph texts' U+FFFC) left out; empty where nothing is selected.
     /// </summary>
     public string Selected =>
-        Selecting ? string.Join("\r\n", Stretches().Select(s => document.Text(s.Paragraph)[s.From..s.To].Replace("￼", "", StringComparison.Ordinal))) : "";
+        Selecting ? string.Join("\r\n", Stretches().Select(s => document.Text(s.Paragraph)[s.From..s.To].Replace("\uFFFC", "", StringComparison.Ordinal))) : "";
 
     /// <summary>Whether the document differs from how it was saved or opened.</summary>
     public bool Changed => saved != done.Count;
@@ -77,17 +80,17 @@ public sealed class EditSession(IEditableDocument document)
     }
 
     /// <summary>
-    /// Selects all the text of the body, table cell, text box or shape the cursor stands in, as far as paragraphs follow one
-    /// another there (a table between them ends it).
+    /// Selects all the text of the story the cursor stands in, in reading order (see IEditableDocument.Next): a Word
+    /// document's body with its tables, from a table's cell too (as Word's Ctrl+A), a text box's text, a shape's.
     /// </summary>
     public void SelectAll()
     {
         if (!document.Contains(Caret.Paragraph))
             return;
         var (first, last) = (Caret.Paragraph, Caret.Paragraph);
-        while (document.Before(first) is { } before)
+        while (document.Previous(first) is { } before)
             first = before;
-        while (document.After(last) is { } after)
+        while (document.Next(last) is { } after)
             last = after;
         Place(new TextPlace(first, 0));
         Place(new TextPlace(last, document.Text(last).Length), extend: true);
@@ -106,14 +109,14 @@ public sealed class EditSession(IEditableDocument document)
     /// </summary>
     public void Paste(string text) =>
         Put(new string([.. text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\f', '\n')
-            .Where(c => (!char.IsControl(c) || c is '\n' or '\r' or '\t' or '\v') && c != '￼')]), typing: false);
+            .Where(c => (!char.IsControl(c) || c is '\n' or '\r' or '\t' or '\v') && c != '\uFFFC')]), typing: false);
 
     void Put(string text, bool typing)
     {
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
         Act(typing && lines.Length == 1 && !Selecting, () =>
         {
-            var at = DeleteSelection();
+            var at = DeleteSelection(typing: true);
             for (var k = 0; k < lines.Length; k++)
             {
                 if (k > 0)
@@ -140,7 +143,7 @@ public sealed class EditSession(IEditableDocument document)
     public void Backspace() => Act(false, () =>
     {
         if (Selecting)
-            return Same(DeleteSelection());
+            return Same(DeleteSelection(typing: false));
         var (paragraph, offset) = Caret;
         if (offset > 0)
         {
@@ -159,7 +162,7 @@ public sealed class EditSession(IEditableDocument document)
     public void Delete() => Act(false, () =>
     {
         if (Selecting)
-            return Same(DeleteSelection());
+            return Same(DeleteSelection(typing: false));
         var (paragraph, offset) = Caret;
         var text = document.Text(paragraph);
         if (offset < text.Length)
@@ -304,26 +307,66 @@ public sealed class EditSession(IEditableDocument document)
         placed = !typing;
     }
 
-    /// <summary>Takes the selection away (in a handling); returns where the cursor then stands.</summary>
-    TextPlace DeleteSelection()
+    /// <summary>
+    /// Takes the selection away (in a handling), as the application deletes it or types over it (see
+    /// IEditableDocument.KeepsMarks; measured in Word 365 and PowerPoint 365 by COM): its text in the paragraph it begins
+    /// in, the paragraphs and whole tables between and the text of the paragraph it ends in, the two then joined (in the
+    /// first's format, an empty first going away), a space between them where it began at the first's end and both texts
+    /// meet without one. Where the document keeps marks, deleting keeps a first paragraph the selection began inside
+    /// apart from the last (but where a table stands just before the last), and typing over a selection that ends where
+    /// a paragraph begins keeps the mark before it. Returns where the cursor then stands.
+    /// </summary>
+    TextPlace DeleteSelection(bool typing)
     {
         if (!Selecting)
             return Caret;
         var (start, end, between) = Ordered();
+        // (An empty last paragraph is not where the selection begins one: it ends at its end too, as Ctrl+A does.)
+        if (typing && document.KeepsMarks && start.Paragraph != end.Paragraph && end.Offset == 0 && document.Text(end.Paragraph).Length > 0
+            && document.Before(end.Paragraph) is { } kept)
+        {
+            end = new TextPlace(kept, document.Text(kept).Length);
+            between = kept == start.Paragraph ? [] : between[..^1];
+        }
         if (start.Paragraph == end.Paragraph)
         {
             document.Replace(start.Paragraph, start.Offset, end.Offset - start.Offset, "");
             return start;
         }
+        // Its ends of one body, cell or text box: where they are not, Word takes rows away or empties cells.
+        if (between.Count == 0 && document.After(start.Paragraph) != end.Paragraph)
+            throw new NotSupportedException("The selection's ends are not of one body, cell or text box (one stands in a table the other does not).");
+        var length = document.Text(start.Paragraph).Length;
+        var apart = !typing && document.KeepsMarks && start.Offset > 0 && start.Offset < length && !(end.Offset == 0 && document.Before(end.Paragraph) == null);
+        var spaced = !typing && start.Offset == length && length > 0 && (end.Offset > 0 || between.Count > 0);
         if (end.Offset > 0)
             document.Replace(end.Paragraph, 0, end.Offset, "");
-        for (var k = between.Count - 1; k >= 0; k--)
-            document.Remove(between[k]);
-        var length = document.Text(start.Paragraph).Length;
-        if (length > start.Offset)
-            document.Replace(start.Paragraph, start.Offset, length - start.Offset, "");
-        var joined = document.Join(start.Paragraph);
-        return new TextPlace(joined, joined == start.Paragraph ? start.Offset : 0);
+        // What stands between them, whole tables too (the document refuses where the ends are not of one body or cell).
+        if (between.Count > 0)
+            document.RemoveBetween(start.Paragraph, end.Paragraph);
+        // The last paragraph now follows the first (by place: read anew, it may have taken another id).
+        var rest = document.After(start.Paragraph) is { } last ? document.Text(last) : "";
+        TextPlace at;
+        if (!document.KeepsMarks && length > 0)
+        {
+            // PowerPoint joins the rest into the first paragraph, which keeps its format where all its text goes too.
+            var into = document.Join(start.Paragraph);
+            if (length > start.Offset)
+                document.Replace(into, start.Offset, length - start.Offset, "");
+            at = new TextPlace(into, start.Offset);
+        }
+        else
+        {
+            if (length > start.Offset)
+                document.Replace(start.Paragraph, start.Offset, length - start.Offset, "");
+            if (apart)
+                return start;
+            var joined = document.Join(start.Paragraph);
+            at = new TextPlace(joined, joined == start.Paragraph ? start.Offset : 0);
+        }
+        if (spaced && rest.Length > 0 && !char.IsWhiteSpace(rest[0]) && at.Offset > 0 && !char.IsWhiteSpace(document.Text(at.Paragraph)[at.Offset - 1]))
+            document.Replace(at.Paragraph, at.Offset, 0, " ");
+        return at;
     }
 
     /// <summary>The selection's paragraphs with the stretch of each it covers, or the cursor's paragraph where nothing is selected.</summary>
@@ -337,22 +380,32 @@ public sealed class EditSession(IEditableDocument document)
         return [(start.Paragraph, start.Offset, document.Text(start.Paragraph).Length), .. between.Select(p => (p, 0, document.Text(p).Length)), (end.Paragraph, 0, end.Offset)];
     }
 
-    /// <summary>The selection's ends in reading order and the paragraphs between them.</summary>
+    /// <summary>
+    /// The selection's ends in reading order (see IEditableDocument.Next) and the paragraphs between them: walked from
+    /// both ends at once, so that a selection made backwards is not walked to the story's end first.
+    /// </summary>
     (TextPlace Start, TextPlace End, List<int> Between) Ordered()
     {
         if (Caret.Paragraph == Anchor.Paragraph)
             return Caret.Offset <= Anchor.Offset ? (Caret, Anchor, []) : (Anchor, Caret, []);
-        foreach (var (from, to) in new[] { (Anchor, Caret), (Caret, Anchor) })
+        var (fromAnchor, fromCaret) = (new List<int>(), new List<int>());
+        int? a = Anchor.Paragraph, c = Caret.Paragraph;
+        while (a != null || c != null)
         {
-            var between = new List<int>();
-            for (var p = document.After(from.Paragraph); p != null; p = document.After(p.Value))
+            if (a != null && (a = document.Next(a.Value)) is { } nextA)
             {
-                if (p == to.Paragraph)
-                    return (from, to, between);
-                between.Add(p.Value);
+                if (nextA == Caret.Paragraph)
+                    return (Anchor, Caret, fromAnchor);
+                fromAnchor.Add(nextA);
+            }
+            if (c != null && (c = document.Next(c.Value)) is { } nextC)
+            {
+                if (nextC == Anchor.Paragraph)
+                    return (Caret, Anchor, fromCaret);
+                fromCaret.Add(nextC);
             }
         }
-        throw new NotSupportedException("The selection reaches over its body, table cell, text box or shape.");
+        throw new NotSupportedException("The selection's ends are not of one story (the body, a text box, a shape).");
     }
 
     static (TextPlace, TextPlace) Same(TextPlace place) => (place, place);

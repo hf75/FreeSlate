@@ -264,6 +264,28 @@ public sealed partial class PresentationDocument : IEditableDocument
             return ([], body);
         });
 
+    /// <summary>Deleting a selection over paragraphs joins them, as PowerPoint does (see IEditableDocument.KeepsMarks).</summary>
+    public bool KeepsMarks => false;
+
+    /// <summary>The paragraph after or before a paragraph in reading order: in its shape's or table cell's text, as After and Before.</summary>
+    public int? Next(int paragraph) => After(paragraph);
+    public int? Previous(int paragraph) => Before(paragraph);
+
+    /// <summary>Takes the paragraphs between two paragraphs of one shape's (or table cell's) text away.</summary>
+    /// <exception cref="NotSupportedException">The two are not of one text body, the first before the second; nothing changes.</exception>
+    public void RemoveBetween(int first, int last)
+    {
+        var between = new List<int>();
+        for (var p = After(first); p != last; p = After(p.Value))
+        {
+            if (p == null)
+                throw new NotSupportedException("The paragraphs are not of one text body, the first before the second.");
+            between.Add(p.Value);
+        }
+        foreach (var p in between)
+            Remove(p);
+    }
+
     /// <summary>The shapes at the top of a slide's tree (a group as one), by the slide's id, as the presentation reads now.</summary>
     public IReadOnlyList<DeckShape> Shapes(uint slide)
     {

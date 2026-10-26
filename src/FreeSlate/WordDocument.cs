@@ -246,6 +246,91 @@ public sealed class WordDocument : IEditableDocument
     public int? Before(int paragraph) => Beside(paragraph, -1);
     public int? After(int paragraph) => Beside(paragraph, 1);
 
+    /// <summary>Deleting a selection over paragraphs keeps the mark of the one it begins inside, as Word does (see IEditableDocument.KeepsMarks).</summary>
+    public bool KeepsMarks => true;
+
+    /// <summary>
+    /// The paragraph after or before a paragraph in reading order: on over the tables of its body, cell or text box, their
+    /// cells row by row (a table's in a cell too); a text box is a story of its own, its paragraphs not among the body's.
+    /// Null at the end of the body or of the text box.
+    /// </summary>
+    public int? Next(int paragraph) => Reading(paragraph, 1);
+    public int? Previous(int paragraph) => Reading(paragraph, -1);
+
+    int? Reading(int paragraph, int step)
+    {
+        var (p, top) = Find(paragraph);
+        var (story, at) = StoryOf(top, p);
+        var flat = Flat(story[at]);
+        var k = flat.FindIndex(f => ReferenceEquals(f, p)) + step;
+        while (k < 0 || k >= flat.Count)
+        {
+            at += step;
+            if (at < 0 || at >= story.Count)
+                return null;
+            flat = Flat(story[at]);
+            k = step > 0 ? 0 : flat.Count - 1;
+        }
+        return flat[k].Id;
+    }
+
+    /// <summary>
+    /// The story a paragraph stands in, the body's blocks or the blocks of the text box nearest around it, and the place
+    /// there of the block that holds it (itself, or a table it stands in).
+    /// </summary>
+    (List<Block> Story, int At) StoryOf(Block top, ParagraphBlock paragraph)
+    {
+        (List<Block>, int)? found = null;
+        bool Search(Block block, List<Block> story, int at)
+        {
+            if (ReferenceEquals(block, paragraph))
+            {
+                found = (story, at);
+                return true;
+            }
+            foreach (var list in ModelReader.Inner(block))
+            {
+                for (var k = 0; k < list.Count; k++)
+                {
+                    // A paragraph's lists are its text boxes, stories of their own; a table's its cells, in its story.
+                    if (block is ParagraphBlock ? Search(list[k], list, k) : Search(list[k], story, at))
+                        return true;
+                }
+            }
+            return false;
+        }
+        return Search(top, blocks, IndexOf(top, walking: true)) ? found!.Value : throw new InvalidOperationException("The paragraph is not in the block.");
+    }
+
+    /// <summary>The paragraphs of a block in reading order, a table's cell by cell, row by row, not those of text boxes (see flat).</summary>
+    List<ParagraphBlock> Flat(Block block)
+    {
+        if (block is ParagraphBlock paragraph)
+            return [paragraph];
+        if (flat is var (of, list) && ReferenceEquals(of, block))
+            return list;
+        var all = new List<ParagraphBlock>();
+        void Add(Block inner)
+        {
+            if (inner is ParagraphBlock p)
+                all.Add(p);
+            else
+            {
+                foreach (var cell in ModelReader.Inner(inner))
+                {
+                    foreach (var b in cell)
+                        Add(b);
+                }
+            }
+        }
+        Add(block);
+        flat = (block, all);
+        return all;
+    }
+
+    /// <summary>The paragraphs of the table walked last (see Flat), as a walk over a long table asks for them again and again.</summary>
+    (Block Of, List<ParagraphBlock> Paragraphs)? flat;
+
     int? Beside(int paragraph, int step)
     {
         var (p, top) = Find(paragraph);
@@ -378,6 +463,29 @@ public sealed class WordDocument : IEditableDocument
     {
         var (p, top) = Find(paragraph);
         Change(top, top, (stretch, tracking) => TextEdits.Remove(stretch, p, tracking));
+    }
+
+    /// <summary>
+    /// Takes away what stands between two paragraphs of one body, table cell or text box (see TextEdits.RemoveBetween):
+    /// paragraphs, whole tables and what marks stand between them.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// The two are not of one body, cell or text box, the first before the second, or a field over paragraphs would lose
+    /// its beginning or end; nothing changes.
+    /// </exception>
+    public void RemoveBetween(int first, int last)
+    {
+        var (p, top) = Find(first);
+        var (q, lastTop) = Find(last);
+        var (list, i) = ListOf(top, p, walking: true) ?? throw new ArgumentException($"The document's body has no paragraph {first}.", nameof(first));
+        var j = !ReferenceEquals(list, blocks) ? list.FindIndex(b => ReferenceEquals(b, q)) : ReferenceEquals(lastTop, q) ? IndexOf(q, walking: true) : -1;
+        if (j <= i)
+            throw new NotSupportedException("The paragraphs are not of one body, cell or text box, the first before the second.");
+        // The blocks read anew take the ids of the body without those taken away: by their text alone, a paragraph taken
+        // away might give its id to one alike that stays (two empty ones).
+        if (j > i + 1)
+            Change(ReferenceEquals(list, blocks) ? p : top, ReferenceEquals(list, blocks) ? q : top, (stretch, tracking) => TextEdits.RemoveBetween(stretch, p, q, tracking),
+                ReferenceEquals(list, blocks) && Author == null ? [.. blocks.Take(i + 1), .. blocks.Skip(j)] : null);
     }
 
     /// <summary>Undoes the last change not undone; false where there is none.</summary>
@@ -591,7 +699,7 @@ public sealed class WordDocument : IEditableDocument
     /// text, which the document then reads (see Apply), a version of its own. Returns where an element of the new text
     /// stands in it.
     /// </summary>
-    Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit)
+    Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, IReadOnlyList<Block>? like = null)
     {
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
         var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
@@ -603,7 +711,7 @@ public sealed class WordDocument : IEditableDocument
         var changed = islands.RemoveRange(first, after - first);
         if (text != wholeText.Text[start..end])
             changed = changed.Insert(first, new Island(start, end, text));
-        var where = Apply(start, end, text, old, null, changed, null);
+        var where = Apply(start, end, text, old, null, changed, like);
         versions.RemoveRange(version + 1, versions.Count - version - 1);
         versions.Add(new Version(whole, islands, kept));
         version++;
