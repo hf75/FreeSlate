@@ -23,8 +23,14 @@ public sealed class FontData : IDisposable
     readonly Blob blob;
     readonly Face face;
     readonly Font font;
+    /// <summary>
+    /// The widths of texts measured (see Width, LayoutWidth), so many of each kind at most: an editor measures new texts
+    /// with every keystroke, which would stay otherwise. How many were added since they were cleared last.
+    /// </summary>
     readonly ConcurrentDictionary<(string, bool), double> widths = new();
     readonly ConcurrentDictionary<(string, double, bool, double), double> layoutWidths = new();
+    int widthsAdded, layoutWidthsAdded;
+    const int WidthsCapacity = 1 << 13;
     readonly Dictionary<uint, short>? kerningPairs;
     readonly ConcurrentDictionary<uint, string> outlines = new();
 
@@ -405,7 +411,21 @@ public sealed class FontData : IDisposable
     {
         if (text.Length == 0)
             return 0;
-        return widths.GetOrAdd((text, kerning), key => Advances(key.Item1, key.Item2).Sum());
+        return Remembered(widths, ref widthsAdded, (text, kerning), key => Advances(key.Item1, key.Item2).Sum());
+    }
+
+    /// <summary>A width measured before, or measured now and kept (all cleared where so many were added, see WidthsCapacity).</summary>
+    static double Remembered<TKey>(ConcurrentDictionary<TKey, double> cache, ref int added, TKey key, Func<TKey, double> measure) where TKey : notnull
+    {
+        if (cache.TryGetValue(key, out var width))
+            return width;
+        width = measure(key);
+        if (cache.TryAdd(key, width) && Interlocked.Increment(ref added) > WidthsCapacity)
+        {
+            cache.Clear();
+            Interlocked.Exchange(ref added, 0);
+        }
+        return width;
     }
 
     /// <summary>Advance of every UTF-16 code unit of <paramref name="text"/> in em; a cluster's advance goes to its first unit.</summary>
@@ -431,7 +451,7 @@ public sealed class FontData : IDisposable
 
     /// <summary>The width of <paramref name="text"/> in points from <see cref="LayoutAdvances"/>.</summary>
     public double LayoutWidth(string text, double size, bool kerning, double letterSpacing = 0) =>
-        text.Length == 0 ? 0 : layoutWidths.GetOrAdd((text, size, kerning, letterSpacing), key => LayoutAdvances(key.Item1, key.Item2, key.Item3, key.Item4).Sum());
+        text.Length == 0 ? 0 : Remembered(layoutWidths, ref layoutWidthsAdded, (text, size, kerning, letterSpacing), key => LayoutAdvances(key.Item1, key.Item2, key.Item3, key.Item4).Sum());
 
     /// <summary>A length in points rounded to PowerPoint's master units (1/576 inch = 1/8 point).</summary>
     public static double MasterUnits(double points) => Math.Floor(points * 8 + 0.5) / 8;

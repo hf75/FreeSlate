@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -39,6 +40,12 @@ public sealed class WordDocument : IEditableDocument
     List<Block> blocks = [];
     readonly Dictionary<int, (ParagraphBlock Paragraph, Block Top)> paragraphs = [];
 
+    /// <summary>
+    /// The body's blocks as a version keeps them (see Version): the same as blocks, in a list that shares what a change
+    /// left as it was with the list before it, so that each version costs what its change read anew, not all the blocks.
+    /// </summary>
+    ImmutableList<Block> kept = [];
+
     /// <summary>The blocks of the body the last change read anew (all of them where it read the document whole).</summary>
     List<Block> fresh = [];
 
@@ -51,8 +58,8 @@ public sealed class WordDocument : IEditableDocument
     XElement? body;
     string head = "", tail = "";
 
-    /// <summary>The stretches of the body changed since it was read whole, in order (see Island).</summary>
-    IReadOnlyList<Island> islands = [];
+    /// <summary>The stretches of the body changed since it was read whole, in order (see Island); the versions share what they have alike.</summary>
+    ImmutableList<Island> islands = [];
 
     /// <summary>The stretches of the body read anew since (see Piece), in order, and the piece each child of the body read anew was read from.</summary>
     readonly List<Piece> pieces = [];
@@ -92,7 +99,50 @@ public sealed class WordDocument : IEditableDocument
     double budget;
 
     /// <summary>A stretch of the main part's text as read whole (Start to End) and the text that stands there now.</summary>
-    sealed record Island(int Start, int End, string Text);
+    sealed record Island(int Start, int End, string Text)
+    {
+        /// <summary>The first of the islands (in order) a test holds for that holds for all after it too; their count where it holds for none.</summary>
+        public static int First(ImmutableList<Island> islands, Func<Island, bool> holds)
+        {
+            var (low, high) = (0, islands.Count);
+            while (low < high)
+            {
+                var middle = (low + high) / 2;
+                if (holds(islands[middle]))
+                    high = middle;
+                else
+                    low = middle + 1;
+            }
+            return low;
+        }
+
+        /// <summary>The stretches two versions changed otherwise: those of either the other has not, alike in place and text.</summary>
+        public static List<Island> Differing(ImmutableList<Island> one, ImmutableList<Island> other)
+        {
+            var differ = new List<Island>();
+            for (var (i, j) = (0, 0); i < one.Count || j < other.Count;)
+            {
+                var (a, b) = (i < one.Count ? one[i] : null, j < other.Count ? other[j] : null);
+                if (a != null && b != null && a.Start == b.Start)
+                {
+                    if (!a.Equals(b))
+                        differ.AddRange([a, b]);
+                    (i, j) = (i + 1, j + 1);
+                }
+                else if (a != null && (b == null || a.Start < b.Start))
+                {
+                    differ.Add(a);
+                    i++;
+                }
+                else
+                {
+                    differ.Add(b!);
+                    j++;
+                }
+            }
+            return differ;
+        }
+    }
 
     /// <summary>
     /// A stretch of the main part's text as read whole (Start to End) that the body read anew from Text: the children of
@@ -110,9 +160,9 @@ public sealed class WordDocument : IEditableDocument
 
     /// <summary>
     /// A version of the document: the main part's bytes it was read from whole, the stretches of its body changed since
-    /// and its body's blocks, whose ids the blocks read for it again take.
+    /// and its body's blocks (see kept), whose ids the blocks read for it again take.
     /// </summary>
-    sealed record Version(byte[] Whole, IReadOnlyList<Island> Islands, List<Block> Blocks);
+    sealed record Version(byte[] Whole, ImmutableList<Island> Islands, ImmutableList<Block> Blocks);
 
     WordDocument(OpcPackage package, FontLocator? fonts, CultureInfo culture, DateTime? printed, bool markup)
     {
@@ -540,12 +590,14 @@ public sealed class WordDocument : IEditableDocument
         var text = edit(stretch, tracking);
         if (tracking != null)
             changeId = tracking.NextId;
-        var changed = islands.Where(i => i.End <= start || i.Start >= end).ToList();
+        // The stretches changed before but those within this one, which takes their place where its text differs.
+        var (first, after) = (Island.First(islands, i => i.End > start), Island.First(islands, i => i.Start >= end));
+        var changed = islands.RemoveRange(first, after - first);
         if (text != wholeText.Text[start..end])
-            changed.Add(new Island(start, end, text));
-        var where = Apply(start, end, text, old, null, [.. changed.OrderBy(i => i.Start)], null);
+            changed = changed.Insert(first, new Island(start, end, text));
+        var where = Apply(start, end, text, old, null, changed, null);
         versions.RemoveRange(version + 1, versions.Count - version - 1);
-        versions.Add(new Version(whole, islands, blocks));
+        versions.Add(new Version(whole, islands, kept));
         version++;
         return where;
     }
@@ -567,7 +619,7 @@ public sealed class WordDocument : IEditableDocument
     void Go(int target)
     {
         var to = versions[target];
-        if (islands.Except(to.Islands).Concat(to.Islands.Except(islands)).ToList() is { Count: > 0 } differ)
+        if (Island.Differing(islands, to.Islands) is { Count: > 0 } differ)
         {
             var (old, before, start, end) = Covering(differ.Min(i => i.Start), differ.Max(i => i.End));
             var text = new StringBuilder();
@@ -580,7 +632,7 @@ public sealed class WordDocument : IEditableDocument
             text.Append(wholeText.Text, at, end - at);
             Apply(start, end, text.ToString(), old, before, to.Islands, to.Blocks);
         }
-        versions[target] = new Version(whole, islands, blocks);
+        versions[target] = new Version(whole, islands, kept);
         version = target;
     }
 
@@ -594,7 +646,7 @@ public sealed class WordDocument : IEditableDocument
     /// the document is read again whole (the main part's bytes with the stretches changed put in), the versions' stretches
     /// changed taken over (see Rebase). Returns where an element read from the text stands in it, or -1.
     /// </summary>
-    Func<XElement, int> Apply(int start, int end, string text, List<XElement> old, XElement? before, IReadOnlyList<Island> changed, IReadOnlyList<Block>? like)
+    Func<XElement, int> Apply(int start, int end, string text, List<XElement> old, XElement? before, ImmutableList<Island> changed, IReadOnlyList<Block>? like)
     {
         var was = blocks;
         var read = new PartText(head + text + tail);
@@ -698,7 +750,7 @@ public sealed class WordDocument : IEditableDocument
                         rebased[k] = new Island(from, start, wholeText.Text[from..start] + mine);
                 }
             }
-            versions[v] = versions[v] with { Whole = whole, Islands = rebased };
+            versions[v] = versions[v] with { Whole = whole, Islands = ImmutableList.CreateRange(rebased) };
         }
     }
 
@@ -934,7 +986,7 @@ public sealed class WordDocument : IEditableDocument
         Index();
         // The version the document opened as.
         if (versions.Count == 0)
-            versions.Add(new Version(whole, islands, blocks));
+            versions.Add(new Version(whole, islands, kept));
     }
 
     /// <summary>
@@ -997,34 +1049,93 @@ public sealed class WordDocument : IEditableDocument
         }
     }
 
-    /// <summary>The paragraphs of the body by id, each with the block of the body it stands in.</summary>
+    /// <summary>The paragraphs of the body by id, each with the block of the body it stands in, and the blocks as the versions keep them.</summary>
     void Index()
     {
         paragraphs.Clear();
         foreach (var block in blocks)
             Collect(block, block);
         fresh = blocks;
+        kept = ImmutableList.CreateRange(blocks);
     }
 
     /// <summary>
-    /// The paragraphs by id after some blocks of the body were read anew, which stand between the same blocks at the
-    /// beginning and the end: those of the blocks gone forgotten, those of the new ones known.
+    /// After some blocks of the body were read anew (see Differing): the paragraphs by id, those of the blocks gone
+    /// forgotten (by the layout too, which is not asked to lay them out again), those of the new ones known; and the
+    /// blocks as the versions keep them, the new ones in place of those gone.
     /// </summary>
     void Reindex(List<Block> before)
     {
         var was = CollectionsMarshal.AsSpan(before);
         var now = CollectionsMarshal.AsSpan(blocks);
+        var differing = Differing(was, now);
+        var gone = new HashSet<ParagraphBlock>(ReferenceEqualityComparer.Instance);
+        foreach (var (at, count, _, _) in differing)
+        {
+            foreach (var block in was.Slice(at, count))
+                Forget(block, gone);
+        }
+        // The stretches from the last: the places of those before it stay as they were.
+        var list = kept;
+        foreach (var (at, count, from, length) in differing)
+        {
+            if (count == length)
+            {
+                for (var k = 0; k < count; k++)
+                    list = list.SetItem(at + k, now[from + k]);
+            }
+            else
+                list = list.RemoveRange(at, count).InsertRange(at, now.Slice(from, length).ToArray());
+        }
+        var read = new List<Block>();
+        for (var k = differing.Count - 1; k >= 0; k--)
+        {
+            foreach (var block in now.Slice(differing[k].From, differing[k].Length))
+            {
+                Collect(block, block);
+                read.Add(block);
+            }
+        }
+        (kept, fresh) = (list, read);
+        layout?.Forget(gone);
+    }
+
+    /// <summary>
+    /// Where the body's blocks after a change differ from those before it: stretches of blocks gone (their place and count
+    /// before) with the blocks read in their place (their place and count now), from the last to the first. The blocks
+    /// stand as they stood, the same objects, where the change did not read them anew: before the stretch it changed, and
+    /// after it but for blocks read anew one for one (paragraphs whose numbers it changed), so many places on as the blocks
+    /// it read outnumber those gone.
+    /// </summary>
+    static List<(int At, int Count, int From, int Length)> Differing(ReadOnlySpan<Block> was, ReadOnlySpan<Block> now)
+    {
         var head = 0;
         while (head < was.Length && head < now.Length && ReferenceEquals(was[head], now[head]))
             head++;
-        var tail = 0;
-        while (tail < was.Length - head && tail < now.Length - head && ReferenceEquals(was[^(tail + 1)], now[^(tail + 1)]))
-            tail++;
-        foreach (var block in was[head..^tail])
-            Forget(block);
-        foreach (var block in now[head..^tail])
-            Collect(block, block);
-        fresh = [.. now[head..^tail]];
+        var differing = new List<(int At, int Count, int From, int Length)>();
+        // From the end, the blocks before and after side by side, until those of one reach the head.
+        var (i, j) = (was.Length, now.Length);
+        while (i > head && j > head)
+        {
+            if (ReferenceEquals(was[i - 1], now[j - 1]))
+            {
+                (i, j) = (i - 1, j - 1);
+                continue;
+            }
+            var (endI, endJ) = (i, j);
+            while (i > head && j > head && !ReferenceEquals(was[i - 1], now[j - 1]))
+                (i, j) = (i - 1, j - 1);
+            differing.Add((i, endI - i, j, endJ - j));
+        }
+        // What the one has more than the other goes with the stretch that begins there (the change's own).
+        if (i > head || j > head)
+        {
+            if (differing.Count > 0 && differing[^1].At == i && differing[^1].From == j)
+                differing[^1] = (head, differing[^1].At + differing[^1].Count - head, head, differing[^1].From + differing[^1].Length - head);
+            else
+                differing.Add((head, i - head, head, j - head));
+        }
+        return differing;
     }
 
     void Collect(Block block, Block top)
@@ -1038,14 +1149,19 @@ public sealed class WordDocument : IEditableDocument
         }
     }
 
-    void Forget(Block block)
+    /// <summary>The paragraphs of a block gone (itself, those of its tables and text boxes) forgotten by id, and added to those gone.</summary>
+    void Forget(Block block, HashSet<ParagraphBlock> gone)
     {
-        if (block is ParagraphBlock paragraph && paragraphs.TryGetValue(paragraph.Id, out var known) && ReferenceEquals(known.Paragraph, paragraph))
-            paragraphs.Remove(paragraph.Id);
+        if (block is ParagraphBlock paragraph)
+        {
+            gone.Add(paragraph);
+            if (paragraphs.TryGetValue(paragraph.Id, out var known) && ReferenceEquals(known.Paragraph, paragraph))
+                paragraphs.Remove(paragraph.Id);
+        }
         foreach (var list in ModelReader.Inner(block))
         {
             foreach (var inner in list)
-                Forget(inner);
+                Forget(inner, gone);
         }
     }
 }

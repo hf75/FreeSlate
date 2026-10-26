@@ -158,6 +158,8 @@ public sealed partial class ModelReader
         List<Block>? Undone()
         {
             putBack();
+            foreach (var child in children)
+                sectionOf.Remove(child);
             unclosed.Remove(bodyElement);
             if (stacked)
                 context.Changed(bodyElement.Document!);
@@ -251,6 +253,9 @@ public sealed partial class ModelReader
             numberSteps[context.MainPart] = [.. all.Select((s, k) => (s.Step, answers[k]))];
         foreach (var e in old.Concat(leading).Concat(trailing))
             bodyPoints.Remove(e);
+        // The old children are gone for good: a version that has them again reads them from its text.
+        foreach (var e in old)
+            sectionOf.Remove(e);
         for (var e = shift != 0 ? next : null; e != null; e = After(e))
         {
             if (bodyPoints.TryGetValue(e, out var point))

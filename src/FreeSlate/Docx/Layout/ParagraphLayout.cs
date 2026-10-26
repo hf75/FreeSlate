@@ -1072,6 +1072,26 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     const int LaidCapacity = 4096;
 
     /// <summary>
+    /// Forgets the lines of paragraphs an edit took out of the document (read anew in their place): they are not asked
+    /// for again, and typing on would fill the paragraphs laid out last with them.
+    /// </summary>
+    public void Forget(IReadOnlySet<ParagraphBlock> paragraphs)
+    {
+        if (paragraphs.Count == 0)
+            return;
+        for (var node = laidOrder.First; node != null;)
+        {
+            var next = node.Next;
+            if (paragraphs.Contains(node.Value.Key.Paragraph))
+            {
+                laidOrder.Remove(node);
+                laidParagraphs.Remove(node.Value.Key);
+            }
+            node = next;
+        }
+    }
+
+    /// <summary>
     /// What a paragraph's lines are laid out from: the paragraph (the block itself), the width, the settings without what
     /// they ask of the run laying them out, and what that answered: whether a page break before the paragraph goes
     /// unseen, how wide the column is.
