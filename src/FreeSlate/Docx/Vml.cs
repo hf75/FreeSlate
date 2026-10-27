@@ -86,7 +86,7 @@ public static class Vml
     public static readonly XName LineReachBox = XNamespace.Get("urn:freeslate:vml") + "lineReach";
 
     /// <summary>A converted line's VML miter limit (v:stroke miterlimit), where it has one (see LineReachBox).</summary>
-    static readonly XName MiterLimit = XNamespace.Get("urn:freeslate:vml") + "miterLimit";
+    internal static readonly XName MiterLimit = XNamespace.Get("urn:freeslate:vml") + "miterLimit";
 
     /// <summary>A shape's line beyond its box (see LineReachBox), or null.</summary>
     public static (double L, double T, double R, double B)? LineReach(XElement anchor) =>
@@ -650,7 +650,7 @@ public static class Vml
     /// The points a line of half width <paramref name="half"/> along an outline reaches as Word counts them (see
     /// LineReachBox), each given to <paramref name="add"/>; false where the outline has fewer than two points.
     /// </summary>
-    static bool LineCorners(IEnumerable<(double X, double Y)> outline, bool closed, double half, double limit, Action<double, double> add)
+    internal static bool LineCorners(IEnumerable<(double X, double Y)> outline, bool closed, double half, double limit, Action<double, double> add)
     {
         static (double X, double Y) Unit((double X, double Y) from, (double X, double Y) to)
         {

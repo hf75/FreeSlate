@@ -97,6 +97,27 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// </summary>
     static readonly XName WordArtInk = XNamespace.Get("urn:freeslate:wordart") + "ink";
 
+    /// <summary>Plain VML WordArt's text, its text path's style and its outline (a:ln), kept on its shape for its placing.</summary>
+    sealed record OutlinedArt(string Text, string? Style, XElement Line);
+
+    /// <summary>
+    /// How far an outlined plain WordArt's line reaches left of its ink in a shape of <paramref name="width"/> by
+    /// <paramref name="height"/> pt, miters included, rounded up to whole pixels of 0.75 pt, the line at least 0.75 pt.
+    /// </summary>
+    static double OutlineReach(OutlinedArt art, double width, double height)
+    {
+        if (PlainWordArt(art.Text, art.Style, false, width, height) is not { } plain)
+            return 0;
+        var line = Math.Max(0.75, ((double?)art.Line.Attribute("w") ?? 9525) / 12700);
+        var limit = 2 * ((double?)art.Line.Attribute(Vml.MiterLimit) ?? 8);
+        var ink = plain.Contours.SelectMany(c => c).Min(p => p.X);
+        var reach = ink;
+        foreach (var contour in plain.Contours)
+            Vml.LineCorners(contour, true, line / 2, limit, (x, _) => reach = Math.Min(reach, x));
+        const double Pixel = 0.75;
+        return Math.Ceiling((ink - reach) / Pixel - 1e-6) * Pixel;
+    }
+
     PresentationContext? presentation;
     readonly Dictionary<string, SlideRenderer> renderers = new(StringComparer.OrdinalIgnoreCase);
     readonly SvgPaint paint = new() { PrintedPictures = true, ExactDashes = true };
@@ -414,6 +435,13 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             var rotation = ((double?)xfrm?.Attribute("rot") ?? 0) / 60000 * Math.PI / 180;
             var (left, top, right, bottom) = (w * shareLeft, h * shareTop, w * shareRight, h * shareBottom);
             var (dx, dy) = ((left - right) / 2 * ((string?)xfrm?.Attribute("flipH") is "1" or "true" ? -1 : 1), (top - bottom) / 2 * ((string?)xfrm?.Attribute("flipV") is "1" or "true" ? -1 : 1));
+            // An outlined one placed on the page stands as far right as its outline reaches left of its ink, miters
+            // included, in whole pixels of 0.75 pt, the line at least 0.75 pt wide (measured with docx/local/vwp-*:
+            // tdf138739's "xxxx" in Impact at the column's edge 1.5, 1.5, 2.25, 3.75 and 7.5 pt right with outlines of
+            // 0.25, 1, 1.5, 3 and 6 pt, as the miters of Impact's x reach 1.25 lines left; unoutlined, shadowed or
+            // not wrapped alike; in the text the outline's half counts instead, Vml.Room).
+            if (placed.Drawing.Name.LocalName == "anchor" && element.Annotation<OutlinedArt>() is { } outlined && OutlineReach(outlined, w, h) is var reach and > 0)
+                dx += reach * ((string?)xfrm?.Attribute("flipH") is "1" or "true" ? -1 : 1);
             var (cx, cy) = (placed.X + w / 2 + Math.Cos(rotation) * dx - Math.Sin(rotation) * dy, placed.Y + h / 2 + Math.Sin(rotation) * dx + Math.Cos(rotation) * dy);
             var (width, height) = (w - left - right, h - top - bottom);
             Place(element, cx - width / 2, cy - height / 2, width, height);
@@ -687,7 +715,11 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         var lines = art.Value.Split('\n');
         // The warp ignores insets (as PowerPoint's), so the shape itself shrinks to the ink once it is placed.
         if (warp == "textPlain" && art.Attribute("trim") == null && PlainWordArt(art.Value, (string?)art.Attribute("style"), false, 1, 1) is { } plain)
+        {
             shape.SetAttributeValue(WordArtInk, string.Join(" ", plain.Shares.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))));
+            if (outline != null)
+                shape.AddAnnotation(new OutlinedArt(art.Value, (string?)art.Attribute("style"), outline));
+        }
         var adjustments = art.Attributes().Where(a => a.Name.LocalName.StartsWith("adj", StringComparison.Ordinal)).ToList();
         if (art.Value.Length == 0)
             return;
@@ -762,7 +794,8 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// 0.2686 em up, its usWinDescent, not hhea's 0.25; vwa-calibri2, vwa-times2, vwa-segoe3: lines 1.221, 1.107 and
     /// 1.330 em apart; vwa-plain: trimmed ink filling the shape).
     /// </summary>
-    internal static (double[] Shares, List<(double X, double Y)> Outline)? PlainWordArt(string text, string? style, bool trim, double width, double height)
+    internal static (double[] Shares, List<(double X, double Y)> Outline, List<List<(double X, double Y)>> Contours)? PlainWordArt(string text, string? style,
+        bool trim, double width, double height)
     {
         var (family, bold, italic) = WordArtFont(style);
         var font = WordArtTypeface(family, bold, italic).Data;
@@ -773,7 +806,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         var widest = advances.Max();
         // The ink in em from the first line's origin, y up: its sides, the first line's top and the last line's bottom.
         var (inkLeft, inkRight, inkTop, inkBottom) = (double.MaxValue, double.MinValue, (double?)null, (double?)null);
-        var outline = new List<(double X, double Y)>();
+        var contours = new List<List<(double X, double Y)>>();
         for (var i = 0; i < shaped.Count; i++)
         {
             var pen = (widest - advances[i]) / 2;
@@ -788,12 +821,11 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
                 if (t > b && i == shaped.Count - 1)
                     inkBottom = Math.Min(inkBottom ?? double.MaxValue, b / units - (shaped.Count - 1) * pitch);
                 // The outline y down in em.
-                foreach (var contour in Pptx.TextWarp.Contours(font.Outline(g.Id), pen + g.OffsetX, i * pitch - g.OffsetY, 1 / units))
-                    outline.AddRange(contour);
+                contours.AddRange(Pptx.TextWarp.Contours(font.Outline(g.Id), pen + g.OffsetX, i * pitch - g.OffsetY, 1 / units));
                 pen += g.Advance;
             }
         }
-        if (widest <= 0 || inkRight <= inkLeft || outline.Count == 0)
+        if (widest <= 0 || inkRight <= inkLeft || contours.Count == 0)
             return null;
         var (top, bottom) = (inkTop ?? font.CapHeight, inkBottom ?? -(shaped.Count - 1) * pitch);
         var em = 1 / (1 + (lines.Length - 1) * pitch);
@@ -801,8 +833,9 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
             : [inkLeft / widest, (1 - descent - top) * em, (widest - inkRight) / widest, (descent + bottom + (lines.Length - 1) * pitch) * em];
         // The ink's rectangle in em (y down) onto the shape less its shares.
         var (x0, x1, y0, y1) = (shares[0] * width, width - shares[2] * width, shares[1] * height, height - shares[3] * height);
-        var placed = outline.Select(p => (x0 + (p.X - inkLeft) / (inkRight - inkLeft) * (x1 - x0), y0 + (p.Y + top) / Math.Max(1e-9, top - bottom) * (y1 - y0))).ToList();
-        return (shares, placed);
+        var placed = contours.Select(c => c.Select(p => (x0 + (p.X - inkLeft) / (inkRight - inkLeft) * (x1 - x0), y0 + (p.Y + top) / Math.Max(1e-9, top - bottom) * (y1 - y0))).ToList())
+            .ToList();
+        return (shares, placed.SelectMany(c => c).ToList(), placed);
     }
 
     /// <summary>

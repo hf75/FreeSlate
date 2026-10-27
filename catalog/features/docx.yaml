@@ -5163,7 +5163,10 @@ areas:
           the ink both ways, so the shape shrinks to the ink's share about its turned center (docx/local/vwa-f-*:
           "DRAFT" and "Typeface" in Arial, Segoe UI, Cambria, Verdana, Georgia and Arial Black, vwa-calibri,
           vwa-calibri2, vwa-times2, vwa-segoe3: within 0.1 pt; fdo77727 76.0 → 97.8 %); trimmed text (trim) fits its
-          ink to the shape (vwa-plain). Bent lines lie GDI's height apart too (extras-ooxmlexport/fdo74110: three lines
+          ink to the shape (vwa-plain). Placed on the page, an outlined one stands as far right as its outline reaches
+          left of its ink, miters included, in whole pixels, the line at least 0.75 pt (docx/local/vwp-*: "xxxx" in
+          Impact 1.5 to 7.5 pt right with outlines of 0.25 to 6 pt, exactly; extras-ooxmlexport/tdf138739 79.1 →
+          99.7 %). Bent lines lie GDI's height apart too (extras-ooxmlexport/fdo74110: three lines
           of textInflateTop 1.117 em apart, not PowerPoint's 1.2 em, 87.4 → 90.6 %; docx/local/vwa-inflate 84.7 →
           97.1 %). Trimmed text centres each line by its ink between shape-bound paths, spaces before and after it
           inked over their advance (docx/local/wtu-*: "11" and "rr" under "HHHHHH" with their ink's middle on the
