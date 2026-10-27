@@ -298,6 +298,9 @@ public static class SkiaScene
                         canvas.Restore();
                         break;
                     case "svg":
+                        // The style sheet shows what a box's SVG draws beyond it (.sp>svg, overflow visible).
+                        if (element.Parent is { Name.LocalName: "div" } box && (box.Attribute("class")?.Value.Split(' ').Contains("sp") ?? false))
+                            element.SetAttributeValue("overflow", "visible");
                         using (var picture = SvgDrawing.Fragment(element.ToString(System.Xml.Linq.SaveOptions.DisableFormatting), Definition, OnPixels, Typefaces))
                         {
                             if (picture != null)
@@ -513,8 +516,9 @@ public static class SkiaScene
                 {
                     var info = new SKImageInfo(bitmap.PixelWidth, bitmap.PixelHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
                     using var image = SKImage.FromPixelCopy(info, bitmap.Rgba);
+                    using var edges = new SKPaint { IsAntialias = true };
                     if (image != null)
-                        canvas.DrawImage(image, SKRect.Create(Px(bitmap.X), Px(bitmap.Y), Px(bitmap.Width), Px(bitmap.Height)), Sampling);
+                        canvas.DrawImage(image, SKRect.Create(Px(bitmap.X), Px(bitmap.Y), Px(bitmap.Width), Px(bitmap.Height)), Sampling, edges);
                     break;
                 }
                 case BoxItem box:
@@ -551,9 +555,12 @@ public static class SkiaScene
                 case BackgroundItem background:
                 {
                     var bounds = SKRect.Create((float)background.Width, (float)background.Height);
+                    // A picture stretched over the slide as over a shape: its fill rectangle, crop and recoloring.
                     if (background.Fill is PictureFill { Tiling: null } stretched)
                     {
-                        Picture(stretched.Image, bounds, null);
+                        using var slide = new SKPath();
+                        slide.AddRect(bounds);
+                        Stretched(stretched, slide);
                         break;
                     }
                     // A gradient as the HTML's definitions of it paint it (see Served).
@@ -742,6 +749,10 @@ public static class SkiaScene
                 stroke.StrokeMiter = 10;
                 stroke.StrokeJoin = text.Hollow ? SKStrokeJoin.Round : SKStrokeJoin.Miter;
             }
+            // Bold stroked onto the fill is one shape, filled and stroked at once as Word draws it (text render mode 2):
+            // drawn apart, the antialiased edges of the two add up in pixels. Skia's PDF writes it as one path, filled and
+            // stroked, under the text set invisibly for search and copy.
+            using var bold = fill != null && stroke != null && stroke != outlined && text.StrokedBold ? Bolded(fill, stroke) : null;
             if (TypefaceFor(font, glyphs.Select(g => g.Id), text.Text) is { } typeface)
             {
                 using var face = new SKFont(typeface, Px(text.Size), (float)text.Scale)
@@ -762,15 +773,22 @@ public static class SkiaScene
                 using var blob = builder.Build();
                 if (blob == null)
                     return;
-                if (fill != null)
-                    canvas.DrawText(blob, 0, 0, fill);
-                if (stroke != null)
-                    canvas.DrawText(blob, 0, 0, stroke);
+                if (bold != null)
+                    canvas.DrawText(blob, 0, 0, bold);
+                else
+                {
+                    if (fill != null)
+                        canvas.DrawText(blob, 0, 0, fill);
+                    if (stroke != null)
+                        canvas.DrawText(blob, 0, 0, stroke);
+                }
                 return;
             }
             var scale = text.Size * PxPerPt / font.UnitsPerEm;
             if (stroke != null)
                 stroke.StrokeWidth /= (float)scale;
+            if (bold != null)
+                bold.StrokeWidth /= (float)scale;
             for (var i = 0; i < glyphs.Length; i++)
             {
                 if (Outline(font, glyphs[i].Id) is not { } path)
@@ -778,12 +796,25 @@ public static class SkiaScene
                 canvas.Save();
                 canvas.Translate(Px(text.X + places[i] * text.Scale), Px(text.Y - glyphs[i].OffsetY * text.Size));
                 canvas.Scale((float)(scale * text.Scale), (float)scale);
-                if (fill != null)
-                    canvas.DrawPath(path, fill);
-                if (stroke != null)
-                    canvas.DrawPath(path, stroke);
+                if (bold != null)
+                    canvas.DrawPath(path, bold);
+                else
+                {
+                    if (fill != null)
+                        canvas.DrawPath(path, fill);
+                    if (stroke != null)
+                        canvas.DrawPath(path, stroke);
+                }
                 canvas.Restore();
             }
+        }
+
+        /// <summary>A fill and the stroke that emboldens it as one paint, filling and stroking at once (see Text).</summary>
+        static SKPaint Bolded(SKPaint fill, SKPaint stroke)
+        {
+            var bold = fill.Clone();
+            (bold.Style, bold.StrokeWidth, bold.StrokeMiter, bold.StrokeJoin) = (SKPaintStyle.StrokeAndFill, stroke.StrokeWidth, stroke.StrokeMiter, stroke.StrokeJoin);
+            return bold;
         }
 
         /// <summary>Glyphs from their outlines, as the HTML's glyph paths stand (see HtmlScene).</summary>
@@ -801,6 +832,8 @@ public static class SkiaScene
                 : item.SyntheticBold ? Pen(item.Color, (float)(data.UnitsPerEm / 35.0)) : null;
             if (stroke != null)
                 stroke.StrokeJoin = item.Hollow ? SKStrokeJoin.Round : SKStrokeJoin.Miter;
+            // Synthetic bold as one shape, filled and stroked at once (see Text).
+            using var bold = fill != null && stroke != null && !item.Hollow ? Bolded(fill, stroke) : null;
             foreach (var glyph in item.Glyphs)
             {
                 if (Outline(data, glyph.Id) is not { } path)
@@ -811,10 +844,15 @@ public static class SkiaScene
                 canvas.Translate((float)glyph.X, (float)glyph.Y);
                 if (Math.Abs(item.Scale - 1) > 1e-6)
                     canvas.Scale((float)item.Scale, 1);
-                if (fill != null)
-                    canvas.DrawPath(path, fill);
-                if (stroke != null)
-                    canvas.DrawPath(path, stroke);
+                if (bold != null)
+                    canvas.DrawPath(path, bold);
+                else
+                {
+                    if (fill != null)
+                        canvas.DrawPath(path, fill);
+                    if (stroke != null)
+                        canvas.DrawPath(path, stroke);
+                }
                 canvas.Restore();
             }
             canvas.Restore();
@@ -906,19 +944,27 @@ public static class SkiaScene
         /// <summary>
         /// An outline filled and stroked as DrawingML gives it: a picture stretched over it, a gradient as the SVG
         /// attributes paint it (see Served), else its own paint; the outline's gradient or pattern over its bounds.
+        /// Without antialiasing where the attributes ask for crisp edges (PowerPoint's axis-aligned rectangles and lines,
+        /// every edge on the nearest pixel, see SlideRenderer; a thinner outline as SvgDrawing.Crisp draws it).
         /// </summary>
         void Shape(SKPath path, Fill fill, Outline? outline, string attributes, bool dashesClosed)
         {
+            var smooth = !attributes.Contains("shape-rendering=\"crispEdges\"", StringComparison.Ordinal);
             if (fill is PictureFill { Tiling: null } picture)
-                Stretched(picture, path);
+                Stretched(picture, path, smooth);
+            else if (fill is SlideFill { Fill: PictureFill behind } slide)
+                Behind(path, slide, behind, smooth);
             else if (((fill is GradientFill or SlideFill { Fill: GradientFill } ? Served(attributes, "fill", path.Bounds) : null) ?? Paint(fill, path.Bounds)) is { } brush)
             {
+                brush.IsAntialias = smooth;
                 canvas.DrawPath(path, brush);
                 brush.Dispose();
             }
             if (outline is { Visible: true })
             {
                 using var pen = Pen(outline, dashesClosed);
+                if (!smooth)
+                    SvgDrawing.Crisp(pen, OnPixels);
                 // A gradient or a pattern along the outline, over the path's bounds as its fill would lie.
                 using var paint = outline.Fill is GradientFill or PatternFill
                     ? (outline.Fill is GradientFill ? Served(attributes, "stroke", path.Bounds) : null) ?? Paint(outline.Fill, path.Bounds)
@@ -931,23 +977,27 @@ public static class SkiaScene
 
         /// <summary>
         /// A gradient as the item's SVG attributes paint it with a server among the page's definitions (as SvgPaint
-        /// writes it: PowerPoint's blends, angles in the unit square, path gradients as trapezoids), or null.
+        /// writes it: PowerPoint's blends, angles in the unit square, path gradients as trapezoids), or null; over
+        /// bounds in a user space whose origin lies at <paramref name="origin"/>.
         /// </summary>
-        SKPaint? Served(string attributes, string property, SKRect bounds)
+        SKPaint? Served(string attributes, string property, SKRect bounds, SKPoint origin = default)
         {
             if (Regex.Match(attributes, "(?<![\\w-])" + property + "=\"url\\(#([^)\"]+)\\)\"") is not { Success: true } named
                 || Definition(named.Groups[1].Value) is not { } server)
                 return null;
             var opacity = Regex.Match(attributes, "(?<![\\w-])" + property + "-opacity=\"([^\"]+)\"") is { Success: true } given
                 && double.TryParse(given.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var o) ? o : 1;
-            return SvgDrawing.Shader(server, bounds, opacity, Definition) is { } shader ? new SKPaint { Shader = shader, Style = SKPaintStyle.Fill, IsAntialias = true } : null;
+            return SvgDrawing.Shader(server, bounds, opacity, Definition) is { } shader
+                ? new SKPaint { Shader = origin.IsEmpty ? shader : shader.WithLocalMatrix(SKMatrix.CreateTranslation(origin.X, origin.Y)), Style = SKPaintStyle.Fill, IsAntialias = true }
+                : null;
         }
 
         /// <summary>
         /// A picture stretched over what a path fills (a slide's picture, its fill rectangle within the path's box, its
-        /// crop beyond), cut at the path, as SvgPaint's pattern of it draws it.
+        /// crop beyond), cut at the path (with its edges antialiased where <paramref name="smooth"/>), as SvgPaint's
+        /// pattern of it draws it.
         /// </summary>
-        void Stretched(PictureFill fill, SKPath path)
+        void Stretched(PictureFill fill, SKPath path, bool smooth = true)
         {
             var bounds = path.Bounds;
             var (w, h) = (bounds.Width, bounds.Height);
@@ -961,12 +1011,38 @@ public static class SkiaScene
             if (fill.Filter != null && recolored == null)
                 statistics.Effects++;
             canvas.Save();
-            canvas.ClipPath(path, antialias: true);
+            canvas.ClipPath(path, antialias: smooth);
             if (recolored != null)
                 canvas.SaveLayer(recolored);
             Picture(fill.Image, SKRect.Create((float)x, (float)y, (float)fullW, (float)fullH), null);
             if (recolored != null)
                 canvas.Restore();
+            canvas.Restore();
+        }
+
+        /// <summary>
+        /// A shape filled with the slide's picture background: the part of the background behind it, the picture drawn over
+        /// the slide (stretched with its fill rectangle, crop and recoloring, or tiled) in the shape's coordinates, cut at
+        /// the path (see Stretched), as SvgPaint's pattern of the slide draws it.
+        /// </summary>
+        void Behind(SKPath path, SlideFill slide, PictureFill picture, bool smooth = true)
+        {
+            var (a, b, c, d, e, f) = slide.ToShape;
+            var area = SKRect.Create((float)slide.Width, (float)slide.Height);
+            canvas.Save();
+            canvas.ClipPath(path, antialias: smooth);
+            canvas.Concat(new SKMatrix { ScaleX = (float)a, SkewY = (float)b, SkewX = (float)c, ScaleY = (float)d, TransX = (float)e, TransY = (float)f, Persp2 = 1 });
+            if (picture.Tiling == null)
+            {
+                using var whole = new SKPath();
+                whole.AddRect(area);
+                Stretched(picture, whole);
+            }
+            else if (Paint(picture, area) is { } tiles)
+            {
+                canvas.DrawRect(area, tiles);
+                tiles.Dispose();
+            }
             canvas.Restore();
         }
 
@@ -1019,7 +1095,21 @@ public static class SkiaScene
                 path.AddPath(outline, in placed);
             }
             var (bx, by, bw, bh) = run.PaintBox;
-            if ((run.Paint is { } paint ? Paint(paint, SKRect.Create((float)bx, (float)by, (float)bw, (float)bh)) : Brush(run.Color)) is { } fill)
+            var box = SKRect.Create((float)bx, (float)by, (float)bw, (float)bh);
+            if (run.Paint is PictureFill { Tiling: null } picture)
+            {
+                // A picture stretched over the line box, cut at the glyphs.
+                canvas.Save();
+                canvas.ClipPath(path, antialias: true);
+                using var area = new SKPath();
+                area.AddRect(box);
+                Stretched(picture, area);
+                canvas.Restore();
+            }
+            // A gradient as the HTML paints it (PowerPoint's blends): a rectangle three boxes wide and high around the
+            // line box, in a user space at the box's corner, masked by the glyphs.
+            else if (((run.Paint is GradientFill ? Served(run.PaintAttributes, "fill", SKRect.Create((float)-bw, (float)-bh, (float)(3 * bw), (float)(3 * bh)), box.Location) : null)
+                ?? (run.Paint is { } paint ? Paint(paint, box) : Brush(run.Color))) is { } fill)
             {
                 canvas.DrawPath(path, fill);
                 fill.Dispose();
@@ -1074,9 +1164,12 @@ public static class SkiaScene
             using var fill = Brush(item.Color);
             if (TypefaceFor(font, glyphs.Select(g => g.Id), item.Text) is { } typeface)
             {
+                // Small text, which PowerPoint hints onto the pixel grid (see TextRenderer.HintedBelow), hinted and its
+                // glyphs on whole pixels as the browser draws it (measured over all decks: other projects' 94.3 → 94.8 %,
+                // the generated 98.2 → 98.5 %; the three strengths of hinting alike).
                 using var face = new SKFont(typeface, (float)size)
                 {
-                    Subpixel = true, LinearMetrics = true, Hinting = SKFontHinting.None, Edging = SKFontEdging.Antialias,
+                    Subpixel = false, LinearMetrics = true, Hinting = SKFontHinting.Normal, Edging = SKFontEdging.Antialias,
                     // The browser slants italic of a font without an italic face and emboldens bold of one without a bold face.
                     SkewX = item.Italic && !typeface.IsItalic ? -0.21f : 0, Embolden = item.Bold && !typeface.IsBold,
                 };
@@ -1461,7 +1554,9 @@ public static class SkiaScene
                 using var evened = OnPixels is { } onPixels
                     ? SvgDrawing.Evened(image, onPixels.PreConcat(SKMatrix.CreateScaleTranslation(rect.Width / image.Width, rect.Height / image.Height, rect.Left, rect.Top)))
                     : null;
-                canvas.DrawImage(evened ?? image, rect, Sampling);
+                // Its edges antialiased where they fall between pixels, as the browser draws a picture.
+                using var edges = new SKPaint { IsAntialias = true };
+                canvas.DrawImage(evened ?? image, rect, Sampling, edges);
             }
             else if (decoded.Drawing is { Size: { Width: > 0, Height: > 0 } size } drawing)
             {

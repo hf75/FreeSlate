@@ -120,6 +120,23 @@ public sealed class SvgDrawing
     };
 
     /// <summary>
+    /// A stroke with crisp edges (shape-rendering crispEdges) as the browser draws it: without antialiasing, and on pixels
+    /// (under <paramref name="pixels"/>; null into a PDF) one thinner than a pixel as a line a pixel wide, as opaque as the
+    /// stroke covers the pixel: without antialiasing so thin a stroke misses the pixels' centers and vanishes.
+    /// </summary>
+    internal static void Crisp(SKPaint stroke, SKMatrix? pixels)
+    {
+        stroke.IsAntialias = false;
+        if (pixels is not { } matrix || stroke.StrokeWidth <= 0 || matrix.Persp0 != 0 || matrix.Persp1 != 0)
+            return;
+        var (across, down) = (matrix.MapVector(stroke.StrokeWidth, 0).Length, matrix.MapVector(0, stroke.StrokeWidth).Length);
+        if (across > 1 || down > 1)
+            return;
+        stroke.StrokeWidth = 0;
+        stroke.Color = stroke.Color.WithAlpha((byte)Math.Round(stroke.Color.Alpha * (across + down) / 2));
+    }
+
+    /// <summary>
     /// A raster picture as it is drawn onto pixels under <paramref name="pixels"/> (from its own pixels there), averaged
     /// down along the axis it is squeezed more along where that one is squeezed to under half and over twice as much as
     /// the other: Skia's mipmaps take their level from the axis squeezed most and so blur the other, which browsers keep
@@ -263,6 +280,7 @@ public sealed class SvgDrawing
         public string Decoration { get; init; } = "none";
         public bool Visible { get; init; } = true;
         public bool Pixelated { get; init; }
+        public bool Crisp { get; init; }
         public bool NonScalingStroke { get; init; }
 
         // Not inherited.
@@ -410,6 +428,7 @@ public sealed class SvgDrawing
                     "text-decoration" => style with { Decoration = value },
                     "visibility" => style with { Visible = value == "visible" },
                     "image-rendering" => style with { Pixelated = value is "pixelated" or "optimizeSpeed" or "crisp-edges" },
+                    "shape-rendering" => style with { Crisp = value is "crispEdges" or "optimizeSpeed" },
                     "vector-effect" => style with { NonScalingStroke = value == "non-scaling-stroke" },
                     "opacity" => style with { Opacity = Fraction(value) },
                     "display" => style with { Displayed = value != "none" },
@@ -817,7 +836,7 @@ public sealed class SvgDrawing
             }
         }
 
-        /// <summary>Fills and strokes an outline as the style asks.</summary>
+        /// <summary>Fills and strokes an outline as the style asks (without antialiasing where its shapes render crisp, as the browser does).</summary>
         void Paint(SKPath path, SKCanvas canvas, Style style)
         {
             if (!style.Visible)
@@ -827,13 +846,18 @@ public sealed class SvgDrawing
             if (Brush(style.Fill, style.FillOpacity, style, bounds, canvas.TotalMatrix) is { } fill)
             {
                 using (fill)
+                {
+                    fill.IsAntialias = !style.Crisp;
                     canvas.DrawPath(path, fill);
+                }
             }
             if (style.StrokeWidth > 0 && Brush(style.Stroke, style.StrokeOpacity, style, bounds, canvas.TotalMatrix) is { } stroke)
             {
                 using (stroke)
                 {
                     Stroked(stroke, style);
+                    if (style.Crisp)
+                        Crisp(stroke, style.NonScalingStroke ? outer : outer?.PreConcat(canvas.TotalMatrix));
                     if (style.NonScalingStroke)
                     {
                         // The stroke's width in the device's pixels: the outline mapped there and stroked unscaled.
