@@ -1884,6 +1884,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     {
         var format = table.Format;
         var space = (target ?? available - allowance);
+        if (Preferring(scope, table, rows, columns, available, allowance, fields, target, lines) is { } preferring)
+            return preferring;
         var (min, max, margins, preferred, natural, spans) = Ranges(scope, table, rows, columns, space, fields, lines);
         if (target is { } wanted && Needed(natural, spans) is var needed && needed > wanted + 0.01)
             space = wanted > available - allowance + 0.01 ? needed : Math.Min(needed, available - allowance);
@@ -1965,6 +1967,121 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             }
         }
         return widths;
+    }
+
+    /// <summary>
+    /// Word's autofit columns where every cell prefers a width in points (catalog: table.width; measured with docx/
+    /// local/csp-1 to csp-10, gw-1 to gw-16, kg-1 to kg-8 and overpref-O1 to -O4; Word lays such a table out anew
+    /// whatever its grid says: six grids for docx/external/libreoffice/extras-ooxmlexport/tdf123705 in docx/local/
+    /// t705-* give the same lines). The rows' cells laid end to end put every grid line where the farthest of them
+    /// needs it (rows that contradict each other take the widest, gw-11 to gw-13), lines no row ends a cell at shared
+    /// out between their neighbours. A column's floor (its contents' minimum with the cells' margins) comes from its
+    /// own cells, then from the cells over several columns, the narrower first: what their columns lack fills the room
+    /// below their preferred widths where those hold it (docx/external/libreoffice/core-ooxml-pass/tdf96749: cells over
+    /// 2 to 32 of 33 columns, all within their widths, leave the columns as the cells prefer them), else it spreads in
+    /// proportion to the preferred widths (csp-1: a picture over two columns of 100 pt widens them by 20.5 and 19.8 pt,
+    /// csp-6 over 100 and 150 pt by 17.8 and 22.5 pt). Where the preferred widths, each raised to its floor, are more
+    /// than the table has, the columns that need more than they prefer keep their floors and the others give way in
+    /// proportion to how much they prefer over their floors (docx/external/powertools/HW002-Table07 within 0.1 pt;
+    /// csp-2: a picture over two columns of a 300 pt table keeps its 240 pt, the third column takes the rest; tblpic,
+    /// table B); where not even the floors fit, the table grows to them up to the width available, beyond that the
+    /// contents shrink and the margins stay (tblpic3, table G). Known deviation: inside a cell over several columns
+    /// that gives way, the line between them stands up to 4 pt off (csp-8 to csp-10: Word gives the first column
+    /// more); tdf123705's 41 lines within 0.9 pt.
+    /// </summary>
+    double[]? Preferring(Scope scope, TableModel table, List<RowModel> rows, int columns, double available, double allowance, PageFields? fields,
+        double? target, BorderLine?[,]? lines)
+    {
+        if (columns == 0 || rows.Any(r => r.Format.GridBefore > 0 || r.Cells.Any(c => c.Format.Width is not { Type: "dxa", Value: > 0 })))
+            return null;
+        var line = new double?[columns + 1];
+        line[0] = 0;
+        var last = 0.0;
+        for (var k = 1; k <= columns; k++)
+        {
+            foreach (var cell in rows.SelectMany(r => r.Cells))
+            {
+                if (Math.Min(columns, cell.Column + cell.Format.GridSpan) == k && line[cell.Column] is { } from)
+                    line[k] = Math.Max(line[k] ?? last, from + (cell.Format.Width?.Value ?? 0));
+            }
+            last = line[k] ?? last;
+        }
+        if (line[columns] == null)
+            return null;
+        var preferred = new double[columns];
+        for (int k = 1, defined = 0; k <= columns; k++)
+        {
+            if (line[k] == null)
+                continue;
+            for (var j = defined + 1; j < k; j++)
+                line[j] = line[defined] + (line[k] - line[defined]) * (j - defined) / (k - defined);
+            defined = k;
+        }
+        for (var k = 0; k < columns; k++)
+            preferred[k] = line[k + 1]!.Value - line[k]!.Value;
+        var floors = new double[columns];
+        var margins = new double[columns];
+        var needs = Needs(scope, table, rows, columns, available, fields, lines);
+        foreach (var need in needs.Where(n => n.To - n.From <= 1))
+        {
+            floors[need.From] = Math.Max(floors[need.From], need.Min);
+            margins[need.From] = Math.Max(margins[need.From], need.Margins);
+        }
+        foreach (var need in needs.Where(n => n.To - n.From > 1).OrderBy(n => n.To - n.From))
+            Spread(floors, need.From, need.To, need.Min);
+        var widths = new double[columns];
+        for (var k = 0; k < columns; k++)
+            widths[k] = Math.Max(preferred[k], floors[k]);
+        var width = target ?? available - allowance;
+        var floor = floors.Sum();
+        if (target is { } wanted && floor > wanted + 0.01)
+            width = wanted > available - allowance + 0.01 ? floor : Math.Min(floor, available - allowance);
+        var sum = widths.Sum();
+        if (sum <= width + 0.01)
+        {
+            // Stretched in proportion to a table's width that asks for more.
+            if (target != null && sum > 0)
+            {
+                for (var k = 0; k < columns; k++)
+                    widths[k] *= width / sum;
+            }
+            return widths;
+        }
+        if (floor > width + 0.01)
+        {
+            // Not even the floors fit: the margins stay, the contents shrink in proportion.
+            var content = Enumerable.Range(0, columns).Sum(k => Math.Max(0, floors[k] - margins[k]));
+            var room = Math.Max(0, width - margins.Sum());
+            for (var k = 0; k < columns; k++)
+                widths[k] = margins[k] + (content > 0 ? Math.Max(0, floors[k] - margins[k]) * room / content : 0);
+            return widths;
+        }
+        var giving = Enumerable.Range(0, columns).Where(k => floors[k] < preferred[k] - 0.01).ToList();
+        var missing = widths.Sum() - width;
+        var slack = giving.Sum(k => preferred[k] - floors[k]);
+        foreach (var k in giving)
+            widths[k] = preferred[k] - (slack > 0 ? missing * (preferred[k] - floors[k]) / slack : 0);
+        return widths;
+
+        // A cell whose contents fit its columns' preferred widths fills the room below them in proportion to it; one
+        // that needs more spreads what they lack in proportion to the preferred widths.
+        void Spread(double[] needed, int from, int to, double want)
+        {
+            double have = 0, basis = 0, room = 0;
+            for (var k = from; k < to; k++)
+            {
+                have += needed[k];
+                basis += preferred[k];
+                room += Math.Max(0, preferred[k] - needed[k]);
+            }
+            if (want <= have)
+                return;
+            for (var k = from; k < to; k++)
+            {
+                needed[k] += (want - have) * (want <= basis && room > 0 ? Math.Max(0, preferred[k] - needed[k]) / room
+                    : basis > 0 ? preferred[k] / basis : 1.0 / (to - from));
+            }
+        }
     }
 
     /// <summary>How wide the columns' contents need the table at least: their own cells' minima, widened where a
@@ -2065,21 +2182,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>A width in points rounded up to whole twips.</summary>
     static double Twips(double points) => Math.Ceiling(points * 20 - 1e-6) / 20;
 
-    /// <summary>
-    /// The columns' minima and maxima, the cells' margins in them, their preferred widths and the minima of their own
-    /// cells' contents alone (Natural, before preferred widths fix them and cells across several columns widen them:
-    /// spread evenly, a merged cell's nested table would make a narrow column keep more than Word gives it, docx/
-    /// external/libreoffice/extras-ooxmlexport/tdf158349_SDTstreamStateStack).
-    /// </summary>
-    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural, List<(int From, int To, double Min)> Spans) Ranges(Scope scope, TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields,
-        BorderLine?[,]? lines = null)
+    /// <summary>What a cell asks of autofit columns: its grid columns, its contents' narrowest and widest with its
+    /// margins, those margins, and its preferred width.</summary>
+    readonly record struct CellNeed(int From, int To, double Min, double Max, double Margins, double? Preferred);
+
+    /// <summary>What the cells of rows ask of autofit columns, those merged into the cell above them left out.</summary>
+    List<CellNeed> Needs(Scope scope, TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields, BorderLine?[,]? lines)
     {
-        var format = table.Format;
-        var min = new double[columns];
-        var max = new double[columns];
-        var margins = new double[columns];
-        var preferred = new double?[columns];
-        var spanning = new List<(int From, int To, double Min, double Max, double? Preferred)>();
+        var needs = new List<CellNeed>();
         for (var r = 0; r < rows.Count; r++)
         {
             var row = rows[r];
@@ -2093,7 +2203,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     continue;
                 // Margins narrower than half the line beside them give way to it, as in the cell's layout (measured
                 // with docx/local/cellborder: margins 0 or 1 pt beside 3 pt lines leave 1.5 pt, 5.4 pt stay).
-                var m = Margins(row, cell, format);
+                var m = Margins(row, cell, table.Format);
                 if (lines != null && r < lines.GetLength(0))
                     m = (m.Top, Math.Max(m.Left, Width(lines[r, c0]) / 2), m.Bottom, Math.Max(m.Right, Width(lines[r, c1]) / 2));
                 var (cmin, cmax) = Rotated(cell) ? RotatedWidths(scope, cell, fields) : Directed(scope, cell, s => CellWidths(s, cell.Blocks, fields));
@@ -2107,20 +2217,39 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 // twips, makes a column of 344 twips with its margins, the next cell's text at 1761 twips, dot 734).
                 cmax = Twips(Math.Min(cmax, 1584));
                 cmin = Twips(cmin);
-                cmin += m.Left + m.Right;
-                cmax += m.Left + m.Right;
                 var pref = cell.Format.Width?.Resolve(space) is { } p && p > 0 ? p : (double?)null;
-                if (c1 - c0 <= 1)
-                {
-                    min[c0] = Math.Max(min[c0], cmin);
-                    max[c0] = Math.Max(max[c0], cmax);
-                    margins[c0] = Math.Max(margins[c0], m.Left + m.Right);
-                    if (pref != null)
-                        preferred[c0] = Math.Max(preferred[c0] ?? 0, pref.Value);
-                }
-                else
-                    spanning.Add((c0, c1, cmin, cmax, pref));
+                needs.Add(new CellNeed(c0, c1, cmin + m.Left + m.Right, cmax + m.Left + m.Right, m.Left + m.Right, pref));
             }
+        }
+        return needs;
+    }
+
+    /// <summary>
+    /// The columns' minima and maxima, the cells' margins in them, their preferred widths and the minima of their own
+    /// cells' contents alone (Natural, before preferred widths fix them and cells across several columns widen them:
+    /// spread evenly, a merged cell's nested table would make a narrow column keep more than Word gives it, docx/
+    /// external/libreoffice/extras-ooxmlexport/tdf158349_SDTstreamStateStack).
+    /// </summary>
+    (double[] Min, double[] Max, double[] Margins, double?[] Preferred, double[] Natural, List<(int From, int To, double Min)> Spans) Ranges(Scope scope, TableModel table, List<RowModel> rows, int columns, double space, PageFields? fields,
+        BorderLine?[,]? lines = null)
+    {
+        var min = new double[columns];
+        var max = new double[columns];
+        var margins = new double[columns];
+        var preferred = new double?[columns];
+        var spanning = new List<(int From, int To, double Min, double Max, double? Preferred)>();
+        foreach (var (c0, c1, cmin, cmax, cellMargins, pref) in Needs(scope, table, rows, columns, space, fields, lines))
+        {
+            if (c1 - c0 <= 1)
+            {
+                min[c0] = Math.Max(min[c0], cmin);
+                max[c0] = Math.Max(max[c0], cmax);
+                margins[c0] = Math.Max(margins[c0], cellMargins);
+                if (pref != null)
+                    preferred[c0] = Math.Max(preferred[c0] ?? 0, pref.Value);
+            }
+            else
+                spanning.Add((c0, c1, cmin, cmax, pref));
         }
         // Preferred widths fix their columns first; cells over several columns then widen them where they are too
         // narrow for them together (measured with docx/local/hmerge-g: a 200 pt cell over two 100 pt columns leaves

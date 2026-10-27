@@ -2091,8 +2091,19 @@ areas:
           over columns preferring 100 and 50 pt 100 and 200 pt; a cell over all columns of a table of percentages
           leaves them theirs; rows that contradict each other take the widest;
           docx/external/libreoffice/extras-ooxmlexport/ wDateValueFormat, fdo78883). Where the minima shrink, a cell
-          over several columns keeps its contents' minimum, its last column taking it from the others (tdf123705:
-          "n/m" stays on one line). Word 2013 tables start their grid at the indent and move it right by half the left
+          over several columns keeps its contents' minimum, its last column taking it from the others. Tables whose
+          cells all prefer widths in points Word lays out anew whatever their grid says (docx/local/t705-*: six grids
+          for extras-ooxmlexport/tdf123705 give the same lines): the rows' cells laid end to end put each grid line
+          where the farthest needs it; a column's floor (its contents' minimum with the margins) comes from its own
+          cells, then from the cells over several columns, the narrower first, filling the room below the preferred
+          widths where those hold them, else in proportion to the preferred widths (docx/local/csp-1, csp-6: pictures
+          over two columns widen them by 20.5 and 19.8 pt, 17.8 and 22.5 pt; core-ooxml-pass/tdf96749); where the
+          preferred widths raised to the floors are more than the table has, the columns that need more keep their
+          floors and the others give way in proportion to how much they prefer over their floors (csp-2 to csp-7
+          within 0.15 pt; powertools/HW002-Table07; tdf123705 69.0 → 99.4 %, tdf96749 96.3 → 98.9 %,
+          powertools/RP/RP034-Deleted-Cells-Rejected 96.1 → 100 %); known deviation: inside a cell over several
+          columns that gives way, Word puts the line between them up to 4 pt further right (csp-8 to csp-10).
+          Word 2013 tables start their grid at the indent and move it right by half the left
           border; older compatibility modes put the first cell's text at the indent and let an autofit table as wide
           as its column end its last cell's text at the column's right edge, the cell's margin and the line's middle
           beyond it (docx/local/tw-12-*, tw-14-*, tw-15-*: margins of 0.5 and 8.5 pt reach as far past the right
