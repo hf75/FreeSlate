@@ -1,8 +1,8 @@
 # Architecture
 
-FreeSlate turns a presentation or a Word document into one HTML document. This page follows a presentation through
-the engine and describes the parts it meets on the way, then a Word document. Class and file names refer to
-`src/FreeSlate/`.
+FreeSlate turns a presentation or a Word document into one HTML document, draws it as images or PDF, and opens it for
+editing. This page follows a presentation through the engine and describes the parts it meets on the way, then a Word
+document, the scenes both are drawn from, editing and large documents. Class and file names refer to `src/FreeSlate/`.
 
 ## Output
 
@@ -11,6 +11,9 @@ positioned element holding an SVG: its geometry as paths, its fills, lines and e
 text as glyph runs. Glyph outlines are defined once per font and glyph and placed with `<use>`; small text, which
 PowerPoint hints to the pixel grid, is left to the browser. A transparent text layer keeps all text selectable and
 searchable.
+
+The renderers do not write this HTML themselves: they lay out each slide and page as a scene (see Scenes), which
+`Rendering/HtmlScene` writes.
 
 Two scripts are embedded: `Resources/player.js`, the slide show player (transitions, animations, media, hyperlinks,
 zoom, presenter view), and, in documents with 3D models, `Resources/model3d.js`, a glTF reader and WebGL2 renderer.
@@ -124,6 +127,56 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
   (`PageRenderer.Markup`, `Describe`); lines and glyphs stand on Word's 600 dpi device as it rounds onto it
   (`WordDevice`, `DeviceGlyphs`).
+
+## Scenes (`Rendering/`)
+
+A scene (`PageScene`, `Rendering/Scene.cs`) is a slide or page as it is drawn, from back to front, in points from its
+top left: glyph runs with their fonts, paths with their paint, pictures, groups with their transforms, clips and
+effects, and the places of the text (`PlacesItem`: for each character a line shows, the paragraph's id, the offset in
+its text and where it stands). What is not broken down into items yet (charts, 3D bodies) is held as the SVG it is
+drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` give them; two backends draw them:
+
+- `Rendering/HtmlScene` writes the HTML document described above.
+- `src/FreeSlate.Skia` draws scenes on a Skia canvas: PNG (`SkiaScene.Png`), PDF and PDF/A (`PdfExport`, fonts embedded
+  as subsets made with HarfBuzz's subsetter, `Text/FontSubset`), and the viewer's pages. `TextPlaces` turns the places
+  into hit tests, cursors and selections; the SVG of `MarkupItem`s is drawn by its own SVG reader (`SvgDrawing`).
+
+## Editing (`WordDocument`, `PresentationDocument`, `Editing/`)
+
+- `IEditableDocument` is a document whose text an editor changes paragraph by paragraph: paragraphs go by the ids the
+  places of its scenes name, a place is an offset in a paragraph's text (`Docx/ParagraphText`, `Pptx/SlideText`).
+  Each change is a version that `Undo` goes back from and `Redo` forward to; a change the document cannot make leaves
+  it as it was and throws `NotSupportedException`.
+- `WordDocument` makes a change in the XML of the blocks it touches: that stretch of the main part's text is parsed
+  afresh, changed (`Docx/TextEdits`; as tracked changes through `Docx/Tracking` where an author is set), made ready as
+  the part was when it was loaded and read anew in place of those blocks (`ModelReader.Reread`, `Docx/Reread.cs`). The
+  reader records the numbers each story asked for (`Docx/Numbers`), so that the lists after a change are numbered anew
+  without reading their paragraphs again. Saving writes the changed stretches back into the bytes the part was read
+  from (`Opc/PartText`), every other byte of the package as it was. Versions share the blocks they have alike.
+- `PresentationDocument` makes its changes in the XML of the slides (`Pptx/SlideEdits` for text, `Pptx/SlideShapes` for
+  shapes, `Pptx/SlideList` for the list of slides and the parts around it), reads the slide again and draws it anew;
+  text that shrinks to fit its shape, and shapes that grow to their text, are fitted anew as PowerPoint fits them.
+- `Editing/EditSession` is an editor's work without its surface, over either kind of document: the cursor and the
+  selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, each handling one step to undo.
+
+The rules of each change (where new text goes, which paragraph keeps its properties and its mark, what a tracked
+change records) were measured in Word and PowerPoint through COM, as the rendering rules were.
+
+## Large documents
+
+A Word document of thousands of pages opens with its first pages at once and grows from there:
+
+- The main part's body is read in portions (`Docx/BodyStream`), the model of the first children before the rest.
+- `Layout/Paginator` lays out the first pages and the rest in slices (`WordDocument.LayOut`, while `LayingOut`), as an
+  editor does while it waits for input, leaving checkpoints: the paginator's state where pages begin. After a change it
+  lays out again from the last checkpoint before it (`Paginator.Relayout`) and stops where a page begins as it began
+  before (`SameFlow`); where a change moves everything after it on, it lays out a few pages and leaves the rest to the
+  slices. Fields that read the pages (a table of contents) are laid out again once their pages are known.
+- Pages are drawn when they are asked for (`Scene(page)`; `Scenes()` gives the others as scenes of their size without
+  items), and the scenes of the 32 pages around the last one asked for are kept.
+- What would walk the whole document on every change does not: the children of the body are found and taken out in
+  constant time (`Docx/Siblings`), formats are shared between the paragraphs and runs that have them alike, laid out
+  paragraphs are kept for the next layout.
 
 ## Catalogs (`catalog/`)
 

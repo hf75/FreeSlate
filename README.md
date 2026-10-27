@@ -10,7 +10,9 @@ The goal is fidelity, not approximation: every rule the engine follows was measu
 test suite renders each slide with PowerPoint and each page with Word, renders them with FreeSlate and compares the
 images.
 
-FreeSlate is meant to grow into the foundation of an open document editor.
+FreeSlate also opens documents for editing: text, paragraphs and their formatting, tracked changes, and on slides
+shapes and slides, each change made as Word and PowerPoint make it and saved with every untouched byte as it was, also
+in Word documents of thousands of pages. It is meant to grow into the foundation of an open document editor.
 
 ## Status
 
@@ -18,13 +20,14 @@ FreeSlate is meant to grow into the foundation of an open document editor.
 |---|---|
 | PowerPoint features | 146 of 146 features of the [PowerPoint feature catalog](catalog/features/pptx.md) implemented; all 1,653 elements a PPTX file can contain are assigned to a feature |
 | Word features | 194 of 194 features of the [Word feature catalog](catalog/features/docx.md) implemented; all 2,093 elements a DOCX file can contain are assigned to a feature |
-| Fidelity, own test corpus | **98.3 %** over 414 slides in 57 decks built by PowerPoint (89 % of the slides score 95 % or better); **92.7 %** over 61 pages in 29 documents built by Word |
-| Fidelity, other projects' test decks | **94.5 %** over 1,229 slides in 670 decks from LibreOffice, Apache POI, Apache Tika, Open XML SDK and python-pptx |
+| Fidelity, own test corpus | **98.5 %** over 414 slides in 57 decks built by PowerPoint (92 % of the slides score 95 % or better); **98.4 %** over 61 pages in 29 documents built by Word (97 % of the pages score 95 % or better) |
+| Fidelity, other projects' presentations | **94.6 %** over 1,232 slides in 670 decks from LibreOffice, Apache POI, Apache Tika, Open XML SDK and python-pptx |
+| Fidelity, other projects' Word documents | **98.7 %** over 7,035 pages in 3,179 documents from LibreOffice, Apache POI, Apache Tika, Open XML SDK, Open XML PowerTools, pandoc, python-docx and mammoth (95 % of the pages score 95 % or better) |
 
 The score of a slide or page is the share of its content pixels that match the Office rendering within a small
 tolerance (see [Measuring fidelity](docs/fidelity.md)). Decks of other projects include deliberately broken and exotic
-files, which is why their average is lower. Word pages lose most of their points to anti-aliasing: Word prints text
-with the fonts' hinting, FreeSlate draws glyph outlines; the lines and glyphs stand where Word puts them.
+files, which is why their average is lower. What Word pages lose is mostly anti-aliasing: Word prints text with the
+fonts' hinting, FreeSlate draws glyph outlines; the lines and glyphs stand where Word puts them.
 
 ## What it renders
 
@@ -326,9 +329,11 @@ dotnet run --project tools/Fidelity -c Release -- run generated
 ```
 
 The Fidelity tool converts the decks of the test corpus, takes a screenshot of every slide with headless Chrome or
-Edge and compares it with PowerPoint's rendering of the same slide, which is committed to the repository. The report
-(`artifacts/fidelity/report.html`) shows the reference, FreeSlate's rendering and a difference image for every slide.
-On Windows with Office installed the tool also builds the test decks through PowerPoint and renders the references.
+Edge and compares it with PowerPoint's rendering of the same slide, which is committed to the repository. Word
+documents (`run docx/generated`) are printed to PDF by the browser and compared page by page with what Word prints.
+The report (`artifacts/fidelity/report.html`) shows the reference, FreeSlate's rendering and a difference image for
+every slide and page. On Windows with Office installed the tool also builds the test decks and documents through
+PowerPoint and Word and renders the references; `--skia` measures the Skia backend instead of the browser.
 
 More in [docs/fidelity.md](docs/fidelity.md).
 
@@ -348,11 +353,12 @@ More in [docs/fidelity.md](docs/fidelity.md).
 | `catalog/features/` | feature catalog: curated features with priority, difficulty, strategy, status and measured PowerPoint behavior |
 | `catalog/spec/` | section index of ECMA-376 and the Microsoft Open Specifications |
 | `spec/ms-xsd/` | Office extension schemas (a14, p14, c14, cx, …) extracted from the Microsoft Open Specifications |
-| `tests/corpus/pptx/generated/` | the test corpus, built by PowerPoint through `Fidelity generate` |
-| `tests/fidelity/reference/` | PowerPoint's renderings of the test decks, one PNG per slide |
+| `tests/corpus/pptx/generated/` | the test decks, built by PowerPoint through `Fidelity generate` |
+| `tests/corpus/docx/generated/` | the test documents, built by Word through `Fidelity generate docx` |
+| `tests/fidelity/reference/` | PowerPoint's renderings of the test decks and Word's of the test documents, one PNG per slide or page |
 
-The specification sources (`spec/downloads/`, `spec/ecma-376/`) and the other projects' test decks are downloaded on
-demand and stay out of git.
+The specification sources (`spec/downloads/`, `spec/ecma-376/`) and the other projects' test decks and documents are
+downloaded on demand and stay out of git.
 
 ## Known limitations
 
