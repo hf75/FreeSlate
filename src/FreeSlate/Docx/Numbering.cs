@@ -228,6 +228,13 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     readonly Dictionary<string, Counters> lists = new(StringComparer.Ordinal);
     readonly HashSet<string> started = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// The instance counted last, which is among those started, and the counters of its list: a list's paragraphs count in
+    /// the same one after another.
+    /// </summary>
+    NumberingDefinitions.Instance? lastStarted;
+    Counters? lastCounters;
+
     /// <summary>The levels of started instances whose start override applies where the instance first uses them.</summary>
     readonly HashSet<(string Instance, int Level)> pendingOverrides = [];
 
@@ -305,7 +312,19 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     /// Whether a paragraph of a numbering instance at a level counts (see Next): the instance and the level exist. One
     /// that does not has no number and changes no count.
     /// </summary>
-    public bool Counts(string? numId, int ilvl) => definitions.Find(numId) is { } instance && ilvl is >= 0 and <= 8 && instance.Levels[ilvl] != null;
+    public bool Counts(string? numId, int ilvl) => Find(numId) is { } instance && ilvl is >= 0 and <= 8 && instance.Levels[ilvl] != null;
+
+    /// <summary>A numbering instance (see NumberingDefinitions.Find), the last one asked for kept: a list's paragraphs ask for the same.</summary>
+    NumberingDefinitions.Instance? Find(string? numId)
+    {
+        if (!found || numId != foundId)
+            (foundId, foundInstance, found) = (numId, definitions.Find(numId), true);
+        return foundInstance;
+    }
+
+    string? foundId;
+    NumberingDefinitions.Instance? foundInstance;
+    bool found;
 
     /// <summary>
     /// The number of the next paragraph of a numbering instance at a level, with the number of the level alone, or null
@@ -315,7 +334,22 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     /// <param name="start">The number to show instead of the next one, from which the level counts on (LISTNUM \s).</param>
     public (string Text, NumberingLevel Level, string Own)? Next(string? numId, int ilvl, string? language = null, int? start = null)
     {
-        if (definitions.Find(numId) is not { } instance)
+        if (Advance(numId, ilvl, start) is not var (instance, counters, level))
+            return null;
+        var own = level.Format is "none" or "bullet" ? "" : Number(counters.Values[ilvl], level.Legal ? Legal(level.Format) : level.Format, language);
+        return (Text(instance, counters, level, language), level, own);
+    }
+
+    /// <summary>
+    /// Counts the next paragraph of a numbering instance at a level as <see cref="Next"/> does, without its text: whether
+    /// it has a number.
+    /// </summary>
+    public bool Count(string? numId, int ilvl, int? start = null) => Advance(numId, ilvl, start) != null;
+
+    /// <summary>The counters moved on for the next paragraph of a numbering instance at a level (see Next), or null where it has no number.</summary>
+    (NumberingDefinitions.Instance Instance, Counters Counters, NumberingLevel Level)? Advance(string? numId, int ilvl, int? start)
+    {
+        if (Find(numId) is not { } instance)
             return null;
         // A level outside the nine a list has takes no number and no level's indents (docx/external/libreoffice/
         // extras-ooxmlexport/tdf61309: ilvl 12 at the margin, no "1.").
@@ -323,22 +357,30 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             return null;
         if (instance.Levels[ilvl] is not { } level)
             return null;
-        if (!lists.TryGetValue(instance.AbstractId, out var counters))
-            lists[instance.AbstractId] = counters = new Counters();
         // A start override starts its level over where the instance first uses that level; until then the level shows
         // what it counts, a level not used yet its own start (measured with docx/local/sov-15: level 0 starting at 1
         // and overridden to 5 shows 1.1. and 1.2. before its first paragraph, then 5. and 5.1.; started at 10 and
         // overridden to 10 10.1., 10.2., 10.; a second instance overridden to 7 goes on with 5.2., then 7.;
         // docx/external/libreoffice/extras-ooxmlexport/tdf153104).
-        if (started.Add(instance.Id))
+        Counters counters;
+        if (ReferenceEquals(instance, lastStarted))
+            counters = lastCounters!;
+        else
         {
-            for (var i = 0; i < 9; i++)
+            if (!lists.TryGetValue(instance.AbstractId, out var known))
+                lists[instance.AbstractId] = known = new Counters();
+            counters = known;
+            if (started.Add(instance.Id))
             {
-                if (instance.StartOverrides[i] != null)
-                    pendingOverrides.Add((instance.Id, i));
+                for (var i = 0; i < 9; i++)
+                {
+                    if (instance.StartOverrides[i] != null)
+                        pendingOverrides.Add((instance.Id, i));
+                }
             }
+            (lastStarted, lastCounters) = (instance, counters);
         }
-        if (pendingOverrides.Remove((instance.Id, ilvl)) && instance.StartOverrides[ilvl] is { } overridden)
+        if (pendingOverrides.Count > 0 && pendingOverrides.Remove((instance.Id, ilvl)) && instance.StartOverrides[ilvl] is { } overridden)
         {
             counters.Values[ilvl] = overridden - 1;
             counters.Used[ilvl] = true;
@@ -355,9 +397,26 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             if (restart == null || restart > 0 && ilvl < restart)
                 counters.Used[d] = false;
         }
-        var own = level.Format is "none" or "bullet" ? "" : Number(counters.Values[ilvl], level.Legal ? Legal(level.Format) : level.Format, language);
-        return (Text(instance, counters, ilvl, level, language), level, own);
+        // A higher level the text shows that is not used yet shows its start and counts from there (measured with
+        // docx/local/num-rules: level 3 after level 1 shows 7.1.1., the next level 2 then 7.2.).
+        if (Shown(level))
+        {
+            var text = level.Text!;
+            for (var i = 0; i + 1 < text.Length; i++)
+            {
+                if (text[i] == '%' && text[i + 1] is >= '1' and <= '9' && text[i + 1] - '1' is var k && k < ilvl && !counters.Used[k])
+                {
+                    counters.Values[k] = instance.Levels[k]?.Start ?? 1;
+                    counters.Used[k] = true;
+                    i++;
+                }
+            }
+        }
+        return (instance, counters, level);
     }
+
+    /// <summary>Whether a level's text shows the numbers of levels (%1 to %9), not a bullet or plain text.</summary>
+    static bool Shown(NumberingLevel level) => level.Text != null && !(level.Format == "none" && !level.Text.Contains('%')) && level.Format != "bullet";
 
     /// <summary>
     /// A level's number format in a legal level (w:isLgl): Arabic numerals, zero-padded ones staying so (measured with
@@ -366,7 +425,7 @@ public sealed class ListCounter(NumberingDefinitions definitions)
     /// </summary>
     static string Legal(string? format) => format == "decimalZero" ? format : "decimal";
 
-    static string Text(NumberingDefinitions.Instance instance, Counters counters, int ilvl, NumberingLevel level, string? language)
+    static string Text(NumberingDefinitions.Instance instance, Counters counters, NumberingLevel level, string? language)
     {
         if (level.Text == null || level.Format == "none" && !level.Text.Contains('%'))
             return level.Text ?? "";
@@ -380,13 +439,7 @@ public sealed class ListCounter(NumberingDefinitions definitions)
             {
                 var k = text[i + 1] - '1';
                 var referenced = instance.Levels[k];
-                // A higher level not used yet shows its start and counts from there (measured with
-                // docx/local/num-rules: level 3 after level 1 shows 7.1.1., the next level 2 then 7.2.).
-                if (!counters.Used[k] && k < ilvl)
-                {
-                    counters.Values[k] = referenced?.Start ?? 1;
-                    counters.Used[k] = true;
-                }
+                // A higher level not used yet counts from its start since this paragraph (see Advance).
                 var value = counters.Used[k] ? counters.Values[k] : referenced?.Start ?? 1;
                 var format = level.Legal ? Legal(referenced?.Format) : referenced?.Format ?? "decimal";
                 if (format != "none")

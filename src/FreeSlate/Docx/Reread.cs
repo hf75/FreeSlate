@@ -198,9 +198,11 @@ public sealed partial class ModelReader
         // Where they ask the steps the old ones asked (a paragraph of no list asks none), the answers are those they had:
         // no steps are replayed, and no blocks after them read anew.
         var same = asked.Steps.Count == end - start && asked.Steps.Select(s => s.Step).SequenceEqual(steps.Skip(start).Take(end - start).Select(s => s.Step));
-        List<(NumberStep Step, object? Answer)> all = same ? steps : [.. steps.Take(start), .. asked.Steps, .. steps.Skip(end)];
-        var answers = same ? null : Numbers.Replay(all.Select(s => s.Step), context.Numbering, new NoteNumbers(context.Settings));
-        if (Read([.. leading, .. children, .. trailing], answers?.Skip(start).Take(asked.Steps.Count) ?? steps.Skip(start).Take(end - start).Select(s => s.Answer)) is not { } got)
+        // Else the answers from their steps on, the body's steps before them counted first (their answers stay as they
+        // were: the same steps give the same answers).
+        var answers = same ? null : Numbers.Replay(asked.Steps.Select(s => s.Step).Concat(steps.Skip(end).Select(s => s.Step)), context.Numbering,
+            new NoteNumbers(context.Settings), steps.Take(start).Select(s => s.Step));
+        if (Read([.. leading, .. children, .. trailing], answers?.Take(asked.Steps.Count) ?? steps.Skip(start).Take(end - start).Select(s => s.Answer)) is not { } got)
             return Undone();
         var (from, to) = range;
         Keep(like != null ? [.. like.Skip(from).Take(like.Count - (body.Count - (to - from)))] : body.GetRange(from, to - from), got.Blocks);
@@ -209,11 +211,13 @@ public sealed partial class ModelReader
         result.AddRange(got.Blocks);
         // The children after them whose numbers changed, read anew with their answers, each with the blocks read from it.
         var shift = got.Steps.Count - (end - start);
+        // The answers to the steps after them, by their places before the change.
+        object? Now(int k) => answers![k + shift - start];
         // The steps after them whose answers changed, by their places before the change, in order.
         var differing = new List<int>();
         for (var k = end; answers != null && k < steps.Count; k++)
         {
-            if (!Equals(Answer(steps[k].Answer), Answer(answers[k + shift])))
+            if (!SameAnswer(steps[k].Answer, Now(k)))
                 differing.Add(k);
         }
         bool Changed(int at, int until) => differing.BinarySearch(at) is var k && (k < 0 ? ~k : k) is var first && first < differing.Count && differing[first] < until;
@@ -244,6 +248,18 @@ public sealed partial class ModelReader
                 i = j;
                 continue;
             }
+            // A paragraph whose only step is its own number, at the same level of the same list, nothing waiting before or
+            // after it, takes its new number in a copy of its block: nothing else of it depends on the number (see
+            // ReadParagraph), and a long list numbered anew after an Enter is not read anew from its XML.
+            if (j - i == 1 && until - point.Steps == 1 && point.Fresh && (After(top) is not { } beyond || bodyPoints.TryGetValue(beyond, out var then) && then.Fresh)
+                && body[i] is ParagraphBlock { Parts: null, EndsSection: null, Label: { } label } paragraph && paragraph.Element == top
+                && paragraph.MarkFormat.Vanish != true && steps[point.Steps].Step is ListStep
+                && Now(point.Steps) is ValueTuple<string, NumberingLevel, string> number && ReferenceEquals(number.Item2, label.Level))
+            {
+                result.Add(paragraph with { Label = label with { Text = number.Item1, Own = number.Item3 } });
+                i = j;
+                continue;
+            }
             // Read anew from where reading could begin afresh before it, with the marks between paragraphs it takes.
             var marks = new List<XElement>();
             for (var e = top; !bodyPoints[e].Fresh;)
@@ -252,7 +268,7 @@ public sealed partial class ModelReader
                     return Undone();
                 marks.Insert(0, e = previous);
             }
-            if (Read([.. marks, top], answers.Skip(point.Steps + shift).Take(until - point.Steps)) is not { } again || again.Blocks.Count != j - i)
+            if (Read([.. marks, top], answers.Skip(point.Steps + shift - start).Take(until - point.Steps)) is not { } again || again.Blocks.Count != j - i)
                 return Undone();
             Keep(body.GetRange(i, j - i), again.Blocks);
             result.AddRange(again.Blocks);
@@ -262,7 +278,13 @@ public sealed partial class ModelReader
         // the change moved on by the steps it added), and the children its blocks were read from (blocks read anew after
         // the change were read from the same).
         if (answers != null)
-            numberSteps[context.MainPart] = [.. all.Select((s, k) => (s.Step, answers[k]))];
+        {
+            steps.RemoveRange(start, end - start);
+            steps.InsertRange(start, got.Steps);
+            for (var k = start; k < steps.Count; k++)
+                steps[k] = (steps[k].Step, answers[k - start]);
+            numberSteps[context.MainPart] = steps;
+        }
         foreach (var e in old.Concat(leading).Concat(trailing))
             bodyPoints.Remove(e);
         // The old children are gone for good: a version that has them again reads them from its text.
@@ -462,8 +484,9 @@ public sealed partial class ModelReader
         _ => throw new ArgumentOutOfRangeException(nameof(block)),
     };
 
-    /// <summary>A step's answer as compared: a list number by its text and its own number.</summary>
-    static object? Answer(object? answer) => answer is ValueTuple<string, NumberingLevel, string> label ? (label.Item1, label.Item3) : answer;
+    /// <summary>Whether two answers to a step are the same: list numbers by their text and their own number.</summary>
+    static bool SameAnswer(object? a, object? b) => a is ValueTuple<string, NumberingLevel, string> x && b is ValueTuple<string, NumberingLevel, string> y
+        ? x.Item1 == y.Item1 && x.Item3 == y.Item3 : Equals(a, b);
 
     /// <summary>
     /// Children of the body read with the state reading leaves before a child it can begin afresh at, with the given

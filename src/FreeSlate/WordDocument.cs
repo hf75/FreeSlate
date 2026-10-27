@@ -331,10 +331,14 @@ public sealed class WordDocument : IEditableDocument
     /// <summary>The paragraphs of the table walked last (see Flat), as a walk over a long table asks for them again and again.</summary>
     (Block Of, List<ParagraphBlock> Paragraphs)? flat;
 
-    int? Beside(int paragraph, int step)
+    /// <summary>
+    /// The id of the paragraph so many places before or after one in its body, cell or text box, or null; a walk over
+    /// the body finds the places of its blocks in an index of them all (see IndexOf), one question alone by looking.
+    /// </summary>
+    int? Beside(int paragraph, int step, bool walking = true)
     {
         var (p, top) = Find(paragraph);
-        return ListOf(top, p, walking: true) is var (list, index) && index + step >= 0 && index + step < list.Count && list[index + step] is ParagraphBlock beside
+        return ListOf(top, p, walking) is var (list, index) && index + step >= 0 && index + step < list.Count && list[index + step] is ParagraphBlock beside
             ? beside.Id
             : null;
     }
@@ -1234,17 +1238,21 @@ public sealed class WordDocument : IEditableDocument
             foreach (var block in was.Slice(at, count))
                 Forget(block, gone);
         }
-        // The stretches from the last: the places of those before it stay as they were.
-        var list = kept;
+        // The stretches from the last: the places of those before it stay as they were. In one builder, which copies each
+        // node of the tree it changes once (a list numbered anew changes thousands of blocks one after the other).
+        var list = kept.ToBuilder();
         foreach (var (at, count, from, length) in differing)
         {
             if (count == length)
             {
                 for (var k = 0; k < count; k++)
-                    list = list.SetItem(at + k, now[from + k]);
+                    list[at + k] = now[from + k];
             }
             else
-                list = list.RemoveRange(at, count).InsertRange(at, now.Slice(from, length).ToArray());
+            {
+                list.RemoveRange(at, count);
+                list.InsertRange(at, now.Slice(from, length).ToArray());
+            }
         }
         var read = new List<Block>();
         for (var k = differing.Count - 1; k >= 0; k--)
@@ -1255,7 +1263,7 @@ public sealed class WordDocument : IEditableDocument
                 read.Add(block);
             }
         }
-        (kept, fresh, places, placed) = (list, read, null, null);
+        (kept, fresh, places, placed) = (list.ToImmutable(), read, null, null);
         layout?.Forget(gone);
     }
 

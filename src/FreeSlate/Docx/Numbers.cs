@@ -113,10 +113,25 @@ public static class Numbers
         }
     }
 
-    /// <summary>The answers to a story's steps in their order, on a fresh list counter and the given note numbers.</summary>
-    public static List<object?> Replay(IEnumerable<NumberStep> steps, NumberingDefinitions definitions, NoteNumbers notes)
+    /// <summary>
+    /// The answers to a story's steps in their order, on a fresh list counter and the given note numbers; where steps
+    /// come <paramref name="before"/> them (whose answers are known), those are counted first without their text.
+    /// </summary>
+    public static List<object?> Replay(IEnumerable<NumberStep> steps, NumberingDefinitions definitions, NoteNumbers notes,
+        IEnumerable<NumberStep>? before = null)
     {
         var counter = new ListCounter(definitions);
+        foreach (var step in before ?? [])
+        {
+            // A list number only moves the counters on; the rarer steps are answered as they would be.
+            if (step is ListStep list)
+            {
+                if (counter.Count(list.List, list.Level))
+                    counter.CurrentList = list.List;
+            }
+            else
+                Answer(step, counter, notes);
+        }
         return [.. steps.Select(step => Answer(step, counter, notes))];
     }
 }
