@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
 using FreeSlate.Drawing;
+using FreeSlate.Text;
 
 namespace FreeSlate.Pptx.Charts;
 
@@ -119,11 +120,13 @@ public sealed partial class ChartRenderer
     /// centred that way fills the height, and it backs off to 1.032 times the farther of both distances, so the box is
     /// off centre the way it does not fill (measured on 40 empty column boxes with colored walls, standard and
     /// clustered, rotations 10–80°, elevations 5–45°, perspectives 20–100, depths 40–400 % and seven plot areas: the
-    /// corners within 1–5 px, where centring both ways was up to 77 px off).
+    /// corners within 1–5 px, where centring both ways was up to 77 px off). Without perspective Word leaves the box
+    /// 1.0287 times smaller than the plot area (measured: libreoffice/extras-ooxmlexport/tdf128207 and the probes
+    /// docx/local/sfb-160, sfb-165 and sfb-n137, their value axes 1.0028 to 1.0035 times as long as with 1.032).
     /// </summary>
-    sealed class PerspectiveBox(View3D view) : Projection3D
+    sealed class PerspectiveBox(View3D view, bool word) : Projection3D
     {
-        const double BackOff = 1.032;
+        const double BackOff = 1.032, WordFlatBackOff = 1.0287;
         readonly Perspective camera = new(view.RotX, view.RotY);
         double cx, cy, cz;
 
@@ -137,7 +140,7 @@ public sealed partial class ChartRenderer
                 foreach (var y in new[] { -hy, hy })
                     foreach (var z in new[] { -hz, hz })
                         volume.Add(camera.View(x, y, z));
-            camera.Fit(volume, plot, view.Perspective / 2, eachWay: true, BackOff);
+            camera.Fit(volume, plot, view.Perspective / 2, eachWay: true, word && view.Perspective <= 0 ? WordFlatBackOff : BackOff);
         }
 
         public override (double X, double Y) Map(double x, double y, double z) => camera.Map(x - cx, y - cy, z - cz);
@@ -196,6 +199,12 @@ public sealed partial class ChartRenderer
         var length = Math.Sqrt(nx * nx + ny * ny + nz * nz);
         return length < 1e-12 ? 1 : Ambient + Math.Max(0, (nx * ChartLight.X + ny * ChartLight.Y + nz * ChartLight.Z) / length);
     }
+
+    /// <summary>
+    /// The light of a 3D surface's walls, and in Word of its facets: 0.4 + 0.75 n · (0.572, 0.586, −0.574) for the unit
+    /// normal n of the side the viewer sees, as the camera sees it (with right-angle axes as it lies in the box).
+    /// </summary>
+    static double SurfaceLight((double X, double Y, double Z) n) => 0.4 + 0.75 * Math.Max(0, n.X * 0.572 + n.Y * 0.586 - n.Z * 0.574);
 
     /// <summary>The frame of a 3D chart with axes: the box in its projection, the value scale and the data positions.</summary>
     sealed class Frame3D
@@ -276,7 +285,7 @@ public sealed partial class ChartRenderer
         var rowDepth = rows || !group.IsBar ? depth * c : depth * (1 + gapDepth) * barWidth;
         Projection3D projection = view.RightAngleAxes
             ? new Oblique(Math.Sin(view.RotY * Math.PI / 180), Math.Sin(view.RotX * Math.PI / 180))
-            : new PerspectiveBox(view);
+            : new PerspectiveBox(view, slide.Presentation.Word);
         var frame = new Frame3D
         {
             Projection = projection, Columns = columns, Categories = nCat, CategoryWidth = c, RowDepth = rowDepth,
@@ -376,9 +385,21 @@ public sealed partial class ChartRenderer
             // The value scale follows the box's edge halfway back (in perspective the front edge looks longer).
             var (edgeX, edgeY) = (frame.SideX, frame.FloorY);
             var length = columns ? projection.Length((edgeX, 0, d / 2), (edgeX, frame.H, d / 2)) : projection.Length((0, edgeY, d / 2), (frame.W, edgeY, d / 2));
+            // Word steps a surface's value axis more coarsely, a step per 1.33 lines of the edge its labels stand on
+            // (measured: libreoffice/extras-ooxmlexport/tdf128207 and the probes docx/local/sfb-160, sfb-165 and
+            // sfb-n137, without perspective, step by 2 on axes of 60.5 to 69.1 pt, 4.2 to 4.7 such steps, where a
+            // step per 1.1 lines would give 5 steps of 1; powertools/CU003 keeps 0.5 on 92.9 pt and CU015 and
+            // generated/charts-more2 1 on 96.7 and 101.2 pt, in perspective: 1.26 to 1.41 lines fit all seven).
+            var perLine = 1.1;
+            if (slide.Presentation.Word && group.Type == "surface3DChart" && columns)
+            {
+                var labelX = frame.SideX == 0 ? -slabs.Left : 0.0;
+                var labelZ = projection.Map(labelX, 0, d).X > projection.Map(labelX, 0, 0).X == axisRight ? d : 0.0;
+                (length, perLine) = (projection.Length((labelX, 0, labelZ), (labelX, frame.H, labelZ)), 1.33);
+            }
             // The value axis takes its steps from the box as large as the whole plot area (generated/charts-3d
             // slide 14: PowerPoint's 0 to 5 by 0.5 beside a box fitted 4.7 pt lower).
-            ScaleValueAxis3D(value, projection is Oblique oblique ? length * oblique.Untrimmed : length);
+            ScaleValueAxis3D(value, projection is Oblique oblique ? length * oblique.Untrimmed : length, perLine);
             // A 3D surface's bands are the value axis's steps.
             if (group.Type == "surface3DChart")
                 surfaceAxis = value.Scale;
@@ -423,10 +444,7 @@ public sealed partial class ChartRenderer
         // seen from 13 sides).
         double WallShade((double X, double Y, double Z) inner, double box)
         {
-            if (!group.IsSurface)
-                return box;
-            var n = projection.Seen(inner);
-            return Math.Min(1, 0.4 + 0.75 * Math.Max(0, n.X * 0.572 + n.Y * 0.586 - n.Z * 0.574));
+            return group.IsSurface ? Math.Min(1, SurfaceLight(projection.Seen(inner))) : box;
         }
         if (slabs.Behind > 0)
             svg.Append(WallSlab(model.Chart.Element(Ns.C + "backWall"), projection, (0, 0, Math.Min(backZ, backOuter)), (w, h, Math.Max(backZ, backOuter))));
@@ -492,25 +510,31 @@ public sealed partial class ChartRenderer
             svg.Append(columns ? Line(categoryOutline, (0, floorOuter, frontZ), (w, floorOuter, frontZ)) : Line(categoryOutline, (axisX, 0, axisZ), (axisX, h, axisZ)));
             if (categoryAxis.MajorTickMark is "out" or "cross" && columns)
             {
-                // Ticks run 5 px down from the floor's front edge at the category boundaries (or points).
+                // Ticks run down from the floor's front edge at the category boundaries (or points).
                 for (var i = 0; i <= (frame.Between ? nCat : nCat - 1); i++)
                 {
                     var p = frame.CategoryPos(frame.Between ? i * c : i / (double)Math.Max(1, nCat - 1));
                     var (x, y) = projection.Map(p, floorOuter, frontZ);
-                    svg.Append(GridLine(categoryOutline, x, y, x, y + TickLength));
+                    svg.Append(GridLine(categoryOutline, x, y, x, y + Tick3D(category)));
                 }
             }
         }
-        if (seriesAxis is { Deleted: false } && rows && AxisOutline(seriesAxis) is { Visible: true } seriesLine)
+        if (seriesAxis is { Deleted: false } && rows && AxisOutline(seriesAxis) is { Visible: true } seriesLine && seriesLayout != null)
         {
             var edge = sideX == 0 ? w : 0;
             svg.Append(Line(seriesLine, (edge, floorY, 0), (edge, floorY, d)));
             if (seriesAxis.MajorTickMark is "out" or "cross")
             {
+                // Word draws them level, towards labels standing beside the axis (measured: libreoffice/
+                // extras-ooxmlexport/tdf128207 to the left, powertools/CU003, CU015 and generated/charts-more2 to the
+                // right, each in all its ticks within 0.01 pt of the level).
+                var tick = Tick3D(seriesLayout);
                 for (var k = 0; k <= (frame.SeriesOnTicks ? nSer - 1 : nSer); k++)
                 {
                     var (x, y) = projection.Map(edge, floorY, frame.SeriesOnTicks ? frame.SeriesPos(k) : k * rowDepth);
-                    svg.Append(GridLine(seriesLine, x, y, x, y + TickLength));
+                    svg.Append(slide.Presentation.Word && seriesAt is { Under: false } beside
+                        ? GridLine(seriesLine, x, y, beside.Right ? x + tick : x - tick, y)
+                        : GridLine(seriesLine, x, y, x, y + tick));
                 }
             }
         }
@@ -533,7 +557,7 @@ public sealed partial class ChartRenderer
         }
         if (category.HasLabels)
         {
-            var tickRoom = categoryOutline is { Visible: true } && categoryAxis.MajorTickMark is "out" or "cross" && !categoryAxis.Deleted ? TickLength : 0;
+            var tickRoom = categoryOutline is { Visible: true } && categoryAxis.MajorTickMark is "out" or "cross" && !categoryAxis.Deleted ? Tick3D(category) : 0;
             // Along a floor edge steeper than 34° the labels stand beside it, away from the box (measured on columns
             // turned 40° to 300°).
             var steep = columns && floorAt is { Under: false };
@@ -557,6 +581,12 @@ public sealed partial class ChartRenderer
             var spacing = nSer > 1 ? (under ? Math.Abs(p1.X - p0.X) : Math.Abs(p1.Y - p0.Y)) : 0;
             var lineHeight = under ? seriesLayout.Labels.Max(l => Width(l, seriesLayout.Style)) : LineHeight(seriesLayout.Style);
             var step = nSer > 1 && spacing < lineHeight && spacing > 1e-6 ? (int)Math.Ceiling(lineHeight / spacing) : 1;
+            // In perspective Word sets labels beside the axis 0.85 s from it, the one at the axis's far end (farther from
+            // the viewer) 0.55 s (measured: 0.832 to 0.853 s and 0.533 to 0.576 s in libreoffice/extras-ooxmlexport/
+            // tdf128207, its far end the first series seen from behind, and powertools/CU003, CU015 and generated/
+            // charts-more2, their far end the last series; generated/charts-more3's right-angle columns put them
+            // 2.9 pt further out than 0.922 s, a rule not known yet).
+            var farEnd = nSer > 1 && projection.Depth(edge, floorY, frame.SeriesPos(0)) > projection.Depth(edge, floorY, frame.SeriesPos(nSer - 1)) ? 0 : nSer - 1;
             for (var k = 0; k < nSer; k += step)
             {
                 var (x, y) = projection.Map(edge, floorY, frame.SeriesPos(k));
@@ -567,8 +597,9 @@ public sealed partial class ChartRenderer
                     svg.Append(FloorLabel(seriesLayout, label, (x, y)));
                     continue;
                 }
-                var left = seriesAt?.Right ?? true ? x + ValueLabelGap * s : x - ValueLabelGap * s - Width(label, seriesLayout.Style);
-                svg.Append(text.Label(label, seriesLayout.Style, left, CenteredBaseline(seriesLayout.Style, y)));
+                var labelGap = !slide.Presentation.Word || seriesAt == null ? ValueLabelGap : k == farEnd && nSer > 1 ? 0.55 : 0.85;
+                var left = seriesAt?.Right ?? true ? x + labelGap * s : x - labelGap * s - Width(label, seriesLayout.Style);
+                svg.Append(text.Label(label, seriesLayout.Style, left, Centered3D(seriesLayout.Style, y)));
             }
         }
         // The axis titles, centered on the plot area along their axes.
@@ -975,6 +1006,16 @@ public sealed partial class ChartRenderer
         var (ambient, strength, light) = projection is PerspectiveBox
             ? (0.821, 0.313, (X: 0.768, Y: 0.182, Z: -0.614))
             : (0.641, 0.380, (X: 0.616, Y: 0.491, Z: -0.616));
+        // Word, whose PDFs carry the plot as a picture of about 200 dpi, lights the facets as the walls (SurfaceLight)
+        // for the side the viewer sees, so facets seen from below get 0.4, and lays a linear gradient fill on the
+        // floor as on a shape, its top at the last series: each facet is the gradient at its place times one factor
+        // (measured on the pictures of libreoffice/extras-ooxmlexport/tdf128207, seen from behind without perspective,
+        // a gradient at 270°: the factor within 1 % across each facet and fitted by 0.4 + 0.746 n · (0.580, 0.574,
+        // −0.577) on eight facets within 0.007, a facet from below 0.397, where the gradient laid the other way or
+        // along the categories leaves 4 to 21 % across a facet; powertools/CU015, gradients at 90° in perspective, and
+        // generated/charts-more2, solid fills: the walls' light within 0.02, facets from below 0.397 to 0.400). Only
+        // views without right-angle axes are measured.
+        var word = slide.Presentation.Word;
 
         // A height field is drawn back to front by its grid cells on the floor (steep facets would sort wrongly by
         // their own centres), each cell's two triangles by theirs.
@@ -1068,8 +1109,14 @@ public sealed partial class ChartRenderer
             var length = Math.Sqrt(n.Item1 * n.Item1 + n.Item2 * n.Item2 + n.Item3 * n.Item3);
             if (length < 1e-12)
                 continue;
-            var seen = projection.Seen((n.Item1 / length, n.Item2 / length, n.Item3 / length));
+            var unit = (n.Item1 / length, n.Item2 / length, n.Item3 / length);
+            var seen = projection.Seen(unit);
             var diffuse = Math.Max(0, ambient + strength * (seen.X * light.X + seen.Y * light.Y + seen.Z * light.Z));
+            if (word)
+            {
+                var centre = (corners.Average(p => p.X), Height(corners.Average(p => p.V)), corners.Average(p => p.Z));
+                diffuse = SurfaceLight(projection.Faces(centre, unit) ? seen : (-seen.X, -seen.Y, -seen.Z));
+            }
             List<(double X, double Y, double V)> triangle = [.. corners.Select(p => (p.X, p.Z, p.V))];
             for (var band = 0; band < bands.Count; band++)
             {
@@ -1084,6 +1131,10 @@ public sealed partial class ChartRenderer
                     var lit = new RgbColor(Math.Min(1, solid.Color.R * diffuse), Math.Min(1, solid.Color.G * diffuse), Math.Min(1, solid.Color.B * diffuse), solid.Color.A);
                     svg.Append($"<path d=\"{d}\"{paint.Fill(new SolidFill(lit), 0, 0, defs)} stroke=\"{lit.ToHex()}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>");
                 }
+                else if (word && fills[band] is GradientFill { Path: null, Stops.Count: > 0 } gradient)
+                {
+                    svg.Append(FloorGradientFacet(d, gradient, diffuse, corners, frame));
+                }
                 else
                 {
                     svg.Append($"<path d=\"{d}\"{paint.Fill(fills[band], width * PxPerPt, height * PxPerPt, defs)}/>");
@@ -1091,6 +1142,65 @@ public sealed partial class ChartRenderer
             }
         }
         return svg.ToString();
+    }
+
+    /// <summary>
+    /// A piece of a surface facet in a linear gradient laid on the floor as on a shape, its top at the last series,
+    /// times the facet's light (Word, see SurfaceSeries3D). The place along the gradient is linear across the facet's
+    /// plane, so the piece gets an SVG gradient along the facet's direction of change on the chart (exact without
+    /// perspective, close for the small facets of a perspective view); it also strokes its edge in that gradient so
+    /// that pieces meet without seams.
+    /// </summary>
+    string FloorGradientFacet(string d, GradientFill gradient, double light, (double X, double Z, double V)[] corners, Frame3D frame)
+    {
+        var projection = frame.Projection;
+        // The place along the gradient of a floor point: the floor as a unit square, x to the right, the series axis
+        // upwards, and the gradient's angle measured clockwise from the right as on a shape.
+        var angle = (gradient.Angle ?? 0) * Math.PI / 180;
+        var (cos, sin) = (Math.Cos(angle), Math.Sin(angle));
+        var span = Math.Abs(cos) + Math.Abs(sin);
+        var t = corners.Select(p => ((p.X / Math.Max(1e-9, frame.W) - 0.5) * cos + (0.5 - p.Z / Math.Max(1e-9, frame.Depth)) * sin) / span + 0.5).ToArray();
+        var screen = corners.Select(p => projection.Map(p.X, frame.ValuePos(p.V), p.Z)).ToArray();
+        RgbColor Lit(RgbColor c) => new(Math.Min(1, c.R * light), Math.Min(1, c.G * light), Math.Min(1, c.B * light), c.A);
+        // t on the chart is a · p + b: a from the facet's two edges.
+        var (e1, e2) = ((X: screen[1].X - screen[0].X, Y: screen[1].Y - screen[0].Y), (X: screen[2].X - screen[0].X, Y: screen[2].Y - screen[0].Y));
+        var det = e1.X * e2.Y - e1.Y * e2.X;
+        var (dt1, dt2) = (t[1] - t[0], t[2] - t[0]);
+        var (ax, ay) = Math.Abs(det) < 1e-12 ? (0.0, 0.0) : ((e2.Y * dt1 - e1.Y * dt2) / det, (e1.X * dt2 - e2.X * dt1) / det);
+        var a2 = ax * ax + ay * ay;
+        if (a2 < 1e-12)
+        {
+            // Seen edge on, or level along the gradient: the colour at the facet's middle.
+            var lit = Lit(GradientColor(gradient.Stops, t.Average()));
+            return $"<path d=\"{d}\"{paint.Fill(new SolidFill(lit), 0, 0, defs)} stroke=\"{lit.ToHex()}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>";
+        }
+        // The gradient runs from where t is 0 to where it is 1 along a.
+        var (x0, y0) = (screen[0].X - t[0] * ax / a2, screen[0].Y - t[0] * ay / a2);
+        var id = paint.NewId("sf");
+        defs.Append($"<linearGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" x1=\"{Px(x0)}\" y1=\"{Px(y0)}\" x2=\"{Px(x0 + ax / a2)}\" y2=\"{Px(y0 + ay / a2)}\">");
+        foreach (var stop in gradient.Stops)
+        {
+            var c = Lit(stop.Color);
+            defs.Append($"<stop offset=\"{Units.Css4(Math.Clamp(stop.Position, 0, 1))}\" stop-color=\"{c.ToHex()}\"{(c.A < 0.999 ? $" stop-opacity=\"{Units.Css4(c.A)}\"" : "")}/>");
+        }
+        defs.Append("</linearGradient>");
+        return $"<path d=\"{d}\" fill=\"url(#{id})\" stroke=\"url(#{id})\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>";
+    }
+
+    /// <summary>The colour of a gradient at <paramref name="at"/> (0 … 1), between its stops in sRGB.</summary>
+    static RgbColor GradientColor(List<GradientStop> stops, double at)
+    {
+        if (at <= stops[0].Position)
+            return stops[0].Color;
+        for (var k = 1; k < stops.Count; k++)
+        {
+            if (at > stops[k].Position)
+                continue;
+            var (a, b) = (stops[k - 1], stops[k]);
+            var f = b.Position - a.Position < 1e-12 ? 1 : (at - a.Position) / (b.Position - a.Position);
+            return new RgbColor(a.Color.R + (b.Color.R - a.Color.R) * f, a.Color.G + (b.Color.G - a.Color.G) * f, a.Color.B + (b.Color.B - a.Color.B) * f, a.Color.A + (b.Color.A - a.Color.A) * f);
+        }
+        return stops[^1].Color;
     }
 
     /// <summary>The line of band <paramref name="index"/> (wireframe surfaces): its c:bandFmt's, or null.</summary>
@@ -1158,8 +1268,11 @@ public sealed partial class ChartRenderer
         return new Box(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
     }
 
-    /// <summary>Value axis scale of a 3D chart: like flat charts but without headroom above the largest value (measured: 5 stays 5).</summary>
-    void ScaleValueAxis3D(AxisLayout layout, double length)
+    /// <summary>
+    /// Value axis scale of a 3D chart: like flat charts but without headroom above the largest value (measured: 5 stays
+    /// 5); a vertical axis takes a step per <paramref name="perLine"/> line heights of its length.
+    /// </summary>
+    void ScaleValueAxis3D(AxisLayout layout, double length, double perLine = 1.1)
     {
         double min = double.PositiveInfinity, max = double.NegativeInfinity;
         var percent = false;
@@ -1176,7 +1289,7 @@ public sealed partial class ChartRenderer
         var style = layout.Style;
         // Horizontal value axes keep four font sizes per interval as on flat charts, however wide the labels are
         // (measured: a 3D bar chart's axis up to 5 steps by 1; powertools/CU012: 0 to 5 by 0.5 on a 350 pt axis).
-        var extent = layout.Axis.Horizontal ? 4 * style.Size : LineHeight(style) * 1.1;
+        var extent = layout.Axis.Horizontal ? 4 * style.Size : LineHeight(style) * perLine;
         var maxIntervals = Math.Clamp((int)Math.Floor(length / Math.Max(1, extent)), 1, 10);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom: false);
         layout.Labels = layout.Scale.Ticks().Select(v => NumberFormat.Format(v, Format(layout), culture)).ToList();
@@ -1185,7 +1298,26 @@ public sealed partial class ChartRenderer
 
     /// <summary>A label right-aligned before a point on the vertical axis's edge (left-aligned after it on the right), centered on it.</summary>
     string SideLabel(AxisLayout layout, string label, (double X, double Y) at, bool right = false) =>
-        text.Label(label, layout.Style, right ? at.X + ValueLabelGap * layout.Style.Size : at.X - ValueLabelGap * layout.Style.Size - Width(label, layout.Style), CenteredBaseline(layout.Style, at.Y));
+        text.Label(label, layout.Style, right ? at.X + ValueLabelGap * layout.Style.Size : at.X - ValueLabelGap * layout.Style.Size - Width(label, layout.Style), Centered3D(layout.Style, at.Y));
+
+    /// <summary>
+    /// The baseline of a 3D chart's label centered on a point beside it: in Word its line box centered exactly, without
+    /// the flat charts' rise (measured in Word's PDFs: series labels 0.33 to 0.34 s below their ticks, Calibri's line
+    /// box centered 0.342 s, in libreoffice/extras-ooxmlexport/tdf128207, powertools/CU003, CU015 and generated/
+    /// charts-more2; value labels within 0.13 pt of Word's in tdf128207 and 0.10 pt in charts-more3's right-angle
+    /// columns, 0.4 to 0.5 pt above them with the rise; powertools/CU012's bar categories within 0.18 pt, 0.31 to
+    /// 0.67 pt above with it).
+    /// </summary>
+    double Centered3D(TextStyle style, double center) =>
+        slide.Presentation.Word ? center + (Ascent(style) - Descent(style)) / 2 : CenteredBaseline(style, center);
+
+    /// <summary>
+    /// The tick marks of a 3D chart's axis: 5 px, in Word 0.316 times the size of the axis's labels (measured on the
+    /// vector ticks Word's PDFs draw over the plot's picture: 2.76 to 2.90 pt at 9 pt in powertools/CU003, CU015 and
+    /// generated/charts-more2, 3.11 to 3.18 pt at 10 pt in libreoffice/extras-ooxmlexport/tdf128207, chart-prop,
+    /// chart-dupe and powertools/CU001, on category, series and value axes, with and without right-angle axes).
+    /// </summary>
+    double Tick3D(AxisLayout layout) => slide.Presentation.Word ? 0.316 * layout.Style.Size : TickLength;
 
     /// <summary>A label centered under a point on the floor's front edge, or turned with its end (rising) or start at it.</summary>
     string FloorLabel(AxisLayout layout, string label, (double X, double Y) at)

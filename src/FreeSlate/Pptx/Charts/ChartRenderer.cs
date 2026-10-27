@@ -272,40 +272,61 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var legend = BuildLegend(title);
 
         // Boundaries the plot area keeps its distance from: the chart edges, the title and the legend.
-        double top = 0, bottom = height, left = 0, right = width;
-        if (title is { Overlay: false }) top = title.Bottom;
-        if (legend is { Overlay: false })
+        Box OuterPlot(LegendLayout? legend)
         {
-            switch (legend.Position)
+            double top = 0, bottom = height, left = 0, right = width;
+            if (title is { Overlay: false }) top = title.Bottom;
+            if (legend is { Overlay: false })
             {
-                case "b": bottom = legend.Space.Y; break;
-                case "t": top = legend.Space.Bottom; break;
-                case "l": left = legend.Space.Right; break;
-                case "r": right = legend.Space.X; break;
-                case "tr":
-                    // Next to a corner legend the plot area starts 5 pt below it and ends 17 pt above the bottom.
-                    right = legend.Space.X;
-                    top = legend.Space.Bottom - 6;
-                    bottom = height - 6;
-                    break;
+                switch (legend.Position)
+                {
+                    case "b": bottom = legend.Space.Y; break;
+                    case "t": top = legend.Space.Bottom; break;
+                    case "l": left = legend.Space.Right; break;
+                    case "r": right = legend.Space.X; break;
+                    case "tr":
+                        // Next to a corner legend the plot area starts 5 pt below it and ends 17 pt above the bottom.
+                        right = legend.Space.X;
+                        top = legend.Space.Bottom - 6;
+                        bottom = height - 6;
+                        break;
+                }
             }
+            return ex != null
+                ? ExOuterPlot(title, legend)
+                : new Box(left + PlotGap, top + PlotGap, Math.Max(0, right - left - 2 * PlotGap), Math.Max(0, bottom - top - 2 * PlotGap));
         }
-        var outer = ex != null
-            ? ExOuterPlot(title, legend)
-            : new Box(left + PlotGap, top + PlotGap, Math.Max(0, right - left - 2 * PlotGap), Math.Max(0, bottom - top - 2 * PlotGap));
+        var outer = OuterPlot(legend);
 
         var body = new StringBuilder();
         var pies = model.Groups.Where(g => g.IsPie).ToList();
         var radars = model.Groups.Where(g => g.IsRadar).ToList();
         var axisGroups = model.Groups.Where(g => !g.IsPie && !g.IsRadar && !g.IsSurface).ToList();
         var surfaces = model.Groups.Where(g => g.IsSurface).ToList();
+        var (defsBefore, labelsBefore) = (defs.Length, dataLabels.Length);
         if (Chart3D(model.Groups, outer) is { } threeD)
         {
-            body.Append(threeD);
             (axisGroups, radars, pies, surfaces) = ([], [], [], []);
-            // The legend of a 3D surface lists the bands of its value axis, known only now.
+            // The legend of a 3D surface lists the bands of its value axis, known only now: the first layout stands
+            // beside a legend of bands guessed from the data alone (SurfaceScale). Where the legend of the laid-out
+            // bands leaves the plot area other room, the plot area is laid out again beside it (measured:
+            // libreoffice/extras-ooxmlexport/tdf128207, a 235 by 154 pt surface whose ten guessed bands take two
+            // legend rows: Word's plot area, the 185.94 by 109.26 pt picture of its PDF, reaches 15 pt further down to
+            // the one row of 0-2, 2-4, 4-6, 0.15 pt from ours laid out again; its value axis 20.23 pt per step of 2).
             if (surfaceAxis != null && legend != null)
-                legend = BuildLegend(title);
+            {
+                var banded = BuildLegend(title);
+                if (banded is { Overlay: false } && OuterPlot(banded) != outer)
+                {
+                    defs.Length = defsBefore;
+                    dataLabels.Length = labelsBefore;
+                    outer = OuterPlot(banded);
+                    threeD = Chart3D(model.Groups, outer) ?? threeD;
+                    banded = BuildLegend(title);
+                }
+                legend = banded;
+            }
+            body.Append(threeD);
         }
         if (axisGroups.Count > 0)
             body.Append(AxisChart(axisGroups, outer, legend, title));
