@@ -2182,6 +2182,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
     /// <summary>A width in points rounded up to whole twips.</summary>
     static double Twips(double points) => Math.Ceiling(points * 20 - 1e-6) / 20;
 
+    /// <summary>Where a first pass placed a floating table of a cell (its left and top in the cell's text), and the
+    /// room it keeps free.</summary>
+    public sealed record PinnedFloat(double X, double Top, Paginator.Exclusion Area);
+
     /// <summary>What a cell asks of autofit columns: its grid columns, its contents' narrowest and widest with its
     /// margins, those margins, and its preferred width.</summary>
     readonly record struct CellNeed(int From, int To, double Min, double Max, double Margins, double? Preferred);
@@ -2658,12 +2662,14 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
     /// <param name="previous">The style of the paragraph before the blocks (<see cref="NoParagraph"/> for none).</param>
     /// <param name="next">The style of the paragraph after them.</param>
+    /// <param name="pinned">The floating tables of the blocks (by block) where a first pass placed them, which what
+    /// stands before them goes around too.</param>
     /// <remarks>
     /// Contextual spacing works in cells as in the body, but not before Word 2013 where the document says
     /// w:allowSpaceOfSameStyleInTable (catalog: settings.compatibility, measured with docx/local/c5-cells).
     /// </remarks>
     CellContent Content(Scope scope, List<Block> blocks, double width, PageFields? fields, string? previous = NoParagraph, string? next = NoParagraph, double edge = 0,
-        bool floats = false, IReadOnlyList<CellCut>? cuts = null)
+        bool floats = false, IReadOnlyList<CellCut>? cuts = null, IReadOnlyDictionary<int, PinnedFloat>? pinned = null)
     {
         var lines = new List<PlacedLine>();
         var fills = new List<FillRect>();
@@ -2682,6 +2688,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         var floated = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var floatBottom = 0.0;
         var extent = 0.0;
+        // A floating table in a cell takes the text before it around it too, where it reaches that (measured with
+        // docx/local/nfp-1 to nfp-4: a table at tblpY 30 pt from the cell's top or -30 pt from the paragraph after
+        // it has the lines of a paragraph before it beside it, and a nested table before it beside it whole; docx/
+        // external/libreoffice/core-layout/floattable-nested-rowspan): placed where a first pass puts them, the
+        // floating tables stand there from the cell's top in a second, as Word keeps them where it placed them first.
+        if (pinned != null)
+        {
+            around.AddRange(pinned.Values.Select(f => f.Area));
+            cellTables.AddRange(pinned.Values.Select(f => f.Area));
+        }
+        var placedFloats = new Dictionary<int, PinnedFloat>();
+        var reachesBack = false;
         // The border box of the paragraphs that share their borders, from the first one's top.
         Paginator.Frame? previousFrame = null;
         var boxTop = 0.0;
@@ -2871,15 +2889,25 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                             top = other.Bottom + Twips("topFromText");
                         }
                     }
+                    var pin = pinned?.GetValueOrDefault(b);
+                    if (pin != null)
+                        (x, top) = (pin.X, pin.Top);
+                    var placedAt = top;
                     var (linesFrom, fillsFrom, strokesFrom, cutsFrom) = (lines.Count, fills.Count, strokes.Count, boundaries.Count);
                     (top, var tableTop) = Rows(box, x - box.Left, top, b);
                     Frame(box, x - box.Left, tableTop, top, fills);
                     floated.UnionWith(lines.Skip(linesFrom));
                     floated.UnionWith(fills.Skip(fillsFrom));
                     floated.UnionWith(strokes.Skip(strokesFrom));
-                    around.Add(new Paginator.Exclusion(x - Twips("leftFromText"), tableTop - Twips("topFromText"), x + box.Width + Twips("rightFromText"),
-                        top + Twips("bottomFromText"), false, "bothSides"));
-                    cellTables.Add(around[^1]);
+                    if (pin == null)
+                    {
+                        var area = new Paginator.Exclusion(x - Twips("leftFromText"), tableTop - Twips("topFromText"), x + box.Width + Twips("rightFromText"),
+                            top + Twips("bottomFromText"), false, "bothSides");
+                        around.Add(area);
+                        cellTables.Add(area);
+                        placedFloats[b] = new PinnedFloat(x, placedAt, area);
+                        reachesBack |= lines.Take(linesFrom).Any(l => !floated.Contains(l) && l.Top < area.Bottom - 0.01 && l.Top + l.Line.Height > area.Top + 0.01);
+                    }
                     floatBottom = Math.Max(floatBottom, top);
                     // Where a cut goes through it the text after it begins beside its last part, at that part's top, the
                     // parts before without it (measured with docx/local/nft-*-f, -lf, -ft: a table of three rows over two
@@ -2894,8 +2922,32 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     previousFrame = null;
                     y += first ? 0 : after;
                     var box = Layout(scope with { Nested = scope.OfCell }, nested.Table, width, fields, previous);
-                    (y, var tableTop) = Rows(box, 0, y, b);
-                    Frame(box, 0, tableTop, y, fills);
+                    // Beside the floating tables of the cell it reaches where it fits there whole, else its rows that
+                    // reach them below them (docx/local/nfp-1: a table of 300 pt beside one of 100 pt at the cell's
+                    // left; floattable-nested-rowspan: one of 330 pt in a cell of 331 pt has its second row below two).
+                    var (shift, avoid) = (0.0, false);
+                    if (pinned != null && box.Rows.Count > 0)
+                    {
+                        var height = box.Rows.Sum(r => r.Height) + box.Rows[^1].BottomBorderWidth;
+                        var reached = around.Where(e => e.Top < y + height - 0.01 && e.Bottom > y + 0.01
+                            && e.Left < box.Left + box.Width - 0.01 && e.Right > box.Left + 0.01).OrderBy(e => e.Left).ToList();
+                        if (reached.Count > 0)
+                        {
+                            var x = box.Left;
+                            foreach (var e in reached)
+                            {
+                                if (e.Left - x >= box.Width - 0.01)
+                                    break;
+                                x = Math.Max(x, e.Right);
+                            }
+                            if (x + box.Width <= Math.Max(width, box.Left + box.Width) + 0.01)
+                                shift = x - box.Left;
+                            else
+                                avoid = true;
+                        }
+                    }
+                    (y, var tableTop) = Rows(box, shift, y, b, avoid);
+                    Frame(box, shift, tableTop, y, fills);
                     after = 0;
                     ownAfter = 0;
                     previous = box.Rows.Count > 0 ? context.Styles.ParagraphStyleOf(null) : previous;
@@ -2904,6 +2956,8 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 }
             }
         }
+        if (pinned == null && reachesBack && (cuts == null || cuts.Count == 0))
+            return Content(scope, blocks, width, fields, previous, next, edge, floats, cuts, placedFloats);
         return new CellContent(lines, fills, strokes, Math.Max(y + after, floatBottom))
         {
             Anchors = anchors, Reach = Math.Max(Math.Max(y + after, floatBottom), extent), Floated = floated.Count > 0 ? floated : null,
@@ -2915,14 +2969,29 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // its last row, the part after beginning with the table's top line, a row cut in two going on at least as high
         // as its at-least height (measured with docx/local/nft-*: the line below and above the cut, the third row of at
         // least 169.6 pt going on 169.6 pt high with three lines, in modes 11 and 15; LibreOffice's core-text/
-        // floattable-anchor-height). Returns how far down the table reaches and where its last part begins.
-        (double Bottom, double Top) Rows(TableBox box, double left, double top, int b)
+        // floattable-anchor-height). Returns how far down the table reaches and where its last part begins. Rows that
+        // avoid the floating tables of the cell go on below one they reach, as a part beginning with the table's top
+        // line, the part before ending with the line below its last row.
+        (double Bottom, double Top) Rows(TableBox box, double left, double top, int b, bool avoid = false)
         {
             var tableTop = top;
             RowBox? placed = null;
             for (var r = 0; r < box.Rows.Count; r++)
             {
                 var row = box.Rows[r];
+                while (avoid && around.FirstOrDefault(e => e.Top < top + row.Height - 0.01 && e.Bottom > top + 0.01
+                    && e.Left < left + box.Left + box.Width - 0.01 && e.Right > left + box.Left + 0.01) is { } reached)
+                {
+                    if (placed != null)
+                    {
+                        Close(placed, left, top);
+                        top += placed.BottomBorderWidth;
+                        placed = null;
+                    }
+                    top = Math.Max(top, reached.Bottom);
+                    row = row.AtPageTop();
+                    tableTop = top;
+                }
                 while (cuts != null && cutAt < cuts.Count && cuts[cutAt].Table == b + 1 && top + row.Height + row.BottomBorderWidth > cuts[cutAt].Room + 0.01)
                 {
                     var room = cuts[cutAt++].Room;
