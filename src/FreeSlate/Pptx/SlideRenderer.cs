@@ -858,7 +858,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// like it. The scene turns about the center of the text, not of the shape (measured). A bevel wider than half the
     /// glyph's strokes meets the opposite one in a ridge: it is cut there, with its height in proportion.
     /// </summary>
-    string Text3D(Camera camera, Lighting lighting, XElement? shape3d, List<(List<List<(double X, double Y)>> Contours, RgbColor Color)> glyphs,
+    string Text3D(Camera camera, Lighting lighting, XElement? shape3d, List<(List<List<(double X, double Y)>> Contours, RgbColor Color, bool Textured)> glyphs,
         string textMarkup, double pw, double ph)
     {
         // The scene's center: the center of the glyphs' box; Solid and Projection turn about the middle of the box given.
@@ -873,31 +873,44 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
         var (front, back) = (-topHeight, -topHeight - depth);
         var face = new List<List<(double X, double Y)>>();
-        foreach (var (contours, color) in glyphs)
+        foreach (var (contours, color, textured) in glyphs)
         {
             var outlines = contours.Where(c => c.Count >= 3).ToList();
             if (outlines.Count == 0)
                 continue;
-            // The thickness of the glyph's strokes: twice its area over its perimeter.
-            var area = Math.Abs(outlines.Sum(Area));
-            var perimeter = outlines.Sum(o => o.Select((p, i) => Math.Sqrt(Math.Pow(o[(i + 1) % o.Count].X - p.X, 2) + Math.Pow(o[(i + 1) % o.Count].Y - p.Y, 2))).Sum());
-            var limit = perimeter > 0 ? area / perimeter : 0;
+            // Bevels wider than half a stroke run across it to a crest along its middle (see Solid.Bevel; found by an
+            // agent in Word's picture of LibreOffice's extras-ooxmlexport/TextEffects_Props3d_Ligatures_NumForm_NumSpacing:
+            // Calibri 48 with a relaxed inset bevel of 3 pt over strokes of 3 to 4 pt, no flat front face left; Word's
+            // text-3d "Metal" M of Arial Black 48: crests 2.2 and 2.66 pt inside its stem's edges under a bevel of 5 pt).
+            // Text filled with a gradient or a picture keeps its bevels within its strokes' mean thickness, twice its
+            // area over its perimeter, their height as much lower (not measured yet: docx/external/poi/bib-chernigovka's
+            // heading in an accent gradient under a circle bevel of 3 pt shows its gradient across its bold strokes).
+            var middle = !textured;
+            var limit = double.PositiveInfinity;
+            if (textured)
+            {
+                var area = Math.Abs(outlines.Sum(Area));
+                var perimeter = outlines.Sum(o => o.Select((p, i) => Math.Sqrt(Math.Pow(o[(i + 1) % o.Count].X - p.X, 2) + Math.Pow(o[(i + 1) % o.Count].Y - p.Y, 2))).Sum());
+                limit = perimeter > 0 ? area / perimeter : 0;
+            }
             var (top, bottom) = (Math.Min(topWidth, limit), Math.Min(bottomWidth, limit));
             var topRise = topWidth > 0.01 ? topHeight * top / topWidth : 0;
             var bottomRise = bottomWidth > 0.01 ? bottomHeight * bottom / bottomWidth : 0;
             if (depth > 0.01)
                 solid.Extrusion(outlines, front, back, extrusionColor ?? color);
             if (bottom > 0.01)
-                solid.Bevel(outlines, bottom, bottomRise, bottomProfile, color, back, bottom: true);
+                solid.Bevel(outlines, bottom, bottomRise, bottomProfile, color, back, bottom: true, middle: middle);
             // The counters of the glyph are holes: inset away from their middle (Solid.Holes).
             var turn = Solid.Turn(outlines);
+            List<(double X, double Y)> Inset(List<(double X, double Y)> o, double distance) =>
+                middle ? Solid.InsetToMiddle(o, outlines, distance, turn) : Solid.Inset(o, distance, turn);
             if (depth > 0.01 || top > 0.01 || bottom > 0.01)
-                solid.Back(bottom > 0.01 ? outlines.Select(o => Solid.Inset(o, bottom, turn)).ToList() : outlines, back - bottomRise, color, null, 0);
+                solid.Back(bottom > 0.01 ? outlines.Select(o => Inset(o, bottom)).ToList() : outlines, back - bottomRise, color, null, 0);
             if (top > 0.01)
-                solid.Bevel(outlines, top, topRise, topProfile, color);
+                solid.Bevel(outlines, top, topRise, topProfile, color, middle: middle);
             if (contourWidth > 0.01)
                 solid.Contour(outlines, front, back, contourWidth, Solid.Rise(top, topRise, topProfile), Solid.Rise(bottom, bottomRise, bottomProfile));
-            face.AddRange(top > 0.01 ? outlines.Select(o => Solid.Inset(o, top, turn)) : outlines);
+            face.AddRange(top > 0.01 ? outlines.Select(o => Inset(o, top)) : outlines);
         }
         var (sw, sh) = (Units.Css(Math.Max(pw, 1)), Units.Css(Math.Max(ph, 1)));
         var result = new StringBuilder();

@@ -112,7 +112,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// When set, the outlines of the glyphs drawn (pixels, one entry per glyph) with their color are collected: 3D text
     /// (catalog: text.threeD) gives them a body.
     /// </summary>
-    public List<(List<List<(double X, double Y)>> Contours, RgbColor Color)>? Outlines { get; set; }
+    public List<(List<List<(double X, double Y)>> Contours, RgbColor Color, bool Textured)>? Outlines { get; set; }
 
     /// <summary>Whether the text being rendered is drawn character by character (see <see cref="TextChain.Units"/>).</summary>
     bool units;
@@ -558,7 +558,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         }).ToList();
         var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment, lines);
         for (var i = 0; i < warped.Count && Outlines != null; i++)
-            Outlines.Add((warped[i], (owners[i].Paint is { } warpedPaint ? Fill.MainColor(warpedPaint) : null) ?? owners[i].Color));
+            Outlines.Add((warped[i], (owners[i].Paint is { } warpedPaint ? Fill.MainColor(warpedPaint) : null) ?? owners[i].Color,
+                owners[i].Paint is not (null or SolidFill or NoFill)));
 
         var warpedText = new SvgGroupItem(" data-tx=\"\"", []);
         var defs = new StringBuilder();
@@ -1101,7 +1102,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 if (slide.Presentation.Glyphs.Id(data, glyphs[i].Id) is not { } id)
                     continue;
                 Outlines?.Add((TextWarp.Contours(data.Outline(glyphs[i].Id), startPx + glyphX[i] + glyphs[i].OffsetX * style.Size * PxPerPt,
-                    y * PxPerPt - glyphs[i].OffsetY * style.Size * PxPerPt, scale), (style.Paint is { } glyphPaint ? Fill.MainColor(glyphPaint) : null) ?? style.Color));
+                    y * PxPerPt - glyphs[i].OffsetY * style.Size * PxPerPt, scale), (style.Paint is { } glyphPaint ? Fill.MainColor(glyphPaint) : null) ?? style.Color,
+                    style.Paint is not (null or SolidFill or NoFill)));
                 var gx = glyphX[i] / scale + glyphs[i].OffsetX * data.UnitsPerEm;
                 var gy = -glyphs[i].OffsetY * data.UnitsPerEm;
                 if (style.NormalizeHeight && data.GlyphBounds(glyphs[i].Id) is var (bottom, top) && top > bottom)

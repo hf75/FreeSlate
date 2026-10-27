@@ -94,24 +94,89 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     /// The outline moved by <paramref name="distance"/> pixels to the side its figure's inside lies on: the right of
     /// travel for a positive <paramref name="sign"/> (y down), else the left; a hole moves away from its own middle.
     /// </summary>
-    public static List<(double X, double Y)> Inset(List<(double X, double Y)> outline, double distance, int sign)
+    public static List<(double X, double Y)> Inset(List<(double X, double Y)> outline, double distance, int sign) => Inset(outline, distance, sign, null);
+
+    /// <summary>
+    /// The outline inset as <see cref="Inset(List{ValueTuple{double, double}}, double, int)"/>, every vertex at most
+    /// as far as its <paramref name="reach"/> (see <see cref="Reach"/>), where given.
+    /// </summary>
+    static List<(double X, double Y)> Inset(List<(double X, double Y)> outline, double distance, int sign, double[]? reach)
     {
         if (Math.Abs(distance) < 1e-9)
             return outline;
         var result = new List<(double X, double Y)>(outline.Count);
         for (var i = 0; i < outline.Count; i++)
         {
-            var (prev, cur, next) = (outline[(i - 1 + outline.Count) % outline.Count], outline[i], outline[(i + 1) % outline.Count]);
-            var n1 = Inward(prev, cur, sign);
-            var n2 = Inward(cur, next, sign);
-            var (mx, my) = (n1.X + n2.X, n1.Y + n2.Y);
-            var dot = 1 + n1.X * n2.X + n1.Y * n2.Y;
-            var factor = dot < 1e-6 ? 4 : Math.Min(4, 2 / dot);
-            var (ox, oy) = dot < 1e-6 ? (n1.X * distance, n1.Y * distance) : (mx / 2 * factor * distance, my / 2 * factor * distance);
-            result.Add((cur.X + ox, cur.Y + oy));
+            var (ox, oy) = Offset(outline, i, sign);
+            var d = reach == null ? distance : Math.Min(distance, reach[i]);
+            result.Add((outline[i].X + ox * d, outline[i].Y + oy * d));
         }
         return result;
     }
+
+    /// <summary>
+    /// Where a vertex of an outline moves when the outline is inset by one pixel: along its corner's bisector so that
+    /// both edges keep the distance (miters limited to four times the distance).
+    /// </summary>
+    static (double X, double Y) Offset(List<(double X, double Y)> outline, int i, int sign)
+    {
+        var (prev, cur, next) = (outline[(i - 1 + outline.Count) % outline.Count], outline[i], outline[(i + 1) % outline.Count]);
+        var n1 = Inward(prev, cur, sign);
+        var n2 = Inward(cur, next, sign);
+        var (mx, my) = (n1.X + n2.X, n1.Y + n2.Y);
+        var dot = 1 + n1.X * n2.X + n1.Y * n2.Y;
+        var factor = dot < 1e-6 ? 4 : Math.Min(4, 2 / dot);
+        return dot < 1e-6 ? n1 : (mx / 2 * factor, my / 2 * factor);
+    }
+
+    /// <summary>
+    /// How far each vertex of an outline may be inset (in pixels of inset, see <see cref="Offset"/>) before it passes
+    /// the middle of its stroke: half the way along its move to the first outline of the figure the move meets.
+    /// </summary>
+    static double[] Reach(List<(double X, double Y)> outline, List<List<(double X, double Y)>> all, int sign)
+    {
+        var reach = new double[outline.Count];
+        for (var i = 0; i < outline.Count; i++)
+        {
+            var (ox, oy) = Offset(outline, i, sign);
+            var length = Math.Sqrt(ox * ox + oy * oy);
+            reach[i] = double.PositiveInfinity;
+            if (length < 1e-9)
+                continue;
+            var (dx, dy) = (ox / length, oy / length);
+            var (px, py) = outline[i];
+            var nearest = double.PositiveInfinity;
+            foreach (var other in all)
+            {
+                for (var k = 0; k < other.Count; k++)
+                {
+                    // Not the two edges the vertex joins.
+                    if (ReferenceEquals(other, outline) && (k == i || (k + 1) % other.Count == i))
+                        continue;
+                    var (a, b) = (other[k], other[(k + 1) % other.Count]);
+                    var (ex, ey) = (b.X - a.X, b.Y - a.Y);
+                    var denominator = dx * ey - dy * ex;
+                    if (Math.Abs(denominator) < 1e-12)
+                        continue;
+                    var (ax, ay) = (a.X - px, a.Y - py);
+                    var u = (ax * ey - ay * ex) / denominator;
+                    var s = (ax * dy - ay * dx) / denominator;
+                    if (u > 1e-6 && s >= -1e-9 && s <= 1 + 1e-9 && u < nearest)
+                        nearest = u;
+                }
+            }
+            if (!double.IsPositiveInfinity(nearest))
+                reach[i] = nearest / 2 / length;
+        }
+        return reach;
+    }
+
+    /// <summary>
+    /// The outline inset by <paramref name="distance"/> pixels, its vertices no further than the middle of their stroke
+    /// in the figure of <paramref name="all"/> outlines (see <see cref="Bevel"/>): the front face inside a bevel.
+    /// </summary>
+    public static List<(double X, double Y)> InsetToMiddle(List<(double X, double Y)> outline, List<List<(double X, double Y)>> all, double distance, int sign) =>
+        Inset(outline, distance, sign, Reach(outline, all, sign));
 
     static (double X, double Y) Inward((double X, double Y) a, (double X, double Y) b, int sign)
     {
@@ -283,8 +348,14 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     /// clipped: a multiplied gray for the diffuse light and an added gray for the specular (and for diffuse light above
     /// one), see <see cref="OverlayMarkup"/>.
     /// </remarks>
+    /// <param name="middle">
+    /// Whether the bevel stops at the middle of the figure's strokes (a glyph's): where it is wider than half a stroke,
+    /// every point of its rings moves inwards only as far as the middle, at the height the profile has there, so that
+    /// the stroke is bevelled across its whole width up to a crest along its middle; else the rings are the outline
+    /// inset as far as the bevel is wide.
+    /// </param>
     public void Bevel(List<List<(double X, double Y)>> outlines, double width, double height, double[] profile, RgbColor? color,
-        double z = 0, bool bottom = false, RgbColor? line = null, double lineWidth = 0)
+        double z = 0, bool bottom = false, RgbColor? line = null, double lineWidth = 0, bool middle = false)
     {
         if (width < 0.01 || height < 0.01)
             return;
@@ -301,7 +372,10 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
         foreach (var local in outlines)
         {
             var localSide = SideOf(local, outlines, scene: false);
-            var rings = ts.Select(t => Inset(local, width * t, localSide).Select(Scene).ToList()).ToList();
+            var reach = middle ? Reach(local, outlines, localSide) : null;
+            var rings = ts.Select(t => Inset(local, width * t, localSide, reach).Select(Scene).ToList()).ToList();
+            // Each vertex at the depth of its own inset, which stops at the middle of its stroke (middle).
+            var depths = ts.Select(t => Enumerable.Range(0, local.Count).Select(i => Depth(reach == null ? t : Math.Min(t, reach[i] / width))).ToArray()).ToList();
             var sign = Holes ? SideOf(local, outlines, scene: true) : SignedArea(rings[0]) >= 0 ? 1 : -1;
             for (var k = 0; k + 1 < ts.Count; k++)
             {
@@ -310,6 +384,7 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
                 var slope = (z1 - z0) / (width * (t1 - t0));
                 var stripColor = t1 <= lineEnd + 1e-9 ? line : color;
                 var (outer, inner) = (rings[k], rings[k + 1]);
+                var (outerDepths, innerDepths) = (depths[k], depths[k + 1]);
                 // Neighbouring pieces of the strip with the same lit color become one polygon.
                 List<(double X, double Y, double Z)>? run = null;
                 List<(double X, double Y, double Z)>? back = null;
@@ -332,23 +407,41 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
                     var inward = Inward(outer[i], outer[j], sign);
                     if (inward == (0, 0))
                         continue;
-                    // Outwards and towards the front (top) or the back (bottom).
+                    (double X, double Y, double Z) a = (outer[i].X, outer[i].Y, outerDepths[i]), b = (outer[j].X, outer[j].Y, outerDepths[j]);
+                    (double X, double Y, double Z) e = (inner[j].X, inner[j].Y, innerDepths[j]), f = (inner[i].X, inner[i].Y, innerDepths[i]);
+                    // Outwards and towards the front (top) or the back (bottom); a piece with corners stopped at the
+                    // middle of their stroke is lit as the surface between its corners lies, and left out where it has
+                    // no width left.
+                    var stopped = a.Z != z0 || b.Z != z0 || e.Z != z1 || f.Z != z1;
                     var normal = bottom ? Normalize((inward.X * slope, inward.Y * slope, -1)) : Normalize((-inward.X * slope, -inward.Y * slope, 1));
-                    var view = camera.View((outer[i].X, outer[i].Y, z0));
+                    if (stopped)
+                    {
+                        (double X, double Y, double Z) p = (e.X - a.X, e.Y - a.Y, e.Z - a.Z), q = (f.X - b.X, f.Y - b.Y, f.Z - b.Z);
+                        (double X, double Y, double Z) across = (p.Y * q.Z - p.Z * q.Y, p.Z * q.X - p.X * q.Z, p.X * q.Y - p.Y * q.X);
+                        if (Math.Sqrt(across.X * across.X + across.Y * across.Y + across.Z * across.Z) < 1e-9)
+                        {
+                            Flush();
+                            continue;
+                        }
+                        normal = Normalize((bottom ? across.Z > 0 : across.Z < 0) ? (-across.X, -across.Y, -across.Z) : across);
+                    }
+                    var view = camera.View((outer[i].X, outer[i].Y, a.Z));
                     var shade = lighting.Shade(normal, view);
                     var opacity = lighting.OpacityAt(normal, view);
                     var hex = stripColor is { } c ? Lit(c, normal, view, opacity) + (opacity < 1 ? $"/{opacity:F2}" : "") : $"{shade.Diffuse.R:F2}/{shade.Specular.R:F2}";
-                    if (run != null && hex != runColor)
+                    if (run != null && (hex != runColor || stopped))
                         Flush();
                     if (run == null)
                     {
-                        run = [(outer[i].X, outer[i].Y, z0)];
-                        back = [(inner[i].X, inner[i].Y, z1)];
+                        run = [a];
+                        back = [f];
                         runNormal = normal;
                         runColor = hex;
                     }
-                    run.Add((outer[j].X, outer[j].Y, z0));
-                    back!.Add((inner[j].X, inner[j].Y, z1));
+                    run.Add(b);
+                    back!.Add(e);
+                    if (stopped)
+                        Flush();
                 }
                 Flush();
             }

@@ -887,7 +887,9 @@ areas:
           sorted back to front and lit with the rig and the material; the front face is drawn by the camera.
         office: >-
           Measured on generated/three-d: bevel profiles from edge-on silhouettes (they scale with width and
-          height independently; a bevel is at most half the smaller side wide); the front face lies in the
+          height independently; a bevel is at most half the smaller side wide), relaxedInset with the groove its
+          shading shows behind its crest, 0.4 of the height lower from 0.8 of the width on (found by an agent in
+          Word's pictures of 3D text; generated/three-d, tables-more and the backdrop decks a little closer); the front face lies in the
           shape's plane, the top bevel's outline its height behind it, then the extrusion and the bottom
           bevel. The shape's line is part of the body: the body reaches to the line's outer edge, the sides
           take the line's color unless extrusionClr is set, and so do the outer band of the bevels and of the
@@ -1526,9 +1528,12 @@ areas:
           glyphs a body while the shape stays flat: the glyph outlines are extruded, beveled, backed and
           contoured like a 3D shape's (extrusion in the text's color unless extrusionClr), the text itself is
           the front face inside the top bevel, lit like it, and the scene turns about the center of the
-          glyphs, not of the shape (measured). A bevel wider than half a glyph stroke is cut at the ridge with
-          its height in proportion; PowerPoint shades such ridges somewhat differently (thin beveled text
-          looks lighter there). Text in a 3D-turned shape turns with the shape's front face; a:flatTx keeps it
+          glyphs, not of the shape (measured). A bevel wider than half a glyph stroke runs across it to a crest
+          along its middle, every point of it stopping there at the height the profile has, no flat front face
+          left (found by an agent in Word's pictures of 3D text: LibreOffice's extras-ooxmlexport/
+          TextEffects_Props3d_Ligatures_NumForm_NumSpacing 86.1 → 96.4 %, docx/local/text-3d 77.7 → 79.4 %;
+          generated/text-3d 98.2 → 98.4 %); text filled with a gradient or a picture keeps its bevel within the
+          strokes' mean thickness, its height in proportion (not measured yet). Text in a 3D-turned shape turns with the shape's front face; a:flatTx keeps it
           out of the scene, facing the viewer at the shape's place (measured). Small 3D text is drawn from its
           outlines too (LibreOffice's 3d_rotated_text: 18 pt text turned a quarter, 41.6 to 91.4 %). Checked
           with generated/text-3d
