@@ -74,12 +74,17 @@ MuPDF's other antialiasing moves no score. PyMuPDF brings MuPDF under the AGPL-3
 only, FreeSlate does not use it. Without it (or with `FIDELITY_NO_MUPDF=1`) the pages stay as Windows draws them, and
 a note says so. `reraster` brings stored references up to date; scores before 2026-10-21 were measured without it.
 
-Word places its metafile pictures (equations, OLE previews, ActiveX controls) with a matrix whose off-diagonal terms
-are tiny but not zero (`0.13542 -0.000000754 -0.000000377 0.125 … cm`), and Windows' renderer then draws their text now
-unhinted, now hinted, where the browser's PDF of the same text, with exact zeros, is hinted. With PyMuPDF,
-`tools/Fidelity/Word/unshear.py` rasterizes Word's PDF from a copy whose terms below 1e-4 that place a picture are zero;
-the PDF itself stays as Word wrote it. Scores before 2026-10-27 were measured without it (`reraster` brings the stored
-references up to date: tdf119200 53.3 → 93.5 %, tdf138465min 84.5 → 94.6 %).
+Windows' renderer also draws differently what is the same on both sides, which `tools/Fidelity/Word/normalize.py`
+(with PyMuPDF) brings to one form in a copy of every PDF before it is rasterized, Word's and the browser's alike; the PDFs
+themselves stay as they were written. Word places its metafile pictures (equations, OLE previews, ActiveX controls) with
+a matrix whose off-diagonal terms are tiny but not zero (`0.13542 -0.000000754 -0.000000377 0.125 … cm`), and the
+renderer then draws their text now unhinted, now hinted, where the browser's PDF of the same text, with exact zeros, is
+hinted: terms below 1e-4 that place a picture become zero. The renderer fills a path of one rectangle written with `re`
+without antialiasing and the same rectangle written as a path, or among others in one fill, with it; Word writes a chart
+series' bars as one path of rectangles, the browser every rectangle as an `re` of its own: a filled path of nothing but
+axis-aligned rectangles, none overlapping another, becomes a fill of one `re` for each. Scores before 2026-10-27 were
+measured without these (`reraster` brings the stored references up to date: tdf119200 53.3 → 93.5 %, tdf138465min
+84.5 → 94.6 %; with bars on Word's device grid tdf138773 88.6 → 98.9 % and 31 more bar charts up to +5 points).
 
 With `--skia`, `run`, `render` and `compare` measure the Skia backend (`FreeSlate.Skia`) instead of the browser: a
 document's pages are drawn into a PDF (`SkiaScene.Pdf`) and rasterized as the browser's is, a deck's slides (the

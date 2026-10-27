@@ -7,7 +7,8 @@ namespace Fidelity.Word;
 /// Rasterizes the pages of a PDF with Windows' own PDF renderer (Windows.Data.Pdf), through Windows PowerShell, which
 /// reaches the WinRT API without a package (rasterize-pdf.ps1 next to this file); then repaints with MuPDF what that
 /// renderer draws wrong, where Python can import PyMuPDF (repaint.py next to this file): content under soft masks, Type
-/// 3 text filled with a pattern, pictures thinner than a pixel.
+/// 3 text filled with a pattern, pictures thinner than a pixel. Before, with PyMuPDF, a copy brings what the renderer
+/// draws differently for the same thing to one form on both sides (normalize.py next to this file).
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class PdfPages
@@ -16,7 +17,7 @@ public static class PdfPages
 
     static string RepaintScript => Path.Combine(Repo.Root, "tools", "Fidelity", "Word", "repaint.py");
 
-    static string UnshearScript => Path.Combine(Repo.Root, "tools", "Fidelity", "Word", "unshear.py");
+    static string NormalizeScript => Path.Combine(Repo.Root, "tools", "Fidelity", "Word", "normalize.py");
 
     /// <summary>
     /// Whether pages are repainted (repaint.py): Python on the path imports PyMuPDF and Pillow, and FIDELITY_NO_MUPDF
@@ -62,6 +63,20 @@ public static class PdfPages
     /// </summary>
     public static List<string> Rasterize(string pdf, string outputDir, double scale = 1, IReadOnlyList<(double Width, double Height)>? sizes = null)
     {
+        var normalized = Normalized(pdf);
+        try
+        {
+            return Rasterized(normalized ?? pdf, outputDir, scale, sizes);
+        }
+        finally
+        {
+            if (normalized != null)
+                File.Delete(normalized);
+        }
+    }
+
+    static List<string> Rasterized(string pdf, string outputDir, double scale, IReadOnlyList<(double Width, double Height)>? sizes)
+    {
         Directory.CreateDirectory(outputDir);
         var info = new ProcessStartInfo("powershell.exe")
         {
@@ -99,24 +114,26 @@ public static class PdfPages
     }
 
     /// <summary>
-    /// A copy of Word's PDF whose pictures stand without the tiny shear Word gives them, which makes Windows draw their
-    /// text unhinted now and then (unshear.py), in the temporary folder; null where it has none or without PyMuPDF.
+    /// A copy of the PDF with what Windows draws differently for the same thing brought to one form (normalize.py): the
+    /// tiny shear Word gives its pictures, which makes Windows draw their text unhinted now and then, gone; rectangles
+    /// written as paths written as rectangles, which Windows fills without antialiasing. In the temporary folder; null
+    /// where there is nothing to change or without PyMuPDF.
     /// </summary>
-    public static string? Unsheared(string pdf)
+    static string? Normalized(string pdf)
     {
         if (!Repaints.Value)
             return null;
         var copy = Path.Combine(Path.GetTempPath(), $"fidelity-{Guid.NewGuid():N}.pdf");
-        using var process = Python("-I", UnshearScript, "--pdf", Path.GetFullPath(pdf), "--out", copy);
+        using var process = Python("-I", NormalizeScript, "--pdf", Path.GetFullPath(pdf), "--out", copy);
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();
         if (!process.WaitForExit(120_000))
         {
             process.Kill(entireProcessTree: true);
-            throw new TimeoutException($"Unshearing {pdf} took too long.");
+            throw new TimeoutException($"Normalizing {pdf} took too long.");
         }
         if (process.ExitCode != 0)
-            throw new InvalidOperationException($"Unshearing {pdf} failed: {error.Result.Trim().Split('\n').LastOrDefault()}");
+            throw new InvalidOperationException($"Normalizing {pdf} failed: {error.Result.Trim().Split('\n').LastOrDefault()}");
         _ = output.Result;
         return File.Exists(copy) ? copy : null;
     }
