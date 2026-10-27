@@ -34,6 +34,9 @@ public sealed class EmfPlayer
 
     double? displayWidth;
 
+    /// <summary>Whether the picture is a Word document's, which maps its frame as Word does (see Play).</summary>
+    bool word;
+
     EmfPlayer(byte[] data, string idPrefix)
     {
         this.data = data;
@@ -43,11 +46,12 @@ public sealed class EmfPlayer
     public static bool IsEmf(byte[] data) =>
         data.Length >= 88 && BinaryPrimitives.ReadUInt32LittleEndian(data) == 1 && BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(40)) == 0x464D4520;
 
-    public static string? ToSvg(byte[] data, string idPrefix = "m", double? displayWidth = null)
+    /// <param name="word">Whether the picture is a Word document's, which maps its frame onto the picture as Word does.</param>
+    public static string? ToSvg(byte[] data, string idPrefix = "m", double? displayWidth = null, bool word = false)
     {
         if (!IsEmf(data))
             return null;
-        var player = new EmfPlayer(data, idPrefix) { displayWidth = displayWidth };
+        var player = new EmfPlayer(data, idPrefix) { displayWidth = displayWidth, word = word };
         player.Play();
         if (player.gdi is not null)
             player.gdi.FlushXor();
@@ -83,6 +87,27 @@ public sealed class EmfPlayer
         {
             var bounds = (L: I32(8), T: I32(12), R: I32(16), B: I32(20));
             (x, y, w, h) = (bounds.L, bounds.T, bounds.R - bounds.L + 1, bounds.B - bounds.T + 1);
+        }
+        else if (word && (PlusHeader() || HasText()))
+        {
+            // Word maps an EMF+ file's frame, and that of a picture with text, as if its content had first been put into
+            // the frame's whole pixels: a frame of F pixels maps F × F / round(F) of them onto the picture (measured with
+            // docx/local/emq-*: the GDI bars of emq-a and emq-scr after an EMF+ header and GetDC (emq-dual, -dual96,
+            // -dualb, -dualu, -dualscr) 342.37 and 87.42 pixels for frames of 342.175 and 87.202, 341.66 and 85.46 for
+            // 341.333 and 85.229, whatever the header's DPI, bounds and micrometers; docx/external/powertools/
+            // HC044-Embedded-Workbook's icon and label (emq-hc, -hcn, -hcv, -hcx, -hcp, -hcd) and the grid with its
+            // label and font (emq-gt) 102.69 to 102.83 and 66.06 to 66.10 for 102.872 and 66.514, its text colours and
+            // background mode alone (emq-gs) not; docx/external/libreoffice/extras-ooxmlexport/tdf122563, tdf99631).
+            (w, h) = (Math.Round(w) is > 0 and var rw ? w * w / rw : w, Math.Round(h) is > 0 and var rh ? h * h / rh : h);
+        }
+        else if (word)
+        {
+            // Word maps any other frame as holding its right and bottom edges: a reference pixel wider and higher than it
+            // measures, from its top left corner (measured with docx/local/emq-a, -w2, -h3, -r10, -scr, -text, -g103 to
+            // -g820: bars at known places, MM_ANISOTROPIC and MM_TEXT, frames of 103 to 823 pixels on reference devices of
+            // 341 × 85 px for 90 × 22 mm, 1920 × 1080 px for 508 × 286 mm and 2560 × 1440 px for 597 × 336 mm, shown
+            // at their natural size and up to three times it: the frame plus 0.99 to 1.10 pixels on both axes).
+            (w, h) = (w + 1, h + 1);
         }
         ViewBox = (x, y, w, h);
         gdi = new GdiContext(svg, (pxPerMmX + pxPerMmY) / 2)
@@ -472,6 +497,28 @@ public sealed class EmfPlayer
     }
 
     // ------------------------------------------------------------------ EMF+
+
+    /// <summary>Whether the first record after the header is a comment holding an EMF+ header (EMF+ and dual files).</summary>
+    bool PlusHeader()
+    {
+        var first = (int)U32(4);
+        return U32(first) == 70 && U32(first + 12) == 0x2B464D45 && U16(first + 16) == 0x4001;
+    }
+
+    /// <summary>Whether a record draws text (EXTTEXTOUTA/W, POLYTEXTOUTA/W, SMALLTEXTOUT).</summary>
+    bool HasText()
+    {
+        for (var offset = (int)U32(4); offset + 8 <= data.Length;)
+        {
+            var (type, size) = (U32(offset), (int)U32(offset + 4));
+            if (type is 83 or 84 or 96 or 97 or 108)
+                return true;
+            if (size < 8 || type == 14)
+                break;
+            offset += size;
+        }
+        return false;
+    }
 
     void Comment(int o, int size)
     {

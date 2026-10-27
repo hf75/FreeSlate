@@ -205,7 +205,7 @@ public sealed class PresentationContext : IDisposable
         // Pictures of imported content (RTF chunks) come as data URIs; metafiles among them are converted.
         if (relationshipId.StartsWith("data:", StringComparison.Ordinal))
             return relationshipId.StartsWith("data:image/x-emf", StringComparison.Ordinal) || relationshipId.StartsWith("data:image/x-wmf", StringComparison.Ordinal)
-                ? DataBytes(relationshipId) is { } embedded && IsMetafile(embedded) ? Metafiles.MetafileConverter.ToDataUri(embedded, $"mf{images.Count}_", displayWidth) : null
+                ? DataBytes(relationshipId) is { } embedded && IsMetafile(embedded) ? Metafiles.MetafileConverter.ToDataUri(embedded, $"mf{images.Count}_", displayWidth, Word) : null
                 : relationshipId;
         var rel = Package.Relationship(sourcePart, relationshipId);
         if (rel is not { External: false } || !Package.Exists(rel.Target))
@@ -221,7 +221,7 @@ public sealed class PresentationContext : IDisposable
                 "image/svg+xml" => $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}",
                 // A metafile part may hold a raster picture (a PNG named .emf), which PowerPoint shows by its bytes.
                 _ when metafile => Package.ReadBytes(rel.Target) is var bytes && IsMetafile(bytes)
-                    ? Metafiles.MetafileConverter.ToDataUri(bytes, $"mf{images.Count}_", displayWidth)
+                    ? Metafiles.MetafileConverter.ToDataUri(bytes, $"mf{images.Count}_", displayWidth, Word)
                     : Converted(bytes),
                 _ => Converted(Package.ReadBytes(rel.Target)),
             };
