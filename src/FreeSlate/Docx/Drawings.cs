@@ -97,7 +97,8 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// </summary>
     static readonly XName WordArtInk = XNamespace.Get("urn:freeslate:wordart") + "ink";
 
-    /// <summary>Plain VML WordArt's text, its text path's style and its outline (a:ln), kept on its shape for its placing.</summary>
+    /// <summary>Plain VML WordArt's text, its text path's style and its outline (a:ln), kept on its shape for its
+    /// placing.</summary>
     sealed record OutlinedArt(string Text, string? Style, XElement Line);
 
     /// <summary>

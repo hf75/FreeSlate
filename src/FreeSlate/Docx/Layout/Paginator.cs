@@ -3934,12 +3934,70 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         // Footnotes of a row's cells need room below it as a paragraph's do.
         List<string> NotesOf(RowBox row) => row.Lines.SelectMany(l => l.Line.Notes ?? []).ToList();
+        // Where the row's part in this column ends above a drawing of its own, and how far its content went down below
+        // such drawings (see Around).
+        double? partEnd = null;
+        var down = 0.0;
         // Whether a row, all of it or its split, fits below a position in this column (as the loop below places it):
         // with the line that closes the table below it where the table breaks (measured with docx/local/tblbottom-*).
-        bool Fits(RowBox row, double top) => top + row.Height + row.BottomBorderWidth <= Bottom - NotesHeight(NotesOf(row)) + 0.01;
+        bool Fits(RowBox row, double top) => top + row.Height + row.BottomBorderWidth <= Math.Min(Bottom - NotesHeight(NotesOf(row)), partEnd ?? double.MaxValue) + 0.01;
         (RowBox Head, RowBox Tail)? Split(RowBox row, double top, bool force = false) =>
-            Bottom - top > row.TopWidth + 1 ? row.Split(Bottom - top - row.BottomBorderWidth, force) : null;
+            Math.Min(Bottom, partEnd ?? double.MaxValue) is var end && end - top > row.TopWidth + 1 ? row.Split(end - top - row.BottomBorderWidth, force) : null;
         bool Takes(RowBox row, double top) => Fits(row, top) || Split(row, top) != null;
+        // Before Word 2013 a row's own drawings of layoutInCell 0 that text goes around stand from the top of its part on
+        // the page, however its content moves (CellAnchor.FromRowTop). Where one stands over the content of the row's part
+        // here, the content goes below it, each cell's top margin below the drawing, if the line of its anchor then stays
+        // on the page; where not even the first line or the row's at-least height would fit below it, the part ends above
+        // it, the rest going on in the next; else the text runs over it (measured with docx/local/rpd-*, rpe-*: a
+        // rectangle of 150 x 100 pt 410 pt below the part's top, lines of 20 pt; the content below it where the anchor's
+        // line then stays, rpd-a, -d, -m, -n, on page 1 too, rpd-g; the text over it where that line would go off the
+        // page, rpd-b, -c, -e, whatever the paragraphs, keeps, widow control, distances or margins, rpd-h to -l, -q to
+        // -y, and where 21 pt or more are left below it, rpe-h145; the part ending above it with 19 pt or less left,
+        // rpe-h147 to -h180, rpd-o, -p, or with less than the row's at-least height of 70 or 80 pt, rpe-l70, -l80, not
+        // of 60, rpe-l60; mode 15 lays them out in the cell, rpd-a15, -b15; LibreOffice's core-objectpositioning/
+        // tdf154863-img-move-crash and its copies docx/local/t154-*: seven pictures in a row of ten pages at least 118
+        // pt high, mode 12, the content of pages 16 and 19 below them, page 18 ending above one with 81.3 or 110 pt left
+        // below it, not 125, t154-r110, -r125, nor without the at-least height, t154-noleast).
+        RowBox Around(RowBox row)
+        {
+            (partEnd, down) = (null, 0.0);
+            if (!context.Profile.HonorsLayoutInCell || !row.Cells.Any(c => c.Anchors.Any(a => a.FromRowTop)))
+                return row;
+            static bool Holds(RowBox part, XElement source) => part.Cells.Any(c => c.Anchors.Any(a => ReferenceEquals(a.Anchor.Anchor, source)));
+            RowBox? Here(RowBox candidate) => Fits(candidate, y) ? candidate : Split(candidate, y, force: columnEmpty)?.Head;
+            var seen = new HashSet<XElement>(ReferenceEqualityComparer.Instance);
+            while (Here(row) is { } part && part.Cells.SelectMany(c => c.Lines).ToList() is { Count: > 0 } lines)
+            {
+                var (top, bottom) = (y + lines.Min(l => l.Top), y + lines.Max(l => l.Top + l.Line.Height));
+                var (anchor, area) = part.Cells.SelectMany(c => c.Anchors).Where(a => a.FromRowTop && !seen.Contains(a.Anchor.Anchor)).OrderBy(a => a.LineTop)
+                    .Select(a => a.Offset(left, y))
+                    .Select(a => (Anchor: a, Area: ExclusionOf(PlaceAnchor(a.Anchor, page!, a.ParagraphTop, a.LineTop, left, page!.TextWidth, a, a.CharacterX))))
+                    .FirstOrDefault(o => o.Area is { } e && e.Top < bottom - 0.01 && e.Bottom > top + 0.01
+                        && e.Left < left + box.Left + box.Width - 0.01 && e.Right > left + box.Left + 0.01);
+                if (area == null)
+                    break;
+                var source = anchor!.Anchor.Anchor;
+                seen.Add(source);
+                var extra = area.Bottom - (y + row.TopWidth + down);
+                if (extra <= 0.01)
+                    continue;
+                var lowered = row.Lowered(extra);
+                var below = Bottom - area.Bottom >= row.Least - 0.01 ? Here(lowered) : null;
+                if (below != null && Holds(below, source))
+                {
+                    (row, down) = (lowered, down + extra);
+                    continue;
+                }
+                if (below == null)
+                {
+                    partEnd = area.Top;
+                    if (Split(row, y, force: columnEmpty) is { } ends && Holds(ends.Head, source))
+                        break;
+                    partEnd = null;
+                }
+            }
+            return row;
+        }
         // A table of header rows only moves where they do not all fit, whether or not they fit a page (docx/external/
         // libreoffice/extras-ooxmlexport/tdf138020_all_rows_tblHeader: eight rows after a line go to the next page and
         // break there). Before Word 2013 header rows stand where they fit as other rows do, repeat after a break below
@@ -3983,20 +4041,25 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // extras-ooxmlexport/tdf104061_tableSectionColumns: a heading row before a row of 173 pt at least).
             var moves = r > 0 && last != null && !columnEmpty && RowKept(table.Table, r) && !RowKept(table.Table, r - 1)
                         && ChainBreaks(blocks, index, null, width, y, fromRow: r);
+            row = Around(row);
             while (moves || !Fits(row, y))
             {
                 // A row that does not fit splits at a line of each cell (unless it may not split, measured with
                 // docx/local/tbl-autofit), else moves on; one that may not split splits at the top of a column it
-                // does not fit either, and one that cannot split at all overflows.
+                // does not fit either, and one that cannot split at all overflows. What goes on begins at its cells'
+                // content top again, however far its part here went below its drawings.
                 if (!moves && Split(row, y, force: columnEmpty) is { } parts)
                 {
                     PlaceRow(parts.Head, left);
                     AddNotes(NotesOf(parts.Head));
                     last = parts.Head;
-                    row = parts.Tail;
+                    row = down > 0 ? parts.Tail.Lowered(-down) : parts.Tail;
                 }
                 else if (columnEmpty)
                     break;
+                else if (down > 0)
+                    row = row.Lowered(-down);
+                (partEnd, down) = (null, 0.0);
                 Break();
                 broke = true;
                 omitted = !row.Header && headers.Count > 0 && !Takes(row, y + headersHeight);
@@ -4011,7 +4074,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (row.Header || omitted || headers.Count == 0)
                     row = row.AtPageTop();
                 moves = false;
+                row = Around(row);
             }
+            partEnd = null;
             if (broke)
                 row = row.Continued();
             // A cell merged down over rows that the page or column breaks is laid out along its part before the break:

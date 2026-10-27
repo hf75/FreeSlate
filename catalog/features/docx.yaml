@@ -2309,8 +2309,13 @@ areas:
           page (docx/local/nlm-12-0-*, nlm-14-0-*: a rectangle wrapped through in the last row at the column's left, the
           table below it, 83.0 → 100 %; cig-noin14, cig-noin12 88.8 → 100 %, ccl-out14 85.2 → 100 %; nlc-*: copies of
           extras-ooxmlexport/tdf162541_notLayoutInCell_paraLeft, the paragraphs after the table on page 2 whatever the
-          room, tdf162541 50.0 → 100 %; layoutInCell 1 and Word 2013 not). Known deviation: Word cuts drawings at the
-          bottom of a row of exact height (cig-exact).
+          room, tdf162541 50.0 → 100 %; layoutInCell 1 and Word 2013 not). In a row going on over pages such a
+          drawing stands from the top of the row's part on its page, and that part's content goes below it where the
+          line of its anchor then stays on the page; where not even the first line or the row's at-least height would
+          fit below it, the part ends above it, else the text runs over it (docx/local/rpd-*, rpe-*: a rectangle 410
+          pt below the part's top over lines of 20 pt, 100 %; t154-*: copies of
+          core-objectpositioning/tdf154863-img-move-crash, tdf154863 83.0 → 95.9 %). Known deviation: Word cuts
+          drawings at the bottom of a row of exact height (cig-exact).
 
       - id: table.borders
         title: Table and cell borders and shading

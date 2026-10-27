@@ -300,6 +300,18 @@ public sealed class RowBox
         return copy;
     }
 
+    /// <summary>
+    /// The row with its cells' content <paramref name="dy"/> points further down, the row as much taller (where its part
+    /// on a page goes below drawings of its own, see Paginator.PlaceRows); a negative one raises it back, the row no
+    /// lower than its at-least height.
+    /// </summary>
+    public RowBox Lowered(double dy)
+    {
+        var copy = Copy(dy < 0 ? Math.Max(Height + dy, TopWidth + Least) : Height + dy);
+        copy.Cells.AddRange(Cells.Select(c => c.Lower(dy)));
+        return copy;
+    }
+
     public List<CellPart> Cells { get; } = [];
 
     /// <summary>Cell shading: left edge, width and color, from the row's top through its height.</summary>
