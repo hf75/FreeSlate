@@ -324,7 +324,8 @@ public static class HtmlScene
         if (item.RightToLeft)
         {
             html.Append($" x=\"{Px(x + item.Width / scale)}\" direction=\"rtl\" unicode-bidi=\"bidi-override\"");
-            if (item.WordSpacing > 0)
+            // Justification widens its spaces, and a line that squeezes them narrows them (Skia alike).
+            if (Math.Abs(item.WordSpacing) > 1e-9)
                 html.Append($" word-spacing=\"{Px(item.WordSpacing / scale)}\"");
         }
         else if (words.Count == 0)
