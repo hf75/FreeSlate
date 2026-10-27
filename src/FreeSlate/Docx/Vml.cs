@@ -189,8 +189,10 @@ public static class Vml
         var content = signature ?? (shape.Name == V + "group" ? Group(shape, types, width, height, top: true) : Content(shape, type, width, height));
         if (content == null)
             return null;
-        var room = shape.Name == V + "group" || signature != null ? (0, 0) : Room(shape, type, content, width, height);
-        var overhang = shape.Name == V + "group" && style.GetValueOrDefault("position") != "absolute" ? Overhang(content, width, height) : default;
+        var (roomRight, roomBottom, before) = shape.Name == V + "group" || signature != null ? (0, 0, 0) : Room(shape, type, content, width, height);
+        (double Right, double Bottom) room = (roomRight, roomBottom);
+        var overhang = shape.Name == V + "group" && style.GetValueOrDefault("position") != "absolute" ? Overhang(content, width, height)
+            : (L: before, T: 0.0, R: 0.0, B: 0.0);
         // Inline WordArt along a path takes the room of its glyphs instead (see WordArtRoom).
         if (shape.Name != V + "group" && style.GetValueOrDefault("position") != "absolute" && WordArtRoom(content, width, height) is { } glyphRoom)
             (room, overhang) = ((0, 0), glyphRoom);
@@ -492,14 +494,15 @@ public static class Vml
     /// shadow's offset, its height rounded up, the outline and the shadow's offset, the shape at the top left of that
     /// box (measured with docx/local/vml-inline3, vml-inline4: outlines of 0.25 to 12 pt around 60 × 40, 61 × 41 and
     /// 60.5 × 40.5 pt; docx/local/vml-fx: shadows 4 pt, -6 pt and doubled 3 and 6 pt off); a shadow alone takes its
-    /// offset (docx/local/vml-inline5: within 0.3 pt); none without either.
+    /// offset (docx/local/vml-inline5: within 0.3 pt); none without either. Before: the room a perspective shadow of
+    /// Word's WordArt takes left of it (see the shadow's branch).
     /// </summary>
-    static (double Right, double Bottom) Room(XElement shape, XElement? type, XElement content, double width, double height)
+    static (double Right, double Bottom, double Before) Room(XElement shape, XElement? type, XElement content, double width, double height)
     {
         var line = content.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "ln") ?? content.Element(Drawings.Pic + "spPr")?.Element(Ns.A + "ln");
         var outline = line != null && line.Element(Ns.A + "noFill") == null
             && double.TryParse((string?)line.Attribute("w"), NumberStyles.Float, CultureInfo.InvariantCulture, out var emu) ? Math.Max(0, emu / EmuPerPoint) : 0;
-        var (dx, dy) = (0.0, 0.0);
+        var (dx, dy, before) = (0.0, 0.0, 0.0);
         const double Pixel = 0.75;
         static double Up(double v) => Math.Ceiling(v - 1e-6);
         if (ShadowOf(shape, type) is { } shadow)
@@ -525,12 +528,20 @@ public static class Vml
                 var across = Math.Max(width, corners.Max(c => c.X)) - Math.Min(0, corners.Min(c => c.X));
                 var down = Math.Max(height, corners.Max(c => c.Y)) - Math.Min(0, corners.Min(c => c.Y));
                 (dx, dy) = (Up(across / Pixel) * Pixel - width, down - height);
+                // Word's WordArt (a text path whose shape type has the handles Word writes for it) stands after the
+                // whole pixels of its shadow left of it instead, only its outline after it (measured with docx/local/
+                // vpb-*: fdo78300's WordArt 150.75 by 19.5 pt, its shadow reaching 11.79 pt left, 11.25 pt further
+                // right first in its line, after text, in body text and in text boxes, the box as much wider;
+                // vpb-nohandles, vps-wa: without the handles it stays, the shadow's room after it).
+                if (((string?)shape.Element(V + "textpath")?.Attribute("on") ?? (string?)type?.Element(V + "textpath")?.Attribute("on")) is "t" or "true" or "1"
+                    && type?.Element(V + "handles") != null && -corners.Min(c => c.X) is var reach and > 0)
+                    (before, dx) = (Math.Floor(reach / Pixel + 1e-6) * Pixel, 0);
             }
         }
         if (outline <= 0)
-            return (dx, dy);
+            return (dx, dy, before);
         return ((Up(width / Pixel) + 2 * Up(outline / Pixel / 2) + Up(dx / Pixel)) * Pixel - width,
-            (Up(height / Pixel) + Up(outline / Pixel) + Up(dy / Pixel)) * Pixel - height);
+            (Up(height / Pixel) + Up(outline / Pixel) + Up(dy / Pixel)) * Pixel - height, before);
     }
 
     /// <summary>A shape's shadow (v:shadow) when it is on, else null.</summary>

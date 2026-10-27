@@ -5045,8 +5045,12 @@ areas:
           origin, also on WordArt's glyphs; an inline shape with one takes the room of its box and the shadow's
           together after it, on whole pixels across, what the shadow reaches out on the left too: docx/local/vps-*,
           a 100 by 20 pt shape with matrix ",46340f,,.5" about its bottom left corner puts the text after it
-          114.75 pt on, skewed the other way 116.25 pt; LibreOffice's extras-ooxmlexport/fdo78300, whose WordArt in a
-          text box that does not wrap Word also moves 10.5 pt right, not reproduced); WordArt's shadows keep the shape's
+          114.75 pt on, skewed the other way 116.25 pt); Word's WordArt (a text path whose shape type has the handles
+          Word writes for it) stands after the whole pixels of such a shadow left of it instead, only its outline after
+          it, first in its line, after text, in body text and in text boxes alike (docx/local/vpb-*: fdo78300's WordArt
+          150.75 by 19.5 pt, its shadow reaching 11.79 pt left, 11.25 pt further right, its text box as much wider;
+          without the handles it stays, vpb-nohandles, vps-wa; extras-ooxmlexport/fdo78300 61.7 → 99.4 %,
+          poi/WordWithAttachments 91.5 → 93.5 %); WordArt's shadows keep the shape's
           sizes, not its text's (vps-wa-plain, vps-wa-4: 2 and 4 pt off; extras-ooxmlexport/fdo78663 91.6 → 95.5 %). Word 97 borders (w10:bordertop, borderleft, borderbottom, borderright) frame the
           shape outside, width/8 pt each floored to Word's 0.12 pt dots, double lines three times that, dotted and
           dashed ones dashed (docx/local/vml-border). w10:anchorlock only locks the anchor while editing. A floating
