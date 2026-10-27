@@ -74,6 +74,13 @@ MuPDF's other antialiasing moves no score. PyMuPDF brings MuPDF under the AGPL-3
 only, FreeSlate does not use it. Without it (or with `FIDELITY_NO_MUPDF=1`) the pages stay as Windows draws them, and
 a note says so. `reraster` brings stored references up to date; scores before 2026-10-21 were measured without it.
 
+Word places its metafile pictures (equations, OLE previews, ActiveX controls) with a matrix whose off-diagonal terms
+are tiny but not zero (`0.13542 -0.000000754 -0.000000377 0.125 … cm`), and Windows' renderer then draws their text now
+unhinted, now hinted, where the browser's PDF of the same text, with exact zeros, is hinted. With PyMuPDF,
+`tools/Fidelity/Word/unshear.py` rasterizes Word's PDF from a copy whose terms below 1e-4 that place a picture are zero;
+the PDF itself stays as Word wrote it. Scores before 2026-10-27 were measured without it (`reraster` brings the stored
+references up to date: tdf119200 53.3 → 93.5 %, tdf138465min 84.5 → 94.6 %).
+
 With `--skia`, `run`, `render` and `compare` measure the Skia backend (`FreeSlate.Skia`) instead of the browser: a
 document's pages are drawn into a PDF (`SkiaScene.Pdf`) and rasterized as the browser's is, a deck's slides (the
 hidden ones too, as PowerPoint exports them) are drawn straight to pictures at the reference's size. The renderings

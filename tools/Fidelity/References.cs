@@ -259,23 +259,34 @@ public static class References
     }
 
     /// <summary>
-    /// Rasterizes Word's PDF of a document, its premultiplied pictures first brought to straight alpha in a copy
-    /// (<see cref="PdfImages"/>); the PDF itself stays as Word wrote it.
+    /// Rasterizes Word's PDF of a document, in a copy its pictures placed without the tiny shear Word gives them
+    /// (<see cref="PdfPages.Unsheared"/>) and its premultiplied pictures brought to straight alpha (<see cref="PdfImages"/>);
+    /// the PDF itself stays as Word wrote it.
     /// </summary>
     [SupportedOSPlatform("windows")]
     static List<string> RasterizeReference(string pdf, string dir)
     {
-        if (PdfImages.Unpremultiplied(pdf) is not { } straight)
-            return PdfPages.Rasterize(pdf, dir, DocumentScale);
-        var copy = Path.Combine(Path.GetTempPath(), $"fidelity-{Guid.NewGuid():N}.pdf");
-        File.WriteAllBytes(copy, straight);
+        var unsheared = PdfPages.Unsheared(pdf);
+        var source = unsheared ?? pdf;
         try
         {
-            return PdfPages.Rasterize(copy, dir, DocumentScale);
+            if (PdfImages.Unpremultiplied(source) is not { } straight)
+                return PdfPages.Rasterize(source, dir, DocumentScale);
+            var copy = Path.Combine(Path.GetTempPath(), $"fidelity-{Guid.NewGuid():N}.pdf");
+            File.WriteAllBytes(copy, straight);
+            try
+            {
+                return PdfPages.Rasterize(copy, dir, DocumentScale);
+            }
+            finally
+            {
+                File.Delete(copy);
+            }
         }
         finally
         {
-            File.Delete(copy);
+            if (unsheared != null)
+                File.Delete(unsheared);
         }
     }
 

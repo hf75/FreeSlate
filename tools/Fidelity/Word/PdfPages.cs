@@ -16,6 +16,8 @@ public static class PdfPages
 
     static string RepaintScript => Path.Combine(Repo.Root, "tools", "Fidelity", "Word", "repaint.py");
 
+    static string UnshearScript => Path.Combine(Repo.Root, "tools", "Fidelity", "Word", "unshear.py");
+
     /// <summary>
     /// Whether pages are repainted (repaint.py): Python on the path imports PyMuPDF and Pillow, and FIDELITY_NO_MUPDF
     /// is not 1. Checked once; without it the pages stay as Windows draws them, which a note says.
@@ -94,6 +96,29 @@ public static class PdfPages
         if (Repaints.Value)
             Repaint(pdf, outputDir, scale, sizes);
         return files;
+    }
+
+    /// <summary>
+    /// A copy of Word's PDF whose pictures stand without the tiny shear Word gives them, which makes Windows draw their
+    /// text unhinted now and then (unshear.py), in the temporary folder; null where it has none or without PyMuPDF.
+    /// </summary>
+    public static string? Unsheared(string pdf)
+    {
+        if (!Repaints.Value)
+            return null;
+        var copy = Path.Combine(Path.GetTempPath(), $"fidelity-{Guid.NewGuid():N}.pdf");
+        using var process = Python("-I", UnshearScript, "--pdf", Path.GetFullPath(pdf), "--out", copy);
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(120_000))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException($"Unshearing {pdf} took too long.");
+        }
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"Unshearing {pdf} failed: {error.Result.Trim().Split('\n').LastOrDefault()}");
+        _ = output.Result;
+        return File.Exists(copy) ? copy : null;
     }
 
     /// <summary>Repaints the pages Windows drew where it draws wrong, with MuPDF's pixels (repaint.py).</summary>
