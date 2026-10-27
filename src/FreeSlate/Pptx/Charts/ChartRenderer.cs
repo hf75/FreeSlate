@@ -79,8 +79,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     double width, height;
     double originX, originY;
 
-    /// <summary>The diameter of the largest bubble at a bubble scale of 100 %, in points.</summary>
-    double bubbleBase;
+    /// <summary>The length the largest bubble is measured against (see <see cref="BubbleDiameter"/>), in points.</summary>
+    double bubbleReference;
 
     sealed record Box(double X, double Y, double W, double H)
     {
@@ -1736,9 +1736,9 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
         var inner = ManualPlot();
         var plot = inner ?? outer;
-        // Measured: the largest bubble is 0.2307 m + 2.65 pt wide, m being the smaller side of the plot area
-        // before the axis labels take their room.
-        bubbleBase = 0.2307 * Math.Min(plot.W, plot.H) + 2.65;
+        // Bubbles measure against the smaller side of the plot area before the axis labels take their room, plus
+        // 11.49 pt (at 100 % the largest is 0.2307 m + 2.65 pt wide; see BubbleDiameter).
+        bubbleReference = Math.Min(plot.W, plot.H) + 11.49;
         for (var pass = 0; pass < 3; pass++)
         {
             // A horizontal value axis divides the plot area's width before the labels beside it take their room, also
@@ -2424,11 +2424,17 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var headroom = ex?.Layout != "clusteredColumn" && !layout.Groups.Any(g => g.IsRadar);
         layout.Scale = AxisScaling.Compute(min, max, layout.Axis, maxIntervals, percent, headroom);
 
-        // Bubbles have to fit: the data range grows by each bubble's radius in axis units until the scale settles.
+        // Bubbles have to fit: every bubble's place grows into a span of the same share of the axis's range on either
+        // side, whatever its own size, the plot area's or the axis's length: 0.1824 s / (1 + 0.3 s) at a bubble scale s,
+        // the largest bubble's radius over 0.822 of the length it measures against (see BubbleDiameter); the bounds
+        // then get no headroom, and the share is of the final range, so the scale grows until it settles (measured with
+        // Word's docx/local/bubble-*: the largest bubble's x from 1.8 to 2.95 at 50 to 200 %, all their x and y axes,
+        // the share from 0.1820 to 0.1829; PowerPoint's charts-more and charts-details alike).
         var bubbles = layout.Groups.Where(g => g.IsBubble).ToList();
-        for (var pass = 0; pass < 4 && bubbles.Count > 0; pass++)
+        var share = bubbles.Select(g => 0.1824 * BubbleScale(g) / (1 + 0.3 * BubbleScale(g))).DefaultIfEmpty(0).Max();
+        for (var pass = 0; pass < 6 && share > 0; pass++)
         {
-            var unitsPerPoint = (layout.Scale.Max - layout.Scale.Min) / Math.Max(1, length);
+            var margin = share * (layout.Scale.Max - layout.Scale.Min);
             double lo = min, hi = max;
             foreach (var group in bubbles)
             {
@@ -2437,14 +2443,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     for (var i = 0; i < s.Values.Count; i++)
                     {
                         var position = layout.Axis.Horizontal ? s.XValues.Count > 0 ? s.XValues.ElementAtOrDefault(i) : i + 1 : s.Values[i];
-                        if (position is not { } v || s.Values[i] == null)
+                        if (position is not { } v || s.Values[i] == null || BubbleDiameter(group, BubbleSize(s, i)) <= 0)
                             continue;
-                        var r = BubbleDiameter(group, BubbleSize(s, i)) / 2 * unitsPerPoint;
-                        (lo, hi) = (Math.Min(lo, v - r), Math.Max(hi, v + r));
+                        (lo, hi) = (Math.Min(lo, v - margin), Math.Max(hi, v + margin));
                     }
                 }
             }
-            var next = AxisScaling.Compute(lo, hi, layout.Axis, maxIntervals, percent);
+            var next = AxisScaling.Compute(lo, hi, layout.Axis, maxIntervals, percent, headroom: false);
             if (next == layout.Scale)
                 break;
             layout.Scale = next;
@@ -3158,18 +3163,24 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         series.BubbleSizes.Count == 0 ? 1 : series.BubbleSizes.ElementAtOrDefault(point) ?? 0;
 
     /// <summary>
-    /// A bubble's diameter in points (catalog: chart.scatterBubble): the group's largest bubble is as wide as
-    /// <see cref="bubbleBase"/> times c:bubbleScale; the others scale by area (c:sizeRepresents="area") or width.
-    /// Negative sizes are not drawn.
+    /// A bubble's diameter in points (catalog: chart.scatterBubble): the group's largest bubble takes 0.3 s of the
+    /// length it measures against less itself, D = 0.3 s (L - D), s being c:bubbleScale / 100 and L
+    /// <see cref="bubbleReference"/> (measured with Word's docx/local/bubble-*: 28.17, 49.82, 67.01 and 80.96 pt at 50,
+    /// 100, 150 and 200 %, L = 215.9 pt, within 0.003 pt; at 100 % PowerPoint's charts-more and charts-details); the
+    /// others scale by area (c:sizeRepresents="area") or width. Negative sizes are not drawn.
     /// </summary>
     double BubbleDiameter(ChartGroup group, double size)
     {
         var largest = group.Series.SelectMany(s => Enumerable.Range(0, s.Values.Count).Select(i => BubbleSize(s, i))).DefaultIfEmpty(0).Max();
         if (largest <= 0 || size <= 0)
             return 0;
-        var full = bubbleBase * (ChartModel.Number(group.Element, "bubbleScale") ?? 100) / 100;
+        var scale = BubbleScale(group);
+        var full = 0.3 * scale * bubbleReference / (1 + 0.3 * scale);
         return ChartModel.Val(group.Element, "sizeRepresents") == "w" ? full * size / largest : full * Math.Sqrt(size / largest);
     }
+
+    /// <summary>A bubble group's c:bubbleScale as a fraction (1 at the default 100 %).</summary>
+    static double BubbleScale(ChartGroup group) => (ChartModel.Number(group.Element, "bubbleScale") ?? 100) / 100;
 
     string Bubbles(ChartGroup group, AxisLayout xAxis, AxisLayout yAxis)
     {
