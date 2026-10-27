@@ -440,6 +440,27 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return (Snap(p.X, originX), Snap(p.Y, originY));
     }
 
+    /// <summary>
+    /// A bar's box as Word sets it: its edges on the 600 dpi grid of the page, its base unmoved where it stands on the
+    /// axis at <paramref name="baseAt"/> (found by an agent in Word's PDF of LibreOffice's extras-layout/tdf138773: bars
+    /// from 102.72 to 108.6 pt and up to 696.84, 5.88 and 6.0 pt wide, standing on the axis at 227.19 pt).
+    /// </summary>
+    Box OnWordGrid(Box box, bool horizontal, double baseAt, bool onAxis)
+    {
+        var (ox, oy) = (originX / PxPerPt, originY / PxPerPt);
+        double X(double x) => Math.Round((ox + x) / WordDot) * WordDot - ox;
+        double Y(double y) => Math.Round((oy + y) / WordDot) * WordDot - oy;
+        double x0 = X(box.X), x1 = X(box.Right), y0 = Y(box.Y), y1 = Y(box.Bottom);
+        if (onAxis && horizontal)
+            (x0, x1) = Math.Abs(box.X - baseAt) < 1e-6 ? (box.X, x1) : (x0, box.Right);
+        else if (onAxis)
+            (y0, y1) = Math.Abs(box.Bottom - baseAt) < 1e-6 ? (y0, box.Bottom) : (box.Y, y1);
+        return new Box(x0, y0, Math.Max(0, x1 - x0), Math.Max(0, y1 - y0));
+    }
+
+    /// <summary>A dot of Word's 600 dpi device, in points.</summary>
+    const double WordDot = 72.0 / 600;
+
     /// <param name="nudge">Pixels added after snapping: ½ puts a 1 px outline on whole pixels.</param>
     string Rect(Box box, Fill fill, Outline? outline, bool snap, double radius = 0, double nudge = 0, bool area = false)
     {
@@ -3009,6 +3030,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                         tile = across * picture.NaturalSize.W / picture.NaturalSize.H;
                     svg.Append(ShapePart(series, i, StackedPicture(box, picture, barOutline, group.Horizontal, v0, Math.Max(0.5, tile))));
                 }
+                else if (slide.Presentation.Word)
+                    svg.Append(ShapePart(series, i, Rect(OnWordGrid(box, group.Horizontal, v0, !group.Stacked || from == 0), barFill, barOutline, snap: false)));
                 else
                     svg.Append(ShapePart(series, i, Rect(box, barFill, barOutline, snap: true)));
 

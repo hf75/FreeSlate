@@ -2054,7 +2054,10 @@ areas:
           filters on bars, slices, areas, bubbles and markers.
         office: >-
           PowerPoint draws bars on whole device pixels and thin lines and line chart vertices on the pixel
-          grid (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates.
+          grid (odd widths centered in a pixel); the renderer snaps the same way in slide pixel coordinates. Word
+          sets bars on its 600 dpi grid of the page, their base on the axis where it is (LibreOffice's
+          extras-layout/tdf138773: bars from 102.72 to 108.6 pt, 5.88 and 6.0 pt wide; with the measurement's
+          rectangles in one form, 88.6 → 98.9 %, chart 95.8 → 99.5 %, CU006 96.4 → 99.8 %).
           The chart's areas (plot and chart area, legend, title) run from their bottom left corner right, up, left
           and down, where a dashed outline begins (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/
           Chart_Plot_BorderLine_Style 77.5 → 99.6 %); bars do not (Chart_BorderLine_Style).
