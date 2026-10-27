@@ -20,6 +20,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     // Measured automatic layout constants.
     const double EdgeGap = 6;                 // title and legend from the chart edge
     const double PlotGap = 11;                // plot area from the chart edge, the title and the legend
+    const double LabelReach = 1;              // how far the first and last category labels reach into that gap
     const double LabelBleed = 4.5;            // axis labels may reach this far past the plot area's outer edge
     const double ValueLabelGap = 0.922;       // × s between vertical axis labels and the plot area
     const double CategoryLabelGap = 0.624;    // × s between the axis and horizontal labels
@@ -2121,9 +2122,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             left = Math.Max(left, outer.X + Width(layout.Labels[0], layout.Style) / 2);
             right = Math.Min(right, outer.Right - Width(layout.Labels[^1], layout.Style) / 2);
         }
-        // So do the first and the last labelled of categories between ticks, centered on their slots (measured with
-        // docx/local/csx-*: "2000-01" 33.4 pt wide over slots of 20.3 pt and "2012-13f", the 13th of categories labelled
-        // every second one, each 10 pt inside the chart; LibreOffice's extras-layout/tdf138773).
+        // So do the first and the last labelled of categories between ticks, centered on their slots, reaching to 10 pt
+        // inside the chart, a point into the plot area's gap (measured with docx/local/csx-*: "2000-01" 33.4 pt wide over
+        // slots of 20.3 pt and "2012-13f", the 13th of categories labelled every second one, each 10 pt inside the chart;
+        // LibreOffice's extras-layout/tdf138773).
         foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Rotation == 0 && a.Axis.Horizontal && !a.Axis.IsValue && a.Between
                                                && !a.Axis.Reversed && a.DateStep == null && a.Categories > 0 && a.Labels.Count >= a.Categories))
         {
@@ -2131,8 +2133,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var skip = Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickLblSkip") ?? 1));
             var last = (layout.Categories - 1) / skip * skip;
             double Wide(string label) => label.Split('\n').Max(line => Width(line, layout.Style));
-            left = Math.Max(left, outer.X + Wide(layout.Labels[0]) / 2 - slot / 2);
-            right = Math.Min(right, outer.Right - Wide(layout.Labels[last]) / 2 + (layout.Categories - last - 0.5) * slot);
+            left = Math.Max(left, outer.X - LabelReach + Wide(layout.Labels[0]) / 2 - slot / 2);
+            right = Math.Min(right, outer.Right + LabelReach - Wide(layout.Labels[last]) / 2 + (layout.Categories - last - 0.5) * slot);
         }
 
         // Labels rotated upwards reach left of the first category; they stay within 9 pt of the outer edge. Date
@@ -2143,13 +2145,17 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         {
             var angle = -layout.Rotation * Math.PI / 180;
             // Word sets each label as a box whose top right corner sits on its category: the first category stands
-            // its label's width across from the outer edge, the last its line's height up from the right one (measured
-            // by agent AK in Word's PDFs: powertools/CU004-Chart-Cached-Data-04 and libreoffice/tdf82824 at -45 degrees).
+            // its label's width across from the outer edge, the last its line's height up from the right one, the edges
+            // 10 pt inside the chart for categories between ticks as for flat labels, 11 for those on them (measured by
+            // agent AK in Word's PDFs: powertools/CU004-Chart-Cached-Data-04 and libreoffice/tdf82824 at -45 degrees;
+            // docx/local/csr-*: tdf138773's labels "2000-01" and "2012-13f" turned under 13 categories labelled every
+            // second one; tdf82824's on ticks).
             if (slide.Presentation.Word && !manual)
             {
                 var count = Math.Max(1, layout.Categories);
-                var first = outer.X + Width(layout.Labels[0], layout.Style) * Math.Cos(angle);
-                var last = outer.Right - LineHeight(layout.Style) * Math.Sin(angle);
+                var into = layout.Between ? LabelReach : 0;
+                var first = outer.X - into + Width(layout.Labels[0], layout.Style) * Math.Cos(angle);
+                var last = outer.Right + into - LineHeight(layout.Style) * Math.Sin(angle);
                 left = Math.Max(left, layout.Between ? (first - right / (2 * count)) / (1 - 1.0 / (2 * count)) : first);
                 right = Math.Min(right, layout.Between ? (last - left / (2 * count)) / (1 - 1.0 / (2 * count)) : last);
                 continue;
@@ -2360,9 +2366,16 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var levels = layout.Levels.Count * (lineHeight + CategoryLabelGap * layout.Style.Size);
         if (layout.Rotation == 0)
             return horizontal ? lines * lineHeight + levels : layout.MaxLabelWidth + VerticalLevels(layout);
+        // Turned labels shown on every n-th category only take room for those shown (measured with docx/local/csr-*: a
+        // long name of a skipped category of LibreOffice's extras-layout/tdf138773 leaves the plot area where it is,
+        // one of a shown category raises its bottom 47.1 pt).
         var a = Math.Abs(layout.Rotation) * Math.PI / 180;
+        var skip = horizontal && !layout.Axis.IsValue && layout.DateStep == null ? Math.Max(1, (int)(ChartModel.Number(layout.Axis.Element, "tickLblSkip") ?? 1)) : 1;
+        var widest = skip > 1 && layout.Labels.Count > 0
+            ? layout.Labels.Where((_, i) => i % skip == 0).Max(l => l.Split('\n').Max(line => Width(line, layout.Style)))
+            : layout.MaxLabelWidth;
         return horizontal
-            ? layout.MaxLabelWidth * Math.Sin(a) + lines * lineHeight * Math.Cos(a) + levels
+            ? widest * Math.Sin(a) + lines * lineHeight * Math.Cos(a) + levels
             : layout.MaxLabelWidth * Math.Cos(a) + lines * lineHeight * Math.Sin(a);
     }
 
