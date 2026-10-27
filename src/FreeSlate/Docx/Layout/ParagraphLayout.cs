@@ -28,6 +28,12 @@ public sealed class Piece
     /// <summary>The advance of every UTF-16 unit in points (a cluster's advance on its first unit, spacing and scale included).</summary>
     public required double[] Advances { get; init; }
 
+    /// <summary>
+    /// The automatic space between East Asian and Latin text each character's advance holds (see ParagraphLayout's
+    /// AutoSpace), null where none does.
+    /// </summary>
+    public double[]? AutoSpaces { get; init; }
+
     /// <summary>Extra width justification gives each of the first <see cref="JustifiedSpaces"/> spaces of the piece.</summary>
     public double SpaceExtra { get; set; }
     public int JustifiedSpaces { get; set; }
@@ -689,9 +695,23 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             if (piece.Start >= 0 && at >= piece.Start && at < piece.Start + piece.Advances.Length)
             {
                 piece.Advances[at - piece.Start] -= space;
+                if (piece.AutoSpaces is { } spaces && at - piece.Start < spaces.Length)
+                    spaces[at - piece.Start] = 0;
                 return;
             }
         }
+    }
+
+    /// <summary>The automatic spaces of the characters from <paramref name="from"/> to <paramref name="to"/>, null where none has one.</summary>
+    double[]? AutoSpacesOf(int from, int to)
+    {
+        double[]? spaces = null;
+        for (var k = from; k < to; k++)
+        {
+            if (autoSpaced.TryGetValue(k, out var space))
+                (spaces ??= new double[to - from])[k - from] = space;
+        }
+        return spaces;
     }
 
     /// <summary>
@@ -2743,6 +2763,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     JoinsBefore = JoinsAcross(text, pieceStart),
                     JoinsAfter = i > pieceStart && JoinsAcross(text, i),
                     Advances = pieceAdvances,
+                    AutoSpaces = styles.EastAsianDefaults ? AutoSpacesOf(pieceStart, i) : null,
                     Lead = leads.GetValueOrDefault(pieceStart),
                     IsLabel = pieceStart < labelEnd,
                     Drawing = text[pieceStart] == '\uFFFC' && objects.TryGetValue(pieceStart, out var drawing) ? drawing : null,

@@ -1245,7 +1245,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
 
     /// <summary>
     /// The glyphs of a piece of plain text (see <see cref="DevicePositions"/>): one per character at the font's advance,
-    /// kerned or not, spaced or not; none for a piece without text, null for tabs, objects and text that is not plain.
+    /// kerned or not, spaced or not, with an automatic space between East Asian and Latin text or not, bold of a font
+    /// without a bold face too (found by an agent in Word's PDF of LibreOffice's extras-ooxmlexport/chtoutline: "第 1 章"
+    /// in synthetic bold PMingLiU and "Test" after it at Word's dots 750, 1015, 1191 and 1468, the dots after an
+    /// ideograph's automatic space and in bold no longer rounded down from their nominal places; docx/local/asd-lines,
+    /// asd-pm: 16 of 16 regular lines exact); none for a piece without text, null for tabs, objects and text that is
+    /// not plain.
     /// </summary>
     static uint[]? PlainGlyphs(Piece piece)
     {
@@ -1269,8 +1274,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // with the next piece's or line's first (RunStyle.ShapesWith).
             var pair = style.LegacyKerning && i + 1 < glyphs.Length ? data.LegacyKerning(glyph.Id, glyphs[i + 1].Id) * style.Size : 0;
             var kerned = (style.LegacyKerning || style.Features.Contains("kern")) && i == glyphs.Length - 1;
+            var spaced = piece.AutoSpaces is { } spaces && i < spaces.Length ? spaces[i] : 0;
             if (glyph.Cluster != i || glyph.Id == 0 || char.IsSurrogate(piece.Text[i]) || Math.Abs(glyph.OffsetX) > 1e-9
-                || !kerned && Math.Abs(piece.Advances[i] - glyph.Advance * style.Size - style.Spacing - pair) > 1e-4 || style.Font.SyntheticBold)
+                || !kerned && Math.Abs(piece.Advances[i] - glyph.Advance * style.Size - style.Spacing - pair - spaced) > 1e-4)
                 return null;
             ids[i] = glyph.Id;
         }
