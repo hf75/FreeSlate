@@ -2411,10 +2411,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         sections.Add((starts == 0 ? blocks : blocks.GetRange(starts, blocks.Count - starts), lastSection));
         // The headers and footers are read in the order of their sections, so that their blocks' ids do not follow the
-        // order of the pages they are first laid out on (a growing layout finishes pages step by step, see Paginate).
+        // order of the pages they are first laid out on (a growing layout finishes pages step by step, see Paginate);
+        // within a section in Word's order of its stories, in which their lists count on (see ModelReader.Story).
         foreach (var (_, own) in sections)
         {
-            foreach (var part in own.Headers.Values.Concat(own.Footers.Values))
+            var order = new[] { own.Headers.GetValueOrDefault("even"), own.Headers.GetValueOrDefault("default"), own.Footers.GetValueOrDefault("even"),
+                own.Footers.GetValueOrDefault("default"), own.Headers.GetValueOrDefault("first"), own.Footers.GetValueOrDefault("first") };
+            foreach (var part in order.OfType<string>().Concat(own.Headers.Values).Concat(own.Footers.Values))
             {
                 storyOwners.TryAdd(part, own);
                 reader?.Story(part);

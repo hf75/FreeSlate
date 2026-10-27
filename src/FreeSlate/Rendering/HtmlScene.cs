@@ -291,6 +291,14 @@ public static class HtmlScene
     /// <summary>A font's family as an SVG font-family.</summary>
     static string Family(FontData font) => $"'{WebUtility.HtmlEncode(font.Family.Replace("'", "\\'"))}'";
 
+    /// <summary>
+    /// The axes of a named instance of a variable font (FontData.Variations) as a declaration to append to a style, ""
+    /// for other fonts: the browser finds the file by the family and sets the instance's axes.
+    /// </summary>
+    public static string Variations(FontData font) => font.Variations is { } axes
+        ? ";font-variation-settings:" + string.Join(',', axes.Select(a => $"'{a.Axis}' {Units.Css(a.Value)}"))
+        : "";
+
     /// <summary>A run of text as text the browser draws (and selects), every character at its position.</summary>
     static void WriteText(TextItem item, StringBuilder html)
     {
@@ -334,7 +342,7 @@ public static class HtmlScene
             ? " style=\"font-kerning:normal;font-variant-ligatures:normal" : " style=\"font-kerning:none");
         if (on.Count > 0)
             html.Append(";font-feature-settings:").Append(string.Join(',', on.Select(f => $"'{f}' 1")));
-        html.Append('"');
+        html.Append(Variations(item.Font)).Append('"');
         if (Math.Abs(item.Scale - 1) > 1e-6)
             html.Append($" transform=\"translate({Units.Css(x * PxPerPt)} 0) scale({Units.Css4(item.Scale)} 1) translate({Units.Css(-x * PxPerPt)} 0)\"");
         html.Append('>');

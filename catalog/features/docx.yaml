@@ -1572,9 +1572,9 @@ areas:
         difficulty: 4
         status: done
         strategy: >-
-          Counters run per abstract numbering through the whole document (headers, footers and notes keep their own
-          state), restart by w:lvlRestart, w:startOverride and numbering instances; measured against Word because the
-          specification leaves gaps.
+          Counters run per abstract numbering through the whole document (the headers and footers share a state of
+          their own, notes keep theirs), restart by w:lvlRestart, w:startOverride and numbering instances; measured
+          against Word because the specification leaves gaps.
         office: >-
           Instances of one abstract definition count together; an instance with a start override restarts the shared
           counter at the overridden level where it first uses that level, and the other instances go on from there (5,
@@ -1587,7 +1587,14 @@ areas:
           (docx/local/ sn-1 to sn-6: items 1, 2, an empty numbered section end, then 3;
           docx/external/libreoffice/extras-ooxmlexport/ section_break_numbering, tdf170602_exportContext). A level
           outside the nine a list has (w:ilvl 9 and above) takes no number and no level's indents
-          (docx/external/libreoffice/extras-ooxmlexport/tdf61309: ilvl 12 at the margin, 58.2 → 94.0 %).
+          (docx/external/libreoffice/extras-ooxmlexport/tdf61309: ilvl 12 at the margin, 58.2 → 94.0 %). The headers
+          and footers count on from story to story, section by section in the order even header, default header, even
+          footer, default footer, first page's header and footer, shown or not; each story ends with a mark of the
+          Normal style and eight such marks come before the first, which take numbers where Normal is numbered
+          (docx/local/hfn-*: a header's item 1, the footer's 2; Normal numbered 9 and 11, with even header and footer
+          before them 11 and 15, a second section's 13 and 15; the notes' separators count for none, nor do the
+          compatibility modes change it; extras-ooxmlexport/tdf135164_cancelledNumbering "xi" and "xv", 83.4 → 92.5 %
+          with its Bahnschrift Light, see engine.fonts).
 
       - id: numbering.pictureBullets
         title: Picture bullets
@@ -5416,7 +5423,13 @@ areas:
           marks with their base (docx/local/fallback-arial 96.1 %, fallback-calibri 95.7 %, fallback-times 97 %, every
           line within 0.1 pt). Color emoji are Chrome's (COLRv1 shading) where Word draws them flat. Installed fonts
           the browser does not find by their family name are named by their faces as in pptx (Franklin Gothic
-          Medium, the theme font of powertools/HC006 and HW010-Symbols01, was drawn in Franklin Gothic Demi).
+          Medium, the theme font of powertools/HC006 and HW010-Symbols01, was drawn in Franklin Gothic Demi). The
+          named instances of variable fonts are families of their own as Windows lists them (Word's
+          Application.FontNames): the typographic family with the STAT table's names of the instance's values in its
+          axis order, elidable names left out, Bold and Italic as the style, cut to 31 characters ("Bahnschrift Light",
+          "Bahnschrift SemiLight SemiConde", "Bahnschrift Condensed" bold, "Segoe UI Variable Small Light", "Sitka
+          Small"); measured and drawn at the instance's axes, which the browser is given as font-variation-settings
+          (extras-ooxmlexport/tdf135164_cancelledNumbering, set in Calibri before, 83.4 → 90.1 %).
 
       - id: engine.fidelity
         title: Fidelity measurement

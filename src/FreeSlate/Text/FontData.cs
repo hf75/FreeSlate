@@ -63,7 +63,14 @@ public sealed class FontData : IDisposable
     {
     }
 
-    FontData(byte[] data, string path, string family, int index, bool inMemory, double advanceExtra = 0, float weight = 0)
+    /// <summary>A named instance of a variable font file, its axes set to <paramref name="variations"/> (see FontFace.Variations).</summary>
+    public FontData(string path, string family, int index, IReadOnlyList<(string Axis, float Value)> variations)
+        : this(File.ReadAllBytes(path), path, family, index, inMemory: false, variations: variations)
+    {
+    }
+
+    FontData(byte[] data, string path, string family, int index, bool inMemory, double advanceExtra = 0, float weight = 0,
+        IReadOnlyList<(string Axis, float Value)>? variations = null)
     {
         Path = path;
         Family = family;
@@ -166,6 +173,11 @@ public sealed class FontData : IDisposable
                 Weight = Math.Clamp(weight, axis.MinValue, axis.MaxValue);
                 font.SetVariations([new Variation { Tag = wght, Value = Weight }]);
             }
+        }
+        if (variations != null)
+        {
+            Variations = variations;
+            font.SetVariations([.. variations.Select(v => new Variation { Tag = new Tag(v.Axis[0], v.Axis[1], v.Axis[2], v.Axis[3]), Value = v.Value })]);
         }
     }
 
@@ -301,7 +313,7 @@ public sealed class FontData : IDisposable
     public const double WidenedBold = 0.027;
 
     /// <summary>The same font with <paramref name="extra"/> em added to every glyph's advance (simulated bold of PostScript fonts).</summary>
-    public FontData Widened(double extra) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, extra, Weight);
+    public FontData Widened(double extra) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, extra, Weight, Variations);
 
     /// <summary>The weight axis (wght) of a variable font: its lowest, default and highest weight; null for other fonts.</summary>
     public (float Min, float Default, float Max)? WeightAxis { get; }
@@ -309,8 +321,16 @@ public sealed class FontData : IDisposable
     /// <summary>The weight this instance of a variable font is set to; 0 for the default instance.</summary>
     public float Weight { get; }
 
+    /// <summary>
+    /// The axis values of a named instance of a variable font (see FontFace.Variations), which the browser is given with
+    /// the text it draws; null for a file's default instance and its bold (see Weighted).
+    /// </summary>
+    public IReadOnlyList<(string Axis, float Value)>? Variations { get; }
+
     /// <summary>Which instance of the font file this is ("" for the default one), for what tells instances apart.</summary>
-    public string Instance => Weight > 0 ? "wght=" + Weight.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+    public string Instance => Variations != null
+        ? string.Join(',', Variations.Select(v => v.Axis + "=" + v.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+        : Weight > 0 ? "wght=" + Weight.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
 
     /// <summary>The same variable font set to another weight (wght axis).</summary>
     public FontData Weighted(float weight) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, advanceExtra, weight);

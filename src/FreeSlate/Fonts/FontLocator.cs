@@ -21,6 +21,15 @@ public sealed record FontFace(string Family, bool Bold, bool Italic, string Path
     /// </summary>
     public Lazy<byte[]?>? Embedded { get; init; }
 
+    /// <summary>
+    /// The axis values of a named instance of a variable font, which Windows lists as a face of its own (see
+    /// OpenTypeInfo.Instances); null for the face a font file declares.
+    /// </summary>
+    public IReadOnlyList<(string Axis, float Value)>? Variations { get; init; }
+
+    /// <summary>The family the browser finds a named instance's font file by (see OpenTypeInfo.Instances); null for other faces.</summary>
+    public string? Base { get; init; }
+
     public bool Matches(string family) =>
         Family.Equals(family, StringComparison.OrdinalIgnoreCase) || Aliases.Any(a => a.Equals(family, StringComparison.OrdinalIgnoreCase));
 }
@@ -140,7 +149,10 @@ public sealed class FontLocator
 /// <summary>Reads family name and style from the name and OS/2 tables of a TrueType/OpenType file.</summary>
 static class OpenTypeInfo
 {
-    /// <summary>Every face of a font file: one, or each font of a collection (Cambria Math is the second of cambria.ttc).</summary>
+    /// <summary>
+    /// Every face of a font file: one, or each font of a collection (Cambria Math is the second of cambria.ttc), each with
+    /// the named instances of a variable font after it (see Instances).
+    /// </summary>
     public static List<FontFace> ReadAll(string path, bool system)
     {
         var data = File.ReadAllBytes(path);
@@ -149,16 +161,13 @@ static class OpenTypeInfo
             var count = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(8));
             var faces = new List<FontFace>();
             for (var i = 0; i < count && 12 + i * 4 + 4 <= data.Length; i++)
-            {
-                if (Read(data, path, system, (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12 + i * 4)), i) is { } face)
-                    faces.Add(face);
-            }
+                faces.AddRange(Read(data, path, system, (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12 + i * 4)), i));
             return faces;
         }
-        return Read(data, path, system, 0, 0) is { } single ? [single] : [];
+        return [.. Read(data, path, system, 0, 0)];
     }
 
-    static FontFace? Read(byte[] data, string path, bool system, int offset, int index)
+    static IEnumerable<FontFace> Read(byte[] data, string path, bool system, int offset, int index)
     {
         var tables = new Dictionary<string, int>();
         var count = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(offset + 4));
@@ -168,11 +177,11 @@ static class OpenTypeInfo
             tables[Encoding.ASCII.GetString(data, record, 4)] = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(record + 8));
         }
         if (!tables.TryGetValue("name", out var name))
-            return null;
+            return [];
 
         var family = NameString(data, name, 1);
         if (string.IsNullOrEmpty(family))
-            return null;
+            return [];
 
         bool bold = false, italic = false;
         if (tables.TryGetValue("OS/2", out var os2))
@@ -183,10 +192,98 @@ static class OpenTypeInfo
         }
         var aliases = NameStrings(data, name, 1).Where(n => n.Length > 0 && !n.Equals(family, StringComparison.OrdinalIgnoreCase)).Distinct().ToList();
         var full = new[] { NameString(data, name, 4), NameString(data, name, 6) }.OfType<string>().Where(n => n.Length > 0).Distinct().ToList();
-        return new FontFace(family, bold, italic, path, system, index)
+        var face = new FontFace(family, bold, italic, path, system, index)
         {
             Aliases = aliases, FullNames = full, Typographic = !string.IsNullOrEmpty(NameString(data, name, 16)),
         };
+        return [face, .. Instances(data, tables, face)];
+    }
+
+    /// <summary>
+    /// The named instances of a variable font (fvar) as Windows lists them, each a family of its own (catalog:
+    /// engine.fonts; Word's font list, Application.FontNames): the typographic family with the names the STAT table gives
+    /// the instance's values, axis by axis in its order, the names it marks elidable left out and Bold and Italic taken
+    /// as the style; without a STAT table the words of the instance's own name ("Bahnschrift Light", "Bahnschrift
+    /// SemiBold Condensed", "Bahnschrift Condensed" bold, "Segoe UI Variable Small Light", "Segoe UI Variable Text" for
+    /// its regular instance, "Sitka Small"). Names are cut to 31 characters as GDI's face names are ("Bahnschrift
+    /// SemiLight SemiConde"). Instances that name the file's own family are its face already (its regular, and its bold
+    /// as the weight axis at 700). The browser finds an instance's file by the typographic family with the names of its
+    /// values on the axes other than weight, width and slant ("Bahnschrift", "Segoe UI Variable Small").
+    /// </summary>
+    static IEnumerable<FontFace> Instances(byte[] data, Dictionary<string, int> tables, FontFace face)
+    {
+        if (!tables.TryGetValue("fvar", out var fvar) || !tables.TryGetValue("name", out var name) || fvar + 16 > data.Length)
+            yield break;
+        int U16(int at) => at + 2 <= data.Length ? BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(at)) : 0;
+        float Fixed(int at) => at + 4 <= data.Length ? BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(at)) / 65536f : 0;
+        var (axesOffset, axisCount, axisSize, instanceCount, instanceSize) = (U16(fvar + 4), U16(fvar + 8), U16(fvar + 10), U16(fvar + 12), U16(fvar + 14));
+        if (axisSize < 20 || instanceSize < 4 + 4 * axisCount || fvar + axesOffset + axisCount * axisSize > data.Length)
+            yield break;
+        var tags = new string[axisCount];
+        for (var a = 0; a < axisCount; a++)
+            tags[a] = Encoding.ASCII.GetString(data, fvar + axesOffset + a * axisSize, 4);
+        var stat = tables.TryGetValue("STAT", out var statOffset) ? Stat(data, statOffset, name) : null;
+        var typographic = NameString(data, name, 16) is { Length: > 0 } t ? t : face.Family;
+        var seen = new HashSet<(string, bool, bool)>();
+        for (var i = 0; i < instanceCount; i++)
+        {
+            var record = fvar + axesOffset + axisCount * axisSize + i * instanceSize;
+            if (record + 4 + 4 * axisCount > data.Length)
+                yield break;
+            var coordinates = new (string Axis, float Value)[axisCount];
+            for (var a = 0; a < axisCount; a++)
+                coordinates[a] = (tags[a], Fixed(record + 4 + 4 * a));
+            var values = stat != null
+                ? stat.SelectMany(axis => coordinates.Where(c => c.Axis == axis.Tag).Take(1).Select(c => (axis.Tag, Name: axis.Name(c.Value)))).Where(v => v.Name != null).ToList()
+                : (NameString(data, name, U16(record)) ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => (Tag: "", Name: (string?)w)).ToList();
+            var bold = values.Any(v => v.Name == "Bold");
+            var italic = values.Any(v => v.Name is "Italic" or "Oblique");
+            var named = values.Where(v => v.Name is not ("Regular" or "Bold" or "Italic" or "Oblique")).ToList();
+            var whole = string.Join(' ', [typographic, .. named.Select(v => v.Name)]);
+            var family = whole.Length > 31 ? whole[..31] : whole;
+            if (family.Equals(face.Family, StringComparison.OrdinalIgnoreCase) || !seen.Add((family.ToUpperInvariant(), bold, italic)))
+                continue;
+            var css = string.Join(' ', [typographic, .. named.Where(v => v.Tag is not ("" or "wght" or "wdth" or "slnt" or "ital")).Select(v => v.Name)]);
+            yield return new FontFace(family, bold, italic, face.Path, face.System, face.Index)
+            {
+                Aliases = whole != family ? [whole] : [], Typographic = true, Variations = coordinates, Base = css,
+            };
+        }
+    }
+
+    /// <summary>A design axis of the STAT table and the names of its values: exact values, then ranges; null for an elidable one.</summary>
+    sealed record StatAxis(string Tag, int Ordering, List<(float Min, float Max, bool Range, string? Name)> Values)
+    {
+        public string? Name(float value) =>
+            Values.Where(v => !v.Range).Concat(Values.Where(v => v.Range)).FirstOrDefault(v => v.Min - 0.001f <= value && value <= v.Max + 0.001f).Name;
+    }
+
+    /// <summary>The STAT table's design axes in their order with their values (formats 1 to 3; format 4 combinations are left out).</summary>
+    static List<StatAxis>? Stat(byte[] data, int stat, int name)
+    {
+        int U16(int at) => at + 2 <= data.Length ? BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(at)) : 0;
+        int U32(int at) => at + 4 <= data.Length ? (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(at)) : 0;
+        float Fixed(int at) => at + 4 <= data.Length ? BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(at)) / 65536f : 0;
+        var (axisSize, axisCount, axesOffset, valueCount, valuesOffset) = (U16(stat + 4), U16(stat + 6), U32(stat + 8), U16(stat + 12), U32(stat + 14));
+        if (axisSize < 8 || stat + axesOffset + axisCount * axisSize > data.Length)
+            return null;
+        var axes = new List<StatAxis>();
+        for (var a = 0; a < axisCount; a++)
+        {
+            var record = stat + axesOffset + a * axisSize;
+            axes.Add(new StatAxis(Encoding.ASCII.GetString(data, record, 4), U16(record + 6), []));
+        }
+        for (var v = 0; v < valueCount; v++)
+        {
+            var value = stat + valuesOffset + U16(stat + valuesOffset + 2 * v);
+            var (format, axis, flags, nameId) = (U16(value), U16(value + 2), U16(value + 4), U16(value + 6));
+            if (format is < 1 or > 3 || axis >= axes.Count)
+                continue;
+            // Flag 2: the name may be left out (ELIDABLE_AXIS_VALUE_NAME), as the regular weight's.
+            var text = (flags & 2) != 0 ? null : NameString(data, name, nameId);
+            axes[axis].Values.Add(format == 2 ? (Fixed(value + 12), Fixed(value + 16), true, text) : (Fixed(value + 8), Fixed(value + 8), false, text));
+        }
+        return [.. axes.OrderBy(a => a.Ordering)];
     }
 
     /// <summary>All values of a name record, in every language.</summary>

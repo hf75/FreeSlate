@@ -1167,7 +1167,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         if (!outlined)
         {
             attributes.Append(fill);
-            if (!style.Kerning) attributes.Append(" style=\"font-kerning:none\"");
+            var variations = HtmlScene.Variations(data);
+            if (!style.Kerning || variations.Length > 0)
+                attributes.Append($" style=\"{(style.Kerning ? variations[1..] : "font-kerning:none" + variations)}\"");
             if (filter is { } textFilter && lines.Count == 0) attributes.Append($" filter=\"url(#{textFilter.Id})\"");
         }
         var textItem = new SvgTextItem(text, places, y * PxPerPt, data, style.Size * PxPerPt, style.Color)

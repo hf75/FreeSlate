@@ -905,17 +905,47 @@ public sealed partial class ModelReader(DocumentContext context)
         return notes;
     }
 
-    /// <summary>The blocks of a header or footer part (catalog: headerFooter.parts), read once.</summary>
+    /// <summary>
+    /// The list counter the header and footer stories share (see Story), and the list and level of the Normal style
+    /// where it is numbered.
+    /// </summary>
+    ListCounter? storyCounter;
+    (string? List, int Level)? normalList;
+
+    /// <summary>
+    /// The blocks of a header or footer part (catalog: headerFooter.parts), read once. Their lists count on from story
+    /// to story in the order they are first read, which the paginator makes Word's: section by section the even header,
+    /// the default header, the even footer, the default footer, the first page's header and footer. Each story ends with
+    /// a mark of the Normal style, and eight more come before the first: where Normal is numbered, each takes a number
+    /// (measured with docx/local/hfn-*: a header's item 1 and a footer's of the same list 2, with a header of two items
+    /// 3, a list of its own in the footer 1; Normal numbered, the default header's paragraph 9 and the default
+    /// footer's 11, with an even header and footer before them 11 and 15, a second section's 13 and 15, a header
+    /// paragraph of numId 0 leaves the footer 10; the notes' separators and their numbers count for none;
+    /// docx/external/libreoffice/extras-ooxmlexport/tdf135164_cancelledNumbering: "xi" and "xv").
+    /// </summary>
     public List<Block> Story(string part)
     {
         if (stories.TryGetValue(part, out var blocks))
             return blocks;
         blocks = [];
         var (bodyCounter, bodyPart) = (counter, currentPart);
-        counter = new ListCounter(context.Numbering);
+        if (storyCounter == null)
+        {
+            storyCounter = new ListCounter(context.Numbering);
+            var normal = context.Styles.Paragraph(null, new ParagraphFormat(), table: null);
+            if (storyCounter.Counts(normal.NumberingId, normal.NumberingLevel ?? 0))
+            {
+                normalList = (normal.NumberingId, normal.NumberingLevel ?? 0);
+                for (var k = 0; k < 8; k++)
+                    storyCounter.Next(normal.NumberingId, normal.NumberingLevel ?? 0);
+            }
+        }
+        counter = storyCounter;
         currentPart = part;
         if (context.Load(part).Root is { } root)
             ReadBlocks(root, blocks);
+        if (normalList is var (list, level))
+            storyCounter.Next(list, level);
         JoinHidden(blocks, cell: false);
         (counter, currentPart) = (bodyCounter, bodyPart);
         return stories[part] = blocks;
