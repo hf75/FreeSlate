@@ -471,10 +471,13 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>
     /// A shape whose text changed fitted to its text anew, as PowerPoint fits it when the text is edited: text that shrinks
     /// to fit (normAutofit) takes the scale and line spacing reduction it fits at, a shape that grows to its text
-    /// (spAutoFit, with its own size, neither turned nor flipped) the height of its text and insets, its top, middle or
-    /// bottom where it was as its text is anchored (measured with PowerPoint 365's object model: rectangles of centered
-    /// text keep their middles). Part of the change just made, as PowerPoint
-    /// makes it one with the text.
+    /// (spAutoFit, neither turned nor flipped) the height of its text and insets, its top, middle or bottom where it was as
+    /// its text is anchored (measured with PowerPoint 365's object model: rectangles of centered text keep their middles);
+    /// of vertical text the width, its edge where the lines begin (the right one, the left one of vert270 and
+    /// mongolianVert), its middle or the other edge staying as it is anchored. A placeholder that takes its place and size
+    /// from its layout or master gets a transform of its own (measured: a title placeholder and a centered one fitted
+    /// anew, at the place and width they inherited). Part of the change just made, as PowerPoint makes it one with the
+    /// text.
     /// </summary>
     void Refit(Slide slide, uint shape)
     {
@@ -489,16 +492,27 @@ public sealed partial class PresentationDocument : IEditableDocument
         if (sp?.Element(Ns.P + "txBody")?.Element(Ns.A + "bodyPr") is not { } bodyPr)
             return;
         XElement? changed = null;
-        if (fit.Height is { } textHeight)
+        if (fit.Height is { } textHeight && sp.Element(Ns.P + "spPr") is { } spPr)
         {
-            if (sp.Element(Ns.P + "spPr")?.Element(Ns.A + "xfrm") is { } xfrm && (xfrm.Long("rot") ?? 0) == 0 && xfrm.Attribute("flipV")?.Value is not ("1" or "true")
-                && xfrm.Element(Ns.A + "ext") is { } ext && ext.Long("cy") is { } cy && Math.Abs(cy / Units.EmuPerPoint - textHeight) > 0.05)
+            var own = spPr.Element(Ns.A + "xfrm");
+            var xfrm = own ?? (fit.Transform is { } inherited ? new XElement(Ns.A + "xfrm", inherited.Attributes(),
+                inherited.Elements().Where(e => e.Name == Ns.A + "off" || e.Name == Ns.A + "ext").Select(e => new XElement(e))) : null);
+            // Across the lines: the height, or the width of vertical text.
+            var (size, axis) = fit.Vertical != null ? ("cx", "x") : ("cy", "y");
+            if (xfrm != null && (xfrm.Long("rot") ?? 0) == 0 && xfrm.Attribute("flipV")?.Value is not ("1" or "true")
+                && !(fit.Vertical != null && xfrm.Attribute("flipH")?.Value is "1" or "true")
+                && xfrm.Element(Ns.A + "ext") is { } ext && ext.Long(size) is { } extent && Math.Abs(extent / Units.EmuPerPoint - textHeight) > 0.05)
             {
                 var made = (long)Math.Round(textHeight * Units.EmuPerPoint);
-                ext.SetAttributeValue("cy", made.ToString(CultureInfo.InvariantCulture));
-                if (xfrm.Element(Ns.A + "off") is { } off && off.Long("y") is { } y && fit.Anchor is "ctr" or "b")
-                    off.SetAttributeValue("y", (y + (cy - made) / (fit.Anchor == "ctr" ? 2 : 1)).ToString(CultureInfo.InvariantCulture));
-                changed = xfrm;
+                ext.SetAttributeValue(size, made.ToString(CultureInfo.InvariantCulture));
+                // The edge the text is anchored at stays, the middle of centered text; vertical lines begin at the right
+                // (the left in vert270 and mongolianVert), where their top is.
+                var anchored = fit.Vertical is "vert" or "eaVert" ? fit.Anchor switch { "t" => "b", "b" => "t", _ => fit.Anchor } : fit.Anchor;
+                if (xfrm.Element(Ns.A + "off") is { } off && off.Long(axis) is { } at && anchored is "ctr" or "b")
+                    off.SetAttributeValue(axis, (at + (extent - made) / (anchored == "ctr" ? 2 : 1)).ToString(CultureInfo.InvariantCulture));
+                if (own == null)
+                    spPr.AddFirst(xfrm);
+                changed = own == null ? spPr : xfrm;
             }
         }
         else

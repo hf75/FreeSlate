@@ -14,9 +14,14 @@ namespace FreeSlate.Pptx;
 /// <summary>
 /// How text fits its shape anew (see TextRenderer.Refit): the scale and line spacing reduction of text that shrinks to
 /// fit (normAutofit), or the height in points of a shape that grows to its text (spAutoFit) and where the text is
-/// anchored (t, ctr, b), which edge or middle of the shape stays.
+/// anchored (t, ctr, b), which edge or middle of the shape stays; of vertical text (<see cref="Vertical"/>, its bodyPr
+/// vert) the height is the shape's width, across its lines. <see cref="Transform"/> is the a:xfrm the shape was drawn
+/// with, its own or its placeholder's on the layout or master.
 /// </summary>
-public sealed record TextFit(double Scale, double Reduction, double? Height, string Anchor = "t");
+public sealed record TextFit(double Scale, double Reduction, double? Height, string Anchor = "t", string? Vertical = null)
+{
+    public XElement? Transform { get; init; }
+}
 
 public sealed class TextChain
 {
@@ -85,8 +90,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>
     /// Whether the text being rendered fits itself to its shape anew, as PowerPoint fits it when the text is edited (see
     /// Fit), instead of taking the scale stored (set by the slide's renderer for a shape whose text changed); how it
-    /// fitted is <see cref="Fitted"/>, null where it neither shrinks to fit nor grows its shape, or is laid out otherwise
-    /// (vertical, in columns, warped).
+    /// fitted is <see cref="Fitted"/>, null where it neither shrinks to fit nor grows its shape, or keeps its size and scale
+    /// as PowerPoint keeps them (warped text, vertical text that shrinks, text in columns that grows its shape).
     /// </summary>
     public bool Refit { get; set; }
     public TextFit? Fitted { get; set; }
@@ -194,9 +199,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // A placeholder without width does not wrap its text (measured: one line in footer, body and title
         // placeholders 0 wide; text boxes and shapes 0 wide, and placeholders 1 pt wide, wrap every character).
         var wraps = Body("wrap") != "none" && !(boxWidth == 0 && Placeholders.Ph(chain.Shapes[0].Element) != null);
-        // Vertical text (catalog: text.vertical); the insets stay with the shape's sides.
+        // Vertical text (catalog: text.vertical); the insets stay with the shape's sides. A shape that grows to it grows
+        // across its lines, as wide as the text's height turned and its left and right insets (measured with PowerPoint
+        // 365's object model: text boxes of vertical text 29.08 and 58.16 pt wide take 14.54 pt more for a line of
+        // "Zeile neu" more, their right edges staying).
         if (Body("vert") is "vert" or "vert270" or "eaVert" or "mongolianVert")
+        {
+            if (Refit && autofit?.Name.LocalName == "spAutoFit"
+                && Layout(txBody, sources, Math.Max(0, height), wraps, fontScale, spacingReduction) is var turned)
+                Fitted = new TextFit(1, 0, (turned.Bound + Inset("lIns", 91440) + Inset("rIns", 91440)) * 517 / 512, Body("anchor") ?? "t", Body("vert"));
             return RenderTurned(txBody, sources, Body("vert")!, left, top, width, height, wraps, fontScale, spacingReduction, Body("anchor") ?? "t");
+        }
         if (Body("vert") is "wordArtVert" or "wordArtVertRtl")
             return RenderStacked(Layout(txBody, sources, 1e6, false, fontScale, spacingReduction), Body("vert") == "wordArtVertRtl", left, top, width, height, Body("anchor") ?? "t");
         // Columns (catalog: text.columns): the text is laid out at the column width and its lines are shared out
@@ -212,16 +225,23 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var wrap = wraps && !(warpDefinition != null && TextWarp.FollowsPaths(warpDefinition));
         // Space before the first paragraph and after the last counts only when the body asks for it (measured).
         var spaceFirstLast = Body("spcFirstLastPara") is "1" or "true";
-        var refit = Refit && columns == 1 && warp == null;
+        // Warped text keeps its size and scale (measured with PowerPoint 365's object model: WordArt growing to its text
+        // stays as large with a line more); text in columns shrinks to fit its tallest column (see Columns), measured to its
+        // last line's descent at its spacing (measured: three columns of 48 lines 12.6 pt apart at 62.5 % and 20 % less
+        // spacing fit 224.68 pt, the tallest 224.2 pt high as TextRange.BoundHeight says, which to the descent at single
+        // spacing would not fit; four columns of 12 lines PowerPoint 365 fits at 92.5 % and 10 % less spacing), but a shape
+        // growing to it keeps its height (one shape of two columns measured, as large with a line more).
+        var refit = Refit && warp == null;
         if (refit && autofit?.Name.LocalName == "normAutofit")
         {
-            (fontScale, spacingReduction) = Fit(txBody, sources, Math.Max(0, columnWidth), wrap, spaceFirstLast, height);
+            (fontScale, spacingReduction) = Fit(txBody, sources, Math.Max(0, columnWidth), wrap, spaceFirstLast, height,
+                columns > 1 ? (columns, columnGap, Body("rtlCol") is "1" or "true") : null);
             Fitted = new TextFit(fontScale, spacingReduction, null);
         }
         var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast);
         // A shape that grows to its text is as high as the text (Bound) and its insets, by 517/512 (measured with
         // PowerPoint 365's object model: 144 boxes of 1 to 6 lines in four fonts, three sizes and three spacings, all to 0.001 pt).
-        if (refit && autofit?.Name.LocalName == "spAutoFit")
+        if (refit && columns == 1 && autofit?.Name.LocalName == "spAutoFit")
             Fitted = new TextFit(1, 0, (layout.Bound + Inset("tIns", 45720) + Inset("bIns", 45720)) * 517 / 512, Body("anchor") ?? "t");
         if (columns > 1)
             layout = Columns(layout, columns, columnWidth, columnGap, Body("rtlCol") is "1" or "true", height);
@@ -1002,12 +1022,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         (0.325, 0.2), (0.25, 0.2),
     ];
 
-    /// <summary>The first of FitSteps at which the text's height as PowerPoint measures it (LaidOutText.Bound) is within a height (points), else the last.</summary>
-    (double Scale, double Reduction) Fit(XElement txBody, List<Source> sources, double width, bool wrap, bool spaceFirstLast, double height)
+    /// <summary>
+    /// The first of FitSteps at which the text's height as PowerPoint measures it (LaidOutText.Bound; of text in
+    /// <paramref name="columns"/> its tallest column's height, see Columns) is within a height (points), else the last.
+    /// </summary>
+    (double Scale, double Reduction) Fit(XElement txBody, List<Source> sources, double width, bool wrap, bool spaceFirstLast, double height,
+        (int Count, double Gap, bool RightToLeft)? columns = null)
     {
         foreach (var step in FitSteps)
         {
-            if (Layout(txBody, sources, width, wrap, step.Scale, step.Reduction, spaceFirstLast).Bound <= height + 0.01)
+            var layout = Layout(txBody, sources, width, wrap, step.Scale, step.Reduction, spaceFirstLast);
+            if ((columns is var (count, gap, rightToLeft) ? Columns(layout, count, width, gap, rightToLeft, height).Height : layout.Bound) <= height + 0.01)
                 return step;
         }
         return FitSteps[^1];

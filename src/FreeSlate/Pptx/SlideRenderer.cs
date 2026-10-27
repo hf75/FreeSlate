@@ -616,7 +616,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             text.Refit = refitted != null;
             var textItems = text.Render(textChain, textGeometry, pw, flipH ^ flipV);
             if (refitted is { } fitted && text.Fitted is { } fit)
-                Fitted[fitted] = fit;
+                Fitted[fitted] = fit with { Transform = xfrm };
             (text.Refit, text.Fitted) = (false, null);
             var glyphOutlines = text.Outlines;
             text.Outlines = null;
