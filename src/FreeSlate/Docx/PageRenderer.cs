@@ -1009,7 +1009,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     items.Add(acrossText);
                     continue;
                 }
-                // East Asian characters turned against the line are drawn from their outlines.
+                // East Asian characters turned against the line (see UprightText).
                 var turned = placed.Line.TurnEastAsian && piece.Text.Any(ParagraphLayout.EastAsian);
                 // Outlined letters (w:outline) too, as Word's PDF draws them: paths, whose thin strokes the rasterizer
                 // widens to a pixel, unlike a stroke of text (found by agent BG in Word's PDF of docx/external/libreoffice/
@@ -1040,7 +1040,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     AddWithEffects(drawnText, piece, BrowserText(piece, x + moveX, textBaseline + moveY, device), x + moveX, textBaseline + moveY);
                 else
                 {
-                    AddItem(drawnText, Glyphs(piece, x + moveX, textBaseline + moveY, turned, device));
+                    AddItem(drawnText, (turned ? UprightText(piece, x + moveX, textBaseline + moveY, device) : null)
+                        ?? (SceneItem?)Glyphs(piece, x + moveX, textBaseline + moveY, turned, device));
                     AddItem(selection, SelectionText(piece, x + moveX, textBaseline + moveY, device));
                 }
                 Strikes(piece, x, textBaseline, contentEnd, drawnText);
@@ -1327,7 +1328,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             if (context.Glyphs.Id(data, g.Id) is not { } id)
                 continue;
             double? middle = turnEastAsian && g.Cluster < piece.Text.Length && ParagraphLayout.EastAsian(piece.Text[g.Cluster])
-                ? (positions[g.Cluster] + piece.Advances[g.Cluster] / 2) * PxPerPt / scale : null;
+                ? (positions[g.Cluster] + Math.Max(piece.Advances[g.Cluster], g.Advance * style.Size * style.Scale) / 2) * PxPerPt / scale : null;
             drawn.Add(new GlyphItem(g.Id, id, gx, -g.OffsetY * data.UnitsPerEm, middle));
         }
         if (drawn.Count == 0)
@@ -1336,6 +1337,58 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         {
             Scale = style.Scale, Hollow = style.Hollow, Shadow = style.Shadow, SyntheticBold = style.Font.SyntheticBold, SyntheticItalic = style.Font.SyntheticItalic,
         };
+    }
+
+    /// <summary>
+    /// A piece of a vertical line whose East Asian characters stand upright, drawn as text: each of those characters a
+    /// text of its own in its vertical form (OpenType vert), turned a quarter counterclockwise about the middle of its em
+    /// box, half its advance from its place, the font's own where the line squeezed it (a squeezed mark keeps its whole
+    /// em, the next character moving up); the other characters text along the line. It is not selectable: the selection
+    /// layer is. Word's PDF writes such text as text, which renderers hint, where outlines are not (LibreOffice's
+    /// extras-ooxmlexport/tdf142407: Yu Mincho 10.5 pt in a tbRl section, 75.3 → 95.6 %; the squeezed 。 and 、 of
+    /// its lines 1.4 pt lower). Null where the text is not plain (outlined, filled, scaled, slanted), which
+    /// <see cref="Glyphs"/> draws from its outlines.
+    /// </summary>
+    SvgGroupItem? UprightText(Piece piece, double x, double baseline, IReadOnlyDictionary<Piece, double[]>? device)
+    {
+        var style = piece.Style;
+        var data = style.Font.Data;
+        if (data.IsColor || style.Hollow || style.TextFill != null || style.Outline != null || style.Font.SyntheticItalic || Math.Abs(style.Scale - 1) > 1e-6)
+            return null;
+        var positions = Positions(piece, device);
+        var vertical = data.GlyphsWithFeatures(piece.Text, [.. style.Features, "vert"], language: style.Language);
+        context.UsedFonts.Add(data.Family);
+        TextItem Text(int from, int to, IReadOnlyList<string> features) =>
+            new(piece.Text[from..to], x + positions[from], [.. Enumerable.Range(from, to - from + 1).Select(i => positions[i] - positions[from])],
+                baseline, data, style.Size, style.Color)
+            {
+                Bold = style.Bold, StrokedBold = style.Bold && style.Font.SyntheticBold, Italic = style.Italic, Features = features,
+                Language = style.Language, Width = positions[to] - positions[from],
+            };
+        var items = new List<SceneItem>();
+        var along = -1;
+        for (var i = 0; i <= piece.Text.Length; i++)
+        {
+            var upright = i < piece.Text.Length && ParagraphLayout.EastAsian(piece.Text[i]);
+            if (along >= 0 && (upright || i == piece.Text.Length))
+            {
+                if (!string.IsNullOrWhiteSpace(piece.Text[along..i]))
+                    items.Add(Text(along, i, style.Features));
+                along = -1;
+            }
+            if (i == piece.Text.Length)
+                break;
+            if (!upright)
+            {
+                if (along < 0)
+                    along = i;
+                continue;
+            }
+            var own = vertical.Where(g => g.Cluster == i).Sum(g => g.Advance) * style.Size;
+            var middle = x + positions[i] + Math.Max(positions[i + 1] - positions[i], own) / 2;
+            items.Add(new RotatedItem(-90, middle, baseline - data.EmMiddle * style.Size, [Text(i, i + 1, [.. style.Features, "vert"])]));
+        }
+        return items.Count == 0 ? null : new SvgGroupItem(" aria-hidden=\"true\" style=\"user-select:none\"", items);
     }
 
     /// <summary>The paper size of the page being drawn, over which Word's PDF moves text (see <see cref="Grow"/>).</summary>
