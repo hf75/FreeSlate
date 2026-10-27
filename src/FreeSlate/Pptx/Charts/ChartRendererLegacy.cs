@@ -196,12 +196,17 @@ public sealed partial class ChartRenderer
     {
         if (effects.TryGetValue(series, out var id))
             return id;
-        var themed = legacy?.Level switch { 2 => 2, 3 or 5 => 3, _ => 0 };
-        var effectLst = series.SpPr?.Element(Ns.A + "effectLst")
-                        ?? (themed >= 1 && themed <= colors.Theme.EffectStyles.Count ? colors.Theme.EffectStyles[themed - 1].Element(Ns.A + "effectLst") : null);
+        var effectLst = series.SpPr?.Element(Ns.A + "effectLst") ?? LegacyEffects();
         id = Html.SvgEffects.Filter(effectLst, colors, width * PxPerPt, height * PxPerPt, defs);
         effects[series] = id;
         return id;
+    }
+
+    /// <summary>The effects a legacy style gives data points: the theme's effect style 2 at level 2, 3 at levels 3 and 5.</summary>
+    XElement? LegacyEffects()
+    {
+        var themed = legacy?.Level switch { 2 => 2, 3 or 5 => 3, _ => 0 };
+        return themed >= 1 && themed <= colors.Theme.EffectStyles.Count ? colors.Theme.EffectStyles[themed - 1].Element(Ns.A + "effectLst") : null;
     }
 
     /// <summary>A data point's shape (bar, slice, area, bubble, marker) as a part, drawn with the effects of its series.</summary>

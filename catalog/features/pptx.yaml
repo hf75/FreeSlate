@@ -2137,7 +2137,10 @@ areas:
           (docx/external/powertools/CU012: 0 to 5 by 0.5). 3D pies are disks 0.24 of their radius thick, slices
           clockwise from the back at rotY, lit by a view light (tops 0.4 + 0.43 (cos rotX + sin rotX) with a small
           highlight, sides a gradient from the front's light, cut faces of exploded slices lit from the right);
-          exploded pies fit as a disk as wide as their farthest slice. Data labels: on bars beyond the end face,
+          exploded pies fit as a disk as wide as their farthest slice; in Word slices that cast a shadow (an outer
+          shadow of their own, their series' or their style's) also fit a disc 1.0896 times as wide at the pie's bottom
+          face, whatever the shadow (docx/local/p3x-*, p3s-*; libreoffice/writerfilter-dmapper/chart-zorder 87.7 →
+          98.3 %). Data labels: on bars beyond the end face,
           centered on the front face (ctr, inEnd, inBase on it), on areas halfway up their band on the front, beside
           the points of lines, on pies inside the top as far out as they fit (outEnd beyond the rim), a labelled pie
           fitting at 89 % of its size; horizontal value axes keep a label and three font sizes per interval. Thick

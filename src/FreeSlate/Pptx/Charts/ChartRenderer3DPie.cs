@@ -1,4 +1,5 @@
 using System.Text;
+using System.Xml.Linq;
 using FreeSlate.Drawing;
 
 namespace FreeSlate.Pptx.Charts;
@@ -149,6 +150,11 @@ public sealed partial class ChartRenderer
 
     const double Pie3DLabelShare = 0.89;
 
+    /// <summary>The effects of a series' data point: its own a:effectLst, else its series', else its style's.</summary>
+    XElement? PointEffects(ChartSeries series, int index) =>
+        (series.Points.TryGetValue(index, out var dPt) ? dPt.Element(Ns.C + "spPr")?.Element(Ns.A + "effectLst") : null)
+        ?? series.SpPr?.Element(Ns.A + "effectLst") ?? LegacyEffects();
+
     // The light of perspective charts (measured on pies): 0.4 ambient plus a diffuse light from the upper front at
     // 45° and slightly from the left, and a small white highlight on surfaces facing halfway between it and the eye.
     const double Ambient = 0.4, LightX = -0.06, LightY = 0.43, LightZ = -0.43;
@@ -204,15 +210,24 @@ public sealed partial class ChartRenderer
         (double X, double Y, double Z) Rim(double degrees, double y, (double Dx, double Dz) offset) =>
             (Math.Sin(degrees * Math.PI / 180) + offset.Dx, y, Math.Cos(degrees * Math.PI / 180) + offset.Dz);
 
-        // The camera fits the whole disk, as wide as the farthest exploded slice reaches, enlarged by 2.5 %.
+        // The camera fits the whole disk, as wide as the farthest exploded slice reaches, enlarged by 2.5 %. In Word
+        // slices that cast a shadow (an outer shadow of their own, their series' or their style's) add a disc 1.0896
+        // times as wide at the pie's bottom face, whatever the shadow (measured with docx/local/p3x-*, p3s-*: a pie of
+        // style 18 seen from above 152.52 pt in radius in a plot 332.34 pt high, 161.5 pt without the shadow, with a
+        // glow instead or in style 2, alike with shadows blurred 0 to 80000, 0 to 46000 EMU away and to the right, the
+        // pie turned or exploded; from rotX 60 its front sets the bottom margin; LibreOffice's writerfilter-dmapper/
+        // chart-zorder; powertools/CU002, CU014: an empty a:effectLst on each point, the pie alone).
         var camera = new Perspective(view.RotX, 0);
         var volume = new List<(double X, double Y, double Z)>();
         var reach = (1 + slices.Max(s => Math.Sqrt(s.Dx * s.Dx + s.Dz * s.Dz))) * 1.025;
+        var disc = slide.Presentation.Word && slices.Any(s => PointEffects(series, s.Index)?.Element(Ns.A + "outerShdw") != null) ? reach / 1.025 * 1.0896 : 0;
         for (var k = 0; k < 72; k++)
         {
             var (sin, cos) = Math.SinCos(k * Math.PI / 36);
             foreach (var y in new[] { thickness / 2, -thickness / 2 })
                 volume.Add(camera.View(sin * reach, y * 1.025, cos * reach));
+            if (disc > 0)
+                volume.Add(camera.View(sin * disc, -thickness / 2, cos * disc));
         }
         // Data labels that may go outside leave the pie 89 % of its size (measured: 87 % in a 460 x 500 pt chart, 91 %
         // in a 450 x 200 pt one, both with value labels).
