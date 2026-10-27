@@ -405,24 +405,27 @@ public sealed class WordDocument : IEditableDocument
             return text;
         }, () => Plain(top, p) is { } i ? [.. blocks.Take(i + made), new ModelReader.NewBlock(), .. blocks.Skip(i + made)] : null);
         bool Second(XElement? element) => element != null && where(element) == second;
-        // The second half may be a part of a paragraph the reader joins (a mark deleted or hidden).
-        var id = Fresh().FirstOrDefault(p => (p.Parts ?? [p.Element]).Any(Second))?.Id ?? paragraph;
+        // The second half may be a part of a paragraph the reader joins (a mark deleted or hidden), or an empty one with a
+        // hidden mark, which the reader leaves out (see TextEdits.Split): then the paragraph after it.
+        var id = Fresh().FirstOrDefault(p => (p.Parts ?? [p.Element]).Any(Second))?.Id
+            ?? Fresh().Where(p => where(First(p)) > second).MinBy(p => where(First(p)))?.Id ?? paragraph;
         // Two paragraphs that read as the halves, the second where the place was.
         var at = offset - p.TextOffset;
-        if (before != null && at >= 0 && at <= before.Length && !(Reads(id, before[at..]) && Before(id) is { } first && Reads(first, before[..at])))
+        if (before != null && at >= 0 && at <= before.Length && !(Reads(id, before[at..]) && Beside(id, -1, walking: false) is { } first && Reads(first, before[..at])))
             throw Refused("The paragraph would not split so: the place is in what the document computes or keeps.");
         return id;
     }
 
     /// <summary>
-    /// Joins a paragraph with the paragraph after it in its body, cell or text box, as Delete at its end does (see
-    /// TextEdits.Join); returns the id of the joined paragraph, which stands where the first did.
+    /// Joins a paragraph with the paragraph after it in its body, cell or text box, as Delete at its end does, or
+    /// <paramref name="backward"/> as Backspace at the second's start does, the joined paragraph keeping the first's mark
+    /// (see TextEdits.Join); returns the id of the joined paragraph, which stands where the first did.
     /// </summary>
     /// <exception cref="NotSupportedException">
     /// No paragraph follows it there, or the two cannot be joined so, or the joined paragraph would not read as the two
     /// one after the other; nothing changes.
     /// </exception>
-    public int Join(int paragraph)
+    public int Join(int paragraph, bool backward = false)
     {
         var (p, top) = Find(paragraph);
         var (list, index) = ListOf(top, p) ?? throw new ArgumentException($"The document's body has no paragraph {paragraph}.", nameof(paragraph));
@@ -433,13 +436,17 @@ public sealed class WordDocument : IEditableDocument
         var where = Change(top, ReferenceEquals(list, blocks) ? next : top, (stretch, tracking) =>
         {
             start = stretch.Find(First(p)) is { } element ? stretch.Text.Start(element) - stretch.Head : -1;
-            var (text, stays) = TextEdits.Join(stretch, p, next, tracking);
+            var (text, stays) = TextEdits.Join(stretch, p, next, tracking, backward);
             first = stays;
             return text;
         }, () => Plain(top, p) is { } i && next.Parts == null ? [.. blocks.Take(first ? i + 1 : i), .. blocks.Skip(first ? i + 2 : i + 1)] : null);
         // The joined paragraph begins where the first began (its id goes by its text and place, see ModelReader.Keep).
         var id = Fresh().FirstOrDefault(p => start >= 0 && where(First(p)) == start)?.Id ?? (first ? paragraph : next.Id);
-        if (both != null && !Reads(id, both))
+        // Backspace before a paragraph the reader joined over a hidden mark shows that mark (see TextEdits.Join): the second
+        // of them comes apart again after the joined one.
+        if (both != null && !Reads(id, both) && !(backward && next.Parts != null && Beside(id, 1, walking: false) is { } apart
+                && paragraphs.TryGetValue(id, out var joined) && ParagraphText.Of(joined.Paragraph) is var joinedText
+                && both.StartsWith(joinedText, StringComparison.Ordinal) && Reads(apart, both[joinedText.Length..])))
             throw Refused("The paragraphs would not join so: one holds what the document computes or keeps.");
         return id;
     }

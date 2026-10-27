@@ -73,8 +73,11 @@ public interface IEditableDocument : IDisposable
     /// <summary>Splits a paragraph in two at a place, as Enter does; returns the id of the second.</summary>
     int Split(int paragraph, int offset);
 
-    /// <summary>Joins a paragraph with the next, as Delete at its end does; returns the id of the joined paragraph.</summary>
-    int Join(int paragraph);
+    /// <summary>
+    /// Joins a paragraph with the next, as Delete at its end does, or <paramref name="backward"/> as Backspace at the next's
+    /// start does (in Word the joined paragraph keeps the first's mark then); returns the id of the joined paragraph.
+    /// </summary>
+    int Join(int paragraph, bool backward = false);
 
     /// <summary>
     /// How deleting a selection over paragraphs treats their marks, as the application does (measured in Word 365 and

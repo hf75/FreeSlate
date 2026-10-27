@@ -176,6 +176,11 @@ static class TextEdits
     static bool MarkDeleted(XElement p) =>
         p.Element(p.Name.Namespace + "pPr")?.Element(p.Name.Namespace + "rPr") is { } mark && (mark.Element(p.Name.Namespace + "del") ?? mark.Element(p.Name.Namespace + "moveFrom")) != null;
 
+    /// <summary>Whether a paragraph's mark is hidden of its own (w:vanish on it) and not deleted: it runs into the next paragraph.</summary>
+    static bool MarkHidden(XElement p) =>
+        !MarkDeleted(p) && p.Element(p.Name.Namespace + "pPr")?.Element(p.Name.Namespace + "rPr")?.Element(p.Name.Namespace + "vanish") is { } vanish
+        && vanish.Attribute(p.Name.Namespace + "val")?.Value is null or "1" or "true" or "on";
+
     /// <summary>
     /// The text of a paragraph from <paramref name="offset"/>, so many characters, replaced by <paramref name="text"/>
     /// (its tabs and breaks, "\t", "\v", "\f" and "\u000E", as w:tab and w:br, see SetContent): the new text goes into the text it
@@ -311,11 +316,11 @@ static class TextEdits
     /// new paragraph after it with the same paragraph properties, the section the paragraph ends (its w:sectPr) going with
     /// the second, which keeps the mark. Runs and the hyperlinks, insertions and smart tags around the place are split
     /// too; as a tracked change the first half's mark, the new one, is marked inserted. Of a paragraph the reader joined
-    /// from several the part the place is in is split, where the place is between two parts the second; a part that runs
-    /// into the next (its mark deleted or hidden) keeps that mark in its second half, the first half ending with a mark
-    /// of its own that does not (measured in Word 365 by COM: Enter in the first of two paragraphs joined by a deleted
-    /// mark, the final view shown, leaves the first half a plain mark, the second the deleted one). Returns the stretch's
-    /// new text and where the second paragraph begins in it.
+    /// from several the part the place is in is split, where the place is between two parts the second (after a hidden
+    /// mark the first, at its end); a part that runs into the next (its mark deleted or hidden) keeps that mark in its
+    /// second half, the first half ending with a mark of its own that does not (measured in Word 365 by COM: Enter in the
+    /// first of two paragraphs joined by a deleted mark, the final view shown, leaves the first half a plain mark, the
+    /// second the deleted one). Returns the stretch's new text and where the second paragraph begins in it.
     /// </summary>
     public static (string Text, int Second) Split(Stretch stretch, ParagraphBlock paragraph, int offset, Tracking? tracking = null)
     {
@@ -324,17 +329,24 @@ static class TextEdits
         Between(paragraph, offset);
         var parts = Parts(stretch, paragraph);
         Whole(stretch, paragraph, parts);
-        // Where the second paragraph begins: before an element of the paragraph, or at its end.
-        XElement? first = null;
+        // Where the second paragraph begins: before an element of the paragraph, or at its end; and the part the text before
+        // the place stands in, where the place is between elements.
+        XElement? first = null, textBefore = null;
+        var between = false;
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
         {
             var (s, e) = (at, at + ParagraphText.Length(inline));
             at = e;
             if (e <= offset && !(e == offset && s == offset && inline is not (BookmarkEndInline or PermissionInline { Start: false } or CommentInline { Start: false })))
+            {
+                if (e > s && stretch.Find(inline.Xml) is { } passed && In(passed, parts))
+                    textBefore = PartOf(passed, parts);
                 continue;
+            }
             if (s >= offset)
             {
+                between = true;
                 var element = stretch.Find(inline.Xml);
                 if (element == null || !In(element, parts))
                 {
@@ -353,16 +365,33 @@ static class TextEdits
             SetText(t, value[..(offset - s)]);
             SetText(rest, value[(offset - s)..]);
             t.AddAfterSelf(rest);
-            first = rest;
+            (first, textBefore) = (rest, PartOf(t, parts));
             break;
         }
         var p = first != null ? PartOf(first, parts) : parts[^1];
+        // At the start of a part after one whose mark is hidden, the caret stands before that mark (Word puts it there
+        // coming from either side where hidden text is not shown): that part is split at its end, its first half taking a
+        // mark of its own and the empty second going on with the hidden one (measured in Word 365 by COM: "Erster Teil
+        // eins." with a hidden mark before "Zweiter Teil zwei." split there leaves the first apart and an empty paragraph
+        // running into the second, as typing there continues the first); after a deleted mark the part after it is split.
+        if (between && first != null && textBefore != null && parts.IndexOf(p) is var k and > 0 && textBefore != p && MarkHidden(parts[k - 1]))
+            (p, first) = (parts[k - 1], null);
+        // Whether the place is at the start of the paragraph (of the part split): none of its text before it.
+        var atStart = first != null && textBefore != p;
         var w = p.Name.Namespace;
         var second = new XElement(p.Name, p.Attributes().Where(a => a.Name.Namespace != W14));
         if (p.Element(w + "pPr") is { } pPr)
         {
             second.Add(new XElement(pPr));
             pPr.Element(w + "sectPr")?.Remove();
+            // A tracked change of the paragraph's formatting stays with its own mark, the second half's, as a tracked change
+            // and where the paragraph splits at its start (a new one before it); else Word takes it as accepted in both
+            // halves (measured in Word 365 by COM: Enter in a paragraph centered as a tracked change leaves both halves
+            // centered without a w:pPrChange, at its start the new paragraph without one and the paragraph with it; with
+            // tracking the first half, its mark inserted, without one and the second with it).
+            pPr.Element(w + "pPrChange")?.Remove();
+            if (tracking == null && !atStart)
+                second.Element(w + "pPr")!.Element(w + "pPrChange")?.Remove();
             if (p != parts[^1] && pPr.Element(w + "rPr") is { } joining)
             {
                 foreach (var made in joining.Elements().Where(e => e.Name.LocalName is "del" or "moveFrom" or "vanish" or "specVanish").ToList())
@@ -485,17 +514,22 @@ static class TextEdits
 
     /// <summary>
     /// A paragraph joined with the paragraph after it, as Delete at its end joins them (measured in Word 365 by COM,
-    /// Delete, Backspace and Range.Delete alike): the first keeps its properties (its style, alignment, spacing, indents,
-    /// list), the second's content goes after its own, and it takes the second's mark (the mark's run properties) and the
-    /// section the second ends (the section the first ended merging with the next); an empty first goes away with what
-    /// marks it holds (a bookmark), the second staying as it was, but for what the first holds of a field over paragraphs
-    /// (the end of a table of contents), which goes on at the second's beginning. Marks between them (bookmarks, comment
-    /// ranges) go between their contents. Of paragraphs the reader joined from several the first's last part and the
-    /// second's first part are joined, which takes the first part's mark, deleted where it runs into the second's other
-    /// parts (measured in Word 365 by COM: Backspace before such a paragraph keeps its first part's deleted mark); an
-    /// empty first goes away with all its parts. Returns the stretch's new text and whether the first paragraph stays.
+    /// the paragraph's properties alike for Delete, Backspace and Range.Delete): the first keeps its properties (its
+    /// style, alignment, spacing, indents, list), the second's content goes after its own, and it takes the second's
+    /// mark (the mark's run properties) and the section the second ends (the section the first ended merging with the
+    /// next); joined <paramref name="backward"/>, as Backspace at the second's start joins them, it keeps its own
+    /// mark's run properties with the tracked changes of the second's (measured in Word 365 by COM: a first's italic
+    /// mark and a second's bold one joined by Backspace leave an italic mark, by Delete a bold one; a second's hidden
+    /// mark comes out shown, a deleted one stays deleted). An empty first goes away with what marks it holds (a
+    /// bookmark), the second staying as it was, but for what the first holds of a field over paragraphs (the end of a
+    /// table of contents), which goes on at the second's beginning. Marks between them (bookmarks, comment ranges) go
+    /// between their contents. Of paragraphs the reader joined from several the first's last part and the second's
+    /// first part are joined, which takes the first part's mark, deleted where it runs into the second's other parts
+    /// (measured in Word 365 by COM: Backspace before such a paragraph keeps its first part's deleted mark); an empty
+    /// first goes away with all its parts. Returns the stretch's new text and whether the first paragraph stays.
     /// </summary>
-    public static (string Text, bool First) Join(Stretch stretch, ParagraphBlock paragraph, ParagraphBlock next, Tracking? tracking = null)
+    public static (string Text, bool First) Join(Stretch stretch, ParagraphBlock paragraph, ParagraphBlock next, Tracking? tracking = null,
+        bool backward = false)
     {
         var (mine, others) = (Parts(stretch, paragraph), Parts(stretch, next));
         var (p, q) = (mine[^1], others[0]);
@@ -514,11 +548,16 @@ static class TextEdits
             }
         }
         var w = p.Name.Namespace;
-        // As a tracked change the first's mark is deleted, the paragraphs joined as the change is accepted.
+        // As a tracked change the first's mark is deleted, the paragraphs joined as the change is accepted; the second
+        // takes the first's formatting as a tracked change, which the joined paragraph has then as it has without tracking
+        // (measured in Word 365 by COM: a centered paragraph joined with a plain one leaves the second centered, its
+        // w:pPrChange keeping its own alignment, or the change it had; the same formatting, or an empty first, none).
         if (tracking != null && !OwnMark(p, tracking))
         {
             Marked(p, "del", tracking);
-            return (stretch.Written([(p, [p])]), true);
+            if (ParagraphText.End(paragraph) == paragraph.TextOffset || !Took(q, p, tracking))
+                return (stretch.Written([(p, [p])]), true);
+            return (stretch.Written([(p, [p]), (q, [q])]), true);
         }
         if (ParagraphText.End(paragraph) == paragraph.TextOffset)
         {
@@ -540,10 +579,27 @@ static class TextEdits
         }
         var (start, end) = (stretch.Text.Start(p), stretch.Text.End(stretch.Text.Start(q)));
         // The second's mark and section in the first's properties, where they stand in w:pPr: before a change of them.
+        // Word takes a tracked change of the first's formatting as accepted where the two join (measured in Word 365 by
+        // COM: a paragraph centered as a tracked change joined with the next stays centered without a w:pPrChange); the
+        // author's own inserted mark taken away (a split undone with tracking) leaves the second's.
         var properties = p.Element(w + "pPr");
-        properties?.Element(w + "rPr")?.Remove();
+        var ownMark = properties?.Element(w + "rPr");
+        ownMark?.Remove();
         properties?.Element(w + "sectPr")?.Remove();
+        var ownChange = properties?.Element(w + "pPrChange");
+        ownChange?.Remove();
         var taken = q.Element(w + "pPr")?.Elements().Where(e => e.Name.LocalName is "rPr" or "sectPr").Select(e => new XElement(e)).ToList() ?? [];
+        if (backward)
+        {
+            static bool Revision(XElement e) => e.Name.LocalName is "ins" or "del" or "moveFrom" or "moveTo";
+            var mark = new XElement(w + "rPr", (taken.FirstOrDefault(e => e.Name.LocalName == "rPr")?.Elements().Where(Revision) ?? [])
+                .Concat(ownMark?.Elements().Where(e => !Revision(e)) ?? []).Select(e => new XElement(e)));
+            taken.RemoveAll(e => e.Name.LocalName == "rPr");
+            if (mark.HasElements)
+                taken.Insert(0, mark);
+        }
+        if (tracking != null && (ownChange ?? q.Element(w + "pPr")?.Element(w + "pPrChange")) is { } kept)
+            taken.Add(new XElement(kept));
         if (taken.Count > 0)
         {
             if (properties == null)
@@ -1037,6 +1093,32 @@ static class TextEdits
         var del = tracking.Mark(w, "del");
         run.ReplaceWith(del);
         del.Add(run);
+    }
+
+    /// <summary>
+    /// A paragraph given another's formatting as a tracked change (the second of two joined, see Join): the other's
+    /// properties but for its mark's, its section and a change of them in place of its own, those it had kept in a
+    /// w:pPrChange where it has none yet. Whether they differed (else it stays as it is).
+    /// </summary>
+    static bool Took(XElement q, XElement p, Tracking tracking)
+    {
+        var w = q.Name.Namespace;
+        static bool Formatting(XElement e) => e.Name.LocalName is not ("rPr" or "sectPr" or "pPrChange");
+        var given = p.Element(w + "pPr")?.Elements().Where(Formatting).ToList() ?? [];
+        var had = q.Element(w + "pPr")?.Elements().Where(Formatting).ToList() ?? [];
+        if (given.Count == had.Count && given.Zip(had).All(e => XNode.DeepEquals(e.First, e.Second)))
+            return false;
+        var properties = Properties(q, "pPr");
+        if (properties.Element(w + "pPrChange") == null)
+        {
+            var change = tracking.Mark(w, "pPrChange");
+            change.Add(new XElement(w + "pPr", had.Select(e => new XElement(e))));
+            properties.Add(change);
+        }
+        foreach (var e in had)
+            e.Remove();
+        properties.AddFirst(given.Select(e => new XElement(e)));
+        return true;
     }
 
     /// <summary>

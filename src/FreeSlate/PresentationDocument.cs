@@ -216,10 +216,11 @@ public sealed partial class PresentationDocument : IEditableDocument
     }
 
     /// <summary>
-    /// Joins a paragraph with the one after it in its text body, as Delete at its end does; returns the id of the paragraph
-    /// that stays: the first, or the second where the first is empty (see SlideEdits.Join).
+    /// Joins a paragraph with the one after it in its text body, as Delete at its end does (Backspace at the second's start
+    /// alike); returns the id of the paragraph that stays: the first, or the second where the first is empty (see
+    /// SlideEdits.Join).
     /// </summary>
-    public int Join(int paragraph)
+    public int Join(int paragraph, bool backward = false)
     {
         var stays = paragraph;
         Change(paragraph, true, (p, next, body) =>

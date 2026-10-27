@@ -153,7 +153,7 @@ public sealed class EditSession(IEditableDocument document)
         if (document.Before(paragraph) is not { } before)
             return (Caret, Anchor);
         var end = document.Text(before).Length;
-        var joined = document.Join(before);
+        var joined = document.Join(before, backward: true);
         return Same(new TextPlace(joined, joined == before ? end : 0));
     });
 
