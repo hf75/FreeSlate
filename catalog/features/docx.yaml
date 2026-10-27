@@ -999,11 +999,14 @@ areas:
           whose right tab takes its text past the margin stays put). The last line of a justified paragraph keeps its
           natural spacing unless it was squeezed. Mirrored indents (w:mirrorIndents) trade the left and right indent
           on pages with even numbers, the lines breaking as on odd pages (docx/local/mirror: every line as in Word).
-          Medium and high kashida justification lengthen every Arabic word by two or three kashidas at one joining
-          place, chosen by the Arabic justification priorities (after seen or sad, before a final teh marbuta, heh or
-          dal, before a final alef, tah, lam or kaf, before a medial beh, before a final waw, ain, qaf or feh, before
-          another final letter), and justify with them (docx/local/kashida). Left-to-right paragraphs with kashida
-          justification break their lines on 0.9 (medium) or 0.8 (high) of the measure, their spaces not squeezed, and
+          Medium and high kashida justification break the lines on 0.9 (medium) or 0.8 (high) of the measure, the
+          words as they are; right-to-left lines then take the free width as kashidas, an equal share at one joining
+          place of every Arabic word, chosen by the Arabic justification priorities (after seen or sad, before a final
+          teh marbuta, heh or dal, before a final alef, tah, lam or kaf, a lam-alef counting as a final lam, before a
+          medial beh but not after hah, jeem, khah or tcheh nor between two yehs, before a final waw, ain, qaf or feh,
+          before another final letter), drawn as as many kashidas as cover it, their spaces as they are
+          (docx/local/kashida 83.3 → 88.6 %, krt-pos-*; tdf155707 86.0 → 91.1 %). Left-to-right paragraphs with
+          kashida justification break their lines alike, their spaces not squeezed, and
           stretch them over the whole, low as justified ones (docx/local/ksh-*: English paragraphs in Calibri and Times
           New Roman at 11 to 20 pt, 200 and 451 pt wide, indented, in modes 14 and 15, every line breaking as in Word;
           LibreOffice's extras-ooxmlexport/tdf155707 70.4 → 82.4 %); where their text is kerned or takes ligatures
@@ -1014,7 +1017,7 @@ areas:
           of other formatting too, as far back as the runs hold nothing but spaces
           (docx/external/libreoffice/extras-uiwriter/MsWordCompTrailingBlanks: centered and right aligned "TEST"
           before spaces in runs of several shadings, 43.8 → 100 %). Known deviations: low kashida justification widens
-          spaces where Word inserts single kashidas; lines with kashidas break up to a word differently.
+          spaces where Word inserts single kashidas (after seen and sad, in whole dots; its squeezing has no rule yet).
 
       - id: paragraph.spacing
         title: Line and paragraph spacing

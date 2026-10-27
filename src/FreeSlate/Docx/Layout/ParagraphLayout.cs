@@ -2053,21 +2053,7 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
 
         void AddText(string value, RunFormat format, string? link = null, bool number = false, bool noteMark = false)
         {
-            // Medium and high kashida justification lengthen every Arabic word by two or three kashidas, which come from
-            // the letter before them.
-            int[]? from = null;
-            if (paragraph.Format.Justification is "mediumKashida" or "highKashida")
-            {
-                var lengthened = Kashidas(value, paragraph.Format.Justification == "mediumKashida" ? 2 : 3);
-                if (lengthened.Length != value.Length)
-                {
-                    from = new int[lengthened.Length];
-                    for (int i = 0, j = 0; i < lengthened.Length; i++)
-                        from[i] = j < value.Length && lengthened[i] == value[j] ? j++ : Math.Max(0, j - 1);
-                }
-                value = lengthened;
-            }
-            int Source(int index) => source < 0 ? -1 : whole ? source : source + (from?[index] ?? index);
+            int Source(int index) => source < 0 ? -1 : whole ? source : source + index;
             if (link != null)
                 links[text.Length] = (link, value.Length);
             if (format.Vanish == true && !(measuringDeleted && format.Deleted))
@@ -3209,23 +3195,27 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
     }
 
     /// <summary>
-    /// The share of a line's measure that left-to-right text with kashida justification breaks on, the line then
-    /// stretched over the whole of it (measured with docx/local/ksh-*: English paragraphs in Calibri and Times New Roman
-    /// at 11 to 20 pt, 200 and 451 pt wide, indented, in modes 14 and 15: mediumKashida lines break on 0.9 of the measure,
-    /// highKashida on 0.8, lowKashida as justified ones); null for other paragraphs.
+    /// The share of a line's measure that text with kashida justification breaks on, the line then stretched over the
+    /// whole of it (measured with docx/local/ksh-*: English paragraphs in Calibri and Times New Roman at 11 to 20 pt, 200
+    /// and 451 pt wide, indented, in modes 14 and 15: mediumKashida lines break on 0.9 of the measure, highKashida on 0.8,
+    /// lowKashida as justified ones; right-to-left ones alike, their words without kashidas, found by an agent in Word's
+    /// PDFs of docx/local/kashida and LibreOffice's extras-ooxmlexport/tdf155707: lines that hold where 45.13 and 90.26
+    /// pt of 451 are free, break where a word more leaves less); null for other paragraphs.
     /// </summary>
-    static double? KashidaShare(ParagraphFormat format) => format.Bidi == true ? null
-        : format.Justification switch { "mediumKashida" => 0.9, "highKashida" => 0.8, _ => null };
+    static double? KashidaShare(ParagraphFormat format) =>
+        format.Justification switch { "mediumKashida" => 0.9, "highKashida" => 0.8, _ => null };
 
     /// <summary>
-    /// Arabic words lengthened by kashidas (U+0640) for medium and high kashida justification (w:jc mediumKashida,
-    /// highKashida; catalog: paragraph.basic), as Word inserts them (measured with docx/local/kashida: two or three
-    /// in every word, the lines breaking with them): at one place a word joins, chosen by the priorities of Arabic
-    /// justification: after seen or sad, before a final teh marbuta, heh or dal, before a final alef, tah, lam or
-    /// kaf, before a medial beh, before a final waw, ain, qaf or feh, before any other final letter; the last such
-    /// place of a word where several have the same priority.
+    /// Where a word of Arabic letters (from <paramref name="start"/> to <paramref name="end"/> of the text) takes its
+    /// kashidas in medium and high kashida justification (w:jc mediumKashida, highKashida; catalog: paragraph.basic):
+    /// before the letter at the place it joins, chosen by the priorities of Arabic justification, after seen or sad,
+    /// before a final teh marbuta, heh or dal, before a final alef, tah, lam or kaf (a lam that begins a lam-alef
+    /// ligature counting as final), before a medial beh but after hah, jeem, khah or tcheh and between two yehs, before
+    /// a final waw, ain, qaf or feh, before any other final letter; the last such place where several have the same
+    /// priority; -1 for a word without one (measured with docx/local/kashida and found by an agent in Word's PDF of
+    /// LibreOffice's extras-ooxmlexport/tdf155707: 84 of 84 and 110 of 110 words, "جم|لات", "خیل|ی", "حي|ث", "ب|ين").
     /// </summary>
-    static string Kashidas(string value, int count)
+    static int KashidaPlace(string text, int start, int end)
     {
         static bool Arabic(char c) => c is >= '\u0620' and <= '\u06FF' && CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark;
         static bool RightJoining(char c) => c is '\u0622' or '\u0623' or '\u0624' or '\u0625' or '\u0627' or '\u0629' or '\u062F' or '\u0630'
@@ -3234,46 +3224,112 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
             or '\u06D3' or '\u06D5' or '\u06EE' or '\u06EF';
         static bool Joins(char c) => Arabic(c) && c is not ('\u0621' or '\u0674' or '\u06DD');
         static bool JoinsLeft(char c) => Joins(c) && !RightJoining(c);
-        if (!value.Any(Arabic))
-            return value;
-        var sb = new StringBuilder(value.Length + 16);
-        var start = 0;
-        while (start < value.Length)
+        static bool Alef(char c) => c is '\u0622' or '\u0623' or '\u0625' or '\u0627';
+        static bool Yeh(char c) => c is '\u064A' or '\u06CC' or '\u0626';
+        // The letters of the word (marks stay with theirs).
+        var letters = Enumerable.Range(start, end - start).Where(i => Joins(text[i])).ToList();
+        var (best, at) = (int.MaxValue, -1);
+        for (var k = 0; k + 1 < letters.Count; k++)
         {
-            var end = start;
-            while (end < value.Length && !char.IsWhiteSpace(value[end]))
-                end++;
-            // The letters of the word (marks stay with theirs).
-            var letters = Enumerable.Range(start, end - start).Where(i => Joins(value[i])).ToList();
-            var (best, at) = (int.MaxValue, -1);
-            for (var k = 0; k + 1 < letters.Count; k++)
-            {
-                var (a, b) = (value[letters[k]], value[letters[k + 1]]);
-                if (letters[k + 1] - letters[k] > 1 && Enumerable.Range(letters[k] + 1, letters[k + 1] - letters[k] - 1).Any(i => !char.IsWhiteSpace(value[i]) && CharUnicodeInfo.GetUnicodeCategory(value[i]) != UnicodeCategory.NonSpacingMark))
-                    continue;
-                if (!JoinsLeft(a) || a == '\u0644' && b is '\u0622' or '\u0623' or '\u0625' or '\u0627')
-                    continue;
-                var final = RightJoining(b) || k + 2 >= letters.Count;
-                var priority = a is '\u0633' or '\u0634' or '\u0635' or '\u0636' ? 1
-                    : final && b is '\u0629' or '\u0647' or '\u062F' or '\u0630' ? 2
-                    : final && b is '\u0627' or '\u0622' or '\u0623' or '\u0625' or '\u0671' or '\u0637' or '\u0638' or '\u0644' or '\u0643' or '\u06A9' or '\u06AF' ? 3
-                    : !final && b is '\u0628' or '\u062A' or '\u062B' or '\u0646' or '\u064A' or '\u0626' or '\u067E' or '\u06CC' ? 4
-                    : final && b is '\u0648' or '\u0639' or '\u063A' or '\u0642' or '\u0641' ? 5
-                    : final ? 6 : int.MaxValue;
-                if (priority <= best && priority != int.MaxValue)
-                    (best, at) = (priority, letters[k + 1]);
-            }
-            for (var i = start; i < end; i++)
-            {
-                if (i == at)
-                    sb.Append('\u0640', count);
-                sb.Append(value[i]);
-            }
-            while (end < value.Length && char.IsWhiteSpace(value[end]))
-                sb.Append(value[end++]);
-            start = end;
+            var (a, b) = (text[letters[k]], text[letters[k + 1]]);
+            if (letters[k + 1] - letters[k] > 1 && Enumerable.Range(letters[k] + 1, letters[k + 1] - letters[k] - 1).Any(i => !char.IsWhiteSpace(text[i]) && CharUnicodeInfo.GetUnicodeCategory(text[i]) != UnicodeCategory.NonSpacingMark))
+                continue;
+            if (!JoinsLeft(a) || a == '\u0644' && Alef(b))
+                continue;
+            var ligature = b == '\u0644' && k + 2 < letters.Count && Alef(text[letters[k + 2]]);
+            var final = RightJoining(b) || k + 2 >= letters.Count || ligature;
+            var priority = a is '\u0633' or '\u0634' or '\u0635' or '\u0636' ? 1
+                : final && b is '\u0629' or '\u0647' or '\u062F' or '\u0630' ? 2
+                : final && b is '\u0627' or '\u0622' or '\u0623' or '\u0625' or '\u0671' or '\u0637' or '\u0638' or '\u0644' or '\u0643' or '\u06A9' or '\u06AF' ? 3
+                : !final && b is '\u0628' or '\u062A' or '\u062B' or '\u0646' or '\u064A' or '\u0626' or '\u067E' or '\u06CC'
+                  && a is not ('\u062D' or '\u062C' or '\u062E' or '\u0686') && !(Yeh(a) && Yeh(b)) ? 4
+                : final && b is '\u0648' or '\u0639' or '\u063A' or '\u0642' or '\u0641' ? 5
+                : final ? 6 : int.MaxValue;
+            if (priority <= best && priority != int.MaxValue)
+                (best, at) = (priority, letters[k + 1]);
         }
-        return sb.ToString();
+        return at;
+    }
+
+    /// <summary>
+    /// A right-to-left line of medium or high kashida justification lengthened by <paramref name="free"/> points: an
+    /// equal share at the kashida place of every word that has one (see KashidaPlace), each piece cut there and a piece
+    /// of kashidas (U+0640) of no text of the paragraph between its halves, as many as cover the share, which join them
+    /// and overlap the letter after them; false where no word of the line has a kashida place (see Align).
+    /// </summary>
+    static bool Lengthened(Line line, List<Piece> movable, double free)
+    {
+        var places = new Dictionary<Piece, List<int>>(ReferenceEqualityComparer.Instance);
+        foreach (var piece in movable)
+        {
+            if (!piece.RightToLeft || piece.IsTab || piece.Drawing != null || piece.Equation != null || piece.CheckBox != null || piece.Ruby != null
+                || piece.Combined != null || piece.Across != null || piece.Separator || piece.Rule != null || piece.AddedHyphen)
+                continue;
+            for (var start = 0; start < piece.Text.Length;)
+            {
+                while (start < piece.Text.Length && char.IsWhiteSpace(piece.Text[start]))
+                    start++;
+                var end = start;
+                while (end < piece.Text.Length && !char.IsWhiteSpace(piece.Text[end]))
+                    end++;
+                if (KashidaPlace(piece.Text, start, end) is var at and > 0)
+                {
+                    if (!places.TryGetValue(piece, out var cuts))
+                        places[piece] = cuts = [];
+                    cuts.Add(at);
+                }
+                start = end;
+            }
+        }
+        var count = places.Values.Sum(c => c.Count);
+        if (count == 0)
+            return false;
+        var share = free / count;
+        var pieces = new List<Piece>(line.Pieces.Count + 2 * count);
+        var first = -1;
+        foreach (var piece in line.Pieces)
+        {
+            if (ReferenceEquals(piece, movable[0]))
+                first = pieces.Count;
+            if (!places.TryGetValue(piece, out var cuts))
+            {
+                pieces.Add(piece);
+                continue;
+            }
+            var style = piece.Style;
+            var kashida = style.Font.Data.GlyphsWithFeatures("\u0640", style.Features, true, style.Language);
+            var width = kashida.Sum(g => g.Advance) * style.Size * style.Scale;
+            var kashidas = kashida.Length == 1 && kashida[0].Id != 0 && width > 0 ? Math.Max(1, (int)Math.Ceiling(share / width - 1e-9)) : 1;
+            var from = 0;
+            foreach (var cut in cuts.Append(piece.Text.Length))
+            {
+                pieces.Add(new Piece
+                {
+                    Text = piece.Text[from..cut], Style = style, Start = piece.Start < 0 ? -1 : piece.Start + from, Advances = piece.Advances[from..cut],
+                    AutoSpaces = piece.AutoSpaces is { } spaces ? spaces[from..cut] : null, JoinsBefore = from > 0 || piece.JoinsBefore,
+                    JoinsAfter = cut < piece.Text.Length || piece.JoinsAfter, Lead = from == 0 ? piece.Lead : 0, IsLabel = piece.IsLabel,
+                    Link = piece.Link, Level = piece.Level, Shift = piece.Shift, Lift = piece.Lift,
+                });
+                if (cut < piece.Text.Length)
+                {
+                    pieces.Add(new Piece
+                    {
+                        Text = new string('\u0640', kashidas), Style = style, Advances = Enumerable.Repeat(share / kashidas, kashidas).ToArray(),
+                        JoinsBefore = true, JoinsAfter = true, IsLabel = piece.IsLabel, Link = piece.Link, Level = piece.Level, Shift = piece.Shift, Lift = piece.Lift,
+                    });
+                }
+                from = cut;
+            }
+        }
+        var x = movable[0].X;
+        foreach (var piece in pieces.Skip(first))
+        {
+            piece.X = x;
+            x += piece.Width;
+        }
+        line.Pieces.Clear();
+        line.Pieces.AddRange(pieces);
+        return true;
     }
 
     /// <summary>
@@ -3783,6 +3839,13 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
         if (line.Hanging > 0 && free > 0 && shift == 0 && Distribute(movable, free, false, !line.HangsHalf, doubled, ideographicTrails, spaceShare, phased))
             return;
         if (!justify || Math.Abs(free) < 1e-9)
+            return;
+        // Right-to-left lines of medium and high kashida justification take the free width as kashidas, an equal share
+        // after the kashida place of every word that has one, their spaces as they are (see Lengthened; found by an agent
+        // in Word's PDFs of LibreOffice's extras-ooxmlexport/tdf155707 and docx/local/kashida: mediumKashida lines of 12
+        // groups of 5.30 pt and 18 of 2.53 pt, highKashida ones of 10 of 11.2 pt, drawn as 3, 2 and 5 kashidas; the
+        // paragraph's last line as it is).
+        if (format.Bidi == true && jc is "mediumKashida" or "highKashida" && free > 0 && Lengthened(line, movable, free))
             return;
         var lineSpaces = movable.Sum(p => p.Text.Count(c => c == ' ')) - trailingSpaces.Values.Sum();
         // Lines spread around East Asian text from two such characters on, with one only their spaces as Latin lines
