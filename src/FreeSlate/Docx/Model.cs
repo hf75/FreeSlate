@@ -869,8 +869,15 @@ public sealed partial class ModelReader(DocumentContext context)
             // paragraphs of a separator keep theirs (libreoffice/extras-ooxmlexport/tdf123262_textFootnoteSeparators).
             // A separator of several paragraphs keeps the spacing of its line's paragraph too (found by agent BE in
             // Word's PDFs: docx/external/libreoffice/extras-ooxmlexport/testFootnote, a separator and an empty
-            // paragraph at 1.5 lines and 10 pt after, the line 17.3 pt higher; tdf123262, three paragraphs).
-            if (type is "separator" or "continuationSeparator" && blocks.Count == 1)
+            // paragraph at 1.5 lines and 10 pt after, the line 17.3 pt higher; tdf123262, three paragraphs), and so
+            // does one the settings list among the special notes (w:footnotePr/w:footnote; measured with
+            // docx/local/fsr-*: Normal's 8 pt after and 259/240 lines, its 12 pt before and 3 pt after, the defaults'
+            // spacing and 20 pt after of its own put the line 25.2, 31.2, 25.2 and 36.2 pt above the note's
+            // baseline, listed by the ids -1 and 0 or 0 and 1; not listed 16.2, its own spacing too; found by an agent
+            // in Word's PDFs of LibreOffice's extras-uiwriter/tdf104649, tdf126723).
+            var listed = context.Settings.Child(endnotes ? "endnotePr" : "footnotePr")?.Elements(Wml.W + (endnotes ? "endnote" : "footnote"))
+                .Any(e => e.Attr("id") == id) == true;
+            if (type is "separator" or "continuationSeparator" && blocks.Count == 1 && !listed)
             {
                 for (var k = 0; k < blocks.Count; k++)
                 {

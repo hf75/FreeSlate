@@ -1966,7 +1966,11 @@ areas:
           say (docx/local/fsep-*: the separator 16.2 pt above the note's baseline with before 12, after 0, 10 and 20
           pt or double spacing; pandoc/golden/notes), where the separator has that paragraph alone; one of several
           paragraphs keeps its spacing like the others (docx/external/libreoffice/extras-ooxmlexport/testFootnote:
-          the line's paragraph and an empty one at 1.5 lines and 10 pt after, 85.1 -> 97.3 %; tdf123262). Footnotes beneath the text of a section that ends the document
+          the line's paragraph and an empty one at 1.5 lines and 10 pt after, 85.1 -> 97.3 %; tdf123262), and so does
+          one the settings list among the special notes (w:footnotePr/w:footnote; docx/local/fsr-*: its style's,
+          the defaults' and its own spacing; libreoffice/extras-ooxmlexport/tdf126723 93.3 → 100 %,
+          writerfilter-dmapper/floattable-footnote-redline 94.2 → 100 %, tdf104354_firstParaInSection 94.9 → 97.9
+          %). Footnotes beneath the text of a section that ends the document
           come before its endnotes before Word 2013, which follow under their separator below them, from Word 2013
           on after them (docx/local/fbt-14, fbt-15; docx/external/libreoffice/extras-ooxmlexport/fdo79062: three
           footnotes, then the endnotes, 36.0 → 83.2 → 94.9 %).
