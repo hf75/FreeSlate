@@ -2442,7 +2442,13 @@ areas:
           before a table 150 pt wide at tblpY 1 with topFromText 300, 567 and 1134 twips have their last one, two and
           three lines beside it, with 43 twips the last one before Word 2013 by its 8 pt after, none from Word 2013 on;
           a table 450 pt wide takes them below itself alike; LibreOffice's extras-ooxmlexport/table-floating-margins
-          71.6 → 100 %). Before Word 2013 the space after of the paragraph it stands with (the one after it)
+          71.6 → 100 %). One placed from the page or the margin over the lines or a table of the text before it in
+          its column takes them around itself too, staying where it stood for them: the lines go beside it, the table
+          beside it where it fits, else below it (docx/local/nfp-5: a table at tblpY 30 pt from the margin, a table of
+          the text and a paragraph before it beside it, 74.5 → 93.7 %; fm-d14 90.3 → 100 %; known deviation: fm-d15,
+          where Word puts a table of 60 rows at tblpY -345 from the margin after ten lines on the next page, ours on
+          the first, the lines now beside it, 45.6 → 40.0 %). Before Word 2013 the space after of the paragraph it
+          stands with (the one after it)
           counts too: where the paragraph's line clears the table but its space after reaches it, the paragraph goes
           below the table and needs room there for that space as well, else the next page; later paragraphs keep their
           lines above (uitest/tdf124675) (docx/local/fla-16-*-14: an empty paragraph and "Anchor",

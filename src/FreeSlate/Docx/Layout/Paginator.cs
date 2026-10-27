@@ -784,6 +784,23 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             else if (!columnEmpty && reach > 1)
                 Lower(Math.Min(top - Twips("topFromText"), y - 0.02), top + height + Twips("bottomFromText"), left, width);
         }
+        // One placed from the page or the margin over the lines or a table of the text before it in the column takes
+        // them around itself too, staying where it stood for them: the next run lays them out around it (measured with
+        // docx/local/nfp-5: a table at tblpY 30 pt from the margin has a table of the text and a paragraph before it
+        // beside it; in a cell alike, TableLayout.Content).
+        else if (settled.Floats.TryGetValue(page!.Number, out var prior) && prior.FirstOrDefault(e => e.Banded?.Id == blocks[index].Id) is { } kept)
+        {
+            top = kept.Top + Twips("topFromText");
+            banded = blocks[index];
+        }
+        else if (!columnEmpty)
+        {
+            var (l, t, r, b) = (x - Twips("leftFromText"), top - Twips("topFromText"), x + tableWidth + Twips("rightFromText"),
+                Math.Min(top + height, Bottom) + Twips("bottomFromText"));
+            if (page.Lines.Any(line => line.Top >= columnTop - 0.01 && !frameLines.Contains(line) && line.Top < b - 0.01 && line.Top + line.Line.Height > t + 0.01
+                    && line.Left < r - 0.01 && line.Left + Math.Max(1, line.Line.Pieces.Select(piece => piece.X + piece.Width).DefaultIfEmpty(0).Max()) > l + 0.01))
+                banded = blocks[index];
+        }
         // The rows at the table's place (their own offset is the table's indent, which the position replaces). A row
         // that does not fit below the rows before it on the page goes on at the top of the next page's body, where
         // the table stands at the same place across, its header rows repeated; the line below the last row of a page
@@ -3773,12 +3790,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // in the right margin stays).
         bool Beside(Exclusion e) => !e.Frame && !e.Story && (Math.Max(e.Left - columnLeft, columnLeft + columnWidth - e.Right) >= box.Width - 0.01
             || e.Left + e.DistanceLeft >= to - 0.01 || e.Right - e.DistanceRight <= from + 0.01);
-        var placed = page!.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList();
+        // So do the floating tables after it on the page whose places the run before settled where they reached it
+        // (see PlaceFloatingTable; measured with docx/local/nfp-5: a table of 300 pt beside one of 100 pt at the
+        // margin's left placed after it).
+        var floatingTables = page!.FloatingTables.Concat(settled.Floats.TryGetValue(page.Number, out var known)
+            ? known.Where(e => e.Banded != null && !page.FloatingTables.Any(f => Math.Abs(f.Left - e.Left) < 0.01 && Math.Abs(f.Top - e.Top) < 0.01))
+            : []).ToList();
+        var placed = page.Drawings.Select(ExclusionOf).OfType<Exclusion>().ToList();
         var later = context.Profile.TablesBelowAllFloats && settled.Floats.TryGetValue(page.Number, out var before)
             ? before.Where(e => e.Source is { } source && !e.Frame && !placed.Any(p => ReferenceEquals(p.Source, source))
                 && !source.Ancestors().Any(a => ReferenceEquals(a, element)))
             : [];
-        var floats = placed.Concat(later).Concat(page.FloatingTables.Where(e => !Beside(e)))
+        var floats = placed.Concat(later).Concat(floatingTables.Where(e => !Beside(e)))
             .Where(e => (context.Profile.TablesBelowAllFloats || e.TopAndBottom
                          || to - e.Right < box.Width / 2 && e.Left + e.DistanceLeft < to - 0.01 && e.Right - e.DistanceRight > from + 0.01)
                         && e.Left < to - 0.01 && e.Right > from + 0.01).ToList();
@@ -3794,7 +3817,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 }
             }
         }
-        foreach (var e in page.FloatingTables.Where(Beside))
+        foreach (var e in floatingTables.Where(Beside))
         {
             if (e.Frame || e.Story || e.Top >= Math.Min(y + height, Bottom) - 0.01 || e.Bottom <= y + 0.01
                 || e.Left + e.DistanceLeft >= to - 0.01 || e.Right - e.DistanceRight <= from + 0.01)
