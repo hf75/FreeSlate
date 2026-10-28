@@ -310,18 +310,27 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
         if (line is { } lineColor && lineWidth > 0.01)
         {
             var inner = outlines.Select(o => Inset(o, lineWidth)).ToList();
-            // A translucent back shows the line's band only (even-odd), not the fill over the line.
-            Area(lighting.Opacity != null ? [.. outlines, .. inner] : outlines, z, lineColor, 0);
-            Area(inner, z, color, 1e-6);
+            // A translucent back shows the line's band only (even-odd), not the fill over the line; the fill lies over
+            // the band from wherever the back is seen (both sorted by the depth of the band's center).
+            var depth = Depth(outlines, z);
+            Area(lighting.Opacity != null ? [.. outlines, .. inner] : outlines, z, lineColor, depth);
+            Area(inner, z, color, depth + 1e-6);
         }
         else
         {
-            Area(outlines, z, color, 0);
+            Area(outlines, z, color, Depth(outlines, z));
         }
     }
 
-    /// <summary>A flat face looking backwards: all outlines at z, filled even-odd.</summary>
-    void Area(List<List<(double X, double Y)>> outlines, double z, RgbColor color, double bias)
+    /// <summary>The depth of the center of outlines at z, as faces are sorted.</summary>
+    double Depth(List<List<(double X, double Y)>> outlines, double z)
+    {
+        var points = outlines.SelectMany(o => o).Select(Scene).ToList();
+        return points.Count == 0 ? 0 : camera.Place((points.Average(p => p.X), points.Average(p => p.Y), z)).Z;
+    }
+
+    /// <summary>A flat face looking backwards: all outlines at z, filled even-odd, sorted at <paramref name="depth"/>.</summary>
+    void Area(List<List<(double X, double Y)>> outlines, double z, RgbColor color, double depth)
     {
         var points = outlines.SelectMany(o => o).Select(Scene).ToList();
         if (points.Count < 3)
@@ -343,7 +352,7 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
             }
             d.Append('Z');
         }
-        faces.Add((camera.Place(center).Z + bias, opacity < 1
+        faces.Add((depth, opacity < 1
             ? $"<path d=\"{d}\" fill=\"{lit}\" fill-rule=\"evenodd\" opacity=\"{Units.Css4(opacity)}\"/>"
             : $"<path d=\"{d}\" fill=\"{lit}\" fill-rule=\"evenodd\" stroke=\"{lit}\" stroke-width=\"0.5\" stroke-linejoin=\"round\"/>"));
     }

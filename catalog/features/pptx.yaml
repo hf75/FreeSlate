@@ -949,7 +949,10 @@ areas:
           sides only in the extrusion's or the line's color (seen from within too where the front is open), and its
           line and text cast its shadow and glow as on a flat shape; without either it shows nothing
           (local/nofill3d; LibreOffice's sd-data/n819614, a SmartArt shape with noFill, no line, a bevel and a
-          shadow, 89.9 → 93.5 %).
+          shadow, 89.9 → 93.5 %). The back of a body seen from behind shows its fill, the line's color only on its
+          outer band (the band and the fill sorted together); under twoPt it takes the ambient light alone, 0.25 of
+          its fill, under threePt and balanced the rigs' lights (local/backlight: donuts seen from behind under six
+          rigs and turns; LibreOffice's oox/Scene3d_material_highlight 64.3 → 95.8 %).
 
   - id: picture
     title: Pictures and media

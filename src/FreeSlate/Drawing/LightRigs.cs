@@ -64,10 +64,11 @@ public static class LightRigs
             L(-0.1645, -0.9539, 0.2509, 0.0025, 0.2499),
             L(-0.732, 0.6582, 0.176, 0.0022, 1.2551),
             L(0.8574, 0.1072, -0.5033, (0.0003, 0, 0.002), (0.3643, 0.452, 0.5127))),
+        // No light from behind: the back of a body seen from behind shows the ambient light alone (measured with
+        // local/backlight: 0.25 of its fill, where threePt and balanced light it as fitted).
         ["twoPt"] = Rig(0.2472, 8.9117,
             L(-0.4279, 0.5435, 0.7222, 0.6761, 0.202),
             L(0.2449, -0.8924, 0.3791, 0.3044, 0.0831),
-            L(-0.0158, -0.0119, -0.9998, 0.2204, 0),
             L(-0.3241, 0.4653, 0.8237, 0.1656, 0.0583)),
         ["glow"] = Rig(0.996, 8.894,
             L(-1, -0.0008, 0, 1.0059, 0.3111),
