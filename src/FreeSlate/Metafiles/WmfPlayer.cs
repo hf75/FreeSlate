@@ -419,15 +419,37 @@ public sealed class WmfPlayer
             logicalPalette: usage == 1 ? gdi.State.Palette.Entries : null);
     }
 
+    /// <summary>An icon's mask (SRCAND) waiting for its image.</summary>
+    (Bitmap Mask, double X, double Y, double W, double H)? pendingAnd;
+
     void DrawDib(uint rop, int p, int length, double x, double y, double w, double h, (int X, int Y, int W, int H)? source, int usage = 0)
     {
-        if (rop is 0x008800C6 or 0x00AA0029 or 0x00550009)
+        var and = pendingAnd;
+        pendingAnd = null;
+        if (rop is 0x00AA0029 or 0x00550009)
             return;
         var bitmap = DibAt(p, length, usage);
         if (bitmap == null)
             return;
-        if (rop == 0x00EE0086) bitmap = bitmap.WithTransparentColor(0);
-        gdi.Image(bitmap, x, y, w, h, source);
+        switch (rop)
+        {
+            // An icon draws its monochrome mask with SRCAND and its image over it with SRCINVERT: the image shows where
+            // the mask is black, the background elsewhere (tika's testWPSAttachment: OLE icons were black boxes).
+            // A mask without its image is left out.
+            case 0x008800C6:
+                if ((U32(p) == 12 ? U16(p + 10) : U16(p + 14)) == 1)
+                    pendingAnd = (bitmap, x, y, w, h);
+                return;
+            case 0x00660046 when and is { } mask && Math.Abs(mask.X - x) < 1 && Math.Abs(mask.Y - y) < 1 && Math.Abs(mask.W - w) < 1 && Math.Abs(mask.H - h) < 1:
+                gdi.Image(bitmap.Masked(mask.Mask, blackOpaque: true), x, y, w, h, source);
+                return;
+            case 0x00EE0086:   // SRCPAINT: black adds nothing
+                gdi.Image(bitmap.WithTransparentColor(0), x, y, w, h, source);
+                return;
+            default:
+                gdi.Image(bitmap, x, y, w, h, source);
+                return;
+        }
     }
 
     sealed record Region(List<(int L, int T, int R, int B)> Rects);

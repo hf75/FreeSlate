@@ -26,6 +26,26 @@ public sealed class Bitmap
         }
         return new Bitmap { Width = Width, Height = Height, Rgba = copy };
     }
+
+    /// <summary>A copy with alpha from a mask whose white pixels (or black ones) mark the opaque part.</summary>
+    public Bitmap Masked(Bitmap mask, bool blackOpaque = false)
+    {
+        if (Rgba == null || mask.Rgba == null)
+            return this;
+        var rgba = (byte[])Rgba.Clone();
+        for (var y = 0; y < Height; y++)
+        {
+            var my = y * mask.Height / Math.Max(1, Height);
+            for (var x = 0; x < Width; x++)
+            {
+                var mx = x * mask.Width / Math.Max(1, Width);
+                var m = (my * mask.Width + mx) * 4;
+                if (mask.Rgba[m] < 128 != blackOpaque)
+                    rgba[(y * Width + x) * 4 + 3] = 0;
+            }
+        }
+        return new Bitmap { Width = Width, Height = Height, Rgba = rgba };
+    }
 }
 
 /// <summary>Decodes device-independent bitmaps (BITMAPCOREHEADER, BITMAPINFOHEADER, V4, V5) as stored in metafiles.</summary>

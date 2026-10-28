@@ -344,7 +344,7 @@ public sealed class EmfPlayer
                     break;
                 var mask = MaskBits(o, o + 112);
                 var (cx, cy) = (I32(o + 32), I32(o + 36));
-                gdi.Image(mask != null ? Masked(source, mask) : source, I32(o + 24), I32(o + 28), cx, cy, (I32(o + 44), I32(o + 48), cx, cy));
+                gdi.Image(mask != null ? source.Masked(mask) : source, I32(o + 24), I32(o + 28), cx, cy, (I32(o + 44), I32(o + 48), cx, cy));
                 break;
             }
             case 79:   // PLGBLT: the source rectangle mapped onto a parallelogram, masked like MASKBLT
@@ -353,7 +353,7 @@ public sealed class EmfPlayer
                 if (source == null)
                     break;
                 var mask = MaskBits(o, o + 124);
-                gdi.Image(mask != null ? Masked(source, mask) : source, (I32(o + 24), I32(o + 28)), (I32(o + 32), I32(o + 36)), (I32(o + 40), I32(o + 44)),
+                gdi.Image(mask != null ? source.Masked(mask) : source, (I32(o + 24), I32(o + 28)), (I32(o + 32), I32(o + 36)), (I32(o + 40), I32(o + 44)),
                     (I32(o + 48), I32(o + 52), I32(o + 56), I32(o + 60)));
                 break;
             }
@@ -729,13 +729,13 @@ public sealed class EmfPlayer
             case 0x00660046 when pendingAnd is { } and && Math.Abs(and.X - x) < 1 && Math.Abs(and.Y - y) < 1 && Math.Abs(and.W - w) < 1 && Math.Abs(and.H - h) < 1:
                 // SRCINVERT: the icon's image over its mask, opaque where the mask is black.
                 pendingAnd = null;
-                gdi.Image(Masked(bitmap, and.Mask, blackOpaque: true), x, y, w, h, source);
+                gdi.Image(bitmap.Masked(and.Mask, blackOpaque: true), x, y, w, h, source);
                 return;
             case 0x008800C6:   // SRCAND: the image of a mask pair; alone, white is transparent
                 if (pendingMask is { } mask && Math.Abs(mask.X - x) < 1 && Math.Abs(mask.Y - y) < 1 && Math.Abs(mask.W - w) < 1 && Math.Abs(mask.H - h) < 1)
                 {
                     pendingMask = null;
-                    gdi.Image(Masked(bitmap, mask.Mask), x, y, w, h, source);
+                    gdi.Image(bitmap.Masked(mask.Mask), x, y, w, h, source);
                 }
                 else
                 {
@@ -751,26 +751,6 @@ public sealed class EmfPlayer
                 gdi.Image(bitmap, x, y, w, h, source);
                 return;
         }
-    }
-
-    /// <summary>The image with alpha from a mask whose white pixels (or black ones) mark the opaque part.</summary>
-    static Bitmap Masked(Bitmap image, Bitmap mask, bool blackOpaque = false)
-    {
-        if (image.Rgba == null || mask.Rgba == null)
-            return image;
-        var rgba = (byte[])image.Rgba.Clone();
-        for (var y = 0; y < image.Height; y++)
-        {
-            var my = y * mask.Height / Math.Max(1, image.Height);
-            for (var x = 0; x < image.Width; x++)
-            {
-                var mx = x * mask.Width / Math.Max(1, image.Width);
-                var m = (my * mask.Width + mx) * 4;
-                if (mask.Rgba[m] < 128 != blackOpaque)
-                    rgba[(y * image.Width + x) * 4 + 3] = 0;
-            }
-        }
-        return new Bitmap { Width = image.Width, Height = image.Height, Rgba = rgba };
     }
 
     bool IsMaskPartner(uint type, int o) => type switch
