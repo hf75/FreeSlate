@@ -105,16 +105,18 @@ public sealed record Lighting
         };
     }
 
-    /// <summary>The rig turned: about the vertical axis by lon, the horizontal axis by lat, the view axis by rev (clockwise on screen).</summary>
+    /// <summary>The rig turned: about the horizontal axis by lat, the vertical axis by lon, the view axis by rev (clockwise on screen).</summary>
     public Lighting Turned(double lat, double lon, double rev)
     {
         var (a, b, c) = (lat * Math.PI / 180, lon * Math.PI / 180, rev * Math.PI / 180);
         (double X, double Y, double Z) Turn((double X, double Y, double Z) d)
         {
-            // lon about y, lat about x, then rev about z (y down: positive angles turn clockwise on screen).
-            var (x1, z1) = (d.X * Math.Cos(b) + d.Z * Math.Sin(b), -d.X * Math.Sin(b) + d.Z * Math.Cos(b));
-            var (y2, z2) = (d.Y * Math.Cos(a) - z1 * Math.Sin(a), d.Y * Math.Sin(a) + z1 * Math.Cos(a));
-            return (x1 * Math.Cos(c) - y2 * Math.Sin(c), x1 * Math.Sin(c) + y2 * Math.Cos(c), z2);
+            // lat about x, then lon about y, then rev about z (y down: positive angles turn clockwise on screen;
+            // measured: LibreOffice's oox/Scene3d_lightRig_rot_rotation, a harsh rig turned by lat 315° and lon 330°,
+            // 81.0 % lon first, 98.8 % lat first, worse with either sign turned).
+            var (y1, z1) = (d.Y * Math.Cos(a) - d.Z * Math.Sin(a), d.Y * Math.Sin(a) + d.Z * Math.Cos(a));
+            var (x2, z2) = (d.X * Math.Cos(b) + z1 * Math.Sin(b), -d.X * Math.Sin(b) + z1 * Math.Cos(b));
+            return (x2 * Math.Cos(c) - y1 * Math.Sin(c), x2 * Math.Sin(c) + y1 * Math.Cos(c), z2);
         }
         return this with { Lights = Lights.Select(l => l with { Direction = Turn(l.Direction) }).ToList() };
     }

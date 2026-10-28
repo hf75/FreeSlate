@@ -909,7 +909,10 @@ areas:
           rotation turns the projected picture, its depths' shift along, the faces lit as unturned, where the other
           cameras turn the shape in its plane (local/oblique-rot: an extruded box under obliqueTopRight turned by
           lat, lon and rev alone and together, every variant 99.7 to 100 %; LibreOffice's
-          oox/Scene3d_obliqueTopRight 36.0 → 99.9 %).
+          oox/Scene3d_obliqueTopRight 36.0 → 99.9 %). A light rig's rotation turns its lights about the horizontal
+          axis by lat first, then the vertical axis by lon, then the view axis by rev (LibreOffice's
+          oox/Scene3d_lightRig_rot_rotation, a harsh rig turned by lat 315° and lon 330°: 81.0 % the other way
+          round, 98.8 %).
 
       - id: effect.shape3d
         title: 3D shape (bevel, extrusion, material)
