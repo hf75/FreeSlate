@@ -409,10 +409,10 @@ public sealed partial class ChartRenderer
     {
         var language = PresentationLanguage();
         culture = slide.Presentation.Culture;
-        // Office's words in charts: in PowerPoint the presentation's language, in Word Word's own, the culture the
-        // engine runs with as for its field errors (measured with docx/local/bxw-*: "Diagrammtitel" in an en-US
-        // document on a German Word).
-        var german = slide.Presentation.Word ? culture.TwoLetterISOLanguageName == "de" : language.StartsWith("de", StringComparison.OrdinalIgnoreCase);
+        // Office's words in charts are in Office's own language, the culture the engine runs with as for its field
+        // errors, not the document's (measured with docx/local/bxw-*: "Diagrammtitel" in an en-US document on a German
+        // Word; LibreOffice's forum-mso-de-138303 and the Open XML SDK's Of16-01, en-US decks, on a German PowerPoint).
+        var german = culture.TwoLetterISOLanguageName == "de";
         chartStyle = Related("chartStyle");
         var plotArea = new XElement(Ns.C + "plotArea", C("layout"));
         var deletedEntries = new List<int>();
@@ -448,7 +448,7 @@ public sealed partial class ChartRenderer
         var classic = C("chart");
         if (chart.Title is { } title)
         {
-            // Without text of its own the title reads "Chart Title" in the presentation's language.
+            // Without text of its own the title reads "Chart Title" in Office's language.
             var text = title.Element(Cx + "tx")?.Element(Cx + "txData")?.Element(Cx + "v")?.Value;
             var rich = title.Element(Cx + "tx")?.Element(Cx + "rich");
             classic.Add(C("title",

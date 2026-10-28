@@ -303,6 +303,46 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
             items.AddRange(CompoundLines.Strokes(path, flat, part => paint.Stroke(part, 0, 0, defs)));
             return;
         }
-        items.Add(new ShapePathItem($"M{Px(x1)} {Px(y1)}L{Px(x2)} {Px(y2)}", Fill.None, flat, $" fill=\"none\"{paint.Stroke(flat, 0, 0, defs)}"));
+        var (px1, py1, px2, py2) = (x1 * PxPerPt, y1 * PxPerPt, x2 * PxPerPt, y2 * PxPerPt);
+        var width = DrawnWidth(outline);
+        // A border of a table that is only moved covers the pixels as PowerPoint's samples see it (Sampled): its band
+        // across it and its ends along it.
+        if (text.Grid is { } grid && (px1 == px2 || py1 == py2))
+        {
+            double End(double v, double origin, bool down) => Sampled(origin + v, 0, down).At - origin;
+            if (py1 == py2)
+            {
+                (var at, width) = Sampled(grid.Y + py1, width, down: true);
+                (py1, py2, px1, px2) = (at - grid.Y, at - grid.Y, End(px1, grid.X, false), End(px2, grid.X, false));
+            }
+            else
+            {
+                (var at, width) = Sampled(grid.X + px1, width, down: false);
+                (px1, px2, py1, py2) = (at - grid.X, at - grid.X, End(py1, grid.Y, true), End(py2, grid.Y, true));
+            }
+        }
+        items.Add(new ShapePathItem($"M{Units.Css(px1)} {Units.Css(py1)}L{Units.Css(px2)} {Units.Css(py2)}", Fill.None, flat,
+            $" fill=\"none\"{paint.Stroke(flat, 0, 0, defs, drawnWidth: width)}"));
+    }
+
+    /// <summary>
+    /// The width PowerPoint draws a cell border with: at least a pixel, and below 1.5 px exactly one, where it is
+    /// antialiased on its own place, not snapped to the pixels as shape outlines are (measured with local/lw-probe at
+    /// 96 dpi: borders of 0.25 to 1 pt are 1 px wide, of 1.25 pt 1.67 px, of 1.5 pt and more their own width).
+    /// </summary>
+    static double DrawnWidth(Outline outline) => Units.ToPx(outline.WidthEmu) is var width && width < 1.5 ? 1 : width;
+
+    /// <summary>
+    /// A band of <paramref name="width"/> pixels about <paramref name="at"/> (slide pixels) as PowerPoint's antialiasing
+    /// covers it: it samples a pixel at a quarter's top down a column (k/4) and at an eighth's left along a row (k/8),
+    /// so the band covers what lies between its edges moved on to the next quarter or eighth, which the browser then
+    /// covers exactly (measured with local/lw-probe and LibreOffice's table decks: a 1 px border 0.06 px below a pixel's
+    /// top covers 3/4 of that row and 1/4 of the next; one 0.17 px right of a pixel's left 6/8 of it and 2/8 of the next).
+    /// </summary>
+    static (double At, double Width) Sampled(double at, double width, bool down)
+    {
+        double Snap(double v) => down ? Math.Ceiling(v * 4 - 1e-9) / 4 : Math.Ceiling(v * 8 - 1e-9) / 8;
+        var (from, to) = (Snap(at - width / 2), Snap(at + width / 2));
+        return ((from + to) / 2, to - from);
     }
 }

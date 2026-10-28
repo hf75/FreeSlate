@@ -62,8 +62,18 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     {
         public static readonly Placement Root = new(Matrix.Identity, 0, 0, 1, 1, 0, 0, null);
 
-        public (double X, double Y, double W, double H) Map(double x, double y, double w, double h) =>
-            (OffX + (x - ChildX) * ScaleX, OffY + (y - ChildY) * ScaleY, w * ScaleX, h * ScaleY);
+        /// <summary>
+        /// A child's box: its center moved with the group, its size scaled; a child turned by 45° to 135° (or 225° to
+        /// 315°) lies across the group, its width scaled as the group's height and its height as the width (measured:
+        /// LibreOffice's tdf141463_GroupTransform, a child turned by 80° in a group squeezed to two thirds of its height).
+        /// </summary>
+        public (double X, double Y, double W, double H) Map(double x, double y, double w, double h, double rotation = 0)
+        {
+            var turn = (rotation % 180 + 180) % 180;
+            var (sw, sh) = turn is >= 45 and < 135 ? (ScaleY, ScaleX) : (ScaleX, ScaleY);
+            var (cx, cy) = (OffX + (x + w / 2 - ChildX) * ScaleX, OffY + (y + h / 2 - ChildY) * ScaleY);
+            return (cx - w * sw / 2, cy - h * sh / 2, w * sw, h * sh);
+        }
 
         /// <summary>The slide transform of the element the shapes are drawn into (a SmartArt frame); null for the slide.</summary>
         public Matrix? Container { get; init; }
@@ -212,7 +222,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return;
 
         var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
-        var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+        var (bx, by, bw, bh) = placement.Map(x, y, w, h, rotation);
         var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, rotation, flipH, flipV));
 
         var (definition, adjustments) = Geometry(chain);
@@ -265,8 +275,32 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var paths = new List<SceneItem>();
         var slideMatrix = placement.OnSlide(matrix);
         var origin = (Units.ToPx(slideMatrix.E), Units.ToPx(slideMatrix.F));
+        // PowerPoint's pattern tiles lie on the slide's pixels whatever the shape's turn (PatternFill.ToShape), and a
+        // gradient that does not turn with the shape keeps the slide's directions through its groups' turns and flips
+        // too (GradientFill.Unturn).
+        if (!slide.Presentation.Word && ToPx(slideMatrix).Invert() is var (ta, tb, tc, td, te, tf))
+        {
+            if (fill is PatternFill pattern)
+                fill = pattern with { ToShape = (ta, tb, tc, td, te, tf) };
+            if (fill is GradientFill { RotateWithShape: false } unturned)
+                fill = unturned with { Unturn = (ta, tb, tc, td) };
+            if (outline?.Fill is PatternFill linePattern)
+                outline = outline with { Fill = linePattern with { ToShape = (ta, tb, tc, td, te, tf) } };
+        }
+        // Picture borders lie outside the picture (measured: a 6 pt border ends where the picture begins).
+        var outsetBorder = shape.Name.LocalName == "pic" && outline is { Visible: true } && ReferenceEquals(definition, PresetGeometries.Get("rect"));
+        var axisAligned = IsAxisAligned(ToPx(matrix));
+        // PowerPoint draws outlines in whole pixels (PixelWidth), those of a shape that is not turned on its pixels
+        // (OnPixels), their line ends with them; Word's PDF keeps both.
+        double? drawnWidth = outline is { Visible: true } && !slide.Presentation.Word ? PixelWidth(outline) : null;
+        EvaluatedPath Outlined(EvaluatedPath path) =>
+            path.Stroke && !outsetBorder && axisAligned && drawnWidth is { } pixels && CompoundLines.Parts(outline!.Compound) == null
+                ? OnPixels(path, ToPx(slideMatrix), pixels, IsRectilinear(path) ? null : (pw, ph)) : path;
+        // Line ends pull the line back under them in the paths they are given: the ones that are drawn.
+        var outlinedPaths = geometry.Paths.Select(Outlined).ToList();
         List<SceneItem> ends = outline is { Visible: true }
-            ? LineEnds.Apply(outline, geometry.Paths, paint.Fill(outline.Fill, pw, ph, defs, rotation, origin), paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs, origin))
+            ? LineEnds.Apply(outline, outlinedPaths, paint.Fill(outline.Fill, pw, ph, defs, rotation, origin),
+                paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs, origin, drawnWidth: drawnWidth))
             : [];
         // A fill overlay blends a second fill over the shape's fill, not its outline (catalog: effect.blur).
         var effects = Effects(chain, style);
@@ -281,11 +315,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var overlay = effects?.Element(Ns.A + "fillOverlay") is { } fillOverlay && FillReader.FindFill(fillOverlay) is { } overlayFill
             ? (Fill: FillReader.Read(overlayFill, slide.Colors, slide.Images(part), slide.ImageSizes(part)), Blend: fillOverlay.Str("blend") ?? "over")
             : ((Fill Fill, string Blend)?)null;
-        // Picture borders lie outside the picture (measured: a 6 pt border ends where the picture begins).
-        var outsetBorder = shape.Name.LocalName == "pic" && outline is { Visible: true } && ReferenceEquals(definition, PresetGeometries.Get("rect"));
         // A picture can have a fill of its own behind it, visible through its transparent parts.
         var background = shape.Name.LocalName == "pic" ? ResolveFill(chain, placement.GroupFill) : Fill.None;
-        var axisAligned = IsAxisAligned(ToPx(matrix));
         // PowerPoint fills all paths of a geometry before it strokes them (measured: the outline of a first path
         // lies on the fill of a second one); while no stroked path comes before a filled one, that is the same as
         // drawing path after path. Sketched shapes save their outline before their fill (catalog: shape.sketched).
@@ -306,30 +337,40 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 return paint.Fill(pathFill, pw, ph, defs, rotation, origin, outlineData);
             return paint.Fill(pathFill, w, h, defs, rotation, origin, outlineData, (x, y));
         }
-        foreach (var path in geometry.Paths)
+        for (var index = 0; index < geometry.Paths.Count; index++)
         {
+            var path = geometry.Paths[index];
             var pathFill = path.Fill == "none" ? Fill.None : Shade(fill, path.Fill);
             // PowerPoint draws axis-aligned rectangles and lines without antialiasing: every edge goes to the
             // nearest pixel, which is what crispEdges does (measured on fills and outlines at fractional positions).
             var crisp = axisAligned && IsRectilinear(path) ? " shape-rendering=\"crispEdges\"" : "";
+            // Subpaths that overlap leave a hole, as PowerPoint fills them (alternate; measured: LibreOffice's
+            // custgeom-overlapping-contours shows the shape below through the overlap of its two rectangles).
+            var rule = pathFill is not NoFill && path.Segments.Count(s => s.Command == 'M') > 1 ? " fill-rule=\"evenodd\"" : "";
             if (background is not NoFill && path.Fill != "none")
                 paths.Add(new ShapePathItem(path.Data, background, null, $"{paint.Fill(background, pw, ph, defs, rotation, origin)} stroke=\"none\"{crisp}"));
             var compound = path.Stroke && outline is { Visible: true } && CompoundLines.Parts(outline.Compound) != null;
             var closed = Dashes.Closed(path);
-            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin, closed) : " stroke=\"none\"";
+            // The fill that shares an element with the outline on PowerPoint's pixels is the same on screen (only under
+            // a translucent outline does it move by up to half a pixel).
+            var outlined = path.Stroke && !outsetBorder && !compound ? outlinedPaths[index] : path;
+            var pathWidth = drawnWidth >= 2 && !ReferenceEquals(outlined, path) && Curved(path) ? drawnWidth - CurvedLowSide : drawnWidth;
+            var stroke = path.Stroke && !outsetBorder && !compound ? paint.Stroke(outline, pw, ph, defs, origin, closed, drawnWidth: pathWidth) : " stroke=\"none\"";
+            if (stroke == " stroke=\"none\"")
+                outlined = path;
             // A dashed outline starts its pattern where PowerPoint does, in a Word document where Word does (catalog:
             // line.dash).
             var dashed = stroke != " stroke=\"none\"" && Dashes.IsDashed(outline);
-            var strokeData = !dashed ? path.Data
-                : slide.Presentation.Word ? Dashes.WordStart(path, axisAligned).Data : Dashes.StartAtClosingSegment(path).Data;
+            var strokeData = !dashed ? outlined.Data
+                : slide.Presentation.Word ? Dashes.WordStart(path, axisAligned).Data : Dashes.StartAtClosingSegment(outlined).Data;
             var strokeTarget = strokesLast ? strokes : paths;
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
                 var mode = blend switch { "mult" => "multiply", "screen" => "screen", "darken" => "darken", "lighten" => "lighten", _ => "normal" };
                 paths.Add(new SvgGroupItem(" style=\"isolation:isolate\"",
                 [
-                    new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}"),
-                    new ShapePathItem(path.Data, overlayPaint, null, $"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}"),
+                    new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}{rule}"),
+                    new ShapePathItem(path.Data, overlayPaint, null, $"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}{rule}"),
                 ]));
                 if (stroke != " stroke=\"none\"")
                     strokeTarget.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
@@ -339,7 +380,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 if (paint.PictureImage(pathFill, pw, ph, path.Data, defs, crisp) is { } image)
                     paths.Add(new PictureItem(image.Image, image.X, image.Y, image.Width, image.Height, path.Data, image.Clip, image.Filter));
                 else if (pathFill is not NoFill)
-                    paths.Add(new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}"));
+                    paths.Add(new ShapePathItem(path.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}{rule}"));
                 if (stroke != " stroke=\"none\"")
                     strokes.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
             }
@@ -353,7 +394,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             else
             {
                 paths.Add(new ShapePathItem(strokeData, pathFill, stroke != " stroke=\"none\"" ? outline : null,
-                    $"{PathPaint(pathFill, path)}{stroke}{crisp}{(path.Fill != "none" ? fillable : "")}") { DashesClosed = closed });
+                    $"{PathPaint(pathFill, path)}{stroke}{crisp}{rule}{(path.Fill != "none" ? fillable : "")}") { DashesClosed = closed });
             }
             if (dashed && outline!.Cap == "sq")
                 strokeTarget.AddRange(Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
@@ -419,12 +460,14 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             html.Append($"<div class=\"sp\"{Accessibility(shape, isSlide, part)} style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{box.Css()}\">");
             var faceColor = Fill.MainColor(fill) ?? RgbColor.FromHex("808080");
             var extrusionColor = shape3d?.Element(Ns.A + "extrusionClr") is { } extrusionClr ? slide.Colors.ResolveChild(extrusionClr) : null;
-            var solid = new Solid(camera!, lighting, pw, ph, rotation, flipH, flipV);
+            // Outlines that turn against the largest are holes (frames, donuts): their sides face into the hole
+            // (measured: LibreOffice's Scene3d_lightRig_* frames show the walls inside).
+            var solid = new Solid(camera!, lighting, pw, ph, rotation, flipH, flipV) { Holes = true };
             solidOutlines = Solid.Outlines(geometry, lineWidth / 2);
             // The extrusion runs from the top bevel's outer edge backwards; the bottom bevel closes it at the back.
             var (front, back) = (-topHeight, -topHeight - depth);
             if (wireframe)
-                solid.Wireframe(solidOutlines, front, camera!.Flat ? front : back);
+                solid.Wireframe(solidOutlines, front, camera!.Flat ? front : back, slide.Presentation.Word ? null : lineColor, slide.Presentation.Word ? 0 : lineWidth);
             else if (!camera!.Flat)
             {
                 if (depth > 0.01)
@@ -1231,7 +1274,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (data.Element(Ns.A + "tbl") is { } table)
         {
             var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
-            var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+            var (bx, by, bw, bh) = placement.Map(x, y, w, h, rotation);
             text.Grid = Grid(placement.OnSlide(placement.Transform.Then(LocalMatrix(bx, by, bw, bh, rotation, flipH, flipV))));
             var (drawn, width, height) = Tables.Render(table);
             text.Grid = null;
@@ -1276,6 +1319,114 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             }
         }
         return path.Segments.Count > 1;
+    }
+
+    /// <summary>
+    /// The width PowerPoint draws an outline with: whole pixels, at least one (measured with local/lw-probe at the
+    /// references' 96 dpi: 0.25 to 1 pt draw 1 px, 1.25 and 1.5 pt 2 px, 2 and 2.25 pt 3 px, 3 pt 4 px; rectangles,
+    /// lines, ellipses and rounded rectangles alike).
+    /// </summary>
+    static double PixelWidth(Outline outline) => Math.Max(1, Math.Floor(Units.ToPx(outline.WidthEmu) + 0.5));
+
+    /// <summary>
+    /// How much of its first pixel the outline of a curved path (OnPixels) two pixels wide or more leaves out on its
+    /// low sides, its left and top ones: PowerPoint's antialiasing misses one sample there, 1/8 along a row and 1/4
+    /// down a column (measured with rounded rectangles of 1 to 3 px at eighth-pixel offsets, any line cap: their sides
+    /// cover 7/8 and 3/4 of that pixel, the pixel at the high side wholly, 1 px outlines and rectangles every pixel
+    /// wholly); drawn as the outline that much thinner, moved by half of it.
+    /// </summary>
+    const double CurvedLowSide = 3 / 16.0;
+
+    static bool Curved(EvaluatedPath path) => path.Segments.Any(s => s.Command is 'A' or 'C' or 'Q');
+
+    /// <summary>
+    /// The outline of a shape that is not turned on PowerPoint's pixels: every edge rounded to the nearest pixel
+    /// boundary (half up) on its own, the right and bottom ones too, a stroke of <paramref name="width"/> whole pixels
+    /// then covering floor(width / 2) pixels before the boundary and the rest after it (measured with local/lw-probe:
+    /// a 1 px line on the row after the rounded edge, 2 px on both sides, 3 px one before and two after). A path of
+    /// horizontal and vertical lines has each corner rounded so; any other path is stretched with its box (<paramref
+    /// name="box"/>, its width and height), whose edges are rounded so, and only moved along a side that would round
+    /// to nothing (measured: the sides of a rounded rectangle are as sharp as a rectangle's, LibreOffice's oox/theme
+    /// even on its right and bottom; an ellipse sits where its box does; LibreOffice's fdo47434, connectors sloping by
+    /// 0.02 px over 210 px, keep their slope). A curved path's outline of two pixels or more moves by half of what it
+    /// leaves out on its low sides (CurvedLowSide).
+    /// </summary>
+    static EvaluatedPath OnPixels(EvaluatedPath path, Matrix toSlide, double width, (double W, double H)? box = null)
+    {
+        var fromSlide = toSlide.Invert();
+        var shift = width % 2 == 1 ? 0.5 : 0;
+        double Snap(double v) => Math.Floor(v + 0.5) + shift;
+        (double X, double Y) Map(Matrix m, double x, double y) => (m.A * x + m.C * y + m.E, m.B * x + m.D * y + m.F);
+        if (box is not var (w, h))
+        {
+            return path with
+            {
+                Segments = path.Segments.Select(segment =>
+                {
+                    if (segment.Command is not ('M' or 'L'))
+                        return segment;
+                    var (sx, sy) = Map(toSlide, segment.Values[0], segment.Values[1]);
+                    var (x, y) = Map(fromSlide, Snap(sx), Snap(sy));
+                    return new PathSegment(segment.Command, [x, y]);
+                }).ToList(),
+            };
+        }
+
+        // The box on the slide, its edges rounded, and the stretch that takes the path along (per axis: the shape is not
+        // turned); a side that would round to nothing keeps its length and moves.
+        var (x0, y0) = Map(toSlide, 0, 0);
+        var (x1, y1) = Map(toSlide, w, h);
+        (double Edge, double Rounded, double Scale) Axis(double a, double b)
+        {
+            var (low, high) = (Math.Min(a, b), Math.Max(a, b));
+            var size = Snap(high) - Snap(low);
+            return (low, Snap(low), size > 0.5 && high - low > 1e-9 ? size / (high - low) : 1);
+        }
+        var (edgeX, roundedX, kx) = Axis(x0, x1);
+        var (edgeY, roundedY, ky) = Axis(y0, y1);
+        var (dx, dy) = (0.0, 0.0);
+        // A straight line that slopes by less than a sample is antialiased where PowerPoint's samples see its band, as a
+        // table's border is (TableRenderer.Sampled): the band moves to them as a whole (measured: LibreOffice's fdo47434,
+        // connectors sloping by 0.02 px cover 3/4 of one row and 1/4 of the next).
+        if (path.Segments is [{ Command: 'M' } from, { Command: 'L' } to])
+        {
+            var (ax, ay) = Map(toSlide, from.Values[0], from.Values[1]);
+            var (bx, by) = Map(toSlide, to.Values[0], to.Values[1]);
+            var (mx, my) = (roundedX + ((ax + bx) / 2 - edgeX) * kx, roundedY + ((ay + by) / 2 - edgeY) * ky);
+            if (Math.Abs(by - ay) < 0.25 && Math.Abs(bx - ax) > 1 && my - width / 2 is var top)
+                dy = Math.Ceiling(top * 4 - 1e-9) / 4 - top;
+            else if (Math.Abs(bx - ax) < 0.125 && Math.Abs(by - ay) > 1 && mx - width / 2 is var start)
+                dx = Math.Ceiling(start * 8 - 1e-9) / 8 - start;
+        }
+        else if (width >= 2 && Curved(path))
+            (dx, dy) = (CurvedLowSide / 2, CurvedLowSide / 2);
+        (double X, double Y) Moved(double x, double y)
+        {
+            var (sx, sy) = Map(toSlide, x, y);
+            return Map(fromSlide, roundedX + (sx - edgeX) * kx + dx, roundedY + (sy - edgeY) * ky + dy);
+        }
+        // Arc radii stretch with the axis they lie along in the shape (swapped where it is turned by 90°).
+        var (rx, ry) = Math.Abs(toSlide.B) < 1e-9 ? (kx, ky) : (ky, kx);
+        return path with
+        {
+            Segments = path.Segments.Select(segment =>
+            {
+                var v = segment.Values;
+                switch (segment.Command)
+                {
+                    case 'A':
+                        var (ex, ey) = Moved(v[5], v[6]);
+                        return new PathSegment('A', [v[0] * rx, v[1] * ry, v[2], v[3], v[4], ex, ey]);
+                    case 'Z':
+                        return segment;
+                    default:
+                        var moved = new double[v.Length];
+                        for (var i = 0; i + 1 < v.Length; i += 2)
+                            (moved[i], moved[i + 1]) = Moved(v[i], v[i + 1]);
+                        return new PathSegment(segment.Command, moved);
+                }
+            }).ToList(),
+        };
     }
 
     /// <summary>A picture that takes the frame's position when it has none of its own (OLE and control previews).</summary>
@@ -1423,7 +1574,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (!Ink.IsInk(ink))
             return;
         var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
-        var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+        var (bx, by, bw, bh) = placement.Map(x, y, w, h, rotation);
         var matrix = placement.Transform.Then(LocalMatrix(bx, by, bw, bh, rotation, flipH, flipV));
         var (pw, ph) = (Units.ToPx(bw), Units.ToPx(bh));
         var drawn = Ink.Render(ink, pw, ph);
@@ -1557,7 +1708,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
 
         var (x, y, w, h, rotation, flipH, flipV) = ReadTransform(xfrm);
-        var (bx, by, bw, bh) = placement.Map(x, y, w, h);
+        var (bx, by, bw, bh) = placement.Map(x, y, w, h, rotation);
         var chOff = xfrm.Element(Ns.A + "chOff");
         var chExt = xfrm.Element(Ns.A + "chExt");
         var chW = chExt.Long("cx") ?? w;

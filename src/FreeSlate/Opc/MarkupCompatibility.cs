@@ -52,8 +52,9 @@ public static class MarkupCompatibility
 
     /// <summary>
     /// Resolves the document's alternatives; with <paramref name="chartEx"/> an Office 2016 chart's Choice wins over its
-    /// fallback picture, as Word draws such charts itself (measured with openxml-sdk's Of16-01 to Of16-07: Word's
-    /// waterfalls, box plots, sunburst and treemap, not Excel's pictures of them).
+    /// fallback picture, as Word and PowerPoint draw such charts themselves (measured with openxml-sdk's Of16-01 to
+    /// Of16-07: Word's waterfalls, box plots, sunburst and treemap, not Excel's pictures of them; PowerPoint's in its own
+    /// language, where the pictures show the English words of the Office that saved them).
     /// </summary>
     public static void Process(XContainer document, bool chartEx = false) => Resolve(document.Descendants(Mc + "AlternateContent"), chartEx);
 
@@ -189,7 +190,7 @@ public static class MarkupCompatibility
 
     /// <summary>
     /// Office 2016 charts (catalog: chart.ex; Requires cx1, cx2 … for the chartex namespaces of their versions): drawn
-    /// natively where there is no fallback picture of them, which PowerPoint always writes.
+    /// natively (see Process).
     /// </summary>
     static bool IsChartEx(XElement choice)
     {

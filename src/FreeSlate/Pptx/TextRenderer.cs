@@ -880,7 +880,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// Character formatting of chart text from a:defRPr-like elements, highest priority first (catalog: chart.text);
     /// the last layer should carry the chart's default size.
     /// </summary>
-    public TextStyle ChartStyle(IEnumerable<XElement?> layers) => Style(null, ChartSources(layers), 0, 1, null);
+    public TextStyle ChartStyle(IEnumerable<XElement?> layers) => Style(null, [.. ChartSources(layers), ChartFont], 0, 1, null);
 
     /// <summary>Lays out chart rich text (c:rich): the paragraph's own a:defRPr, the body's list style, then <paramref name="layers"/>.</summary>
     public LaidOutText ChartRich(XElement rich, IEnumerable<XElement?> layers, double width, bool wrap)
@@ -888,6 +888,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var shared = new List<Source>();
         if (rich.Element(Ns.A + "lstStyle") is { } own) shared.Add(new ListStyleSource(own));
         shared.AddRange(ChartSources(layers));
+        shared.Add(ChartFont);
         var counters = new Numbering();
         var paragraphs = rich.Elements(Ns.A + "p").Select(p =>
         {
@@ -897,6 +898,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         }).ToList();
         return TextLayout.Layout(paragraphs, Math.Max(0, width), wrap);
     }
+
+    /// <summary>
+    /// Chart text that no layer names a font for is set in the theme's body font, not in Arial as slide text is (see
+    /// UnnamedLatin; measured: POI's aascu decks, whose chart text names none, in Calibri).
+    /// </summary>
+    static readonly Source ChartFont = new ListStyleSource(new XElement(Ns.A + "lstStyle", new XElement(Ns.A + "lvl1pPr",
+        new XElement(Ns.A + "defRPr", new XElement(Ns.A + "latin", new XAttribute("typeface", "+mn-lt"))))));
 
     static List<Source> ChartSources(IEnumerable<XElement?> layers) =>
         layers.Where(l => l != null)
@@ -1484,10 +1492,16 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         {
             if (txStyles?.Element(Ns.P + "otherStyle") is { } other)
                 sources.Add(new FillSource(other));
+            AddList(slide.Presentation.DefaultTextStyle);
         }
         else
-            AddList(txStyles?.Element(Ns.P + chain.StyleKind + "Style"));
-        AddList(slide.Presentation.DefaultTextStyle);
+        {
+            // Title and body placeholders take nothing from the presentation's default text style (measured: POI's
+            // sample and alterman_security, whose title styles have no kern: PowerPoint does not kern their titles,
+            // which the default style's kern="1200" would; 30 such decks agree). A master without the style has
+            // PowerPoint's own.
+            AddList(txStyles?.Element(Ns.P + chain.StyleKind + "Style") ?? PresentationContext.BuiltInMasterStyle(chain.StyleKind));
+        }
         return sources;
     }
 
@@ -1604,8 +1618,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                         }
                         foreach (var (piece, slot, script) in Scripts.Split(part))
                         {
-                            runs.Add(new TextRun(piece, Style(rPr, sources, level, fontScale, piece, slot, script)) { Source = field ? at : at + inRun, Atomic = field });
-                            inRun += piece.Length;
+                            // A newline in the text breaks the line as a:br does but sizes it as a character (BreakInText).
+                            foreach (var line in piece.Contains('\n') ? System.Text.RegularExpressions.Regex.Split(piece, "(\n)") : [piece])
+                            {
+                                if (line.Length == 0)
+                                    continue;
+                                var style = Style(rPr, sources, level, fontScale, line, slot, script);
+                                runs.Add(new TextRun(line, line == "\n" ? style with { BreakInText = true } : style) { Source = field ? at : at + inRun, Atomic = field });
+                                inRun += line.Length;
+                            }
                         }
                     }
                     break;
@@ -1762,7 +1783,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 return new Bullet("", textStyle with { Size = textStyle.Size * factor }, picture, w > 0 && h > 0 ? w / h : 1);
             }
             case "buChar":
-                text = kind.Str("char") ?? "•";
+                // Only the first character counts: PowerPoint draws one bullet for char="••" (SmartArt drawings saved
+                // by LibreOffice, bnc862510_5, tdf93830).
+                var chars = kind.Str("char") ?? "•";
+                Rune.DecodeFromUtf16(chars, out _, out var length);
+                text = chars[..length];
                 counters.Reset(level);
                 break;
             case "buAutoNum":
@@ -1849,7 +1874,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // them (catalog: text.fonts).
         var latin = RunElement(rPr, sources, level, "latin");
         var major = latin?.Str("typeface") is "+mj-lt";
-        var family = Typeface(latin) ?? LatinFromEastAsian(latin, R("lang"), R("altLang")) ?? Colors.Theme.MinorLatin;
+        var family = Typeface(latin) ?? LatinFromEastAsian(latin, R("lang"), R("altLang"))
+                     ?? (slide.Presentation.Word ? Colors.Theme.MinorLatin : UnnamedLatin);
         if (slot == FontSlot.EastAsian)
         {
             var themeScript = Scripts.EastAsianScript(R("lang"), script);
@@ -1965,6 +1991,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     string? Typeface(XElement? font) =>
         font?.Str("typeface") is { Length: > 0 } t ? Colors.Theme.ResolveTypeface(t) is { Length: > 0 } r ? r : null : null;
+
+    /// <summary>
+    /// The font of text that no style names one for: Arial, not the theme's (measured with PowerPoint's PDF: LibreOffice's
+    /// tdf165341, whose master has empty title and body styles, sets its title in Arial; so are a text box under a
+    /// defaultTextStyle without a:latin and the levels a built-in title style leaves empty).
+    /// </summary>
+    const string UnnamedLatin = "Arial";
 
     /// <summary>
     /// What a Latin font naming the theme's East Asian font (+mn-ea, +mj-ea) stands for where the theme has none: the

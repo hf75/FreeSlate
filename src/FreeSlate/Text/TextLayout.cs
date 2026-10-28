@@ -47,6 +47,12 @@ public sealed record TextStyle(
 
     /// <summary>An object standing in the line in place of the run's one character (an equation, catalog: text.math).</summary>
     public IInlineObject? Inline { get; init; }
+
+    /// <summary>
+    /// A line break written as a character of a run's text rather than as a:br: it sizes the line it ends like the
+    /// line's other characters (see TextLayout.BuildLine).
+    /// </summary>
+    public bool BreakInText { get; init; }
 }
 
 /// <summary>An object laid out inside a line of text: its width and how far it reaches above and below the baseline (points).</summary>
@@ -91,8 +97,12 @@ public readonly record struct ParagraphSpace(bool Percent, double Value)
 /// <summary>A bullet: text in its own style, or a picture (data URI) with its width-to-height ratio.</summary>
 public sealed record Bullet(string Text, TextStyle Style, string? Picture = null, double PictureAspect = 1)
 {
-    /// <summary>Picture bullets are as high as the capitals of the text (measured) and sit on the baseline.</summary>
-    public double PictureHeight => Style.Size * Style.Font.Data.CapHeight;
+    /// <summary>
+    /// Picture bullets are 0.7 of the text's size high, whatever its font, and sit on the baseline (measured with
+    /// PowerPoint's PDF: LibreOffice's tdf114913 in Calibri, Arial and Times New Roman at 14 to 44 pt, generated/lists
+    /// in Aptos; a picture wider than the indent pushes the text on by its width, 0.7 of the size times its proportions).
+    /// </summary>
+    public double PictureHeight => Style.Size * 0.7;
 }
 
 public sealed class ParagraphInput
@@ -563,8 +573,9 @@ public static class TextLayout
         bool first, bool last, double bulletWidth, List<(int Index, double From, double To)> tabs)
     {
         // Vertical metrics (see LineMetrics). The line break ending it sizes the line only when it is otherwise empty
-        // (measured: a 60 pt break after 20 pt text leaves the line 24 pt high, a 60 pt break alone makes it 72 pt); an
-        // empty last line takes the paragraph mark's.
+        // (measured: a 60 pt break after 20 pt text leaves the line 24 pt high, a 60 pt break alone makes it 72 pt),
+        // unless it is a character of a run's text, which counts as the line's others do (measured: LibreOffice's
+        // n828390_2, "Linux" at 20 pt ended by a 24 pt run of a newline); an empty last line takes the paragraph mark's.
         var characters = pieces.Where(p => p.End > p.Start).SelectMany(p => Enumerable.Range(p.Start, p.End - p.Start))
             .Where(i => i < styles.Count).ToList();
         var lineStyles = characters.Select(i => styles[i]).Distinct().ToList();
@@ -580,6 +591,8 @@ public static class TextLayout
             var terminator = pieces[^1] is var (breakAt, breakEnd, _) && breakEnd == breakAt && breakAt < all.Length && all[breakAt] == '\n'
                 ? styles[breakAt]
                 : last ? paragraph.MarkStyle : null;
+            if (terminator is { BreakInText: true } character)
+                (lineStyles, terminator) = ([.. lineStyles, character], null);
             var ending = terminator is { } end ? end with { Size = styles[characters[^1]].Size } : null;
             (ascent, descent) = LineMetrics(lineStyles, ending, paragraph.Spacing);
             (_, singleDescent) = LineMetrics(lineStyles, ending, LineSpacing.Single);

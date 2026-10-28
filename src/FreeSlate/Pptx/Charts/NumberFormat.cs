@@ -60,7 +60,10 @@ public static class NumberFormat
 
         section = StripBrackets(section);
         string text;
-        if (section.Trim().Equals("General", StringComparison.OrdinalIgnoreCase) || section.Length == 0)
+        // A German or French Office writes General by its own name into the data of its charts (measured: LibreOffice's
+        // forum-mso-de-138303, formatCode="Standard" in a waterfall's values).
+        if (section.Trim() is var name && (name.Equals("General", StringComparison.OrdinalIgnoreCase) || name.Equals("Standard", StringComparison.OrdinalIgnoreCase))
+            || section.Length == 0)
             text = General(value, culture);
         else if (IsDate(section))
             text = Date(value, section, culture);

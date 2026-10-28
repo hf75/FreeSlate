@@ -28,23 +28,42 @@ public static class LineEnds
         var items = new List<SceneItem>();
         var segments = path.Segments;
 
-        if (outline.Head is { Type: not "none" } head && segments[0].End is { } start && Reference(segments, 1, first: true) is { } next)
+        // Legs of no length at the ends (a short one rounded onto its neighbour's pixel, see SlideRenderer.OnPixels) give
+        // no direction: an end's tangent comes from the leg next to it that has a length.
+        var (firstLeg, last) = (1, segments.Count - 1);
+        while (firstLeg < last && segments[firstLeg].Command == 'L' && segments[firstLeg].End == segments[0].End)
+            firstLeg++;
+        while (last > firstLeg && segments[last].Command == 'L' && segments[last].End == segments[last - 1].End)
+            last--;
+
+        // An arc at an end gives its tangent there and is pulled back along itself, keeping its curve (LibreOffice's
+        // tdf113187_arcTo_withoutReferences: the arrows at the ends of arcs point along them).
+        if (outline.Head is { Type: not "none" } head && segments[0].End is { } start && Reference(segments, firstLeg, first: true) is { } next)
         {
-            var direction = Normalize(start.X - next.X, start.Y - next.Y);
+            var arc = segments[firstLeg].Command == 'A' ? Ellipse(start, segments[firstLeg]) : null;
+            var direction = arc is { } e && Tangent(e, start) is var (tx, ty) ? Normalize(-e.Turn * tx, -e.Turn * ty) : Normalize(start.X - next.X, start.Y - next.Y);
             if (Shape(head, start, direction, lineWidth, outline, fillAttributes, strokeAttributes, out var pullback) is { } shape)
                 items.Add(shape);
             if (direction != default && pullback > 0)
-                Move(segments[0], -direction.X * pullback, -direction.Y * pullback);
+            {
+                var moved = arc is { } along ? Along(along, start, pullback) : (start.X - direction.X * pullback, start.Y - direction.Y * pullback);
+                for (var i = 0; i < firstLeg; i++)
+                    Place(segments[i], moved);
+            }
         }
 
-        var last = segments.Count - 1;
         if (outline.Tail is { Type: not "none" } tail && segments[last].End is { } end && Reference(segments, last, first: false) is { } previous)
         {
-            var direction = Normalize(end.X - previous.X, end.Y - previous.Y);
+            var arc = segments[last].Command == 'A' ? Ellipse(previous, segments[last]) : null;
+            var direction = arc is { } e && Tangent(e, end) is var (tx, ty) ? Normalize(e.Turn * tx, e.Turn * ty) : Normalize(end.X - previous.X, end.Y - previous.Y);
             if (Shape(tail, end, direction, lineWidth, outline, fillAttributes, strokeAttributes, out var pullback) is { } shape)
                 items.Add(shape);
             if (direction != default && pullback > 0)
-                Move(segments[last], -direction.X * pullback, -direction.Y * pullback);
+            {
+                var moved = arc is { } along ? Along(along, end, -pullback) : (end.X - direction.X * pullback, end.Y - direction.Y * pullback);
+                for (var i = last; i < segments.Count; i++)
+                    Place(segments[i], moved);
+            }
         }
         return items;
     }
@@ -69,10 +88,45 @@ public static class LineEnds
         };
     }
 
-    static void Move(PathSegment segment, double dx, double dy)
+    static void Place(PathSegment segment, (double X, double Y) point)
     {
-        segment.Values[^2] += dx;
-        segment.Values[^1] += dy;
+        segment.Values[^2] = point.X;
+        segment.Values[^1] = point.Y;
+    }
+
+    /// <summary>
+    /// The ellipse an SVG arc (not turned) from <paramref name="from"/> lies on: its center, its radii as drawn (grown
+    /// where the ends lie too far apart) and its way round (+1 with the angle, -1 against); null for an empty one.
+    /// </summary>
+    static (double Cx, double Cy, double Rx, double Ry, double Turn)? Ellipse((double X, double Y) from, PathSegment arc)
+    {
+        var v = arc.Values;
+        var (rx, ry, large, sweep, x, y) = (Math.Abs(v[0]), Math.Abs(v[1]), v[3] != 0, v[4] != 0, v[5], v[6]);
+        var (hx, hy) = ((from.X - x) / 2, (from.Y - y) / 2);
+        if (rx < 1e-9 || ry < 1e-9 || Math.Abs(hx) + Math.Abs(hy) < 1e-9)
+            return null;
+        var lambda = hx * hx / (rx * rx) + hy * hy / (ry * ry);
+        if (lambda > 1)
+            (rx, ry) = (rx * Math.Sqrt(lambda), ry * Math.Sqrt(lambda));
+        var rest = rx * rx * ry * ry - rx * rx * hy * hy - ry * ry * hx * hx;
+        var k = (large != sweep ? 1 : -1) * Math.Sqrt(Math.Max(0, rest / (rx * rx * hy * hy + ry * ry * hx * hx)));
+        return (k * rx * hy / ry + (from.X + x) / 2, -k * ry * hx / rx + (from.Y + y) / 2, rx, ry, sweep ? 1 : -1);
+    }
+
+    static double Angle((double Cx, double Cy, double Rx, double Ry, double Turn) e, (double X, double Y) p) =>
+        Math.Atan2((p.Y - e.Cy) / e.Ry, (p.X - e.Cx) / e.Rx);
+
+    /// <summary>The ellipse's derivative by its angle at <paramref name="p"/>.</summary>
+    static (double X, double Y) Tangent((double Cx, double Cy, double Rx, double Ry, double Turn) e, (double X, double Y) p) =>
+        Angle(e, p) is var angle ? (-e.Rx * Math.Sin(angle), e.Ry * Math.Cos(angle)) : default;
+
+    /// <summary>The point <paramref name="distance"/> on from <paramref name="p"/> the arc's way round (back where negative).</summary>
+    static (double X, double Y) Along((double Cx, double Cy, double Rx, double Ry, double Turn) e, (double X, double Y) p, double distance)
+    {
+        var angle = Angle(e, p);
+        var speed = Math.Max(Math.Sqrt(Math.Pow(e.Rx * Math.Sin(angle), 2) + Math.Pow(e.Ry * Math.Cos(angle), 2)), 1e-9);
+        angle += e.Turn * distance / speed;
+        return (e.Cx + e.Rx * Math.Cos(angle), e.Cy + e.Ry * Math.Sin(angle));
     }
 
     static (double X, double Y) Normalize(double x, double y)

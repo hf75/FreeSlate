@@ -14201,7 +14201,8 @@
         <pos x="hc" y="t" />
       </cxn>
     </cxnLst>
-    <rect l="il" t="ir" r="it" b="ib" xmlns="http://schemas.openxmlformats.org/drawingml/2006/main" />
+    <!-- The specification's file swaps top and right (t="ir" r="it"); PowerPoint sets the text where the guides say (measured: LibreOffice's tdf149918_pie_textarea). -->
+    <rect l="il" t="it" r="ir" b="ib" xmlns="http://schemas.openxmlformats.org/drawingml/2006/main" />
     <pathLst xmlns="http://schemas.openxmlformats.org/drawingml/2006/main">
       <path>
         <moveTo>

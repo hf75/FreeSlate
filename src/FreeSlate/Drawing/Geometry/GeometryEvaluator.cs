@@ -177,7 +177,9 @@ public static class GeometryEvaluator
     {
         double Param(double a) => Math.Atan2(ratio * Math.Sin(a), Math.Cos(a));
         var start = Rad(stAng);
-        var sweep = Rad(swAng);
+        // A sweep goes round at most once (measured: LibreOffice's tdf122323_swingAngle_larger360deg, 400° ends where
+        // it starts).
+        var sweep = Rad(Math.Clamp(swAng, -21600000, 21600000));
         var t0 = Param(start);
         var cx = x - wR * Math.Cos(t0);
         var cy = y - hR * Math.Sin(t0);

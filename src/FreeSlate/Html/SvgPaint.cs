@@ -79,7 +79,10 @@ public sealed class SvgPaint
         var period = 8 * p.Cell;
         double Phase(double v) => ((-v % period) + period) % period;
         var scale = Math.Abs(p.Cell - 1) < 1e-9 ? "" : $" scale({Units.Css4(p.Cell)})";
-        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"translate({Units.Css(Phase(origin.X))} {Units.Css(Phase(origin.Y))}){scale}\">" +
+        var place = p.ToShape is var (a, b, c, d, e, f)
+            ? $"matrix({Units.Css4(a)} {Units.Css4(b)} {Units.Css4(c)} {Units.Css4(d)} {Units.Css(e)} {Units.Css(f)})"
+            : $"translate({Units.Css(Phase(origin.X))} {Units.Css(Phase(origin.Y))})";
+        defs.Append($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"{place}{scale}\">" +
                     $"<rect width=\"8\" height=\"8\"{Color("fill", p.Background)} shape-rendering=\"crispEdges\"/>" +
                     (bits.Length > 0 ? $"<path d=\"{bits}\"{Color("fill", p.Foreground)} shape-rendering=\"crispEdges\"/>" : "") +
                     "</pattern>");
@@ -91,13 +94,15 @@ public sealed class SvgPaint
     /// figures only, where round-capped dashes start where the pattern does (see <see cref="Dashes"/>).
     /// </summary>
     /// <param name="offset">Where the w × h box lies in the stroked path's coordinates, as for <see cref="Fill"/>.</param>
+    /// <param name="drawnWidth">The width the stroke is drawn with where the renderer puts it on whole pixels as
+    /// PowerPoint does (the dashes keep following the outline's own width).</param>
     public string Stroke(Outline? outline, double w, double h, StringBuilder defs, (double X, double Y) origin = default, bool closed = false,
-        (double X, double Y) offset = default)
+        (double X, double Y) offset = default, double? drawnWidth = null)
     {
         if (outline is not { Visible: true })
             return " stroke=\"none\"";
 
-        var width = Math.Max(Units.ToPx(outline.WidthEmu), 0.5);
+        var width = drawnWidth ?? Math.Max(Units.ToPx(outline.WidthEmu), 0.5);
         var sb = new StringBuilder(outline.Fill switch
         {
             SolidFill s => Color("stroke", s.Color),
@@ -160,6 +165,15 @@ public sealed class SvgPaint
         var shift = offset == default ? "" : $"translate({Units.Css(offset.X)} {Units.Css(offset.Y)}) ";
 
         var counterRotation = g.RotateWithShape ? "" : $" rotate({Units.Css(-shapeRotation)} {Units.Css(w / 2)} {Units.Css(h / 2)})";
+        // A gradient that keeps the slide's directions in a shape turned by quarter turns or flipped, its groups' turns
+        // and flips included: laid out over the shape's box as the slide sees it, then taken into the shape (measured:
+        // the Open XML SDK's o09_Performance_typical, a band in a turned and flipped group shaded from left to right).
+        if (!g.RotateWithShape && g.Unturn is var (ua, ub, uc, ud) && g.Angle != null && (Math.Abs(ua * ub) + Math.Abs(uc * ud)) < 1e-9)
+        {
+            var (bw, bh) = Math.Abs(ua) > 0.5 ? (w, h) : (h, w);
+            counterRotation = $" translate({Units.Css(w / 2)} {Units.Css(h / 2)}) matrix({Units.Css4(ua)} {Units.Css4(ub)} {Units.Css4(uc)} {Units.Css4(ud)} 0 0) translate({Units.Css(-bw / 2)} {Units.Css(-bh / 2)})";
+            (w, h) = (bw, bh);
+        }
         if (g.Angle is { } angle)
         {
             var (sin, cos) = Math.SinCos(angle * Math.PI / 180);

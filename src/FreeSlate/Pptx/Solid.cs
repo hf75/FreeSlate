@@ -532,11 +532,14 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     }
 
     /// <summary>
-    /// The legacyWireframe material: every edge of the body's mesh as a hairline, hidden ones included (the rims and a
-    /// line along the extrusion at every corner of the outline, measured).
+    /// The legacyWireframe material: every edge of the body's mesh as a line, hidden ones included (the rims and a
+    /// line along the extrusion at every corner of the outline, measured), in PowerPoint in the shape's line color and
+    /// width (measured: LibreOffice's Scene3d_material_wireframe, a 1 pt black outline draws 1.33 px wide wires), else
+    /// as a black hairline.
     /// </summary>
-    public void Wireframe(List<List<(double X, double Y)>> outlines, double front, double back)
+    public void Wireframe(List<List<(double X, double Y)>> outlines, double front, double back, RgbColor? color = null, double width = 0)
     {
+        (wireColor, wireWidth) = (color ?? RgbColor.Black, width > 0 ? width : 0.75);
         var deep = front - back > 0.01;
         foreach (var local in outlines)
         {
@@ -561,6 +564,8 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     }
 
     readonly StringBuilder wires = new();
+    RgbColor wireColor = RgbColor.Black;
+    double wireWidth = 0.75;
 
     /// <summary>The tube along a rim: the runs of segments that show, closed when all of them do.</summary>
     void Rim(List<(double X, double Y, double Z)> points, List<(double X, double Y, double Z)[]> sides, List<bool> shown, double r)
@@ -723,7 +728,8 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     public string OverlayMarkup(RgbColor? contourColor = null) =>
         string.Concat(overlays.OrderBy(f => f.Depth).Select(f => f.Markup)) +
         (contour.Length > 0 && contourColor is { } color ? $"<path d=\"{contour}\" fill=\"{color.ToHex()}\"{(color.A < 1 ? $" fill-opacity=\"{Units.Css4(color.A)}\"" : "")}/>" : "") +
-        (wires.Length > 0 ? $"<path d=\"{wires}\" fill=\"none\" stroke=\"#000\" stroke-width=\"0.75\" stroke-linejoin=\"round\"/>" : "");
+        (wires.Length > 0 ? $"<path d=\"{wires}\" fill=\"none\" stroke=\"{wireColor.ToHex()}\"{(wireColor.A < 1 ? $" stroke-opacity=\"{Units.Css4(wireColor.A)}\"" : "")}" +
+            $" stroke-width=\"{Units.Css(wireWidth)}\" stroke-linejoin=\"round\"/>" : "");
 
     /// <summary>The faces collected so far as SVG, farthest first.</summary>
     public string Markup() => (defs.Length > 0 ? $"<defs>{defs}</defs>" : "") + string.Concat(faces.OrderBy(f => f.Depth).Select(f => f.Markup));

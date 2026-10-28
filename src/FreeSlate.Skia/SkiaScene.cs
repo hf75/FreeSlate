@@ -937,9 +937,15 @@ public static class SkiaScene
                 return;
             }
             using var path = SKPath.ParseSvgPathData(item.Data);
-            if (path != null)
-                Shape(path, item.Fill, item.Outline, item.Attributes, item.DashesClosed);
+            if (path == null)
+                return;
+            // Subpaths of a geometry overlap as PowerPoint fills them (alternate), where the attributes say so.
+            if (item.Attributes.Contains("fill-rule=\"evenodd\"", StringComparison.Ordinal))
+                path.FillType = SKPathFillType.EvenOdd;
+            Shape(path, item.Fill, item.Outline, item.Attributes, item.DashesClosed);
         }
+
+        static readonly Regex StrokeWidth = new("(?<![\\w-])stroke-width=\"([^\"]+)\"", RegexOptions.Compiled);
 
         /// <summary>
         /// An outline filled and stroked as DrawingML gives it: a picture stretched over it, a gradient as the SVG
@@ -963,6 +969,11 @@ public static class SkiaScene
             if (outline is { Visible: true })
             {
                 using var pen = Pen(outline, dashesClosed);
+                // The width the attributes draw it with, where SlideRenderer puts it on whole pixels as PowerPoint does
+                // (the dashes keep the outline's own).
+                if (StrokeWidth.Match(attributes) is { Success: true } drawn
+                    && float.TryParse(drawn.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var drawnWidth))
+                    pen.StrokeWidth = drawnWidth;
                 if (!smooth)
                     SvgDrawing.Crisp(pen, OnPixels);
                 // A gradient or a pattern along the outline, over the path's bounds as its fill would lie.
@@ -1504,12 +1515,13 @@ public static class SkiaScene
             for (var row = 0; row < 8; row++)
                 for (var column = 0; column < 8; column++)
                     bitmap.SetPixel(column, row, (tile[row] & (0x80 >> column)) != 0 ? fore : back);
-            // Where the drawing's origin lies on the page gives the tiles' phase.
+            // Where the drawing's origin lies on the page gives the tiles' phase; PowerPoint's tiles lie on the page's
+            // pixels, not turned with the shape (PatternFill.ToShape).
             var onPage = page.Invert().PreConcat(canvas.TotalMatrix);
             var period = 8 * pattern.Cell;
             double Phase(double v) => ((-v % period) + period) % period;
-            var placed = SKMatrix.CreateScale((float)pattern.Cell, (float)pattern.Cell)
-                .PostConcat(SKMatrix.CreateTranslation((float)Phase(onPage.TransX), (float)Phase(onPage.TransY)));
+            var placed = SKMatrix.CreateScale((float)pattern.Cell, (float)pattern.Cell).PostConcat(pattern.ToShape != null && onPage.TryInvert(out var fromPage)
+                ? fromPage : SKMatrix.CreateTranslation((float)Phase(onPage.TransX), (float)Phase(onPage.TransY)));
             using var image = SKImage.FromBitmap(bitmap);
             return new SKPaint
             {

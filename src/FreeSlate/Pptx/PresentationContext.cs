@@ -79,10 +79,48 @@ public sealed class PresentationContext : IDisposable
 
     /// <summary>
     /// PowerPoint's own default text style for presentations without one (p:defaultTextStyle, as other programs write
-    /// them): kerning from 12 pt at every level (measured: LibreOffice's Calibri text kerned without any kern attribute).
+    /// them), Office's default: the theme's fonts, kerning from 12 pt and half an inch more indent at every level
+    /// (measured: LibreOffice's Calibri text kerned without any kern attribute; levels 1 to 3 of a text box added to
+    /// LibreOffice's tdf160487 start 36 pt apart in the theme's Calibri, where a defaultTextStyle without fonts gives
+    /// them Arial).
     /// </summary>
-    static readonly XElement BuiltInTextStyle = new(Ns.P + "defaultTextStyle",
-        Enumerable.Range(1, 9).Select(level => new XElement(Ns.A + $"lvl{level}pPr", new XElement(Ns.A + "defRPr", new XAttribute("kern", "1200")))));
+    static readonly XElement BuiltInTextStyle = XElement.Parse(
+        $"<p:defaultTextStyle {StyleNamespaces}>{string.Concat(Enumerable.Range(1, 9).Select(DefaultLevel))}</p:defaultTextStyle>");
+
+    static string DefaultLevel(int level) => $"""
+        <a:lvl{level}pPr marL="{457200 * (level - 1)}" algn="l" defTabSz="914400"><a:defRPr sz="1800" kern="1200"><a:solidFill>
+        <a:schemeClr val="tx1"/></a:solidFill><a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/></a:defRPr></a:lvl{level}pPr>
+        """;
+
+    /// <summary>
+    /// PowerPoint's own master title or body style (<paramref name="kind"/> title or body) for masters without it (no
+    /// p:txStyles, or none of that kind in it, as LibreOffice writes some): Office's default ones (measured with the
+    /// object model on LibreOffice's tdf160487: titles at 44 pt in the theme's heading font, body text at 28, 24, 20
+    /// and 18 pt with bullets, indents and spacing before, all kerned from 12 pt at 90 % line spacing; the title's
+    /// levels below the first take nothing; a style the master has is used alone).
+    /// </summary>
+    public static XElement BuiltInMasterStyle(string kind) => kind == "title" ? BuiltInTitleStyle : BuiltInBodyStyle;
+
+    const string StyleNamespaces = """xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" """;
+
+    static readonly XElement BuiltInTitleStyle = XElement.Parse($"""
+        <p:titleStyle {StyleNamespaces}><a:lvl1pPr algn="l" defTabSz="914400"><a:lnSpc><a:spcPct val="90000"/></a:lnSpc>
+        <a:spcBef><a:spcPct val="0"/></a:spcBef><a:buNone/><a:defRPr sz="4400" kern="1200"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill>
+        <a:latin typeface="+mj-lt"/><a:ea typeface="+mj-ea"/><a:cs typeface="+mj-cs"/></a:defRPr></a:lvl1pPr></p:titleStyle>
+        """);
+
+    static readonly XElement BuiltInBodyStyle = XElement.Parse(
+        $"<p:bodyStyle {StyleNamespaces}>{string.Concat(Enumerable.Range(1, 9).Select(BodyLevel))}</p:bodyStyle>");
+
+    static string BodyLevel(int level) => $"""
+        <a:lvl{level}pPr marL="{228600 + 457200 * (level - 1)}" indent="-228600" algn="l" defTabSz="914400"><a:lnSpc><a:spcPct val="90000"/></a:lnSpc>
+        <a:spcBef><a:spcPts val="{(level == 1 ? 1000 : 500)}"/></a:spcBef><a:buFont typeface="Arial"/><a:buChar char="•"/>
+        <a:defRPr sz="{BodySize(level)}" kern="1200"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill><a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/></a:defRPr></a:lvl{level}pPr>
+        """;
+
+    static int BodySize(int level) => level switch { 1 => 2800, 2 => 2400, 3 => 2000, _ => 1800 };
+
     public List<string> SlideParts { get; } = [];
 
     /// <summary>Whether a slide has a 3D model, for which the document gets the WebGL renderer (catalog: picture.model3d).</summary>
@@ -178,7 +216,7 @@ public sealed class PresentationContext : IDisposable
         if (!documents.TryGetValue(part, out var document))
         {
             document = Package.ReadXml(part, lines);
-            MarkupCompatibility.Process(document);
+            MarkupCompatibility.Process(document, chartEx: true);
             documents[part] = document;
         }
         return document;

@@ -39,6 +39,13 @@ public sealed record GradientFill(
     /// stops A, B, A at 0, f, 1 (measured; other gradients interpolate linearly in sRGB).
     /// </summary>
     public bool Bell { get; init; }
+
+    /// <summary>
+    /// For a gradient that does not turn with its shape (rotWithShape="0"): the slide's directions in the shape's
+    /// coordinates, the turns and flips of the shape and its groups undone (the linear part of the slide-to-shape
+    /// transform); null where only the shape's own turn is undone.
+    /// </summary>
+    public (double A, double B, double C, double D)? Unturn { get; init; }
 }
 
 public sealed record PatternFill(string Preset, RgbColor Foreground, RgbColor Background) : Fill
@@ -51,6 +58,13 @@ public sealed record PatternFill(string Preset, RgbColor Foreground, RgbColor Ba
 
     /// <summary>The size of a bit in pixels: 1 for the presets, 4/3 (a point) for Word's VML patterns.</summary>
     public double Cell { get; init; } = 1;
+
+    /// <summary>
+    /// Where the slide lies in the shape's coordinates (pixels): PowerPoint draws the tiles on the slide's pixels, not
+    /// turned with the shape (measured: LibreOffice's tdf107608, a downward diagonal in a shape turned by 270° stays
+    /// downward); null where the tiles are only shifted by the shape's position.
+    /// </summary>
+    public (double A, double B, double C, double D, double E, double F)? ToShape { get; init; }
 }
 
 /// <summary>

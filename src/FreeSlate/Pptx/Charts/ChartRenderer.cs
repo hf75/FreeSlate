@@ -657,6 +657,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         };
     }
 
+    /// <summary>
+    /// How far a line's own alignment moved its runs (a:pPr algn of rich text, centered within the width it was laid
+    /// out in): the chart centers its lines itself (measured: LibreOffice's funnel-pp1, a centered title stays in the
+    /// middle of the chart).
+    /// </summary>
+    static double Aligned(LaidOutLine line) => line.Runs.Count > 0 ? line.Runs.Min(r => r.X) - line.Start : 0;
+
     string DrawTitle(TitleLayout title)
     {
         var svg = new StringBuilder(Area(title.SpPr, title.Box, snap: false));
@@ -664,7 +671,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var baseline = title.Box.Y + TitlePaddingY + Ascent(title.Text.Style);
         foreach (var line in title.Text.Layout.Lines)
         {
-            svg.Append(text.EmitLine(line, title.Box.X + (title.Box.W - line.Width) / 2, baseline));
+            svg.Append(text.EmitLine(line, title.Box.X + (title.Box.W - line.Width) / 2 - Aligned(line), baseline));
             baseline += lineHeight;
         }
         return svg.ToString();
@@ -925,7 +932,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var line in rich.Lines)
             {
                 var ascent = line.Runs.Count > 0 ? line.Runs.Max(r => Ascent(r.Style)) : Ascent(spec.Style);
-                dataLabels.Append(text.EmitLine(line, left + (room - line.Width) / 2, top + ascent));
+                dataLabels.Append(text.EmitLine(line, left + (room - line.Width) / 2 - Aligned(line), top + ascent));
                 top += RichLineHeight(line);
             }
         }
@@ -1214,7 +1221,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var baseline = -blockHeight / 2 + Ascent(style);
         foreach (var line in lines)
         {
-            svg.Append(text.EmitLine(line, -line.Width / 2, baseline));
+            svg.Append(text.EmitLine(line, -line.Width / 2 - Aligned(line), baseline));
             baseline += lineHeight;
         }
         svg.Append("</g>");
@@ -3735,7 +3742,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var baseline = top + Ascent(style);
             foreach (var line in layout.Lines)
             {
-                dataLabels.Append(text.EmitLine(line, left + (w - line.Width) / 2, baseline));
+                dataLabels.Append(text.EmitLine(line, left + (w - line.Width) / 2 - Aligned(line), baseline));
                 baseline += lineHeight;
             }
         }
