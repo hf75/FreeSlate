@@ -253,8 +253,11 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
 
     static string StopOpacity(double opacity) => opacity < 1 ? $" stop-opacity=\"{Units.Css4(opacity)}\"" : "";
 
-    /// <summary>The extruded sides between z = <paramref name="front"/> and z = <paramref name="back"/>.</summary>
-    public void Extrusion(List<List<(double X, double Y)>> outlines, double front, double back, RgbColor color)
+    /// <summary>
+    /// The extruded sides between z = <paramref name="front"/> and z = <paramref name="back"/>; an
+    /// <paramref name="open"/> body (no front face) shows the far sides from within too.
+    /// </summary>
+    public void Extrusion(List<List<(double X, double Y)>> outlines, double front, double back, RgbColor color, bool open = false)
     {
         if (front - back < 0.01)
             return;
@@ -286,6 +289,9 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
                 if (startNormal != (nx, ny, 0) || endNormal != (nx, ny, 0))
                     smooth = (startNormal, endNormal);
                 Face([(a.X, a.Y, front), (b.X, b.Y, front), (b.X, b.Y, back), (a.X, a.Y, back)], (nx, ny, 0), color, smooth);
+                if (open)
+                    Face([(a.X, a.Y, front), (b.X, b.Y, front), (b.X, b.Y, back), (a.X, a.Y, back)], (-nx, -ny, 0), color,
+                        smooth is var (sa, sb) ? ((-sa.X, -sa.Y, -sa.Z), (-sb.X, -sb.Y, -sb.Z)) : null);
             }
         }
     }

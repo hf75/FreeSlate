@@ -935,7 +935,11 @@ areas:
           pastel look and nothing towards the silhouette (local/powder, matflat1-2). Pictures and gradients
           keep their texture on the bevel. An extruded frame (a shape with a hole) shows the walls of its hole
           (LibreOffice's Scene3d_lightRig_*), and PowerPoint draws a wireframe in the line's color and width
-          (Scene3d_material_wireframe).
+          (Scene3d_material_wireframe). A body without fill has no faces of its own: no bevels and no back, its
+          sides only in the extrusion's or the line's color (seen from within too where the front is open), and its
+          line and text cast its shadow and glow as on a flat shape; without either it shows nothing
+          (local/nofill3d; LibreOffice's sd-data/n819614, a SmartArt shape with noFill, no line, a bevel and a
+          shadow, 89.9 → 93.5 %).
 
   - id: picture
     title: Pictures and media

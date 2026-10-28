@@ -461,6 +461,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         // The legacyWireframe material draws the body's edges instead of its faces (the text stays).
         var wireframe = shape3d?.Str("prstMaterial") == "legacyWireframe";
         var solidBody = camera is { Flat: false } || camera != null && (beveled || contourWidth > 0.01 || wireframe);
+        // A body without fill has no faces of its own (measured, local/nofill3d): no bevels and no back, sides only in
+        // the extrusion's or the line's color; its line and its text cast the shadow and glow as on a flat shape.
+        var hollow = solidBody && fill is NoFill;
         if (solidBody)
         {
             var box = ToPx(placement.Transform.Then(Matrix.Translate(bx, by)));
@@ -477,11 +480,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 solid.Wireframe(solidOutlines, front, camera!.Flat ? front : back, slide.Presentation.Word ? null : lineColor, slide.Presentation.Word ? 0 : lineWidth);
             else if (!camera!.Flat)
             {
-                if (depth > 0.01)
-                    solid.Extrusion(solidOutlines, front, back, extrusionColor ?? lineColor ?? faceColor);
-                if (bottomWidth > 0)
+                if (depth > 0.01 && (extrusionColor ?? lineColor ?? (hollow ? null : faceColor)) is { } sideColor)
+                    solid.Extrusion(solidOutlines, front, back, sideColor, open: hollow);
+                if (bottomWidth > 0 && !hollow)
                     solid.Bevel(solidOutlines, bottomWidth, bottomHeight, bottomProfile, faceColor, back, bottom: true, lineColor, lineWidth);
-                if (depth > 0.01 || beveled || bottomWidth > 0)
+                if ((depth > 0.01 || beveled || bottomWidth > 0) && !hollow)
                 {
                     var backOutlines = bottomWidth > 0 ? solidOutlines.Select(o => Solid.Inset(o, bottomWidth)).ToList() : solidOutlines;
                     solid.Back(backOutlines, back - bottomHeight, faceColor, lineWidth > bottomWidth ? lineColor : null, lineWidth - bottomWidth);
@@ -489,7 +492,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             }
             // Pictures and gradients keep their texture on the bevel: it is shaded over the unclipped front face.
             texturedBevel = beveled && fill is not (SolidFill or NoFill);
-            if (beveled && !wireframe)
+            if (beveled && !wireframe && !hollow)
                 solid.Bevel(solidOutlines, topWidth, topHeight, topProfile, texturedBevel ? null : faceColor, line: lineColor, lineWidth: lineWidth);
             if (contourWidth > 0.01 && !wireframe)
                 solid.Contour(solidOutlines, front, back, contourWidth, Solid.Rise(topWidth, topHeight, topProfile), Solid.Rise(bottomWidth, bottomHeight, bottomProfile));
@@ -499,7 +502,8 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             // shape shows the whole shadow there, a plane through the front face covers the extrusion).
             var planeEffects = "";
             var planeBehind = false;
-            if (Backdrop(scene3d) is { } backdrop && effects != null)
+            // A hollow body leaves them to the flat shape's filter below.
+            if (!hollow && Backdrop(scene3d) is { } backdrop && effects != null)
             {
                 // The glow lies at the anchor; the shadow moves by its distance along the scene's x and y, not the
                 // plane's (measured: a floor plane's shadow only moves sideways).
@@ -530,7 +534,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 }
                 planeBehind = backdrop.Anchor.Z < back - 0.01;
             }
-            else
+            else if (!hollow)
             {
                 var (backData, backBounds) = solid.Projected(solidOutlines, back);
                 var outerDefs = new StringBuilder();
@@ -583,13 +587,13 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             effectRegion = (rx, ry, Math.Max(pw, gx + gw) - rx, Math.Max(ph, gy + gh) - ry);
         }
         var effectFilterOf = SvgEffects.FilterOf(effects, slide.Colors, pw, ph, defs, stroke: outline is { Visible: true } ? Units.ToPx(outline.WidthEmu) : 0,
-            parts: solidBody ? SvgEffects.Parts.Shape : SvgEffects.Parts.All, frame: matrix, region: effectRegion);
+            parts: solidBody && !hollow ? SvgEffects.Parts.Shape : SvgEffects.Parts.All, frame: matrix, region: effectRegion);
         var opaque = fill is not NoFill || outline is { Visible: true };
         var body = new List<SceneItem>();
         List<SceneItem> shapeItems = wireframe && solidBody ? [] : [.. paths];
         if (!(wireframe && solidBody))
             shapeItems.AddRange(ends);
-        if (beveled && !texturedBevel && solidOutlines != null && shapeItems.Count > 0)
+        if (beveled && !texturedBevel && !hollow && solidOutlines != null && shapeItems.Count > 0)
         {
             // The fill shows on the front face inside the bevel; the line lies on the bevel.
             var clip = $"bf{++litFilters}";
