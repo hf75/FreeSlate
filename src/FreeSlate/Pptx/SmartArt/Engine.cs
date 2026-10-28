@@ -341,14 +341,17 @@ public static class Engine
         var kids = node.Children.Where(c => c.AlgorithmType != "conn" && c.Placed).ToList();
         if (kids.Count == 0)
             return box;
-        if ((node.Param("linDir") ?? "fromL") is "fromT" or "fromB")
-        {
-            var (low, high) = (kids.Min(k => Math.Min(k.X, k.X + k.W)), kids.Max(k => Math.Max(k.X, k.X + k.W)));
-            return high - low > 0 && high - low < node.W - 1e-6 && low >= node.X - 1e-6 && high <= node.X + node.W + 1e-6 ? (low, node.Y, high - low, node.H) : box;
-        }
-        var (top, bottom) = (kids.Min(k => Math.Min(k.Y, k.Y + k.H)), kids.Max(k => Math.Max(k.Y, k.Y + k.H)));
-        return bottom - top > 0 && bottom - top < node.H - 1e-6 && top >= node.Y - 1e-6 && bottom <= node.Y + node.H + 1e-6 ? (node.X, top, node.W, bottom - top) : box;
+        // Along its line too (measured: vList5's rows, a node without children no wider than its parent text, stand
+        // at the left with nodeHorzAlign l, in the middle with ctr and at the right with r, whatever the row's
+        // direction and horzAlign; local/vlist-*).
+        var (x, w) = Narrower(kids.Min(k => Math.Min(k.X, k.X + k.W)), kids.Max(k => Math.Max(k.X, k.X + k.W)), node.X, node.W);
+        var (y, h) = Narrower(kids.Min(k => Math.Min(k.Y, k.Y + k.H)), kids.Max(k => Math.Max(k.Y, k.Y + k.H)), node.Y, node.H);
+        return (x, y, w, h);
     }
+
+    /// <summary>The span from low to high where it lies within the node's span and is shorter, else the node's.</summary>
+    static (double Start, double Length) Narrower(double low, double high, double start, double length) =>
+        high - low > 0 && high - low < length - 1e-6 && low >= start - 1e-6 && high <= start + length + 1e-6 ? (low, high - low) : (start, length);
 
     /// <summary>
     /// Whether a lin node grows with its content in a dimension (w, h): a rule lets it (type w val INF, measured:

@@ -2492,7 +2492,12 @@ areas:
           cycle3's long curves, NameandTitleOrganizationalChart's names narrower than their constraint and
           radial2's ring (2 % smaller), each within 1 to 7 % (sa_all: 13 of 159 layouts not exact), and
           process3 with a description longer than its box, for which PowerPoint lowers the titles' font size
-          the description's follows and grows the box, where the engine lets the description overflow.
+          the description's follows and grows the box, where the engine lets the description overflow. A lin node
+          shrinks to its children along its line as well as across it, and its parent aligns it by nodeHorzAlign or
+          nodeVertAlign: a row of vList5 whose node has no children is as wide as its parent text and stands at the
+          left with nodeHorzAlign l, in the middle with ctr, at the right with r, whatever the row's own direction
+          and horzAlign (local/vlist-*, layout variants laid out by PowerPoint; LibreOffice's
+          sd/smartart-vertical-block-list 76.0 → 99.6 %, the probe decks sa_* unchanged).
       - id: smartart.styles
         title: SmartArt styles and color definitions
         elements: [dgm:styleDef, dgm:styleLbl, dgm:scene3d, dgm:sp3d,
