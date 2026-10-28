@@ -872,12 +872,16 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
 
     static string Projection(Camera camera, double w, double h, double rotation, bool flipH, bool flipV)
     {
-        var plane = Matrix.Rotate(rotation).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));
+        // An oblique camera turns its picture by the shape's rotation (Camera.TurnsPicture), the others the shape.
+        var turned = camera.TurnsPicture ? rotation : 0;
+        var plane = Matrix.Rotate(rotation - turned).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));
         // Column-major 4×4 of the plane's 2D transform.
         double[] local = [plane.A, plane.B, 0, 0, plane.C, plane.D, 0, 0, 0, 0, 1, 0, plane.E, plane.F, 0, 1];
         var projection = camera.Matrix3D();
         double[] center = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, w / 2, h / 2, 0, 1];
-        var m = Multiply(center, Multiply(projection, local));
+        var (sin, cos) = Math.SinCos(turned * Math.PI / 180);
+        double[] turn = [cos, sin, 0, 0, -sin, cos, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+        var m = Multiply(center, Multiply(turn, Multiply(projection, local)));
         return "matrix3d(" + string.Join(",", m.Select(v => Units.Css4(v))) + ")";
 
         static double[] Multiply(double[] a, double[] b)

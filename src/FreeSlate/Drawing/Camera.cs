@@ -89,10 +89,10 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         var oblique = preset.StartsWith("oblique", StringComparison.Ordinal) || preset.StartsWith("legacyOblique", StringComparison.Ordinal);
         var (x, y, z, fov) = Presets.TryGetValue(preset, out var p) ? p : (0, 0, 0, preset.StartsWith("legacyPerspective", StringComparison.Ordinal) ? 65 : 45);
         var legacy = preset.StartsWith("legacy", StringComparison.Ordinal);
-        // An explicit rotation replaces the preset's (60000ths of a degree; lon and rev turn the other way). Legacy
-        // oblique cameras turn the scene before they shift it (measured: LibreOffice's Scene3d_legacyObliqueBottomRight
-        // and Scene3d_lightRig_legacyCamera); how the other oblique cameras turn is not measured yet, they stay unturned.
-        if (camera.Element(Ns.A + "rot") is { } rot && (legacy || !oblique))
+        // An explicit rotation replaces the preset's (60000ths of a degree; lon and rev turn the other way). Oblique
+        // cameras turn the scene before they shift it (measured: LibreOffice's Scene3d_legacyObliqueBottomRight and
+        // Scene3d_lightRig_legacyCamera; local/oblique-rot, obliqueTopRight turned by lat, lon and rev alone and together).
+        if (camera.Element(Ns.A + "rot") is { } rot)
         {
             x = -(rot.Long("lon") ?? 0) / 60000.0;
             y = (rot.Long("lat") ?? 0) / 60000.0;
@@ -124,6 +124,13 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     /// camera, lit under orthographicFront; a legacy oblique scene turned by 10° and 20° in the plane lit as PowerPoint).
     /// </summary>
     public bool Legacy { get; init; }
+
+    /// <summary>
+    /// An oblique camera that is not a legacy one turns the projected picture by the shape's rotation, its depths' shift
+    /// along, where the other cameras turn the shape in its plane before they project it (measured with
+    /// local/oblique-rot: an extruded box under obliqueTopRight turned by 60° shows its faces lit as unturned).
+    /// </summary>
+    public bool TurnsPicture => Oblique && !Legacy;
 
     /// <summary>The camera leaves a flat shape as it is.</summary>
     public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0 && (!Perspective || Math.Abs(Offset) < 1e-9)

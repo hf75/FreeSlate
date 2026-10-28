@@ -15,7 +15,7 @@ namespace FreeSlate.Pptx;
 /// </summary>
 sealed class Solid(Camera camera, Lighting lighting, double w, double h, double rotation, bool flipH, bool flipV)
 {
-    readonly Matrix plane = Matrix.Rotate(rotation).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));
+    readonly Matrix plane = Matrix.Rotate(camera.TurnsPicture ? 0 : rotation).Then(Matrix.Scale(flipH ? -1 : 1, flipV ? -1 : 1)).Then(Matrix.Translate(-w / 2, -h / 2));
     readonly List<(double Depth, string Markup)> faces = [];
     readonly StringBuilder defs = new();
     readonly StringBuilder contour = new();
@@ -200,6 +200,11 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     (double X, double Y) Screen((double X, double Y, double Z) p)
     {
         var q = camera.Flatten(camera.Place(p));
+        if (camera.TurnsPicture)
+        {
+            var (sin, cos) = Math.SinCos(rotation * Math.PI / 180);
+            q = (q.X * cos - q.Y * sin, q.X * sin + q.Y * cos);
+        }
         return (w / 2 + q.X, h / 2 + q.Y);
     }
 

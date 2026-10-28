@@ -905,7 +905,11 @@ areas:
           and isometric cameras within 3 px; local/backdrop, backdrop2, backdrop3: 98.3 to 98.6 %). The
           shape's text casts its shadow there too, over the shape's own and darker where they overlap, as its
           plain glyphs without effects of their own (local/bdtext: a floor plane shows the text in the
-          shadow).
+          shadow). Oblique cameras turn the scene by their rotation (a:rot) before they shift it; the shape's own
+          rotation turns the projected picture, its depths' shift along, the faces lit as unturned, where the other
+          cameras turn the shape in its plane (local/oblique-rot: an extruded box under obliqueTopRight turned by
+          lat, lon and rev alone and together, every variant 99.7 to 100 %; LibreOffice's
+          oox/Scene3d_obliqueTopRight 36.0 → 99.9 %).
 
       - id: effect.shape3d
         title: 3D shape (bevel, extrusion, material)
