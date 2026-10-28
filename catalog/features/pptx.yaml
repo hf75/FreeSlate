@@ -1578,7 +1578,11 @@ areas:
           line breaks at: "HH " in textPlain or textInflate leaves 0.2 of the envelope to the space and the H's side
           bearing, " HH" as much at the start, "HH" fills it from ink to ink (local/warpspace, every line within 2
           px; LibreOffice's oox/tdf139618_ThemeColorTransparency 64.9 → 95.7 %, sd/tdf114848's slide of waves, cans
-          and rings 53.7 → 91.9 %).
+          and rings 53.7 → 91.9 %). Along arches, circles and buttons text follows the ellipse from the parameter of
+          the arc's start angle through that of its sweep: PowerPoint takes the preset's angles as the ellipse's
+          parameter, not as the visual angles its path is drawn by; both agree where the arc's ends lie on the axes
+          (local/archwa-*: under a textArchDown of 322.76° in a 2:1 box text starts 217° round the ellipse, not
+          237°; LibreOffice's sd/tdf116350-texteffects 73.5 → 84.0 %, tdf125573_FontWorkScaleX 51.5 → 66.3 %).
 
       - id: text.threeD
         title: 3D text

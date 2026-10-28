@@ -222,7 +222,8 @@ public static class TextWarp
         var widths = group.Select(i => Math.Max(1e-6, align?.Invoke(i).Width ?? 0)).ToList();
         // Text longer than its path as PowerPoint measures it shrinks until it fits (LibreOffice's tdf116350-texteffects:
         // an arch of 56° holds the whole line, small); old WordArt fills the path's own length (measured with circles
-        // and a wide arch down).
+        // and a wide arch down), with several lines the longest whatever parallel it lies on (local/archwa-*: a long
+        // second line on the parallel outside an arch down covers the path's length of it, not all).
         var scale = fromWordArt ? path.PathLength / widths.Max() : Math.Min(1, path.Reach / widths.Max());
         foreach (var line in group)
         {
@@ -295,9 +296,8 @@ public static class TextWarp
         var cx = sign * root * rx * hy / ry + (x0 + x1) / 2;
         var cy = sign * root * -ry * hx / rx + (y0 + y1) / 2;
 
-        // The sweep, as the ellipse's parameter and as the visual angle, piece by piece.
+        // The sweep as the visual angle, piece by piece.
         var direction = arc[4] != 0 ? 1 : -1;
-        double Param(double x, double y) => Math.Atan2((y - cy) / ry, (x - cx) / rx);
         double Visual(double x, double y) => Math.Atan2(y - cy, x - cx);
         double Turn(double from, double to)
         {
@@ -306,16 +306,19 @@ public static class TextWarp
             while (d > 2 * Math.PI + 1e-9) d -= 2 * Math.PI;
             return d;
         }
-        double sweep = 0, visual = 0;
+        double sweep = 0;
         var (px, py) = (x0, y0);
         foreach (var segment in segments.Skip(1))
         {
             var (ex, ey) = (segment.Values[5], segment.Values[6]);
-            sweep += Turn(Param(px, py), Param(ex, ey));
-            visual += Turn(Visual(px, py), Visual(ex, ey));
+            sweep += Turn(Visual(px, py), Visual(ex, ey));
             (px, py) = (ex, ey);
         }
-        var start = Param(x0, y0);
+        // Text follows the ellipse from the parameter of the arc's start angle through that of its sweep: the preset's
+        // angles taken as the ellipse's parameter, not as the visual angles its path is drawn by (measured with
+        // local/archwa-*: under a textArchDown of 322.76° in a 2:1 box text starts 217° round the ellipse, not 237°; the
+        // same on arches whose ends lie on the axes, where both agree).
+        var start = Visual(x0, y0);
         var step = 1.0 / Math.Max(rx, ry);
         var before = (int)Math.Ceiling(Math.PI / step);
         var within = Math.Max(1, (int)Math.Ceiling(sweep / step));
@@ -325,7 +328,7 @@ public static class TextWarp
             var t = start + direction * (i < 0 ? i * step : i <= within ? sweep * i / within : sweep + (i - within) * step);
             points.Add((cx + rx * Math.Cos(t) + offsetX, cy + ry * Math.Sin(t) + offsetY));
         }
-        return new Polyline(points, before, before + within, arc[0] * visual);
+        return new Polyline(points, before, before + within, arc[0] * sweep);
     }
 
     static (double MinX, double MinY, double MaxX, double MaxY) Bounds(IEnumerable<List<(double X, double Y)>> contours)
