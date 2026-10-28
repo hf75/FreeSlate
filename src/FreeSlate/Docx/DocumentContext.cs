@@ -417,6 +417,9 @@ public sealed class DocumentContext : IDisposable
         return document;
     }
 
+    /// <summary>Forgets a part loaded before, which the next Load reads anew from the package (after a change gave it new bytes).</summary>
+    public void Forget(string part) => documents.Remove(part);
+
     /// <summary>
     /// The children of an element of a part's XML read anew from its text, made ready as Load makes the part's XML (for
     /// ModelReader.Reread to put them into the loaded part in place of others): <paramref name="parent"/> stands within

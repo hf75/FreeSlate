@@ -287,6 +287,140 @@ static class TextEdits
     }
 
     /// <summary>
+    /// Markup put into a paragraph at a place (see WordDocument.InsertMarkup): elements that stand among runs, put between
+    /// the runs around the place (the run of the text the place is in split there), out of a hyperlink, content control or
+    /// revision whose content the place begins or ends; at the paragraph's end after its last content, into an empty one
+    /// after its properties. As a tracked change the runs put in stand in a w:ins. Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// The place is within what the document computes or keeps (a field's result, an object) or before what it shows from
+    /// elsewhere (a placeholder), or markup other than runs is to be tracked; nothing changes.
+    /// </exception>
+    public static string InsertMarkup(Stretch stretch, ParagraphBlock paragraph, int offset, IReadOnlyList<XElement> markup, Tracking? tracking = null)
+    {
+        if (offset < paragraph.TextOffset || offset > ParagraphText.End(paragraph))
+            throw new ArgumentOutOfRangeException(nameof(offset), "The place is not in the paragraph's text.");
+        Between(paragraph, offset);
+        var parts = Parts(stretch, paragraph);
+        var w = parts[0].Name.Namespace;
+        List<XElement> items = [.. markup];
+        if (tracking != null)
+        {
+            if (items.Any(e => e.Name != w + "r"))
+                throw new NotSupportedException("Markup other than runs is not put in as a tracked change.");
+            var ins = tracking.Mark(w, "ins");
+            ins.Add(items);
+            items = [ins];
+        }
+        XElement? before = null, after = null;
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var (s, e) = (at, at + ParagraphText.Length(inline));
+            at = e;
+            if (e == s)
+                continue;
+            if (e <= offset)
+            {
+                before = Holder(stretch, inline, parts, last: true) ?? before;
+                continue;
+            }
+            if (s < offset)
+            {
+                // Within its text: its run split at the place.
+                if (TextOf(stretch, inline, parts) is not { } t)
+                    throw new NotSupportedException($"The place is within what the document computes or keeps ({inline.GetType().Name}).");
+                var rest = Cut(t, offset - s);
+                SplitBefore(rest);
+                after = rest.Parent!;
+            }
+            else
+                after = Holder(stretch, inline, parts, last: false)
+                    ?? throw new NotSupportedException($"The place is before content shown from elsewhere ({inline.GetType().Name}).");
+            break;
+        }
+        XElement part;
+        if (after != null)
+        {
+            var node = Outermost(after, parts, last: false);
+            node.AddBeforeSelf(items);
+            part = node.Parent!;
+        }
+        else if (before != null)
+        {
+            var node = Outermost(before, parts, last: true);
+            node.AddAfterSelf(items);
+            part = node.Parent!;
+        }
+        else
+        {
+            parts[^1].Add(items);
+            part = parts[^1];
+        }
+        if (!parts.Contains(part))
+            part = PartOf(part, parts);
+        return stretch.Written([(part, [part])]);
+    }
+
+    /// <summary>
+    /// The element of a paragraph's content that holds an inline, for markup to go beside it: the run it stands in, split
+    /// so that it begins (or ends, <paramref name="last"/>) the run; of a field the run of its beginning (of its end); one
+    /// that stands in no run itself (an equation, a simple field). Null for an inline read from elsewhere.
+    /// </summary>
+    static XElement? Holder(Stretch stretch, Inline inline, List<XElement> parts, bool last)
+    {
+        var element = inline is TextInline { Xml.Name.LocalName: "t" } ? TextOf(stretch, inline, parts) : inline.Xml is { } xml ? stretch.Find(xml) : null;
+        if (element == null || !In(element, parts))
+            return null;
+        if (inline is FieldInline && element.Name.LocalName == "fldChar" && element.Parent is { Name.LocalName: "r" } begin
+            && FieldRuns(element, PartOf(element, parts)) is { Count: > 0 } runs)
+            return last ? runs[^1] : begin;
+        if (element.Parent is not { Name.LocalName: "r" } run)
+            return element;
+        if (last)
+        {
+            if (element.ElementsAfterSelf().FirstOrDefault() is { } next)
+                SplitBefore(next);
+        }
+        else
+            SplitBefore(element);
+        return element.Parent!;
+    }
+
+    /// <summary>
+    /// The outermost element around a holder of a paragraph's content that it begins (or ends, <paramref name="last"/>),
+    /// properties aside, within the paragraph's part: a hyperlink, a content control, a smart tag, a revision, an equation's
+    /// paragraph; the holder itself where it stands in the part.
+    /// </summary>
+    static XElement Outermost(XElement holder, List<XElement> parts, bool last)
+    {
+        static bool Content(XElement e) => !e.Name.LocalName.EndsWith("Pr", StringComparison.Ordinal);
+        var node = holder;
+        while (node.Parent is { } parent && !parts.Contains(parent)
+            && (last ? parent.Elements().LastOrDefault(Content) : parent.Elements().FirstOrDefault(Content)) == node)
+            node = parent;
+        return node;
+    }
+
+    /// <summary>
+    /// Blocks put after a paragraph in its body, table cell or text box (see WordDocument.InsertBlocks): after its last
+    /// part, or before its first with <paramref name="before"/>. Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The blocks are to be tracked, which is not done yet; nothing changes.</exception>
+    public static string InsertBlocks(Stretch stretch, ParagraphBlock paragraph, IReadOnlyList<XElement> markup, bool before, Tracking? tracking = null)
+    {
+        if (tracking != null)
+            throw new NotSupportedException("Blocks are not put in as a tracked change yet.");
+        var parts = Parts(stretch, paragraph);
+        var beside = before ? parts[0] : parts[^1];
+        if (before)
+            beside.AddBeforeSelf(markup);
+        else
+            beside.AddAfterSelf(markup);
+        return stretch.Written([(beside, before ? [.. markup, beside] : [beside, .. markup])]);
+    }
+
+    /// <summary>
     /// A run of its own for new text where no text is to continue: before what comes after the place (its run, or what
     /// holds it in its part of the paragraph: an equation, a field, a content control), else at the end of the paragraph's
     /// last part, never past an object between the text before and the place; in the format of the run of the text before

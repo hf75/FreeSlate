@@ -87,6 +87,30 @@ public interface IEditableDocument : IDisposable
     /// </summary>
     bool KeepsMarks { get; }
 
+    /// <summary>
+    /// Puts markup of the document's own kind into a paragraph at a place, as pasting or an application's Insert commands
+    /// put it there: in a Word document WordprocessingML that stands among runs (runs; a picture, chart, shape or WordArt
+    /// in a w:drawing; an equation; a field), its namespaces named by their usual prefixes (w, r, wp, a, pic, c, m, wps,
+    /// wpg …) or declared in it, with the parts it needs added to the package (see NewPart). Returns the ids of the
+    /// paragraphs it brought (those of its text boxes), in their order. Slides take none (NotSupportedException).
+    /// </summary>
+    IReadOnlyList<int> InsertMarkup(int paragraph, int offset, string markup, IReadOnlyList<NewPart>? parts = null);
+
+    /// <summary>
+    /// Puts blocks of the document's own kind after a paragraph in its body, table cell or text box (before it with
+    /// <paramref name="before"/>), with the parts they need (see NewPart): in a Word document paragraphs and tables as
+    /// WordprocessingML, a paragraph among them that ends a section beginning one after it. Returns the ids of the
+    /// paragraphs they hold, in reading order (a table's cell by cell). Slides take none (NotSupportedException).
+    /// </summary>
+    IReadOnlyList<int> InsertBlocks(int paragraph, string markup, bool before = false, IReadOnlyList<NewPart>? parts = null);
+
+    /// <summary>
+    /// Puts a footnote at a place (an endnote with <paramref name="endnote"/>): its reference mark there and its text in
+    /// the document's notes after the note's own mark, given as markup of runs (see InsertMarkup). Slides have no such
+    /// notes (NotSupportedException).
+    /// </summary>
+    void InsertNote(int paragraph, int offset, string markup, bool endnote = false);
+
     /// <summary>Takes a paragraph away with all its content.</summary>
     void Remove(int paragraph);
 
@@ -115,3 +139,12 @@ public interface IEditableDocument : IDisposable
     void Save(Stream output);
     void Save(string target);
 }
+
+/// <summary>
+/// A part a change adds to the package with the markup it puts in (see IEditableDocument.InsertMarkup): a picture, a
+/// chart, the workbook that holds a chart's data. <see cref="Name"/> is a wish: the part is numbered on where the package
+/// has a part so named or had one since it was opened (pictures are known by their part's name). The relationship to it,
+/// of the type given, goes from the main part, or from the new part whose key <see cref="From"/> names; where "{key}"
+/// stands in the markup or in the bytes of the part the relationship goes from, the relationship's id takes its place.
+/// </summary>
+public sealed record NewPart(string Key, string Name, string ContentType, string Relationship, byte[] Bytes, string? From = null);

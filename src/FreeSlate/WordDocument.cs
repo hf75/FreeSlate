@@ -16,9 +16,10 @@ namespace FreeSlate;
 /// them (Block.Id, which the places of its pages name, see PlacesItem) and keep through changes; text replaced at places
 /// of a paragraph's text (Docx.ParagraphText), a paragraph split in two, joined with the next or taken away, text and
 /// paragraphs given direct formatting (Docx.TextFormatting, Docx.ParagraphFormatting), as tracked changes where an
-/// author is set (Docx.Tracking); each change undone and done again; its pages as it reads now (with its markup or as
-/// all its tracked changes accepted); and the document saved as DOCX: the stretches of its body it
-/// changed written anew in the XML they were read from, every other byte of the package as it was (see Docx.TextEdits).
+/// author is set (Docx.Tracking); markup, blocks and notes put in with the parts they bring (see InsertMarkup); each
+/// change undone and done again; its pages as it reads now (with its markup or as all its tracked changes accepted);
+/// and the document saved as DOCX: the stretches of its body it changed written anew in the XML they were read from,
+/// every other byte of the package as it was (see Docx.TextEdits).
 /// A change is made in the XML the blocks it touches were read from, a stretch of the main part's text: parsed afresh,
 /// changed, made ready as the part was when it was loaded and read anew in place of those blocks (ModelReader.Reread),
 /// the numbers of the lists after it worked out anew; its pages are laid out again from the last checkpoint before it
@@ -26,7 +27,7 @@ namespace FreeSlate;
 /// paragraph whose mark is hidden or deleted, a note reference, a section break that comes or goes), the document is read
 /// again whole. Changes reach the body's paragraphs, in tables and text boxes too.
 /// </summary>
-public sealed class WordDocument : IEditableDocument
+public sealed partial class WordDocument : IEditableDocument
 {
     readonly OpcPackage package;
     readonly FontLocator? fonts;
@@ -159,10 +160,11 @@ public sealed class WordDocument : IEditableDocument
     }
 
     /// <summary>
-    /// A version of the document: the main part's bytes it was read from whole, the stretches of its body changed since
-    /// and its body's blocks (see kept), whose ids the blocks read for it again take.
+    /// A version of the document: the main part's bytes it was read from whole, the stretches of its body changed since,
+    /// its body's blocks (see kept), whose ids the blocks read for it again take, and the other parts as it has them (see
+    /// partBytes).
     /// </summary>
-    sealed record Version(byte[] Whole, ImmutableList<Island> Islands, ImmutableList<Block> Blocks);
+    sealed record Version(byte[] Whole, ImmutableList<Island> Islands, ImmutableList<Block> Blocks, ImmutableDictionary<string, byte[]?> Parts);
 
     WordDocument(OpcPackage package, FontLocator? fonts, CultureInfo culture, DateTime? printed, bool markup)
     {
@@ -737,7 +739,8 @@ public sealed class WordDocument : IEditableDocument
     /// alike that stays (two empty paragraphs), which the next change read in place would give again. Returns where an
     /// element of the new text stands in it.
     /// </summary>
-    Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, Func<IReadOnlyList<Block>?>? like = null)
+    Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, Func<IReadOnlyList<Block>?>? like = null,
+        IReadOnlyDictionary<string, byte[]?>? changes = null)
     {
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
         var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
@@ -749,9 +752,23 @@ public sealed class WordDocument : IEditableDocument
         var changed = islands.RemoveRange(first, after - first);
         if (text != wholeText.Text[start..end])
             changed = changed.Insert(first, new Island(start, end, text));
-        var where = Apply(start, end, text, old, null, changed, like?.Invoke());
+        // The other parts the change gives new bytes before the body is read anew: it reads what they hold (notes, the
+        // targets of relationships).
+        var partsBefore = partBytes;
+        if (changes is { Count: > 0 })
+            Put(changes);
+        Func<XElement, int> where;
+        try
+        {
+            where = Apply(start, end, text, old, null, changed, like?.Invoke());
+        }
+        catch
+        {
+            Restore(partsBefore);
+            throw;
+        }
         versions.RemoveRange(version + 1, versions.Count - version - 1);
-        versions.Add(new Version(whole, islands, kept));
+        versions.Add(new Version(whole, islands, kept, partBytes));
         version++;
         return where;
     }
@@ -773,6 +790,7 @@ public sealed class WordDocument : IEditableDocument
     void Go(int target)
     {
         var to = versions[target];
+        Restore(to.Parts);
         if (Island.Differing(islands, to.Islands) is { Count: > 0 } differ)
         {
             var (old, before, start, end) = Covering(differ.Min(i => i.Start), differ.Max(i => i.End));
@@ -786,7 +804,7 @@ public sealed class WordDocument : IEditableDocument
             text.Append(wholeText.Text, at, end - at);
             Apply(start, end, text.ToString(), old, before, to.Islands, to.Blocks);
         }
-        versions[target] = new Version(whole, islands, kept);
+        versions[target] = new Version(whole, islands, kept, partBytes);
         version = target;
     }
 
@@ -1156,7 +1174,7 @@ public sealed class WordDocument : IEditableDocument
         Index();
         // The version the document opened as.
         if (versions.Count == 0)
-            versions.Add(new Version(whole, islands, kept));
+            versions.Add(new Version(whole, islands, kept, partBytes));
     }
 
     /// <summary>

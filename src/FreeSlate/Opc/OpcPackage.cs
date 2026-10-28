@@ -34,7 +34,8 @@ public sealed class OpcPackage : IDisposable
             ReadContentTypes();
     }
 
-    const string ContentTypesPart = "/[Content_Types].xml";
+    /// <summary>The part that names the content types of the others.</summary>
+    public const string ContentTypesPart = "/[Content_Types].xml";
 
     /// <summary>The content types of the parts (by extension, and by part name where they differ), as the package reads now.</summary>
     void ReadContentTypes()
@@ -229,7 +230,7 @@ public sealed class OpcPackage : IDisposable
 
         var list = new List<Relationship>();
         var directory = partName == "/" ? "/" : partName[..(partName.LastIndexOf('/') + 1)];
-        var relsName = partName == "/" ? "/_rels/.rels" : $"{directory}_rels/{partName[(partName.LastIndexOf('/') + 1)..]}.rels";
+        var relsName = RelationshipsPart(partName);
         if (Exists(relsName))
         {
             foreach (var r in ReadXml(relsName).Root!.Elements(XName.Get("Relationship", RelationshipsNs)))
@@ -246,6 +247,10 @@ public sealed class OpcPackage : IDisposable
         relationships[partName] = list;
         return list;
     }
+
+    /// <summary>The part that holds a part's relationships ("/word/_rels/document.xml.rels"); "/" for the package's.</summary>
+    public static string RelationshipsPart(string partName) =>
+        partName == "/" ? "/_rels/.rels" : $"{partName[..(partName.LastIndexOf('/') + 1)]}_rels/{partName[(partName.LastIndexOf('/') + 1)..]}.rels";
 
     public Relationship? Relationship(string partName, string id) =>
         Relationships(partName).FirstOrDefault(r => r.Id == id);

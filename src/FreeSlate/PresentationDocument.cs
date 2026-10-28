@@ -254,6 +254,18 @@ public sealed partial class PresentationDocument : IEditableDocument
             return ([p], body);
         });
 
+    /// <summary>Slides take no WordprocessingML (see IEditableDocument.InsertMarkup).</summary>
+    public IReadOnlyList<int> InsertMarkup(int paragraph, int offset, string markup, IReadOnlyList<NewPart>? parts = null) =>
+        throw new NotSupportedException("Slides take no markup put in.");
+
+    /// <summary>Slides take no WordprocessingML (see IEditableDocument.InsertBlocks).</summary>
+    public IReadOnlyList<int> InsertBlocks(int paragraph, string markup, bool before = false, IReadOnlyList<NewPart>? parts = null) =>
+        throw new NotSupportedException("Slides take no blocks put in.");
+
+    /// <summary>Slides have no footnotes or endnotes (see IEditableDocument.InsertNote).</summary>
+    public void InsertNote(int paragraph, int offset, string markup, bool endnote = false) =>
+        throw new NotSupportedException("Slides have no footnotes or endnotes.");
+
     /// <summary>Takes a paragraph away with all its text; the only paragraph of a text body stays.</summary>
     public void Remove(int paragraph) =>
         Change(paragraph, false, (p, _, body) =>

@@ -138,6 +138,52 @@ public sealed class EditSession(IEditableDocument document)
     /// <summary>Breaks the line at the cursor in place of the selection, within its paragraph (Shift+Enter).</summary>
     public void LineBreak() => Type("\v");
 
+    /// <summary>
+    /// Puts markup of the document's own kind at the cursor in place of the selection, a handling of its own (see
+    /// IEditableDocument.InsertMarkup): a picture, a chart, a shape or WordArt, an equation, a field, with the parts it
+    /// needs; the cursor then after it. Returns the ids of the paragraphs it brought (its text boxes'), to type into.
+    /// </summary>
+    public IReadOnlyList<int> InsertMarkup(string markup, IReadOnlyList<NewPart>? parts = null)
+    {
+        IReadOnlyList<int> made = [];
+        Act(false, () =>
+        {
+            var at = DeleteSelection(typing: false);
+            var length = document.Text(at.Paragraph).Length;
+            made = document.InsertMarkup(at.Paragraph, at.Offset, markup, parts);
+            return Same(at with { Offset = at.Offset + document.Text(at.Paragraph).Length - length });
+        });
+        return made;
+    }
+
+    /// <summary>
+    /// Puts blocks of the document's own kind after the cursor's paragraph (see IEditableDocument.InsertBlocks), a
+    /// handling of its own: paragraphs, tables, a section's end. The cursor then stands at the start of the first
+    /// paragraph they hold; returns their ids in reading order (a table's cell by cell), to type into.
+    /// </summary>
+    public IReadOnlyList<int> InsertBlocks(string markup, IReadOnlyList<NewPart>? parts = null)
+    {
+        IReadOnlyList<int> made = [];
+        Act(false, () =>
+        {
+            made = document.InsertBlocks(Caret.Paragraph, markup, parts: parts);
+            return Same(made.Count > 0 ? new TextPlace(made[0], 0) : Caret);
+        });
+        return made;
+    }
+
+    /// <summary>
+    /// Puts a footnote (an endnote) at the cursor in place of the selection, a handling of its own (see
+    /// IEditableDocument.InsertNote): its text given as markup of runs; the cursor then after its reference.
+    /// </summary>
+    public void InsertNote(string markup, bool endnote = false) => Act(false, () =>
+    {
+        var at = DeleteSelection(typing: false);
+        var length = document.Text(at.Paragraph).Length;
+        document.InsertNote(at.Paragraph, at.Offset, markup, endnote);
+        return Same(at with { Offset = at.Offset + document.Text(at.Paragraph).Length - length });
+    });
+
     /// <summary>Takes the selection away, or the character before the cursor; at a paragraph's start joins it with the one before.</summary>
     public void Backspace() => Act(false, () =>
     {

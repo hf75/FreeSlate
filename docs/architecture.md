@@ -153,11 +153,16 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   reader records the numbers each story asked for (`Docx/Numbers`), so that the lists after a change are numbered anew
   without reading their paragraphs again. Saving writes the changed stretches back into the bytes the part was read
   from (`Opc/PartText`), every other byte of the package as it was. Versions share the blocks they have alike.
+- `WordDocument` also takes markup of its own kind (`WordDocument.Insert.cs`): runs among the text (pictures, charts,
+  shapes and WordArt, equations, fields), blocks next to a paragraph (paragraphs, tables, sections) and footnotes, with
+  the parts they bring (a picture, a chart and its workbook, the notes). Each version keeps the other parts as it has
+  them, so that undoing a picture takes its part away again with the drawing.
 - `PresentationDocument` makes its changes in the XML of the slides (`Pptx/SlideEdits` for text, `Pptx/SlideShapes` for
   shapes, `Pptx/SlideList` for the list of slides and the parts around it), reads the slide again and draws it anew;
   text that shrinks to fit its shape, and shapes that grow to their text, are fitted anew as PowerPoint fits them.
 - `Editing/EditSession` is an editor's work without its surface, over either kind of document: the cursor and the
-  selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, each handling one step to undo.
+  selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, markup, blocks and notes put in, each
+  handling one step to undo.
 
 The rules of each change (where new text goes, which paragraph keeps its properties and its mark, what a tracked
 change records) were measured in Word and PowerPoint through COM, as the rendering rules were.
