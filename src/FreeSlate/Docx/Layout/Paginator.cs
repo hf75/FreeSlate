@@ -2095,7 +2095,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         Copy(storyOwners, source.storyOwners);
         pageNotes.Clear();
         pageNotes.AddRange(source.pageNotes);
-        notesHeight = source.notesHeight;
+        (notesHeight, noteSection) = (source.notesHeight, source.noteSection);
         (splitNote, carried, carriedHere, bodyEnd) = (source.splitNote, source.carried, source.carriedHere, source.bodyEnd);
         keptNotes = source.keptNotes is { } kept ? kept with { Page = Copied(kept.Page) } : null;
         unitNotes.Clear();
@@ -2892,7 +2892,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             page.Strokes.AddRange(strokes.Select(s => s.Offset(page.TextLeft, y)));
             y += height;
         }
-        if (properties.Columns > 1 && settled.NoteBands.TryGetValue(page.Number, out var band))
+        // (Bands are known of pages whose notes stand in columns, which a section begun on them may set up.)
+        if (settled.NoteBands.TryGetValue(page.Number, out var band))
             notesHeight = Math.Max(notesHeight, band);
         // The next parts of floating tables the text went on beside stand at the top of the new page (see
         // PlaceFloatingTable).
@@ -3391,6 +3392,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     double notesHeight;
 
     /// <summary>
+    /// The section the first of the current page's notes is referred to in, whose columns the notes take (see
+    /// NoteColumns); null while the page has none.
+    /// </summary>
+    SectionProperties? noteSection;
+
+    /// <summary>
     /// A note split at the bottom of the current page: its id and the part shown here; what continues of it (and of
     /// the notes after it on its line) on the next page; the part of such a continuation the current page shows; and
     /// where the body text had to end once the note filled the page.
@@ -3443,15 +3450,30 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     readonly Dictionary<(string, double), NoteBox> noteBoxes = [];
 
+    static readonly XNamespace W15 = "http://schemas.microsoft.com/office/word/2012/wordml";
+
     /// <summary>
     /// The columns footnotes stand in (measured with docx/local/fnpages-h): a page of several columns has its notes in
-    /// columns too, under one separator at the left.
+    /// columns too, under one separator at the left; on a page of sections with other columns, those of the section the
+    /// notes are referred to in, until the page has notes the section being laid out (measured with docx/local/fnc-*:
+    /// one column, then two continuous, notes referred to in the second: in two columns; referred to in the first: across
+    /// the page; the same with two columns first). The section's w15:footnoteColumns gives the notes a number of columns
+    /// of their own, 1 across the page (docx/external/libreoffice/extras-ooxmlexport/tdf124637_sectionMargin: two
+    /// columns of text, the note across the page); other numbers than the section's in equal columns.
     /// </summary>
     List<(double Left, double Width)> NoteColumns()
     {
-        var s = page!.Section;
-        if (s.Columns <= 1)
-            return [(page.TextLeft, page.TextWidth)];
+        var s = noteSection ?? section;
+        var count = (string?)s.Element?.Element(W15 + "footnoteColumns")?.Attribute(Wml.W + "val") is { } value
+            && int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var own) && own >= 1
+            ? own : s.Columns;
+        if (count <= 1)
+            return [(page!.TextLeft, page.TextWidth)];
+        if (count != s.Columns)
+        {
+            var width = (page!.TextWidth - s.ColumnSpace * (count - 1)) / count;
+            return [.. Enumerable.Range(0, count).Select(k => (page.TextLeft + k * (width + s.ColumnSpace), width))];
+        }
         var columns = new List<(double Left, double Width)>();
         var left = page.TextLeft;
         for (var k = 0; k < s.Columns; k++)
@@ -3534,7 +3556,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         if (ids == null || footnotes == null || page == null)
             return 0;
-        if (page.Section.Columns > 1)
+        if (NoteColumns().Count > 1)
         {
             var fresh = ids.Where(id => footnotes.ContainsKey(id) && !pageNotes.Contains(id)).Distinct().ToList();
             return fresh.Count == 0 ? 0 : Math.Max(0, Band(pageNotes.Concat(fresh)) - notesHeight);
@@ -3552,6 +3574,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return;
         var added = ids.Where(id => footnotes.ContainsKey(id) && !pageNotes.Contains(id)).Distinct().ToList();
         notesHeight += NotesHeight(added);
+        if (pageNotes.Count == 0 && added.Count > 0)
+            noteSection ??= section;
         pageNotes.AddRange(added);
     }
 
@@ -3575,7 +3599,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     bool SplitNotes(List<string> ids, double room)
     {
-        if (footnotes == null || page!.Section.Columns > 1)
+        if (footnotes == null || NoteColumns().Count > 1)
             return false;
         ids = ids.Where(id => footnotes.ContainsKey(id) && !pageNotes.Contains(id)).Distinct().ToList();
         if (ids.Count == 0)
@@ -3605,7 +3629,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             pageNotes.Clear();
             notesHeight = 0;
-            (splitNote, carriedHere, bodyEnd) = (null, null, null);
+            (splitNote, carriedHere, bodyEnd, noteSection) = (null, null, null, null);
             return y;
         }
         // A section that puts its footnotes beneath the text (its own w:footnotePr/w:pos; the settings' alone leave
@@ -3649,7 +3673,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         pageNotes.Clear();
         notesHeight = 0;
-        (splitNote, carriedHere, bodyEnd) = (null, null, null);
+        (splitNote, carriedHere, bodyEnd, noteSection) = (null, null, null, null);
         return at;
     }
 
@@ -3727,6 +3751,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         pageNotes.Clear();
         pageNotes.AddRange(stays);
+        if (stays.Count == 0)
+            noteSection = null;
         RecountNotes();
     }
 
