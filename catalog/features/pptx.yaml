@@ -611,7 +611,10 @@ areas:
           faces of cans, cubes and bevels; local/pathgrad3: 99.2 %, local/pathgrad_all: 98.6 %).
           A gradFill without gsLst takes the stops of the style's gradient (fillRef) in its own direction
           (Apache POI bug 63200). A gradient that does not turn with its shape (rotWithShape 0) keeps the
-          slide's directions through its groups' turns and flips too (openxml-sdk's o09_Performance_typical).
+          slide's directions through its groups' turns and flips too (openxml-sdk's o09_Performance_typical). A
+          slide background shaded to the title (p:bgPr shadeToTitle) has its path gradient's focus on the title
+          placeholder's box, as the slide, its layout or its master places it (LibreOffice's sd/tdf114848 slide 5:
+          white under the master's title, D1C39F at the slide's edges; the deck 86.9 → 90.4 %).
 
       - id: fill.pattern
         title: Pattern fills
@@ -1194,8 +1197,8 @@ areas:
           and 2 pt sets every line at 6.5 pt whatever its alignment; a box 1 pt high 0.5 pt below its top). A
           placeholder 0 wide does not wrap (one line in footer, body and title placeholders), while text
           boxes, shapes and placeholders 1 pt wide wrap every character (LibreOffice's 0-width-text-wrap).
-          Verified with generated/text-body (97.7 %), text-more and objects-more. A text block wider than its area
-          (no wrap, long words) is centered too, reaching out on both sides.
+          Verified with generated/text-body (97.7 %), text-more and objects-more. With anchorCtr a text block wider
+          than its area (no wrap, long words) is centered too, reaching out on both sides.
 
       - id: text.autofit
         title: Autofit

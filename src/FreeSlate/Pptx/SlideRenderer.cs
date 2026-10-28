@@ -2115,11 +2115,38 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (bg == null)
                 continue;
             if (bg.Element(Ns.P + "bgPr") is { } bgPr && FillReader.FindFill(bgPr) is { } f)
+            {
                 fill = FillReader.Read(f, slide.Colors, slide.Images(part!), slide.ImageSizes(part!));
+                // A background shaded to the title has its path gradient's focus on the title's box (measured:
+                // LibreOffice's sd/tdf114848 slide 5, white under the master's title, D1C39F at the slide's edges).
+                if (bgPr.Bool("shadeToTitle") == true && fill is GradientFill { Path: not null } gradient && TitleBox() is var (tx, ty, tw, th))
+                {
+                    var (sw, sh) = ((double)slide.Presentation.SlideWidth, (double)slide.Presentation.SlideHeight);
+                    fill = gradient with { FocusRect = (tx / sw, ty / sh, 1 - (tx + tw) / sw, 1 - (ty + th) / sh) };
+                }
+            }
             else if (bg.Element(Ns.P + "bgRef") is { } bgRef && slide.Theme.FillStyle(bgRef.Int("idx") ?? 0) is { } themed)
                 fill = slide.ThemedFill(themed, slide.Colors.WithPlaceholder(slide.Colors.ResolveChild(bgRef)));
             break;
         }
         return fill is NoFill ? new SolidFill(slide.Colors.Resolve(new XElement(Ns.A + "schemeClr", new XAttribute("val", "bg1")))) : fill;
+    }
+
+    /// <summary>The box of the slide's title placeholder (EMU), as the slide, its layout or its master place it.</summary>
+    (double X, double Y, double W, double H)? TitleBox()
+    {
+        static bool IsTitle(XElement shape) => Placeholders.Ph(shape) is { } ph && Placeholders.Type(ph) is "title" or "ctrTitle";
+        foreach (var (document, part, isSlide) in new[] { (slide.Slide, slide.SlidePart, true), (slide.Layout, slide.LayoutPart, false), (slide.Master, slide.MasterPart, false) })
+        {
+            if (document?.Root?.Element(Ns.P + "cSld")?.Element(Ns.P + "spTree")?.Elements(Ns.P + "sp").FirstOrDefault(IsTitle) is not { } title)
+                continue;
+            var chain = Chain(title, part!, isSlide);
+            if (chain.Select(s => SpPr(s.Element)?.Element(Ns.A + "xfrm")).FirstOrDefault(x => x?.Element(Ns.A + "ext") != null) is { } xfrm)
+            {
+                var (x, y, w, h, _, _, _) = ReadTransform(xfrm);
+                return (x, y, w, h);
+            }
+        }
+        return null;
     }
 }
