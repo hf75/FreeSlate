@@ -620,14 +620,17 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 : $" fill=\"{style.Color.ToHex()}\"" + (style.Color.A < 0.999 ? $" fill-opacity=\"{Units.Css4(style.Color.A)}\"" : "");
             var stroke = style.Line is { } outline ? Paint.Stroke(outline, box.W, box.H, defs) : "";
             // A VML WordArt shape's effects keep the shape's sizes (measured with docx/local/vps-wa-plain, vps-wa-4: its
-            // shadow 2 pt off by default and 4 pt where it says so, not scaled with the text).
-            SvgEffects.TextScale? scale = style.Effects?.Attribute(TextWarp.ShapeEffects) != null ? null : SvgEffects.TextScale.Of(lineSizes[glyphs[i].Line]);
+            // shadow 2 pt off by default and 4 pt where it says so, not scaled with the text), and so do PowerPoint's
+            // effects of warped text (measured with poi/PPTWithAttachments's WordArt in 10 and 40 pt, with and without
+            // fromWordArt: its shadow 44.4 pt up and left in all, unscaled or scaled to 125 %).
+            SvgEffects.TextScale? scale = style.Effects?.Attribute(TextWarp.ShapeEffects) != null || !slide.Presentation.Word ? null : SvgEffects.TextScale.Of(lineSizes[glyphs[i].Line]);
             // A scaled or skewed shadow of VML WordArt is a transformed copy of its glyphs behind them, about the
             // shape's corner or side (docx/local/vps-*; LibreOffice's extras-ooxmlexport/fdo78300: a perspective shadow
-            // half as high and skewed left under "Homer was sleeping").
-            if (fromWordArt && slide.Presentation.Word && style.Effects is { } skewed && SvgEffects.Shadow(skewed, Colors, box.W, box.H, defs) is { } copy)
+            // half as high and skewed left under "Homer was sleeping"); in PowerPoint of any warped text, its outline
+            // casting it too (poi/PPTWithAttachments: a copy 125 % about the box's top left corner, 44.4 pt off).
+            if ((fromWordArt || !slide.Presentation.Word) && style.Effects is { } skewed && SvgEffects.Shadow(skewed, Colors, box.W, box.H, defs) is { } copy)
                 warpedText.Items.Add(new TransformItem(Matrix.Translate(box.L, box.T), [new FilterItem(copy.Filter, copy.Model, [new TransformItem(copy.Transform,
-                    [new ShapePathItem(TextWarp.PathData(contours), fillPaint, null, fill)
+                    [new ShapePathItem(TextWarp.PathData(contours), fillPaint, slide.Presentation.Word ? null : style.Line, slide.Presentation.Word ? fill : $"{fill}{stroke}")
                     {
                         Lead = $" transform=\"translate({Units.Css(-box.L)},{Units.Css(-box.T)})\"", Transform = Matrix.Translate(-box.L, -box.T),
                     }])])]) { Css = $"translate({Units.Css(box.L)},{Units.Css(box.T)})" });

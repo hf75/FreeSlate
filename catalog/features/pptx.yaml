@@ -1487,7 +1487,7 @@ areas:
         strategy: >-
           The shape effect filters on the glyph layer, sized with the line's largest font; scaled and skewed
           shadows as transformed copies about the shape's box; reflections mirrored line by line; warped
-          WordArt text gets the same filters.
+          text gets the filters at a shape's sizes and its scaled shadows as copies about its box.
         office: >-
           PowerPoint sizes text effects with the largest font of each line, unlike a shape's (measured with
           probe decks of 8 to 240 pt lines in several fonts, in exported slides and in the slide show alike):
@@ -1495,7 +1495,11 @@ areas:
           size / 117 pt, a reflection's blur with size / 79 pt and its distance with size / 14.5 pt. A
           reflection mirrors each line about its baseline: the distance extends the mirrored box below the
           baseline by half the scaled distance and the fade runs over that box. Text glow is dilated by 0.46 r
-          and blurred by r / 6 at the outer scale. Verified with generated/text-effects.
+          and blurred by r / 6 at the outer scale. Verified with generated/text-effects. Warped text (prstTxWarp)
+          has its effects at a shape's sizes whatever its font size, and a scaled or skewed shadow is a copy of the
+          warped glyphs and their outline about the text box (measured with poi/PPTWithAttachments's WordArt in 10
+          and 40 pt, with and without fromWordArt, its shadow unscaled and at 125 %: 44.4 pt up and left in all;
+          LibreOffice's sd/tdf114848 slide 1 91.6 → 92.0 %).
 
       - id: text.fields
         title: Fields
