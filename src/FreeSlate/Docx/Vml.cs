@@ -1154,6 +1154,10 @@ public static class Vml
                 vertical != null ? new XAttribute("vert", vertical) : null,
                 fits ? new XElement(Ns.A + "spAutoFit") : null));
         }
+        // A DrawingML text body given with the shape is its text for the slide renderer (the text of PowerPoint's
+        // legacy diagrams, see Pptx.LegacyDrawing.Shape).
+        else if (shape.Element(Drawings.Wps + "txbx3D") is { } body)
+            wsp.Add(new XElement(body));
         return wsp;
     }
 

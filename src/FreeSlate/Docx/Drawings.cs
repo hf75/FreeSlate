@@ -523,6 +523,23 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         }
     }
 
+    /// <summary>
+    /// The first VML shape of a container as a PresentationML element in the box (x, y, w, h) points: VML outside Word
+    /// documents (PowerPoint's legacy drawings), converted as Word's; null where nothing can be drawn.
+    /// </summary>
+    public static XElement? FromVml(XElement container, double x, double y, double w, double h)
+    {
+        foreach (var drawing in Vml.ToDrawings(container))
+        {
+            var graphic = drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData");
+            if (graphic?.Elements().FirstOrDefault() is not { } content || Convert(content, drawing.Element(Wp + "docPr"), graphic) is not { } element)
+                continue;
+            Place(element, x, y, w, h);
+            return element;
+        }
+        return null;
+    }
+
     /// <summary>A Word drawing element in PresentationML names, or null for content the slide renderer cannot draw.</summary>
     static XElement? Convert(XElement e, XElement? docPr, XElement graphicData)
     {

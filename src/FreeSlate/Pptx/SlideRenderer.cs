@@ -1283,6 +1283,18 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             return;
         }
 
+        // A legacy drawing (com:legacyDrawing, catalog: legacy.vml): the organization charts and diagrams of PowerPoint
+        // 2002 and 2003, kept in the slide's VML drawing, converted as Word's VML, in the frame's box (POI's
+        // PPTWithAttachments: an org chart of rounded boxes, elbow connectors and a node's text that was left out).
+        if (data.Elements().FirstOrDefault(e => e.Name.LocalName == "legacyDrawing") is { } legacyDrawing
+            && LegacyDrawing.Shape(slide.Presentation, part, legacyDrawing.Str("spid")) is var (vmlPart, container))
+        {
+            var (x, y, w, h, _, _, _) = ReadTransform(xfrm);
+            if (Docx.Drawings.FromVml(container, x / Units.EmuPerPoint, y / Units.EmuPerPoint, w / Units.EmuPerPoint, h / Units.EmuPerPoint) is { } converted)
+                RenderTree(new XElement(Ns.P + "spTree", converted), vmlPart, items, placement, isSlide: false);
+            return;
+        }
+
         if ((data.Element(Ns.C + "chart") ?? data.Element(Charts.ChartExModel.Cx + "chart"))?.Attribute(Ns.R + "id") is { } chartId
             && slide.Presentation.Package.Relationship(part, chartId.Value) is { External: false } chartRel)
         {
