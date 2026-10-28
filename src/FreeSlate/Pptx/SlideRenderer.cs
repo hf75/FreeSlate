@@ -370,6 +370,11 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             var dashed = stroke != " stroke=\"none\"" && Dashes.IsDashed(outline);
             var strokeData = !dashed ? outlined.Data
                 : slide.Presentation.Word ? Dashes.WordStart(path, axisAligned).Data : Dashes.StartAtClosingSegment(outlined).Data;
+            // Dashes end where their pattern ends, on half pixels too, smoothed there: PowerPoint's band across them lies
+            // on its pixels already (Outlined), crisp edges would put their ends on whole pixels (measured: LibreOffice's
+            // sd/tdf126741, a 1 px lgDashDotDot line beginning half a pixel in, its dashes' ends half covered;
+            // generated/lines-dash, dashes of 2 to 11 px a pixel off with crisp edges). A fill keeps its crisp edges.
+            var strokeCrisp = dashed && !slide.Presentation.Word ? "" : crisp;
             var strokeTarget = strokesLast ? strokes : paths;
             if (overlay is var (overlayPaint, blend) && pathFill is not NoFill)
             {
@@ -380,7 +385,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     new ShapePathItem(fillPath.Data, overlayPaint, null, $"{paint.Fill(overlayPaint, pw, ph, defs, rotation, origin)} stroke=\"none\" style=\"mix-blend-mode:{mode}\"{crisp}{rule}"),
                 ]));
                 if (stroke != " stroke=\"none\"")
-                    strokeTarget.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
+                    strokeTarget.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{strokeCrisp}") { DashesClosed = closed });
             }
             else if (strokesLast)
             {
@@ -389,23 +394,28 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                 else if (pathFill is not NoFill)
                     paths.Add(new ShapePathItem(fillPath.Data, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}{rule}"));
                 if (stroke != " stroke=\"none\"")
-                    strokes.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
+                    strokes.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{strokeCrisp}") { DashesClosed = closed });
             }
             else if (paint.PictureImage(pathFill, pw, ph, fillPath.Data, defs, crisp) is { } image)
             {
                 // A picture prints at its own resolution as an image clipped to the path, the outline over it.
                 paths.Add(new PictureItem(image.Image, image.X, image.Y, image.Width, image.Height, fillPath.Data, image.Clip, image.Filter));
                 if (stroke != " stroke=\"none\"")
-                    paths.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{crisp}") { DashesClosed = closed });
+                    paths.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}{strokeCrisp}") { DashesClosed = closed });
+            }
+            else if (strokeCrisp != crisp && (pathFill is not NoFill || path.Fill != "none" && fillable.Length > 0))
+            {
+                paths.Add(new ShapePathItem(strokeData, pathFill, null, $"{PathPaint(pathFill, path)} stroke=\"none\"{crisp}{rule}{(path.Fill != "none" ? fillable : "")}"));
+                paths.Add(new ShapePathItem(strokeData, Fill.None, outline, $" fill=\"none\"{stroke}") { DashesClosed = closed });
             }
             else
             {
                 paths.Add(new ShapePathItem(strokeData, pathFill, stroke != " stroke=\"none\"" ? outline : null,
-                    $"{PathPaint(pathFill, path)}{stroke}{crisp}{rule}{(path.Fill != "none" ? fillable : "")}") { DashesClosed = closed });
+                    $"{PathPaint(pathFill, path)}{stroke}{strokeCrisp}{rule}{(path.Fill != "none" ? fillable : "")}") { DashesClosed = closed });
             }
             if (dashed && outline!.Cap == "sq")
                 strokeTarget.AddRange(Dashes.SquareEnds(path, outline, Math.Max(Units.ToPx(outline.WidthEmu), 0.5),
-                    paint.Stroke(outline with { Dash = "solid", Cap = "flat" }, pw, ph, defs, origin) + crisp, paint.DashUnit(outline)));
+                    paint.Stroke(outline with { Dash = "solid", Cap = "flat" }, pw, ph, defs, origin) + strokeCrisp, paint.DashUnit(outline)));
             if (compound)
                 strokeTarget.AddRange(CompoundLines.Strokes(path, outline!, part => paint.Stroke(part, pw, ph, defs, origin)));
         }
