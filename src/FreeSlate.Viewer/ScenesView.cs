@@ -1000,7 +1000,11 @@ sealed class ScenesView : Control
                     canvas.Save();
                     canvas.Translate((float)row.Ours.X, (float)row.Ours.Y);
                     canvas.ClipRect(SKRect.Create((float)row.Ours.Width, (float)row.Ours.Height));
-                    canvas.DrawPicture(pictures.Page(scene));
+                    // The recording kept alive while it plays: an edit may forget it meanwhile, and its finalizer must
+                    // not free it under the canvas (a crash while typing fast).
+                    var page = pictures.Page(scene);
+                    canvas.DrawPicture(page);
+                    GC.KeepAlive(page);
                     // The selection over the text, the cursor at its place.
                     if (marks.TryGetValue(row.Index, out var mark))
                     {
