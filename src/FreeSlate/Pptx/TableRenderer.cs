@@ -309,15 +309,16 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
         // across it and its ends along it.
         if (text.Grid is { } grid && (px1 == px2 || py1 == py2))
         {
-            double End(double v, double origin, bool down) => Sampled(origin + v, 0, down).At - origin;
+            var device = text.Pixels;
+            double End(double v, double origin, bool down) => Sampled(origin + v, 0, down, down ? device.Y : device.X).At - origin;
             if (py1 == py2)
             {
-                (var at, width) = Sampled(grid.Y + py1, width, down: true);
+                (var at, width) = Sampled(grid.Y + py1, width, down: true, device.Y);
                 (py1, py2, px1, px2) = (at - grid.Y, at - grid.Y, End(px1, grid.X, false), End(px2, grid.X, false));
             }
             else
             {
-                (var at, width) = Sampled(grid.X + px1, width, down: false);
+                (var at, width) = Sampled(grid.X + px1, width, down: false, device.X);
                 (px1, px2, py1, py2) = (at - grid.X, at - grid.X, End(py1, grid.Y, true), End(py2, grid.Y, true));
             }
         }
@@ -338,10 +339,11 @@ public sealed class TableRenderer(SlideContext slide, SvgPaint paint, TextRender
     /// so the band covers what lies between its edges moved on to the next quarter or eighth, which the browser then
     /// covers exactly (measured with local/lw-probe and LibreOffice's table decks: a 1 px border 0.06 px below a pixel's
     /// top covers 3/4 of that row and 1/4 of the next; one 0.17 px right of a pixel's left 6/8 of it and 2/8 of the next).
+    /// The samples lie on the device's pixels, <paramref name="scale"/> of them a slide pixel along the band's axis.
     /// </summary>
-    static (double At, double Width) Sampled(double at, double width, bool down)
+    static (double At, double Width) Sampled(double at, double width, bool down, double scale)
     {
-        double Snap(double v) => down ? Math.Ceiling(v * 4 - 1e-9) / 4 : Math.Ceiling(v * 8 - 1e-9) / 8;
+        double Snap(double v) => (down ? Math.Ceiling(v * scale * 4 - 1e-9) / 4 : Math.Ceiling(v * scale * 8 - 1e-9) / 8) / scale;
         var (from, to) = (Snap(at - width / 2), Snap(at + width / 2));
         return ((from + to) / 2, to - from);
     }

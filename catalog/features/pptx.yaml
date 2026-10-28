@@ -2860,9 +2860,18 @@ areas:
         status: done
         strategy: >-
           One self-contained HTML document (or folder) per presentation: slides as fixed-size containers at 96 dpi,
-          scaled to the viewport; images and fonts embedded or next to it; no external dependencies.
+          scaled to the viewport; images and fonts embedded or next to it; no external dependencies. Slides can be
+          drawn for device pixels of their own (PixelGrid): scaled to them, outlines, rectangles and chart lines placed
+          on the slide's pixels first and then where PowerPoint's antialiasing samples the device's, text and table
+          borders on the device's.
         office: >-
-          Every corpus deck converts to one self-contained document.
+          Every corpus deck converts to one self-contained document. PowerPoint's own picture of a slide whose size is
+          no whole number of pixels covers the size rounded half up on each side, shapes across as on the slide and
+          down scaled by (h / H)(W / w), text and tables by w / W across and h / H down (measured with probe decks of
+          one-pixel bars at 1058.33 × 793.67, 907.17 × 604.67, 1280.5 × 720, 1209.5 × 604.67 and 1350 × 759.33 px,
+          of one-cell tables and of text boxes); outlines keep the places they take on the slide's pixels and are
+          antialiased where they land (a 1 px outline at 60.3 px of a 793.67 px slide drawn 794 high covers 3/4 of row
+          60 and 1/4 of row 61). Asked for another size, PowerPoint resamples the picture in bands.
 
       - id: engine.textLayout
         title: Text measurement and line breaking

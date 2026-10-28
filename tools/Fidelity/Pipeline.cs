@@ -32,6 +32,26 @@ public static class Pipeline
 
     public static string OutputDir(string deck) => Path.Combine(ReportDir, deck);
 
+    /// <summary>
+    /// The pixels PowerPoint draws a deck's slides on in its own picture of them, <paramref name="width"/> by
+    /// <paramref name="height"/> (the slide's size rounded half up on each side, see PowerPointSession.ExportSlides):
+    /// across as the slide's, down scaled by (h / H)(W / w) (measured with probe decks of one-pixel bars at 1058.33 by
+    /// 793.67, 907.17 by 604.67, 1280.5 by 720 and 1058.27 by 595.28 pixels: 131 of 132 bars as predicted), text and tables
+    /// by w / W across and h / H down (one-cell tables at three such sizes: every border); null where the slide's size is
+    /// whole pixels.
+    /// </summary>
+    static FreeSlate.Rendering.PixelGrid? PowerPointPixels(string deck, int width, int height)
+    {
+        using var package = FreeSlate.Opc.OpcPackage.Open(Repo.DeckFile(deck), Repo.DeckPassword(deck));
+        var presentation = package.FirstRelationship("/", "officeDocument")!.Target;
+        var size = package.ReadXml(presentation).Root!.Element((System.Xml.Linq.XNamespace)"http://schemas.openxmlformats.org/presentationml/2006/main" + "sldSz");
+        double Pixels(string name, long fallback) => (long.TryParse(size?.Attribute(name)?.Value, out var emu) ? emu : fallback) / 9525.0;
+        var (w, h) = (Pixels("cx", 12192000), Pixels("cy", 6858000));
+        if (Math.Abs(w - width) < 1e-9 && Math.Abs(h - height) < 1e-9)
+            return null;
+        return new FreeSlate.Rendering.PixelGrid(1, height / h * (w / width), Text: width / w);
+    }
+
     public static void Render(IEnumerable<string> decks)
     {
         if (Skia)
@@ -61,8 +81,10 @@ public static class Pipeline
             var htmlPath = Path.Combine(dir, "index.html");
             try
             {
-                // Fonts a deck embeds are used even where they are installed, as on a computer without them.
-                PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), embeddedFontsFirst: true, culture: Repo.Regional);
+                // Fonts a deck embeds are used even where they are installed, as on a computer without them; slides on the
+                // pixels of PowerPoint's own picture of them.
+                PptxConverter.ToFile(Repo.DeckFile(deck), htmlPath, password: Repo.DeckPassword(deck), embeddedFontsFirst: true, culture: Repo.Regional,
+                    pixels: reference != null ? PowerPointPixels(deck, width, height) : null);
             }
             catch (Exception e) when (e is not OutOfMemoryException)
             {
@@ -204,14 +226,16 @@ public static class Pipeline
                 else
                 {
                     // Fonts a deck embeds are used even where they are installed, as in Render.
-                    var scenes = PptxConverter.ToScenes(Repo.DeckFile(deck), password: Repo.DeckPassword(deck), embeddedFontsFirst: true,
-                        culture: Repo.Regional, hidden: true);
                     var reference = References.Load(deck);
+                    var (width, height) = reference is { } r ? (r.Width, r.Height) : (1280, 720);
+                    var pixels = reference != null ? PowerPointPixels(deck, width, height) : null;
+                    var scenes = PptxConverter.ToScenes(Repo.DeckFile(deck), password: Repo.DeckPassword(deck), embeddedFontsFirst: true,
+                        culture: Repo.Regional, hidden: true, pixels: pixels);
                     for (var i = 0; i < scenes.Count; i++)
                     {
-                        var (width, height) = reference is { } r ? (r.Width, r.Height) : (1280, 720);
-                        var scale = width / (scenes[i].Width * 96 / 72);
-                        File.WriteAllBytes(Path.Combine(dir, References.ImageName(deck, i + 1)), SkiaScene.Png(scenes[i], scale, width, height));
+                        // On PowerPoint's pixels each axis as they scale, else the width's scale for both.
+                        var scale = pixels?.X ?? width / (scenes[i].Width * 96 / 72);
+                        File.WriteAllBytes(Path.Combine(dir, References.ImageName(deck, i + 1)), SkiaScene.Png(scenes[i], scale, width, height, scaleY: pixels?.Y ?? scale));
                     }
                     Console.WriteLine($"  rendered  {deck}: {scenes.Count} slides with Skia ({watch.ElapsedMilliseconds} ms)");
                 }

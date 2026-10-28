@@ -85,26 +85,19 @@ public static class PptxConverter
         return reader.ReadToEnd().Replace("</script", "<\\/script", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>The HTML document of a presentation; a password-protected one needs its password.</summary>
-    /// <param name="embeddedFontsFirst">
-    /// Use the fonts embedded in the presentation even where the same family is installed (as on a computer without them).
-    /// </param>
-    /// <param name="culture">
-    /// The regional format of numbers and dates in charts, the system's (<see cref="CultureInfo.CurrentCulture"/>) as in
-    /// PowerPoint when null.
-    /// </param>
-    /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
     /// <summary>
     /// The presentation's slides as scenes (catalog: engine.output), each its size in points and its items as the HTML
     /// draws them; the slides the slide show leaves out only where <paramref name="hidden"/> asks for them.
     /// </summary>
+    /// <param name="pixels">The device pixels the slides are drawn on, as in <see cref="ToHtml"/>; the scene keeps their size.</param>
     /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
     public static List<Rendering.PageScene> ToScenes(string pptxPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false,
-        CultureInfo? culture = null, bool hidden = false)
+        CultureInfo? culture = null, bool hidden = false, Rendering.PixelGrid? pixels = null)
     {
         using var context = new PresentationContext(OpcPackage.Open(pptxPath, password), fonts, embeddedFontsFirst)
         {
             Culture = culture ?? CultureInfo.CurrentCulture,
+            Pixels = pixels ?? Rendering.PixelGrid.Css,
         };
         var deck = new DeckInfo(context);
         var paint = new SvgPaint();
@@ -122,12 +115,27 @@ public static class PptxConverter
         return scenes;
     }
 
+    /// <summary>The HTML document of a presentation; a password-protected one needs its password.</summary>
+    /// <param name="embeddedFontsFirst">
+    /// Use the fonts embedded in the presentation even where the same family is installed (as on a computer without them).
+    /// </param>
+    /// <param name="culture">
+    /// The regional format of numbers and dates in charts, the system's (<see cref="CultureInfo.CurrentCulture"/>) as in
+    /// PowerPoint when null.
+    /// </param>
+    /// <param name="pixels">
+    /// The device pixels the slides are drawn on, by default their own: each slide is scaled to them, outlines and
+    /// rectangles drawn where PowerPoint's antialiasing samples them and text snapped to them (see PixelGrid, which
+    /// also tells how to draw a slide as PowerPoint's own picture of it).
+    /// </param>
+    /// <exception cref="PasswordException">The presentation needs a password, or the password is wrong.</exception>
     public static string ToHtml(string pptxPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false,
-        CultureInfo? culture = null)
+        CultureInfo? culture = null, Rendering.PixelGrid? pixels = null)
     {
         using var context = new PresentationContext(OpcPackage.Open(pptxPath, password), fonts, embeddedFontsFirst)
         {
             Culture = culture ?? CultureInfo.CurrentCulture,
+            Pixels = pixels ?? Rendering.PixelGrid.Css,
         };
         var deck = new DeckInfo(context);
         var paint = new SvgPaint();
@@ -202,10 +210,10 @@ public static class PptxConverter
     }
 
     public static void ToFile(string pptxPath, string htmlPath, FontLocator? fonts = null, string? password = null, bool embeddedFontsFirst = false,
-        CultureInfo? culture = null)
+        CultureInfo? culture = null, Rendering.PixelGrid? pixels = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(htmlPath))!);
-        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts, password, embeddedFontsFirst, culture));
+        File.WriteAllText(htmlPath, ToHtml(pptxPath, fonts, password, embeddedFontsFirst, culture, pixels));
     }
 
     /// <summary>

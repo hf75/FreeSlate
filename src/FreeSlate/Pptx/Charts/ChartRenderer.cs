@@ -417,10 +417,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
-    /// <summary>Rounds an x coordinate (points) to the device pixel grid of the slide; returns pixels.</summary>
-    double SnapX(double points) => Math.Round(originX + points * PxPerPt) - originX;
+    /// <summary>
+    /// Rounds an x coordinate (points) to the pixels of the slide, then onto the device's as PowerPoint samples them
+    /// (PixelGrid.SampledX); returns pixels.
+    /// </summary>
+    double SnapX(double points) => slide.Presentation.Pixels.SampledX(Math.Round(originX + points * PxPerPt)) - originX;
 
-    double SnapY(double points) => Math.Round(originY + points * PxPerPt) - originY;
+    double SnapY(double points) => slide.Presentation.Pixels.SampledY(Math.Round(originY + points * PxPerPt)) - originY;
 
     /// <summary>
     /// PowerPoint draws chart lines with their vertices on the pixel grid: lines of odd pixel width centered in a
@@ -431,13 +434,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // Word prints its charts' lines at their exact places (GridLine).
         if (slide.Presentation.Word)
             return p;
-        var odd = (int)Math.Max(1, Math.Round(Units.ToPx(outline?.WidthEmu ?? 9525))) % 2 == 1;
-        double Snap(double v, double origin)
-        {
-            var device = origin + v * PxPerPt;
-            return ((odd ? Math.Floor(device) + 0.5 : Math.Round(device)) - origin) / PxPerPt;
-        }
-        return (Snap(p.X, originX), Snap(p.Y, originY));
+        var width = Math.Max(1, Math.Round(Units.ToPx(outline?.WidthEmu ?? 9525)));
+        double Snap(double v, double origin) => (width % 2 == 1 ? Math.Floor(origin + v * PxPerPt) + 0.5 : Math.Round(origin + v * PxPerPt)) - origin;
+        var pixels = slide.Presentation.Pixels;
+        return ((pixels.SampledX(originX + Snap(p.X, originX), width) - originX) / PxPerPt, (pixels.SampledY(originY + Snap(p.Y, originY), width) - originY) / PxPerPt);
     }
 
     /// <summary>
@@ -565,19 +565,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var line = outline with { WidthEmu = thickness * 9525 };
             if (Math.Abs(y1 - y2) < 1e-9)
             {
-                var center = Math.Round(originY + y1 * PxPerPt - thickness / 2) - originY + thickness / 2;
+                var center = slide.Presentation.Pixels.SampledY(Math.Round(originY + y1 * PxPerPt - thickness / 2)) - originY + thickness / 2;
                 return $"<path d=\"M{Units.Css(SnapX(x1))} {Units.Css(center)}H{Px(x2)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>";
             }
-            var middle = Math.Round(originX + x1 * PxPerPt - thickness / 2) - originX + thickness / 2;
+            var middle = slide.Presentation.Pixels.SampledX(Math.Round(originX + x1 * PxPerPt - thickness / 2)) - originX + thickness / 2;
             return $"<path d=\"M{Units.Css(middle)} {Units.Css(SnapY(y1))}V{Px(y2)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>";
         }
         var color = solid.Color.A < 0.999 ? $" fill=\"{solid.Color.ToHex()}\" fill-opacity=\"{Units.Css4(solid.Color.A)}\"" : $" fill=\"{solid.Color.ToHex()}\"";
         if (Math.Abs(y1 - y2) < 1e-9)
         {
-            var y = Math.Round(originY + y1 * PxPerPt - thickness / 2) - originY;
+            var y = slide.Presentation.Pixels.SampledY(Math.Round(originY + y1 * PxPerPt - thickness / 2)) - originY;
             return $"<rect x=\"{Px(Math.Min(x1, x2))}\" y=\"{Units.Css(y)}\" width=\"{Px(Math.Abs(x2 - x1))}\" height=\"{Units.Css(thickness)}\"{color}/>";
         }
-        var x = Math.Round(originX + x1 * PxPerPt - thickness / 2) - originX;
+        var x = slide.Presentation.Pixels.SampledX(Math.Round(originX + x1 * PxPerPt - thickness / 2)) - originX;
         return $"<rect x=\"{Units.Css(x)}\" y=\"{Px(Math.Min(y1, y2))}\" width=\"{Units.Css(thickness)}\" height=\"{Px(Math.Abs(y2 - y1))}\"{color}/>";
     }
 

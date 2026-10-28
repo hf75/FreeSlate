@@ -129,6 +129,12 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// </summary>
     public (double X, double Y)? Grid { get; set; }
 
+    /// <summary>The device pixels the frame's text stands on (PixelGrid.OfText).</summary>
+    public PixelGrid Pixels { get; set; } = PixelGrid.Css;
+
+    /// <summary>The pixels text snaps to: the device's (Pixels) where it stands on the slide's (Grid), else its frame's own.</summary>
+    PixelGrid Device => Grid != null ? Pixels : PixelGrid.Css;
+
     /// <summary>The underline the run being drawn shares with the runs beside it (see Shared); null: its own.</summary>
     Underlining? sharedUnderline;
 
@@ -803,7 +809,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             }
             sharedUnderline = null;
             if (line.Id is { } id)
-                items.Add(Places(id, line, left, baseline, origins!));
+                items.Add(Places(id, line, left, baseline, origins!, Device));
         }
         return defs.Length > 0 ? [new DefsItem(defs.ToString()), block] : [block];
     }
@@ -816,7 +822,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// line's last character in reading order, or where an empty line's text would begin. Bullets and an ellipsis of
     /// the layout have none.
     /// </summary>
-    static PlacesItem Places(int id, LaidOutLine line, double left, double baseline, List<double> origins)
+    static PlacesItem Places(int id, LaidOutLine line, double left, double baseline, List<double> origins, PixelGrid device)
     {
         var placed = new List<(int Index, double Start, double End, byte Format)>();
         for (var k = 0; k < line.Runs.Count; k++)
@@ -826,7 +832,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 continue;
             var style = run.Style;
             var origin = left + origins[k];
-            double At(double from) => origin + Math.Floor(from * PxPerPt + 0.5) / PxPerPt;
+            double At(double from) => origin + device.OnX(from * PxPerPt, HalfUp) / PxPerPt;
             var advances = style.Inline != null ? [run.Width] : style.Font.Data.LayoutAdvances(run.Text, style.Size, style.Kerning, style.LetterSpacing);
             var from = run.X - origins[k];
             var before = 0.0;
@@ -1068,8 +1074,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>Offsets (pixels) that align Chromium's anti-aliasing samples with PowerPoint's (see Text).</summary>
     const double SampleShiftX = 1.0 / 16, SampleShiftY = 1.0 / 8;
 
-    /// <summary>A length in points rounded to whole pixels (half up), as PowerPoint places baselines and glyphs.</summary>
-    static double Snap(double points) => Math.Floor(points * PxPerPt + 0.5) / PxPerPt;
+    /// <summary>A length down in points rounded to whole pixels (half up), as PowerPoint places baselines.</summary>
+    double Snap(double points) => Device.OnY(points * PxPerPt, HalfUp) / PxPerPt;
+
+    static double HalfUp(double v) => Math.Floor(v + 0.5);
 
     /// <summary>
     /// The scene items of a run with its first glyph at (x, y) in points. PowerPoint draws a format run with the glyph origins
@@ -1100,7 +1108,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         for (var i = 0; i < glyphs.Length; i++)
         {
             var glyph = glyphs[i];
-            glyphX[i] = Math.Floor(position * PxPerPt + 0.5);
+            glyphX[i] = Device.OnX(position * PxPerPt, HalfUp);
             var firstOfCluster = glyph.Cluster < text.Length && clusterX[glyph.Cluster] == null;
             if (firstOfCluster)
                 clusterX[glyph.Cluster] = glyphX[i];
@@ -1330,15 +1338,18 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             return [];
         var items = new List<SceneItem>();
         var (gridX, gridY) = Grid ?? (0, 0);
-        var left = Math.Round(gridX + x * PxPerPt) - gridX;
-        var width = Math.Round(gridX + (x + run.Width) * PxPerPt) - gridX - left;
+        var device = Device;
+        double OnX(double v) => device.OnX(gridX + v * PxPerPt, Math.Round) - gridX;
+        double OnY(double v) => device.OnY(gridY + v * PxPerPt, Math.Round) - gridY;
+        var left = OnX(x);
+        var width = OnX(x + run.Width) - left;
         if (width <= 0)
             return [];
         var size = Math.Round(style.Size * PxPerPt);
-        var baseline = Math.Round(gridY + y * PxPerPt) - gridY;
+        var baseline = OnY(y);
         var (position, unit, exact) = sharedUnderline is { } shared ? (shared.Position, shared.Thickness, shared.Exact) : Underline(style, data);
         // Where the dashes start, before the run's start where it shares its underline.
-        var phase = sharedUnderline is { } from ? left - (Math.Round(gridX + from.Start * PxPerPt) - gridX) : 0;
+        var phase = sharedUnderline is { } from ? left - OnX(from.Start) : 0;
         // A line in a color, in HTML with the attributes of its fill (none where it takes the text's from around it).
         void Line(double top, double height, RgbColor color, string fill = "", double[]? dashes = null, double dashUnit = 1)
         {
@@ -1363,7 +1374,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         {
             var thickness = style.UnderlineWidth is { } own ? Math.Max(1, Math.Round(own * PxPerPt)) : unit;
             // The post table's underline position is the line's top; a raised run's hangs from its line's baseline.
-            var top = (sharedUnderline?.Baseline is { } line ? Math.Round(gridY + line * PxPerPt) - gridY : baseline) + position;
+            var top = (sharedUnderline?.Baseline is { } line ? OnY(line) : baseline) + position;
             var half = Math.Ceiling(thickness / 2);
             var lineColor = style.UnderlineColor ?? style.Color;
             var fill = style.UnderlineColor is { } color

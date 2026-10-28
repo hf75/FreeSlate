@@ -141,6 +141,9 @@ public sealed class PresentationContext : IDisposable
     /// </summary>
     public System.Globalization.CultureInfo Culture { get; init; } = System.Globalization.CultureInfo.CurrentCulture;
 
+    /// <summary>The device pixels the slides are drawn on (see PixelGrid); by default their own.</summary>
+    public Rendering.PixelGrid Pixels { get; init; } = Rendering.PixelGrid.Css;
+
     /// <summary>Whether the drawings are a Word document's, whose charts take Word's defaults (catalog: chart.formatting).</summary>
     public bool Word { get; init; }
 

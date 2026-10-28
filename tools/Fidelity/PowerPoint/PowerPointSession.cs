@@ -100,7 +100,13 @@ public sealed class PowerPointSession : IDisposable
         Marshal.FinalReleaseComObject(presentation);
     }
 
-    /// <summary>Exports every slide as PNG; the size follows the slide size at 96 dpi unless a width is given.</summary>
+    /// <summary>
+    /// Exports every slide as PNG; the size follows the slide size at 96 dpi unless a width is given. At 96 dpi each side
+    /// is rounded on its own, half up: the size PowerPoint draws a slide at itself (Slide.Export without a size). Any
+    /// other size, such as the height that keeps the rounded width's proportions, PowerPoint gets by resampling its
+    /// picture, which blurs it (measured: a slide of 1058.33 by 793.67 px asked for at 1058 by 793 spreads a 1-pixel
+    /// line over three rows, in bands; at 1058 by 794 it draws it as at its own size).
+    /// </summary>
     public List<string> ExportSlides(string pptxPath, string outputDir, int? width = null, string? password = null)
     {
         Directory.CreateDirectory(outputDir);
@@ -109,8 +115,8 @@ public sealed class PowerPointSession : IDisposable
         {
             double slideWidth = presentation.PageSetup.SlideWidth;   // points
             double slideHeight = presentation.PageSetup.SlideHeight;
-            var pixelWidth = width ?? (int)Math.Round(slideWidth * 96 / 72);
-            var pixelHeight = (int)Math.Round(pixelWidth * slideHeight / slideWidth);
+            var pixelWidth = width ?? (int)Math.Floor(slideWidth * 96 / 72 + 0.5);
+            var pixelHeight = width != null ? (int)Math.Round(pixelWidth * slideHeight / slideWidth) : (int)Math.Floor(slideHeight * 96 / 72 + 0.5);
 
             var files = new List<string>();
             int count = presentation.Slides.Count;

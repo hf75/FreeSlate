@@ -20,6 +20,14 @@ Thin lines, small text and pictures with fine detail are the hardest to match: h
 a line sits can halve the score of a slide that shows only that line. A slide at 95 % usually looks the same at a
 glance; differences below 99 % are often antialiasing and pixel snapping.
 
+A slide whose size is no whole number of pixels (LibreOffice's 28 × 21 cm is 1058.33 × 793.67 px) PowerPoint draws
+at its size rounded on each side, half up (1058 × 794); asked for any other size, it resamples that picture, which
+blurs it. The references are exported at that size, and FreeSlate's slides are drawn on the same pixels
+(`PptxConverter`'s `pixels`) as PowerPoint maps them there: shapes across as on the slide and down scaled by
+(h / H)(W / w), their outlines placed on the slide's own pixels first and then antialiased where PowerPoint samples the
+picture; text and tables by w / W across and h / H down (measured with probe decks of one-pixel bars at seven such
+sizes and of tables and text boxes at three).
+
 ## Running it
 
 ```sh

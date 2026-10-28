@@ -69,16 +69,18 @@ public static class SkiaScene
 
     /// <summary>
     /// A page as a PNG image of <paramref name="width"/> by <paramref name="height"/> pixels (by default its size in CSS
-    /// pixels, rounded up), <paramref name="scale"/> pixels a CSS pixel.
+    /// pixels, rounded up), <paramref name="scale"/> pixels a CSS pixel (<paramref name="scaleY"/> down where it differs,
+    /// as on a PixelGrid of its own).
     /// </summary>
-    public static byte[] Png(PageScene scene, double scale = 1, int? width = null, int? height = null, SkiaStatistics? statistics = null)
+    public static byte[] Png(PageScene scene, double scale = 1, int? width = null, int? height = null, SkiaStatistics? statistics = null,
+        double? scaleY = null)
     {
         var w = width ?? (int)Math.Ceiling(Px(scene.Width) * scale);
-        var h = height ?? (int)Math.Ceiling(Px(scene.Height) * scale);
+        var h = height ?? (int)Math.Ceiling(Px(scene.Height) * (scaleY ?? scale));
         using var surface = SKSurface.Create(new SKImageInfo(Math.Max(1, w), Math.Max(1, h), SKColorType.Rgba8888, SKAlphaType.Premul));
         var canvas = surface.Canvas;
         canvas.Clear(SKColors.White);
-        canvas.Scale((float)scale);
+        canvas.Scale((float)scale, (float)(scaleY ?? scale));
         Draw(scene, canvas, statistics);
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
