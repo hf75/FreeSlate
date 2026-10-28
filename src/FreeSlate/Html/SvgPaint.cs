@@ -229,7 +229,13 @@ public sealed class SvgPaint
         var outer = stops[^1].Color;
         var inner = stops[0].Color;
         var sb = new StringBuilder();
-        sb.Append($"<rect x=\"-1\" y=\"-1\" width=\"{Units.Css(w + 2)}\" height=\"{Units.Css(h + 2)}\"{Color("fill", outer)}/>");
+        // Beyond the tile rectangle the last color, which closes the seams between the sides; with translucent stops
+        // not under the sides, where it would show through (LibreOffice's oox/tdf139618_ImportWordArtGradient: accent1
+        // from transparent to opaque came out opaque).
+        if (stops.All(s => s.Color.A >= 0.999))
+            sb.Append($"<rect x=\"-1\" y=\"-1\" width=\"{Units.Css(w + 2)}\" height=\"{Units.Css(h + 2)}\"{Color("fill", outer)}/>");
+        else if (tile.L > -1 || tile.T > -1 || tile.R < w + 1 || tile.B < h + 1)
+            sb.Append($"<path d=\"M-1 -1H{Units.Css(w + 1)}V{Units.Css(h + 1)}H-1ZM{Units.Css(tile.L)} {Units.Css(tile.T)}H{Units.Css(tile.R)}V{Units.Css(tile.B)}H{Units.Css(tile.L)}Z\" fill-rule=\"evenodd\"{Color("fill", outer)}/>");
         void Side(string sideId, (double X1, double Y1, double X2, double Y2) vector, params (double X, double Y)[] points)
         {
             if (Math.Abs(vector.X2 - vector.X1) + Math.Abs(vector.Y2 - vector.Y1) < 1e-6)
