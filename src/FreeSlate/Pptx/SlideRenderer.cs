@@ -700,7 +700,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             if (textCamera != null && glyphOutlines is { Count: > 0 })
                 textLayer = Text3D(textCamera, Lighting.For(textScene, textShape3d, flat: (textShape3d.Long("extrusionH") ?? 0) <= 0 && textShape3d?.Element(Ns.A + "bevelT") == null
                                                                                       && textShape3d?.Element(Ns.A + "bevelB") == null && (textShape3d.Long("contourW") ?? 0) <= 0),
-                    textShape3d, glyphOutlines, HtmlScene.Markup(textItems), pw, ph);
+                    textShape3d, glyphOutlines, HtmlScene.Markup(textItems), pw, ph, CastsOuter(textItems));
             else if (flatText)
                 textLayer = textItems.Count > 0
                     ? $"<svg class=\"sp\" width=\"{Units.Css(Math.Max(pw, 1))}\" height=\"{Units.Css(Math.Max(ph, 1))}\" style=\"overflow:visible\"><g transform=\"rotate({Units.Css(rotation)} {Units.Css(pw / 2)} {Units.Css(ph / 2)})\">{HtmlScene.Markup(textItems)}</g></svg>"
@@ -915,8 +915,22 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// like it. The scene turns about the center of the text, not of the shape (measured). A bevel wider than half the
     /// glyph's strokes meets the opposite one in a ridge: it is cut there, with its height in proportion.
     /// </summary>
+    /// <summary>Whether drawn items cast a shadow or glow of their own (effects with outer parts among them).</summary>
+    static bool CastsOuter(IEnumerable<SceneItem> items) =>
+        items.Any(i => i switch
+        {
+            FilterItem f => Outer(f.Effects),
+            SvgGroupItem g => Outer(g.Effects),
+            GroupBoxItem g => Outer(g.Effects),
+            ShapePathItem p => Outer(p.Effects),
+            SvgTextItem t => Outer(t.Effects),
+            _ => false,
+        } || i is IHoldsItems holder && CastsOuter(holder.Items));
+
+    static bool Outer(EffectModel? effects) => effects is { Shadow: not null } or { Glow: not null };
+
     string Text3D(Camera camera, Lighting lighting, XElement? shape3d, List<(List<List<(double X, double Y)>> Contours, RgbColor Color, bool Textured)> glyphs,
-        string textMarkup, double pw, double ph)
+        string textMarkup, double pw, double ph, bool castsOuter = false)
     {
         // The scene's center: the center of the glyphs' box; Solid and Projection turn about the middle of the box given.
         var points = glyphs.SelectMany(g => g.Contours).SelectMany(c => c).ToList();
@@ -971,6 +985,12 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
         var (sw, sh) = (Units.Css(Math.Max(pw, 1)), Units.Css(Math.Max(ph, 1)));
         var result = new StringBuilder();
+        // The text's own shadow and glow fall from its whole glyphs, not from the front face the bevels leave: a copy of
+        // the text lies behind the body, which covers all of it but its effects (measured: tika's testWordArt, a
+        // shadow under red text with a bevel and a contour).
+        if (castsOuter)
+            result.Append($"<div class=\"sp\" style=\"width:{Units.Css(pw)}px;height:{Units.Css(ph)}px;transform:{Projection(camera, sceneWidth, sceneHeight, 0, false, false)}\">" +
+                          $"<svg width=\"{sw}\" height=\"{sh}\" style=\"overflow:visible\">{textMarkup}</svg></div>");
         var markup = solid.Markup();
         if (markup.Length > 0)
             result.Append($"<svg class=\"sp\" width=\"{sw}\" height=\"{sh}\" style=\"overflow:visible\">{markup}</svg>");

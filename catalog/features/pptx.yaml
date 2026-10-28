@@ -1598,7 +1598,9 @@ areas:
           outlines too (LibreOffice's 3d_rotated_text: 18 pt text turned a quarter, 41.6 to 91.4 %). Checked
           with generated/text-3d
           (97.1 %): extruded and beveled under a legacy perspective, turned only, beveled in a shape, extruded
-          in a color of its own, flat text.
+          in a color of its own, flat text. The text's own shadow and glow fall from its whole glyphs, not from the
+          front face its bevels leave: they lie behind the body (tika's testWordArt: red text with an artDeco bevel,
+          a light contour and a soft shadow, 66.9 → 95.3 %).
 
       - id: text.math
         title: Equations
