@@ -214,7 +214,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             if (Refit && autofit?.Name.LocalName == "spAutoFit"
                 && Layout(txBody, sources, Math.Max(0, height), wraps, fontScale, spacingReduction) is var turned)
                 Fitted = new TextFit(1, 0, (turned.Bound + Inset("lIns", 91440) + Inset("rIns", 91440)) * 517 / 512, Body("anchor") ?? "t", Body("vert"));
-            return RenderTurned(txBody, sources, Body("vert")!, left, top, width, height, wraps, fontScale, spacingReduction, Body("anchor") ?? "t");
+            return RenderTurned(txBody, sources, Body("vert")!, left, top, width, height, wraps, fontScale, spacingReduction, Body("anchor") ?? "t",
+                Body("anchorCtr") is "1" or "true");
         }
         if (Body("vert") is "wordArtVert" or "wordArtVertRtl")
             return RenderStacked(Layout(txBody, sources, 1e6, false, fontScale, spacingReduction), Body("vert") == "wordArtVertRtl", left, top, width, height, Body("anchor") ?? "t");
@@ -285,12 +286,18 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
     /// <summary>
     /// Text turned by 90° (vert, and East Asian vertical text) or 270° (vert270): laid out along the shape's height
-    /// and anchored across it, the text's top facing right (left for vert270). East Asian vertical text keeps its
-    /// ideographs upright; mongolianVert stacks its lines from left to right.
+    /// and anchored across it, the text's top facing right (left for vert270); anchorCtr centers it along the height
+    /// (measured: LibreOffice's oox/tdf151008_eaVertAnchor). East Asian vertical text keeps its ideographs upright;
+    /// mongolianVert stacks its lines from left to right.
     /// </summary>
     List<SceneItem> RenderTurned(XElement txBody, List<Source> sources, string mode, double left, double top, double width, double height,
-        bool wrap, double fontScale, double spacingReduction, string anchor) =>
-        EmitTurned(Layout(txBody, sources, Math.Max(0, height), wrap, fontScale, spacingReduction), mode, left, top, width, height, anchor);
+        bool wrap, double fontScale, double spacingReduction, string anchor, bool anchorCenter)
+    {
+        var layout = Layout(txBody, sources, Math.Max(0, height), wrap, fontScale, spacingReduction);
+        if (anchorCenter)
+            TextLayout.CenterBlock(layout, height);
+        return EmitTurned(layout, mode, left, top, width, height, anchor);
+    }
 
     /// <summary>Emits text laid out along <paramref name="height"/> turned into the area (see <see cref="RenderTurned"/>).</summary>
     public List<SceneItem> EmitTurned(LaidOutText layout, string mode, double left, double top, double width, double height, string anchor)

@@ -818,14 +818,16 @@ public static class TextLayout
 
     /// <summary>
     /// anchorCtr: the smallest box around the text is centered in the text area <paramref name="width"/> points wide,
-    /// the paragraphs keep their alignment within it (measured on text boxes and table cells).
+    /// the paragraphs keep their alignment within it (measured on text boxes and table cells); a box wider than the
+    /// area reaches out on both sides (measured: LibreOffice's oox/tdf151008_eaVertAnchor, columns of vertical text
+    /// longer than their box, centered on it).
     /// </summary>
     public static void CenterBlock(LaidOutText layout, double width)
     {
         if (layout.Lines.Count == 0)
             return;
         var free = (width - layout.Lines.Max(l => l.Start + l.Width)) / 2;
-        if (free <= 0.005)
+        if (Math.Abs(free) <= 0.005)
             return;
         foreach (var line in layout.Lines)
         {

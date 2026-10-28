@@ -1194,7 +1194,8 @@ areas:
           and 2 pt sets every line at 6.5 pt whatever its alignment; a box 1 pt high 0.5 pt below its top). A
           placeholder 0 wide does not wrap (one line in footer, body and title placeholders), while text
           boxes, shapes and placeholders 1 pt wide wrap every character (LibreOffice's 0-width-text-wrap).
-          Verified with generated/text-body (97.7 %), text-more and objects-more.
+          Verified with generated/text-body (97.7 %), text-more and objects-more. A text block wider than its area
+          (no wrap, long words) is centered too, reaching out on both sides.
 
       - id: text.autofit
         title: Autofit
@@ -1522,7 +1523,9 @@ areas:
           tdf149551: 12 degrees, 60 -> 70 %). upright keeps the text level in rotated shapes, laid out with width
           and height swapped between 45
           and 135 (225 and 315) degrees. Table cells (tcPr vert) wrap at the row height (generated/text-
-          vertical).
+          vertical). anchorCtr centers turned text along the shape's height as it centers lines across a text area,
+          also where the text is longer than the height (LibreOffice's oox/tdf151008_eaVertAnchor: columns of East
+          Asian vertical text centered on their box, 82.2 → 94.5 %; tdf149551_vert270AndTextRot 88.5 → 97.4 %).
 
       - id: text.warp
         title: WordArt transforms
