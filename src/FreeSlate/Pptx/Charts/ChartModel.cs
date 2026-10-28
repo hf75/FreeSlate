@@ -343,8 +343,10 @@ public sealed class ChartModel
             FormatCode = numFmt.Str("formatCode") ?? "General",
             SourceLinked = numFmt.Bool("sourceLinked") ?? false,
             TickLabelPosition = Val(element, "tickLblPos") ?? "nextTo",
-            MajorTickMark = Val(element, "majorTickMark") ?? "cross",
-            MinorTickMark = Val(element, "minorTickMark") ?? "cross",
+            // Without the element PowerPoint draws major ticks outside and no minor ticks; with it, its val defaults
+            // to cross (measured, local/ticks-*).
+            MajorTickMark = TickMark(element, "majorTickMark", "out"),
+            MinorTickMark = TickMark(element, "minorTickMark", "none"),
             CrossAxisId = element.Element(Ns.C + "crossAx").Int("val") ?? 0,
             Crosses = crossesAt == null ? Val(element, "crosses") ?? "autoZero" : null,
             CrossesAt = crossesAt,
@@ -362,6 +364,9 @@ public sealed class ChartModel
     }
 
     public static string? Val(XElement? parent, string name) => parent?.Element(Ns.C + name).Str("val");
+
+    static string TickMark(XElement axis, string name, string absent) =>
+        axis.Element(Ns.C + name) is { } mark ? mark.Str("val") ?? "cross" : absent;
 
     public static double? Number(XElement? parent, string name) =>
         double.TryParse(Val(parent, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;

@@ -1867,7 +1867,9 @@ areas:
           COM with 25 layouts. Category labels stand 6 pt beyond their spoke, left- or right-aligned at the
           sides and centered above and below. The value axis ends at the first major unit from the largest
           value, without the 5 % headroom of other charts (measured: 7.9 on 0 … 8, 9.6 on 0 … 10); charts
-          without style part draw spokes only where the axis has a line of its own.
+          without style part draw spokes only where the axis has a line of its own. The category axis' major
+          gridlines also make the spokes, but in the value axis' line, not in their own (local/radarspk-*: red
+          gridlines draw gray spokes, a blue value axis line blue ones; poi/radar-chart 85.9 → 89.5 %).
 
       - id: chart.stock
         title: Stock charts
@@ -1995,7 +1997,11 @@ areas:
           within the outer plot area as midCat labels do (csx-orig: "2000-01" and "2012-13f" over 13 slots of
           20.3 pt labelled every second one flat, each 10 pt inside the chart, 16.5 → 89.8 %). Number formats with
           conditions ([<>0], [>=100]) give the numbers that meet them their section, the others the next (csx-val:
-          [<>0]General;\ "2011-12 $/t" labels 0 "2011-12 $/t", 33.6 → 70.7 %).
+          [<>0]General;\ "2011-12 $/t" labels 0 "2011-12 $/t", 33.6 → 70.7 %). Without c:majorTickMark an axis has
+          its major ticks outside, without c:minorTickMark no minor ticks; with the element, val defaults to cross
+          (local/ticks-*). Number formats color their labels with [Red], [Blue] … or [Color1] to [Color56] (the
+          default palette, indexed colors 8-63) in the section that formats the value (tdf137691_dataTable: negative
+          values red).
 
       - id: chart.labels
         title: Data labels
@@ -2072,7 +2078,11 @@ areas:
           A dashed line key makes every key longer: the line from 3.05 to 29.31 pt, the text at 31.5 pt
           (local/legacy-longkey). In Word a title without c:overlay overlays the plot as with val 1 (scratch/
           WordProbes/probe_charttitle.py on LibreOffice's extras-ooxmlexport/fdo78474: the pie centred in the whole
-          chart, below the title with val 0; fdo78474 82.2 → 99.6 %, fdo76098 88.9 → 99.8 %).
+          chart, below the title with val 0; fdo78474 82.2 → 99.6 %, fdo76098 88.9 → 99.8 %). PowerPoint lays the
+          plot area out as Word does: a title or legend placed by hand stands where its layout says, but the
+          automatic plot area keeps the room of the automatic title and of the automatic legend at its legendPos
+          (local/pielay-*: LibreOffice's chart2/tdf122765, a pie with a moved title and a legend placed across it,
+          has the same plot area with both moved or not; 57.3 → 98.1 %).
 
       - id: chart.dataTable
         title: Data tables
@@ -2093,7 +2103,11 @@ areas:
           shares its room with the name column: table and plot stand where they stand without it (Word,
           docx/local/d3t-flat: 0.3 pt). Below 3D columns the table hangs from the floor's front edge, its columns
           dividing that edge, its room taken as on flat charts (docx/external/powertools/CU008, CU013: 58.6 and
-          62.0 → 91.5 and 92.3 %, about 5 pt wider than Word's). A deleted axis keeps its title (CU008, CU013).
+          62.0 → 91.5 and 92.3 %, about 5 pt wider than Word's). A deleted axis keeps its title (CU008, CU013). Line
+          series have the legend's line keys, of a fixed size, and the name column is then wider by their text's
+          offset less a square key's, about 1.025 s: 11.9 pt at 12 pt, 5.9 pt at 18 pt, with or without markers
+          (local/dtkey-*); a table without c:spPr draws its borders as the style's axis lines (#898989;
+          LibreOffice's chart2/tdf137691_dataTable 72.1 → 91.3 %).
 
       - id: chart.formatting
         title: Chart formatting, chart styles and colors
@@ -2245,7 +2259,10 @@ areas:
           the block is vertically centered on the trendline's end, its right edge 8.8 pt left of it
           (measured). Legend entries follow the series; a dashed key line (the dotted trendline's, or a
           series') gives every entry a longer key of 31.5 pt (a solid trendline does not). Error bars: fixed value, percentage, standard error, custom values and standard deviation
-          (around the mean of all values, like Office), 4.5 pt caps; they extend the value axis.
+          (around the mean of all values, like Office), 4.5 pt caps; they extend the value axis. A trendline without
+          a line of its own takes the Office 2007 style's: the theme's line style 1 in tx1 (LibreOffice's
+          chart2/tdf127720, a 1 px black line in style 18, 88.2 → 95.0 %); PowerPoint writes its 1.5 pt dotted line
+          into the files it saves.
 
       - id: chart.userShapes
         title: Shapes drawn on charts

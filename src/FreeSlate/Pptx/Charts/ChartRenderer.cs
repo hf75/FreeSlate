@@ -152,6 +152,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public bool HasLabels => Visible && Axis.TickLabelPosition != "none" && !InTable;
         public AxisScale Scale { get; set; }
         public List<string> Labels { get; set; } = [];
+        /// <summary>The colors the number format gives the labels ([Red] …), null where it gives none.</summary>
+        public List<RgbColor?> LabelColors { get; set; } = [];
 
         /// <summary>The value axis whose scale this deleted one takes (see AxisChart), else null.</summary>
         public AxisLayout? ScaledWith { get; set; }
@@ -641,19 +643,19 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var h = Math.Max(1, layout.Lines.Count) * lineHeight + 2 * TitlePaddingY;
         var box = new Box((width - w) / 2, ex != null ? ExTitleTop - TitlePaddingY : EdgeGap, w, h);
         var manual = ManualPosition(element, w, h);
-        // Word draws a manually placed title where its layout says but lays the plot and the legend out below the
-        // automatic title unless it overlays them (scratch/triage/2026-10-14_agents/charts: libreoffice/
-        // extras-ooxmlexport/tdf134235 plot top 11 pt below the automatic box, powertools/CU007, CU012).
-        var word = manual != null && slide.Presentation.Word;
+        // A manually placed title stands where its layout says, but the plot and the legend are laid out below the
+        // automatic title unless it overlays them (Word: scratch/triage/2026-10-14_agents/charts: libreoffice/
+        // extras-ooxmlexport/tdf134235 plot top 11 pt below the automatic box, powertools/CU007, CU012; PowerPoint:
+        // local/pielay-*, tdf122765's plot the same with its title moved or not).
         return new TitleLayout
         {
             Text = block,
             Box = manual ?? box,
             // Word lays a title without c:overlay over the plot, as with val 1 (measured with scratch/WordProbes/
             // probe_charttitle.py: fdo78474's pie centred in the whole chart, below the title with c:overlay val 0).
-            Overlay = ChartModel.Flag(element, "overlay", slide.Presentation.Word && element != null) || manual != null && !word,
+            Overlay = ChartModel.Flag(element, "overlay", slide.Presentation.Word && element != null),
             SpPr = element?.Element(Ns.C + "spPr"),
-            Room = word ? box : null,
+            Room = manual != null ? box : null,
         };
     }
 
@@ -1294,7 +1296,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 if (!deleted.Contains(series.Index))
                 {
                     var outline = SeriesOutline(group, series);
-                    var lineKey = group.HasLines && outline is { Visible: true } && (!group.IsScatter || ScatterLines(group, series));
+                    var lineKey = LineKey(group, series);
                     entries.Add(new LegendEntry(series.Name, PointFill(group, series, -1), outline, lineKey,
                         group.HasLines ? Marker(group, series) : null, series.Index, MarkerOnly: group.HasLines && !lineKey, Circle: group.IsBubble));
                 }
@@ -1386,12 +1388,13 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
         var manual = ManualPosition(element, box.W, box.H);
         layout.Box = manual ?? box;
-        // Word lays the plot out beside the automatic legend and draws the legend where its layout says, as it does
-        // titles (libreoffice/extras-layout/tdf132956: the plot 433.8 pt wide beside a legend placed across the
-        // chart; legend-itemorder-min: below the plot an automatic row's height, the legend at the right).
-        var word = manual != null && slide.Presentation.Word;
-        if (word)
+        // The plot is laid out beside the automatic legend, and the legend drawn where its layout says, as titles are
+        // (Word: libreoffice/extras-layout/tdf132956, the plot 433.8 pt wide beside a legend placed across the chart;
+        // legend-itemorder-min: below the plot an automatic row's height, the legend at the right; PowerPoint:
+        // local/pielay-*, tdf122765's plot the same with its legend moved, also to the other side).
+        if (manual != null)
             layout.Room = box;
+        var word = manual != null && slide.Presentation.Word;
         var sized = element.Element(Ns.C + "layout")?.Element(Ns.C + "manualLayout") is { } sizedLayout
             && (ChartModel.Number(sizedLayout, "w") != null || ChartModel.Number(sizedLayout, "h") != null);
         if (sized && word && widths.Sum() <= layout.Box.W - 4)
@@ -1909,6 +1912,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         public required List<List<string>> Names { get; init; }
         public required double NameWidth { get; init; }
         public required bool Keys { get; init; }
+        /// <summary>Keys of line series are the legend's line keys, and every name then starts after one.</summary>
+        public bool LineKeys { get; init; }
         /// <summary>The category names of the header row broken into the width of their columns (see FitDataTable).</summary>
         public List<List<string>> Header { get; set; } = [];
 
@@ -1944,7 +1949,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var style = Style(element.Element(Ns.C + "txPr"), "dataTable");
         var keys = ChartModel.Flag(element, "showKeys", false);
         var lineHeight = LineHeight(style);
-        var padding = keys ? 1.0975 * style.Size + 2.89 : DataTablePadding;
+        // Line keys keep the legend's fixed size: the name column is wider by their text's offset less a square key's,
+        // about 1.025 s (measured with local/dtkey-*: 11.9 pt at 12 pt, 5.9 pt at 18 pt, with or without markers).
+        var lineKeys = keys && rows.Any(r => LineKey(r.Group, r.Series));
+        var padding = keys ? 1.0975 * style.Size + 2.89 + (lineKeys ? Math.Max(0, LegendLineText - 1.025 * style.Size) : 0) : DataTablePadding;
         var names = rows.Select(r => WrapWords(r.Series.Name, style, width / 3 - padding)).ToList();
         var widest = names.Count == 0 ? 0 : names.Max(lines => lines.Max(l => Width(l, style)));
         category.InTable = true;
@@ -1959,6 +1967,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             Names = names,
             NameWidth = widest + padding,
             Keys = keys,
+            LineKeys = lineKeys,
         };
     }
 
@@ -2010,9 +2019,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             edges.Add(edges[^1] + table.SeriesHeight(r));
         var (top, rowsTop, bottom) = (edges[0], edges[1], edges[^1]);
         var (left, right) = (plot.X - table.NameWidth, plot.Right);
-        var line = table.Element.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } ln
-            ? OutlineReader.Merge([(ln, colors)])
-            : new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng");
+        // The borders are lines of their own over the style's axis lines (measured, tdf137691_dataTable: #898989 like the
+        // grid lines where the table has no c:spPr).
+        var own = table.Element.Element(Ns.C + "spPr")?.Element(Ns.A + "ln");
+        var line = legacy != null
+            ? OutlineReader.Merge(own != null ? [LegacyAxisLine(), (own, colors)] : [LegacyAxisLine()])
+            : own != null ? OutlineReader.Merge([(own, colors)]) : new Outline(9525, new SolidFill(RgbColor.FromHex("D9D9D9")), "solid", "flat", "round", 8, "sng");
         if (line is { Visible: true })
         {
             if (ChartModel.Flag(table.Element, "showOutline", false))
@@ -2052,13 +2064,23 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             var (group, series) = table.Rows[r];
             var names = table.Names[r];
             var firstLine = (edges[r + 1] + edges[r + 2]) / 2 - (names.Count - 1) / 2.0 * lineHeight;
-            if (table.Keys)
+            if (table.LineKeys && LineKey(group, series))
+            {
+                // The legend's line key: the line no wider, its marker no larger than the table's font allows.
+                var outline = SeriesOutline(group, series)!;
+                var keyLine = outline with { WidthEmu = Math.Min(outline.WidthEmu, LegendLineCap * style.Size * 12700) };
+                var (a, b) = (SnapPoint((left + LegendLineCenter - LegendLineHalf, firstLine), keyLine), SnapPoint((left + LegendLineCenter + LegendLineHalf, firstLine), keyLine));
+                svg.Append($"<path d=\"M{Px(a.X)} {Px(a.Y)}L{Px(b.X)} {Px(b.Y)}\" fill=\"none\"{paint.Stroke(keyLine, 0, 0, defs)}/>");
+                if (Marker(group, series) is { } marker)
+                    svg.Append(DrawMarker(marker, series.Index, left + LegendLineCenter, firstLine, PointFill(group, series, -1), outline, style.Size));
+            }
+            else if (table.Keys)
             {
                 var key = LegendKey * lineHeight;
                 var fill = group.HasLines ? SeriesOutline(group, series)?.Fill ?? PointFill(group, series, -1) : PointFill(group, series, -1);
                 svg.Append(Rect(new Box(left + 0.26 * lineHeight, firstLine - key / 2, key, key), fill, null, snap: false));
             }
-            var nameLeft = left + (table.Keys ? 0.958 : 0.26) * lineHeight;
+            var nameLeft = table.LineKeys ? left + LegendLineText : left + (table.Keys ? 0.958 : 0.26) * lineHeight;
             var widest = names.Max(l => Width(l, style));
             for (var k = 0; k < names.Count; k++)
                 svg.Append(text.Label(names[k], style, nameLeft + (widest - Width(names[k], style)) / 2, Baseline(r + 1, k, names.Count)));
@@ -2518,6 +2540,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
         var unit = DisplayUnit(layout.Axis);
         layout.Labels = layout.Scale.Ticks().Select(v => NumberFormat.Format(v / unit, Format(layout), culture)).ToList();
+        layout.LabelColors = layout.Scale.Ticks().Select(v => NumberFormat.Color(v / unit, Format(layout))).ToList();
         layout.MaxLabelWidth = layout.Labels.Count == 0 ? 0 : layout.Labels.Max(l => Width(l, style));
     }
 
@@ -2802,6 +2825,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             if (i % skip != 0)
                 continue;
             var label = layout.Labels[i];
+            var labelStyle = layout.LabelColors.ElementAtOrDefault(i) is { } color ? style with { Color = color } : style;
             var w = Width(label, style);
             var p = positions[i];
             if (layout.Rotation != 0 && layout.Axis.Position is "b")
@@ -2821,11 +2845,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     {
                         var lineWidth = Width(lines[k], style);
                         var x = layout.Rotation < 0 ? -block + (block - lineWidth) / 2 : (block - lineWidth) / 2;
-                        svg.Append(text.Label(lines[k], style, x, CenteredBaseline(style, 0) + (k - (lines.Length - 1) / 2.0) * lineHeight));
+                        svg.Append(text.Label(lines[k], labelStyle, x, CenteredBaseline(style, 0) + (k - (lines.Length - 1) / 2.0) * lineHeight));
                     }
                 }
                 else
-                    svg.Append(text.Label(label, style, layout.Rotation < 0 ? -w : 0, CenteredBaseline(style, 0)));
+                    svg.Append(text.Label(label, labelStyle, layout.Rotation < 0 ? -w : 0, CenteredBaseline(style, 0)));
                 svg.Append("</g>");
                 continue;
             }
@@ -2843,18 +2867,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                     for (var k = 0; k < lines.Length; k++)
                     {
                         var centered = k == lines.Length - 1 && layout.Cut.Contains(i) ? lines[k][..^1] : lines[k];
-                        svg.Append(text.Label(lines[k], style, blockLeft + (block - Width(centered, style)) / 2, baseline));
+                        svg.Append(text.Label(lines[k], labelStyle, blockLeft + (block - Width(centered, style)) / 2, baseline));
                         baseline += lineHeight;
                     }
                     break;
                 }
                 case "l":
-                    svg.Append(text.Label(label, style, left - ValueLabelGap * s - w, CenteredBaseline(style, p)));
+                    svg.Append(text.Label(label, labelStyle, left - ValueLabelGap * s - w, CenteredBaseline(style, p)));
                     if (i == 0)
                         svg.Append(UnitLabelMarkup(layout, left));
                     break;
                 case "r":
-                    svg.Append(text.Label(label, style, right + ValueLabelGap * s, CenteredBaseline(style, p)));
+                    svg.Append(text.Label(label, labelStyle, right + ValueLabelGap * s, CenteredBaseline(style, p)));
                     if (i == 0)
                         svg.Append(UnitLabelMarkup(layout, right));
                     break;
@@ -2876,7 +2900,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                             "r" => slot1 - lw,
                             _ => p - lw / 2,
                         };
-                        svg.Append(text.Label(line, style, x, baseline));
+                        svg.Append(text.Label(line, labelStyle, x, baseline));
                         baseline += lineHeight;
                     }
                     break;
@@ -3300,6 +3324,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return svg.ToString();
     }
 
+    /// <summary>Whether a series shows a line key in the legend and the data table: it draws a visible line.</summary>
+    bool LineKey(ChartGroup group, ChartSeries series) =>
+        group.HasLines && SeriesOutline(group, series) is { Visible: true } && (!group.IsScatter || ScatterLines(group, series));
+
     /// <summary>Whether a scatter series draws lines: its scatter style asks for them or its a:ln has a fill.</summary>
     static bool ScatterLines(ChartGroup group, ChartSeries series)
     {
@@ -3658,7 +3686,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         return $"{type} ({series.Name})";
     }
 
-    /// <summary>The line of a trendline: its own a:ln over the series color, 1.5 pt, round dots.</summary>
+    /// <summary>
+    /// The line of a trendline: its own a:ln over the series color, 1.5 pt, round dots; in a legacy style over the
+    /// theme's line style 1 in tx1 (measured, tdf127720: a 1 px black line in style 18, whose grid lines are gray).
+    /// </summary>
     Outline TrendOutline(XElement trendline, ChartGroup group, ChartSeries series)
     {
         var color = SeriesOutline(group, series) is { Visible: true, Fill: SolidFill line } ? line.Color
@@ -3666,7 +3697,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var automatic = new XElement(Ns.A + "ln", new XAttribute("w", "19050"), new XAttribute("cap", "rnd"),
             new XElement(Ns.A + "solidFill", new XElement(Ns.A + "srgbClr", new XAttribute("val", color.ToHex().TrimStart('#')))),
             new XElement(Ns.A + "prstDash", new XAttribute("val", "sysDot")));
-        var layers = new List<(XElement, ColorContext)> { (automatic, colors) };
+        var layers = new List<(XElement, ColorContext)> { legacy != null ? ThemeLine(Scheme("tx1")) : (automatic, colors) };
         if (trendline.Element(Ns.C + "spPr")?.Element(Ns.A + "ln") is { } own)
             layers.Add((own, colors));
         return OutlineReader.Merge(layers);
@@ -4146,8 +4177,10 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             }
         }
 
-        // Charts without style part draw spokes only where the axis has a line of its own (measured).
-        if (!valueAxis.Deleted && (legacy == null || valueAxis.SpPr?.Element(Ns.A + "ln") != null) && AxisOutline(valueAxis) is { Visible: true } spokes)
+        // Charts without style part draw spokes only where the axis has a line of its own or the category axis has major
+        // gridlines; these draw them in the value axis' line, not in their own (measured, local/radarspk-*).
+        if (!valueAxis.Deleted && (legacy == null || valueAxis.SpPr?.Element(Ns.A + "ln") != null || categoryAxis?.MajorGridlines != null)
+            && AxisOutline(valueAxis) is { Visible: true } spokes)
         {
             for (var i = 0; i < n; i++)
                 svg.Append(Polyline([(cx, cy), At(i, radius)], spokes, closed: false));

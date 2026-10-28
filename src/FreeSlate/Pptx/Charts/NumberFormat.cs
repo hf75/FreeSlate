@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using FreeSlate.Drawing;
 
 namespace FreeSlate.Pptx.Charts;
 
@@ -25,39 +26,7 @@ public static class NumberFormat
         // Built-in format 17 is localized too: German "MMM JJ" (measured: "Okt 12" for mmm\-yy on a German system).
         if (code is "mmm\\-yy" or "mmm-yy" && culture.TwoLetterISOLanguageName == "de")
             code = "mmm yy";
-        var sections = Sections(string.IsNullOrWhiteSpace(code) ? "General" : code);
-
-        // Sections: positive;negative;zero;text. Only a single section prefixes negative numbers with a minus. Sections
-        // with conditions ([<>0], [>=100]) take the numbers that meet them, the next section the others, the minus kept
-        // (measured with docx/local/csx-val: [<>0]General;\ "2011-12 $/t" labels 0 "2011-12 $/t"; LibreOffice's
-        // extras-layout/tdf138773).
-        string section;
-        var minus = false;
-        if (Condition(sections[0]) is { } first)
-        {
-            var second = sections.Count >= 2 ? Condition(sections[1]) : null;
-            section = first(value) ? sections[0]
-                : sections.Count >= 2 && (second == null || second(value)) ? sections[1]
-                : sections.Count >= 3 ? sections[2] : sections[^1];
-            minus = value < 0;
-            value = Math.Abs(value);
-        }
-        else if (value < 0 && sections.Count >= 2)
-        {
-            section = sections[1];
-            value = -value;
-        }
-        else if (value == 0 && sections.Count >= 3)
-        {
-            section = sections[2];
-        }
-        else
-        {
-            section = sections[0];
-            minus = value < 0;
-            value = Math.Abs(value);
-        }
-
+        var (section, minus) = Pick(ref value, Sections(string.IsNullOrWhiteSpace(code) ? "General" : code));
         section = StripBrackets(section);
         string text;
         // A German or French Office writes General by its own name into the data of its charts (measured: LibreOffice's
@@ -71,6 +40,83 @@ public static class NumberFormat
             text = Number(value, section, culture);
         return minus ? "-" + text : text;
     }
+
+    /// <summary>
+    /// The section that formats a value and whether its text takes a minus; the value becomes the one the section shows.
+    /// Sections: positive;negative;zero;text. Only a single section prefixes negative numbers with a minus. Sections
+    /// with conditions ([&lt;&gt;0], [&gt;=100]) take the numbers that meet them, the next section the others, the minus kept
+    /// (measured with docx/local/csx-val: [&lt;&gt;0]General;\ "2011-12 $/t" labels 0 "2011-12 $/t"; LibreOffice's
+    /// extras-layout/tdf138773).
+    /// </summary>
+    static (string Section, bool Minus) Pick(ref double value, List<string> sections)
+    {
+        if (Condition(sections[0]) is { } first)
+        {
+            var second = sections.Count >= 2 ? Condition(sections[1]) : null;
+            var section = first(value) ? sections[0]
+                : sections.Count >= 2 && (second == null || second(value)) ? sections[1]
+                : sections.Count >= 3 ? sections[2] : sections[^1];
+            var minus = value < 0;
+            value = Math.Abs(value);
+            return (section, minus);
+        }
+        if (value < 0 && sections.Count >= 2)
+        {
+            value = -value;
+            return (sections[1], false);
+        }
+        if (value == 0 && sections.Count >= 3)
+            return (sections[2], false);
+        var negative = value < 0;
+        value = Math.Abs(value);
+        return (sections[0], negative);
+    }
+
+    /// <summary>
+    /// The color the format code gives a value: [Black], [Blue], [Cyan], [Green], [Magenta], [Red], [White], [Yellow] or
+    /// [Color1] to [Color56] in the section that formats it (measured: LibreOffice's chart2/tdf137691_dataTable, value
+    /// axis labels of "$"#,##0_);[Red]\("$"#,##0\) red below zero); null where it names none.
+    /// </summary>
+    public static RgbColor? Color(double value, string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code) || !code.Contains('['))
+            return null;
+        var (section, _) = Pick(ref value, Sections(code));
+        var quoted = false;
+        for (var i = 0; i < section.Length; i++)
+        {
+            if (section[i] == '"')
+                quoted = !quoted;
+            if (section[i] != '[' || quoted)
+                continue;
+            var end = section.IndexOf(']', i);
+            if (end < 0)
+                break;
+            var token = section[(i + 1)..end].ToLowerInvariant();
+            var hex = token switch
+            {
+                "black" => "000000", "blue" => "0000FF", "cyan" => "00FFFF", "green" => "00FF00",
+                "magenta" => "FF00FF", "red" => "FF0000", "white" => "FFFFFF", "yellow" => "FFFF00",
+                _ when token.StartsWith("color", StringComparison.Ordinal) && int.TryParse(token[5..], NumberStyles.None, CultureInfo.InvariantCulture, out var n)
+                       && n is >= 1 and <= 56 => Palette[n - 1],
+                _ => null,
+            };
+            if (hex != null)
+                return RgbColor.FromHex(hex);
+            i = end;
+        }
+        return null;
+    }
+
+    /// <summary>[Color1] to [Color56]: the spreadsheet's default palette (ECMA-376 Part 1, §18.8.27, indexed colors 8–63).</summary>
+    static readonly string[] Palette =
+    [
+        "000000", "FFFFFF", "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF", "800000", "008000", "000080", "808000",
+        "800080", "008080", "C0C0C0", "808080", "9999FF", "993366", "FFFFCC", "CCFFFF", "660066", "FF8080", "0066CC", "CCCCFF",
+        "000080", "FF00FF", "FFFF00", "00FFFF", "800080", "800000", "008080", "0000FF", "00CCFF", "CCFFFF", "CCFFCC", "FFFF99",
+        "99CCFF", "FF99CC", "CC99FF", "FFCC99", "3366FF", "33CCCC", "99CC00", "FFCC00", "FF9900", "FF6600", "666699", "969696",
+        "003366", "339966", "003300", "333300", "993300", "993366", "333399", "333333",
+    ];
 
     /// <summary>Excel's General format: up to ten significant digits, scientific notation for very large or small values.</summary>
     public static string General(double value, CultureInfo culture)
