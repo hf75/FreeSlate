@@ -1574,7 +1574,11 @@ areas:
           that depends on the ellipse (0.98 at 360 x 267 px, 0.977 at 360 x 133, 1.007 at 180 x 267, none on
           a circle), and textCircle on a circle at some start angles (0.982 at the default 180 degrees and at
           210, none at 181, 195, 240 and 270; at 12 and 24 pt, radii of 67 and 133 px alike), for which no rule
-          is found.
+          is found. Envelopes stretch the spaces at a line's start and end with its ink, not the space a wrapped
+          line breaks at: "HH " in textPlain or textInflate leaves 0.2 of the envelope to the space and the H's side
+          bearing, " HH" as much at the start, "HH" fills it from ink to ink (local/warpspace, every line within 2
+          px; LibreOffice's oox/tdf139618_ThemeColorTransparency 64.9 → 95.7 %, sd/tdf114848's slide of waves, cans
+          and rings 53.7 → 91.9 %).
 
       - id: text.threeD
         title: 3D text

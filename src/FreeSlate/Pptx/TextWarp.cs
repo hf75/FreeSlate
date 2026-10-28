@@ -64,7 +64,14 @@ public static class TextWarp
     /// A laid-out line (pixels): its baseline, how far below a single path that baseline lies when the line is the one
     /// next to the path, and the top and bottom of its line box.
     /// </summary>
-    public sealed record Line(double Baseline, double Drop, double Top, double Bottom);
+    public sealed record Line(double Baseline, double Drop, double Top, double Bottom)
+    {
+        /// <summary>Where the line's advance starts when it starts with spaces, which an envelope stretches with its ink.</summary>
+        public double? Start { get; init; }
+
+        /// <summary>Where the line's advance ends when it ends with spaces.</summary>
+        public double? End { get; init; }
+    }
 
     /// <summary>
     /// Presets whose lines follow paths (an odd number of them: arches, circle, button), which are not wrapped
@@ -106,6 +113,17 @@ public static class TextWarp
                 .Select(e => Enumerable.Range(0, glyphs.Count).Where(i => Math.Min(envelopes - 1, glyphs[i].Line * envelopes / Math.Max(1, lineCount)) == e).ToList())
                 .ToList();
             var bounds = groups.Select(g => g.Count > 0 ? Bounds(g.SelectMany(i => glyphs[i].Contours)) : default).ToList();
+            // Spaces at a line's ends are stretched with its ink (measured with local/warpspace: "HH " in textPlain and
+            // textInflate leaves 0.2 of the envelope to the space and the H's right side bearing, " HH" as much at the
+            // start, "HH" fills it from ink to ink).
+            for (var e = 0; e < envelopes && lines != null; e++)
+            {
+                foreach (var l in groups[e].Select(i => glyphs[i].Line).Distinct().Where(l => l < lines.Count))
+                {
+                    var (minX, minY, maxX, maxY) = bounds[e];
+                    bounds[e] = (Math.Min(minX, lines[l].Start ?? minX), minY, Math.Max(maxX, lines[l].End ?? maxX), maxY);
+                }
+            }
             // A line without ink takes its line box across, in its envelope and for the scale across (measured: an
             // empty paragraph after a line of A's, in textButtonPour's middle envelope or textDeflateInflate's lower one,
             // leaves the A's 0.56 of their envelope's height, centered; in the A's own envelope it keeps them at its top).

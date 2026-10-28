@@ -587,7 +587,16 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var drop = textPath && l.Runs.MaxBy(r => r.Style.Size) is { } largest
                 ? (0.5 - largest.Style.Font.Data.WinDescent) * largest.Style.Size
                 : l.Ascent - 0.79 * (l.Runs.Count > 0 ? l.Runs.Max(r => r.Style.Size) : l.Ascent / 1.2 / 0.8);
-            return new TextWarp.Line(baseline, drop * PxPerPt, baseline - l.Ascent * PxPerPt, baseline + l.Descent * PxPerPt);
+            // In PowerPoint spaces at the line's ends count where an envelope stretches it (see TextWarp.Apply), not the
+            // space a wrapped line breaks at (measured: local/warpprobe7's wrapped lines in textButtonPour keep their ink
+            // across the envelope).
+            var (first, last) = l.Runs.Count > 0 && !slide.Presentation.Word ? (l.Runs.MinBy(r => r.X), l.Runs.MaxBy(r => r.X + r.Width)) : (null, null);
+            return new TextWarp.Line(baseline, drop * PxPerPt, baseline - l.Ascent * PxPerPt, baseline + l.Descent * PxPerPt)
+            {
+                Start = first is { Text.Length: > 0 } && char.IsWhiteSpace(first.Text[0]) ? (left + first.X) * PxPerPt : null,
+                End = last is { Text.Length: > 0 } && char.IsWhiteSpace(last.Text[^1]) && (l.Last || l.Break >= 0)
+                    ? (left + last.X + last.Width) * PxPerPt : null,
+            };
         }).ToList();
         var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment, lines);
         for (var i = 0; i < warped.Count && Outlines != null; i++)
