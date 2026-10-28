@@ -264,7 +264,8 @@ public static class SkiaScene
         /// <summary>
         /// Markup of boxes (a 3D body's: divs of class sp, placed by CSS transforms, 3D ones projected by matrix3d) with
         /// SVG in them: every box's transform taken onto the canvas as the homography it gives its plane (whose points
-        /// have z 0), its SVG drawn through SvgDrawing; false where the markup is not such boxes.
+        /// have z 0), its SVG drawn through SvgDrawing, a box with backface-visibility hidden not where it shows its back
+        /// (see <see cref="ShowsBack"/>); false where the markup is not such boxes.
         /// </summary>
         bool Boxes(string html)
         {
@@ -282,10 +283,18 @@ public static class SkiaScene
                 switch (element.Name.LocalName)
                 {
                     case "div":
+                        var style = element.Attribute("style")?.Value;
+                        var match = style != null ? CssTransform.Match(style) : null;
+                        var values = match is { Success: true }
+                            ? match.Groups[2].Value.Split(',').Select(v => double.Parse(v.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray()
+                            : null;
+                        // A solid body's front face seen from behind (LibreOffice's oox/Scene3d_material_highlight: rings
+                        // turned 135 degrees, their fronts were drawn over their backs).
+                        if (values is { Length: 16 } && style!.Contains("backface-visibility:hidden", StringComparison.Ordinal) && ShowsBack(values))
+                            break;
                         canvas.Save();
-                        if (element.Attribute("style")?.Value is { } style && CssTransform.Match(style) is { Success: true } match)
+                        if (match is { Success: true } && values != null)
                         {
-                            var values = match.Groups[2].Value.Split(',').Select(v => double.Parse(v.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray();
                             if (match.Groups[1].Value == "matrix" && values.Length == 6)
                                 Concat(Matrix(new Html.Matrix(values[0], values[1], values[2], values[3], values[4], values[5])));
                             else if (values.Length == 16)
@@ -314,6 +323,23 @@ public static class SkiaScene
             foreach (var element in holder.Elements())
                 Box(element);
             return true;
+        }
+
+        /// <summary>
+        /// Whether a box turned by a CSS matrix3d (column-major <paramref name="v"/>) shows its back, as browsers decide
+        /// it: the normal (0, 0, 1) through the inverse transpose points away from the viewer, that is the third diagonal
+        /// element of the inverse (cofactor over determinant) is negative.
+        /// </summary>
+        static bool ShowsBack(double[] v)
+        {
+            double M(int row, int column) => v[column * 4 + row];
+            double Minor(int r0, int r1, int r2, int c0, int c1, int c2) =>
+                M(r0, c0) * (M(r1, c1) * M(r2, c2) - M(r1, c2) * M(r2, c1))
+                - M(r0, c1) * (M(r1, c0) * M(r2, c2) - M(r1, c2) * M(r2, c0))
+                + M(r0, c2) * (M(r1, c0) * M(r2, c1) - M(r1, c1) * M(r2, c0));
+            var determinant = M(0, 0) * Minor(1, 2, 3, 1, 2, 3) - M(0, 1) * Minor(1, 2, 3, 0, 2, 3)
+                + M(0, 2) * Minor(1, 2, 3, 0, 1, 3) - M(0, 3) * Minor(1, 2, 3, 0, 1, 2);
+            return determinant != 0 && Minor(0, 1, 3, 0, 1, 3) * determinant < -1e-9;
         }
 
         /// <summary>Keeps a definitions item's elements by id for markup to refer to (those of an id already kept, with <paramref name="first"/> not).</summary>
@@ -976,7 +1002,9 @@ public static class SkiaScene
                 if (StrokeWidth.Match(attributes) is { Success: true } drawn
                     && float.TryParse(drawn.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var drawnWidth))
                     pen.StrokeWidth = drawnWidth;
-                if (!smooth)
+                // Dashes keep their antialiasing: the browser smooths their ends (LibreOffice's sd/tdf126741: a 1 px
+                // lgDashDotDot line beginning half a pixel in, its dashes' ends half covered as in PowerPoint's picture).
+                if (!smooth && pen.PathEffect == null)
                     SvgDrawing.Crisp(pen, OnPixels);
                 // A gradient or a pattern along the outline, over the path's bounds as its fill would lie.
                 using var paint = outline.Fill is GradientFill or PatternFill
