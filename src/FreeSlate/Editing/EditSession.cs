@@ -157,16 +157,17 @@ public sealed class EditSession(IEditableDocument document)
     }
 
     /// <summary>
-    /// Puts blocks of the document's own kind after the cursor's paragraph (see IEditableDocument.InsertBlocks), a
-    /// handling of its own: paragraphs, tables, a section's end. The cursor then stands at the start of the first
-    /// paragraph they hold; returns their ids in reading order (a table's cell by cell), to type into.
+    /// Puts blocks of the document's own kind after the cursor's paragraph, or before it (see
+    /// IEditableDocument.InsertBlocks), a handling of its own: paragraphs, tables, a section's end. The cursor then stands
+    /// at the start of the first paragraph they hold; returns their ids in reading order (a table's cell by cell), to type
+    /// into.
     /// </summary>
-    public IReadOnlyList<int> InsertBlocks(string markup, IReadOnlyList<NewPart>? parts = null)
+    public IReadOnlyList<int> InsertBlocks(string markup, IReadOnlyList<NewPart>? parts = null, bool before = false)
     {
         IReadOnlyList<int> made = [];
         Act(false, () =>
         {
-            made = document.InsertBlocks(Caret.Paragraph, markup, parts: parts);
+            made = document.InsertBlocks(Caret.Paragraph, markup, before, parts);
             return Same(made.Count > 0 ? new TextPlace(made[0], 0) : Caret);
         });
         return made;
