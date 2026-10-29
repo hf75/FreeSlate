@@ -23,9 +23,9 @@ namespace FreeSlate;
 /// A change is made in the XML the blocks it touches were read from, a stretch of the main part's text: parsed afresh,
 /// changed, made ready as the part was when it was loaded and read anew in place of those blocks (ModelReader.Reread),
 /// the numbers of the lists after it worked out anew; its pages are laid out again from the last checkpoint before it
-/// (Paginator.Relayout). Where reading cannot begin afresh around a change (a field reaching across paragraphs, a
-/// paragraph whose mark is hidden or deleted, a note reference, a section break that comes or goes), the document is read
-/// again whole. Changes reach the body's paragraphs, in tables and text boxes too.
+/// (Paginator.Relayout). Where reading cannot begin afresh around a change (a paragraph whose mark is hidden, a field
+/// reaching to the body's end, a content control showing a placeholder that later ones show too), the document is read
+/// again whole. Changes reach the body's paragraphs, in tables and text boxes too, and the notes' (see ReadNotes).
 /// </summary>
 public sealed partial class WordDocument : IEditableDocument
 {
@@ -209,21 +209,30 @@ public sealed partial class WordDocument : IEditableDocument
         }
     }
 
-    /// <summary>A paragraph of the body (of its tables and text boxes too) by its id, or null.</summary>
+    /// <summary>A paragraph of the body or of a note (of their tables and text boxes too) by its id, or null.</summary>
     public ParagraphBlock? Paragraph(int id)
     {
         Read();
-        return paragraphs.TryGetValue(id, out var found) ? found.Paragraph : null;
+        if (paragraphs.TryGetValue(id, out var found))
+            return found.Paragraph;
+        KnowNotes();
+        return noteParagraphs.TryGetValue(id, out found) ? found.Paragraph : null;
     }
 
     /// <summary>The text of a paragraph (see ParagraphText).</summary>
     public string Text(int paragraph) => ParagraphText.Of(Find(paragraph).Paragraph);
 
-    /// <summary>Whether a paragraph of that id is the body's (in tables and text boxes too), which the document changes.</summary>
+    /// <summary>
+    /// Whether a paragraph of that id is the body's or a footnote's or endnote's (in tables and text boxes too), which the
+    /// document changes.
+    /// </summary>
     public bool Contains(int paragraph)
     {
         Read();
-        return paragraphs.ContainsKey(paragraph);
+        if (paragraphs.ContainsKey(paragraph))
+            return true;
+        KnowNotes();
+        return noteParagraphs.ContainsKey(paragraph);
     }
 
     /// <summary>The word a place stands inside, as Word's formatting buttons take it (see Editing.Words).</summary>
@@ -301,7 +310,8 @@ public sealed partial class WordDocument : IEditableDocument
             }
             return false;
         }
-        return Search(top, blocks, IndexOf(top, walking: true)) ? found!.Value : throw new InvalidOperationException("The paragraph is not in the block.");
+        var (list, index) = TopList(top, walking: true);
+        return Search(top, list, index) ? found!.Value : throw new InvalidOperationException("The paragraph is not in the block.");
     }
 
     /// <summary>The paragraphs of a block in reading order, a table's cell by cell, row by row, not those of text boxes (see flat).</summary>
@@ -371,8 +381,9 @@ public sealed partial class WordDocument : IEditableDocument
         return fresh.SelectMany(Within);
     }
 
-    /// <summary>Whether a paragraph of the body reads so (as all its tracked changes accepted).</summary>
-    bool Reads(int paragraph, string text) => paragraphs.TryGetValue(paragraph, out var found) && ParagraphText.Of(found.Paragraph) == text;
+    /// <summary>Whether a paragraph of the body or of a note reads so (as all its tracked changes accepted).</summary>
+    bool Reads(int paragraph, string text) =>
+        (paragraphs.TryGetValue(paragraph, out var found) || noteParagraphs.TryGetValue(paragraph, out found)) && ParagraphText.Of(found.Paragraph) == text;
 
     /// <summary>The change just made taken back and forgotten, as if it had not been made: a refusal of it.</summary>
     NotSupportedException Refused(string why)
@@ -549,13 +560,16 @@ public sealed partial class WordDocument : IEditableDocument
             return Early();
         if (early)
             return scenes!;
-        if (scenes != null && ReferenceEquals(laid, blocks))
+        if (scenes != null && ReferenceEquals(laid, blocks) && !notesPending && !NotesChanged())
             return scenes;
         List<PageBox> pages;
         if (paginator == null || layout == null || renderer == null)
         {
             layout = new ParagraphLayout(context, new RunStyles(context));
-            var (footnotes, endnotes, separator, continuation) = Notes();
+            ReadNotes();
+            var (footnotes, endnotes, separator, continuation) = notesLaid;
+            notesPending = false;
+            notesChanged.Clear();
             paginator = new Paginator(context, layout, reader) { EndnoteContinuation = continuation, KeepCheckpoints = true };
             pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, separator, PagesAtOnce);
             renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
@@ -563,10 +577,14 @@ public sealed partial class WordDocument : IEditableDocument
         }
         else
         {
-            if (NotesChanged())
+            // Notes read anew go to the layout, which lays out again from the blocks that refer to those whose XML changed.
+            KnowNotes();
+            if (notesPending)
             {
-                var (footnotes, endnotes, separator, continuation) = Notes();
-                paginator.Renote(footnotes, endnotes, separator, continuation);
+                var (footnotes, endnotes, separator, continuation) = notesLaid;
+                paginator.Renote(footnotes, endnotes, separator, continuation, [.. notesChanged.Select(n => (n.Endnote, n.Id))]);
+                notesChanged.Clear();
+                notesPending = false;
             }
             pages = paginator.Relayout(blocks, PagesAtOnce).Pages;
         }
@@ -575,34 +593,17 @@ public sealed partial class WordDocument : IEditableDocument
         return scenes!;
     }
 
-    /// <summary>
-    /// The notes as the document reads now (see ModelReader.Notes), read after the body, as their numbers come from the
-    /// order of their references: the footnotes by id; the endnotes in the order of their references, with the sections
-    /// that refer to them; the endnotes' separator and continuation separator.
-    /// </summary>
-    (Dictionary<string, List<Block>> Footnotes, List<(int Section, List<Block> Blocks)> Endnotes, List<Block>? Separator, List<Block>? Continuation) Notes()
-    {
-        var footnotes = reader.Notes(endnotes: false);
-        var endnoteParts = reader.Notes(endnotes: true);
-        var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
-            .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
-        reader.NotesMoved = false;
-        touched.Clear();
-        noteParts = NoteParts();
-        return (footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"), endnoteParts.GetValueOrDefault("continuationSeparator"));
-    }
-
     /// <summary>The parts other than the main part that changes gave new bytes, took away or added since the notes were read (see Set).</summary>
     readonly HashSet<string> touched = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The footnotes' and the endnotes' parts when the notes were read (see Notes).</summary>
+    /// <summary>The footnotes' and the endnotes' parts when the notes were read (see ReadNotes).</summary>
     string?[] noteParts = [];
 
     /// <summary>The footnotes' and the endnotes' parts as the package has them now.</summary>
     string?[] NoteParts() => [package.FirstRelationship(context.MainPart, "footnotes")?.Target, package.FirstRelationship(context.MainPart, "endnotes")?.Target];
 
     /// <summary>
-    /// Whether the notes read otherwise than when they were read (see Notes): changes moved their references
+    /// Whether the notes read otherwise than when they were read (see ReadNotes): changes moved their references
     /// (ModelReader.NotesMoved), or gave a notes part new bytes, added it or took it away.
     /// </summary>
     bool NotesChanged() => reader.NotesMoved || touched.Count > 0 && NoteParts().Concat(noteParts).Any(p => p != null && touched.Contains(p));
@@ -611,7 +612,7 @@ public sealed partial class WordDocument : IEditableDocument
     /// Whether pages after those the last change laid out still stand as they did before it, or are not laid out yet where
     /// the document's layout grows from its first pages (see LayOut).
     /// </summary>
-    public bool LayingOut => reading || early || paginator?.Paused == true || !ReferenceEquals(laid, blocks);
+    public bool LayingOut => reading || early || paginator?.Paused == true || !ReferenceEquals(laid, blocks) || notesPending || NotesChanged();
 
     /// <summary>
     /// Lays out about so many more of the pages the last change left as they were (see LayingOut), and draws those that
@@ -638,7 +639,7 @@ public sealed partial class WordDocument : IEditableDocument
             Scenes();
             return LayingOut;
         }
-        if (scenes == null || !ReferenceEquals(laid, blocks))
+        if (scenes == null || !ReferenceEquals(laid, blocks) || notesPending || NotesChanged())
             Scenes();
         else if (paginator?.Continue(pages) is { } relaid)
             Draw(relaid.Pages);
@@ -762,7 +763,10 @@ public sealed partial class WordDocument : IEditableDocument
     (ParagraphBlock Paragraph, Block Top) Find(int id)
     {
         Read();
-        return paragraphs.TryGetValue(id, out var found) ? found : throw new ArgumentException($"The document's body has no paragraph {id}.", nameof(id));
+        if (paragraphs.TryGetValue(id, out var found))
+            return found;
+        KnowNotes();
+        return noteParagraphs.TryGetValue(id, out found) ? found : throw new ArgumentException($"The document's body and notes have no paragraph {id}.", nameof(id));
     }
 
     /// <summary>
@@ -777,6 +781,9 @@ public sealed partial class WordDocument : IEditableDocument
     Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, Func<IReadOnlyList<Block>?>? like = null,
         IReadOnlyDictionary<string, byte[]?>? changes = null)
     {
+        // A change in a note is made in its part (see ChangeNote).
+        if (noteOf.TryGetValue(from, out var note))
+            return ChangeNote(note, edit, changes);
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
         var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
         var text = edit(stretch, tracking);
@@ -1129,7 +1136,7 @@ public sealed partial class WordDocument : IEditableDocument
     (List<Block> List, int Index)? ListOf(Block top, ParagraphBlock paragraph, bool walking = false)
     {
         if (ReferenceEquals(top, paragraph))
-            return (blocks, IndexOf(top, walking));
+            return TopList(top, walking);
         (List<Block>, int)? Search(Block block)
         {
             foreach (var list in ModelReader.Inner(block))
@@ -1239,6 +1246,7 @@ public sealed partial class WordDocument : IEditableDocument
     {
         var last = reader?.LastId ?? 0;
         wholeReads++;
+        notesKnown = false;
         // The main part's bytes kept by the package, so that the context reads its XML from them: unpacked once.
         if (package.FirstRelationship("/", "officeDocument")?.Target is { } main && package.Exists(main))
             package.ReadBytes(main, keep: true);

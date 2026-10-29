@@ -71,7 +71,7 @@ public sealed partial class WordDocument
     IReadOnlyList<int> Insert(int paragraph, int offset, string markup, IReadOnlyList<NewPart>? added, Dictionary<string, byte[]?> changes)
     {
         var (p, top) = Find(paragraph);
-        var known = paragraphs.Keys.ToHashSet();
+        var known = paragraphs.Keys.Concat(noteParagraphs.Keys).ToHashSet();
         var elements = Elements(Added(markup, added, changes), context.Document.Root!);
         Change(top, top, (stretch, tracking) => TextEdits.InsertMarkup(stretch, p, offset, [.. elements.Select(e => new XElement(e))], tracking), changes: changes);
         return [.. Within(Find(paragraph).Paragraph).Where(id => !known.Contains(id))];
@@ -91,6 +91,8 @@ public sealed partial class WordDocument
         var elements = Elements(Added(markup, parts, changes), context.Document.Root!);
         if (elements.Any(e => e.Name != Wml.W + "p" && e.Name != Wml.W + "tbl"))
             throw new NotSupportedException("Blocks put in are paragraphs and tables.");
+        if (noteOf.ContainsKey(top) && elements.Any(e => e.Descendants(Wml.W + "sectPr").Any()))
+            throw new NotSupportedException("A note holds no section break.");
         if (!before && elements.Count > 0 && elements[^1].Name == Wml.W + "tbl" && ListOf(top, p) is var (list, index) && index == list.Count - 1)
             elements.Add(new XElement(Wml.W + "p"));
         var count = elements.Count;
@@ -117,6 +119,8 @@ public sealed partial class WordDocument
     /// <exception cref="ArgumentException">The markup is not well-formed XML; nothing changes.</exception>
     public void InsertNote(int paragraph, int offset, string markup, bool endnote = false)
     {
+        if (noteOf.ContainsKey(Find(paragraph).Top))
+            throw new NotSupportedException("A note holds no note.");
         var (w, kind) = (Wml.W, endnote ? "endnote" : "footnote");
         var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
         var part = package.FirstRelationship(context.MainPart, kind + "s") is { External: false } related && package.Exists(related.Target) ? related.Target : null;

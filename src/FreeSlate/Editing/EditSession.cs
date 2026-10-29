@@ -317,7 +317,7 @@ public sealed class EditSession(IEditableDocument document)
     void Act(bool typing, Func<(TextPlace Caret, TextPlace Anchor)> change)
     {
         if (!document.Contains(Caret.Paragraph) || !document.Contains(Anchor.Paragraph))
-            throw new NotSupportedException("The place is in text the document does not change (a header, footer, note or comment).");
+            throw new NotSupportedException("The place is in text the document does not change (a header, footer or comment).");
         var start = document.Changes;
         var couldRedo = document.CanRedo;
         var (caretBefore, anchorBefore) = (Caret, Anchor);

@@ -34,8 +34,8 @@ public interface IEditableDocument : IDisposable
     bool LayOut(int pages = 4);
 
     /// <summary>
-    /// Whether the document changes a paragraph of that id: in a Word document those of its body (in tables and text boxes
-    /// too), not of headers, footers, notes or comments; on slides those of shapes and tables.
+    /// Whether the document changes a paragraph of that id: in a Word document those of its body and of its footnotes and
+    /// endnotes (in tables and text boxes too), not of headers, footers or comments; on slides those of shapes and tables.
     /// </summary>
     bool Contains(int paragraph);
 

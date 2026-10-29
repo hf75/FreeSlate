@@ -1398,19 +1398,37 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     public List<Block>? EndnoteContinuation { get; set; }
 
     /// <summary>
-    /// The notes after a change put a reference in, took one away or moved one (see ModelReader.NotesMoved), read anew,
-    /// for the layouts from now on: Relayout lays the pages out with them from where the blocks differ, the blocks that
-    /// refer to notes numbered anew among those that differ; where the document has endnotes, which stand after the
-    /// blocks, it lays out on to the end (see throughToEnd).
+    /// The notes read anew after a change put a reference in, took one away or moved one (see ModelReader.NotesMoved), or
+    /// changed a note itself, for the layouts from now on: Relayout lays the pages out with them from where the blocks
+    /// differ, the blocks that refer to notes numbered anew among those that differ, or from the first block that refers
+    /// to one of the notes <paramref name="changed"/> (by kind and id); where the document has endnotes, which stand after
+    /// the blocks, it lays out on to the end (see throughToEnd).
     /// </summary>
     public void Renote(Dictionary<string, List<Block>>? footnotes, List<(int Section, List<Block> Blocks)>? endnotes, List<Block>? endnoteSeparator,
-        List<Block>? endnoteContinuation)
+        List<Block>? endnoteContinuation, IEnumerable<(bool Endnote, string Id)>? changed = null)
     {
         if (input is not var (blocks, lastSection, _, before, _))
             return;
         input = (blocks, lastSection, footnotes, endnotes, endnoteSeparator);
         EndnoteContinuation = endnoteContinuation;
         throughToEnd |= before is { Count: > 0 } || endnotes is { Count: > 0 };
+        renoted.UnionWith(changed ?? []);
+    }
+
+    /// <summary>The notes changed since the last layout (see Renote), whose references the next one lays out again from.</summary>
+    readonly HashSet<(bool Endnote, string Id)> renoted = [];
+
+    /// <summary>The place of the first block that refers to one of some notes (in its tables and text boxes too), or -1.</summary>
+    static int Referring(List<Block> blocks, HashSet<(bool Endnote, string Id)> notes)
+    {
+        bool Refers(Block block) => block switch
+        {
+            ParagraphBlock paragraph => paragraph.Content.Any(i => i is NoteReferenceInline { Own: false } reference && notes.Contains((reference.Endnote, reference.Id)))
+                || ModelReader.Inner(paragraph).Any(list => list.Any(Refers)),
+            TableBlock table => table.Table.Rows.Any(row => row.Cells.Any(cell => cell.Blocks.Any(Refers))),
+            _ => false,
+        };
+        return blocks.FindIndex(Refers);
     }
 
     /// <summary>
@@ -1821,11 +1839,21 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var head = 0;
         while (head < a.Length && head < b.Length && ReferenceEquals(a[head], b[head]))
             head++;
-        if (head == a.Length && head == b.Length)
-            return (checkpoints![^1], [], head, 0, sectionEnds, paused);
         var tail = 0;
         while (tail < a.Length - head && tail < b.Length - head && ReferenceEquals(a[^(tail + 1)], b[^(tail + 1)]))
             tail++;
+        // A note changed (see Renote): the block that refers to it first is laid out again as one that differs.
+        if (renoted.Count > 0)
+        {
+            var refers = Referring(given, renoted);
+            renoted.Clear();
+            if (refers >= 0 && head == a.Length && head == b.Length)
+                (head, tail) = (refers, a.Length - refers - 1);
+            else if (refers >= 0)
+                (head, tail) = (Math.Min(head, refers), Math.Min(tail, a.Length - refers - 1));
+        }
+        if (head == a.Length && head == b.Length)
+            return (checkpoints![^1], [], head, 0, sectionEnds, paused);
         var ends = Ends(sectionEnds, blocks, head, tail, given.Count);
         // The first checkpoint, before any block, knows nothing of the blocks; the others may know the block they
         // stand before (the one before looked ahead at it), and the blocks kept with the next one stand where the blocks
