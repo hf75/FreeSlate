@@ -1020,6 +1020,21 @@ public sealed partial class ChartRenderer
         // A height field is drawn back to front by its grid cells on the floor (steep facets would sort wrongly by
         // their own centres), each cell's two triangles by theirs.
         var triangles = new List<(double Cell, double Depth, (double X, double Z, double V)[] Corners)>();
+        // A wireframe draws the topmost contour of a plane cell (its corners in one plane) in the band above, unless
+        // the cell's highest corner lies on a band boundary (measured: local/wire and wire2, ten plane cells rising
+        // to 3 … 10 between boundaries every 2, one rising to 8): that contour's level for each triangle, else NaN.
+        var topContours = new List<double>();
+        double TopContour(double a, double b, double c, double e)
+        {
+            var (min, max) = (Math.Min(Math.Min(a, b), Math.Min(c, e)), Math.Max(Math.Max(a, b), Math.Max(c, e)));
+            if (Math.Abs(a + e - b - c) > 1e-9 * Math.Max(1, Math.Abs(min) + Math.Abs(max)))
+                return double.NaN;
+            var levels = bands.Skip(1).Select(band => band.Low).ToList();
+            if (levels.Any(level => Math.Abs(level - max) <= 1e-9 * Math.Max(1, Math.Abs(level))))
+                return double.NaN;
+            var crossed = levels.Where(level => level > min && level < max).ToList();
+            return crossed.Count > 0 ? crossed.Max() : double.NaN;
+        }
         for (var k = 0; k + 1 < nSer; k++)
         {
             for (var i = 0; i + 1 < nCat; i++)
@@ -1030,25 +1045,50 @@ public sealed partial class ChartRenderer
                 var e = (X(i + 1), Z(k + 1), Value(k + 1, i + 1));
                 (double X, double Z, double V)[][] pair = a.Item3 + e.Item3 >= c.Item3 + b.Item3 ? [[a, b, e], [a, e, c]] : [[c, a, b], [c, b, e]];
                 var cell = projection.Depth((X(i) + X(i + 1)) / 2, frame.FloorY, (Z(k) + Z(k + 1)) / 2);
+                var top = wireframe ? TopContour(a.Item3, b.Item3, c.Item3, e.Item3) : double.NaN;
                 foreach (var t in pair)
+                {
                     triangles.Add((cell, projection.Depth(t.Average(p => p.X), Height(t.Average(p => p.V)), t.Average(p => p.Z)), t));
+                    topContours.Add(top);
+                }
             }
         }
 
         var svg = new StringBuilder();
         if (wireframe)
         {
+            // Whether the surface beside a level grid edge lies above it: the third corners of the triangles along it.
+            static ((double, double), (double, double)) Key((double X, double Z, double V) p, (double X, double Z, double V) q) =>
+                (p.X, p.Z).CompareTo((q.X, q.Z)) <= 0 ? ((p.X, p.Z), (q.X, q.Z)) : ((q.X, q.Z), (p.X, p.Z));
+            var beside = new Dictionary<((double, double), (double, double)), List<double>>();
+            foreach (var (_, _, corners) in triangles)
+            {
+                for (var n = 0; n < 3; n++)
+                {
+                    var key = Key(corners[n], corners[(n + 1) % 3]);
+                    if (!beside.TryGetValue(key, out var thirds))
+                        beside[key] = thirds = [];
+                    thirds.Add(corners[(n + 2) % 3].V);
+                }
+            }
+            bool Above((double X, double Z, double V) p, (double X, double Z, double V) q) =>
+                beside.TryGetValue(Key(p, q), out var thirds) && thirds.Any(v => v > p.V) && !thirds.Any(v => v < p.V);
             // Grid lines along the categories and along the series, each piece in the line of its band; a level
-            // piece on a band boundary belongs to the band below (measured on single wireframe cells).
+            // piece on a band boundary belongs to the band of the surface beside it (measured: the band below on
+            // single wireframe cells rising to it, the band above on generated/charts-3d slide 13's back row).
             void Edge((double X, double Z, double V) p, (double X, double Z, double V) q)
             {
+                var flat = Math.Abs(q.V - p.V) < 1e-12;
+                var above = flat && Above(p, q);
                 for (var band = 0; band < bands.Count; band++)
                 {
                     var (low, high) = bands[band];
                     double t0 = 0, t1 = 1;
-                    if (Math.Abs(q.V - p.V) < 1e-12)
+                    if (flat)
                     {
-                        var inside = (band == 0 || p.V > low) && (band == bands.Count - 1 || p.V <= high);
+                        var inside = above
+                            ? (band == 0 || p.V >= low) && (band == bands.Count - 1 || p.V < high)
+                            : (band == 0 || p.V > low) && (band == bands.Count - 1 || p.V <= high);
                         if (!inside) continue;
                     }
                     else
@@ -1073,25 +1113,37 @@ public sealed partial class ChartRenderer
                 for (var k = 0; k + 1 < nSer; k++)
                     Edge((X(i), Z(k), Value(k, i)), (X(i), Z(k + 1), Value(k + 1, i)));
             // The contour lines where the surface crosses a band boundary, in the line of the band below (measured
-            // on single wireframe cells).
-            foreach (var (_, _, corners) in triangles)
+            // on single wireframe cells), a plane cell's topmost in the band above (see topContours).
+            for (var index = 0; index < triangles.Count; index++)
             {
+                var corners = triangles[index].Corners;
                 for (var band = 1; band < bands.Count; band++)
                 {
                     var level = bands[band].Low;
+                    // Where the triangle crosses the level: on two of its edges, or at a corner on the level and on the
+                    // edge across from it (measured: generated/charts-3d slide 13, values on band boundaries); a corner
+                    // that only touches the level or an edge along it draws no contour.
+                    var tolerance = 1e-9 * Math.Max(1, Math.Abs(level));
                     var crossing = new List<(double X, double Z)>();
+                    var onLevel = 0;
                     for (var e = 0; e < 3; e++)
                     {
                         var (p, q) = (corners[e], corners[(e + 1) % 3]);
-                        if ((p.V - level) * (q.V - level) < 0)
+                        if (Math.Abs(p.V - level) <= tolerance)
+                        {
+                            onLevel++;
+                            crossing.Add((p.X, p.Z));
+                        }
+                        else if (Math.Abs(q.V - level) > tolerance && (p.V - level) * (q.V - level) < 0)
                         {
                             var t = (level - p.V) / (q.V - p.V);
                             crossing.Add((p.X + (q.X - p.X) * t, p.Z + (q.Z - p.Z) * t));
                         }
                     }
-                    if (crossing.Count != 2)
+                    if (crossing.Count != 2 || onLevel == 2)
                         continue;
-                    var line = BandLine(group, band - 1) ?? new Outline(9525, fills[band - 1], "solid", "flat", "round", 8, "sng");
+                    var lineBand = topContours[index] == level ? band : band - 1;
+                    var line = BandLine(group, lineBand) ?? new Outline(9525, fills[lineBand], "solid", "flat", "round", 8, "sng");
                     var (u, v) = (projection.Map(crossing[0].X, Height(level), crossing[0].Z), projection.Map(crossing[1].X, Height(level), crossing[1].Z));
                     svg.Append($"<path d=\"M{XY(u)}L{XY(v)}\" fill=\"none\"{paint.Stroke(line, 0, 0, defs)}/>");
                 }

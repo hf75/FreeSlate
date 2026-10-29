@@ -488,8 +488,17 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
             solidOutlines = Solid.Outlines(geometry, lineWidth / 2);
             // The extrusion runs from the top bevel's outer edge backwards; the bottom bevel closes it at the back.
             var (front, back) = (-topHeight, -topHeight - depth);
-            if (wireframe)
-                solid.Wireframe(solidOutlines, front, camera!.Flat ? front : back, slide.Presentation.Word ? null : lineColor, slide.Presentation.Word ? 0 : lineWidth);
+            if (wireframe && slide.Presentation.Word)
+                solid.Wireframe(solidOutlines, front, camera!.Flat ? front : back);
+            else if (wireframe)
+            {
+                // PowerPoint's wires lie outside the body, their inner edge on its edge (the line's outer edge), in the
+                // line's color and width, without a line black and 1 pt wide (measured: LibreOffice's
+                // Scene3d_material_wireframe, a 1 pt outline's wires centered 1.3 px outside the shape; generated/three-d
+                // slide 4, wires without a line 11/8 px wide and about 0.5 px outside it).
+                var wire = lineWidth > 0 ? lineWidth : Units.ToPx(12700);
+                solid.Wireframe(Solid.Outlines(geometry, (lineWidth + wire) / 2), front, camera!.Flat ? front : back, lineColor, wire);
+            }
             else if (!camera!.Flat)
             {
                 if (depth > 0.01 && (extrusionColor ?? lineColor ?? (hollow ? null : faceColor)) is { } sideColor)

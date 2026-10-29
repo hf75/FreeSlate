@@ -554,8 +554,8 @@ sealed class Solid(Camera camera, Lighting lighting, double w, double h, double 
     /// <summary>
     /// The legacyWireframe material: every edge of the body's mesh as a line, hidden ones included (the rims and a
     /// line along the extrusion at every corner of the outline, measured), in PowerPoint in the shape's line color and
-    /// width (measured: LibreOffice's Scene3d_material_wireframe, a 1 pt black outline draws 1.33 px wide wires), else
-    /// as a black hairline.
+    /// width, just outside the body (see SlideRenderer; measured: LibreOffice's Scene3d_material_wireframe, a 1 pt
+    /// black outline draws 1.33 px wide wires), in Word as black hairlines on its edges.
     /// </summary>
     public void Wireframe(List<List<(double X, double Y)>> outlines, double front, double back, RgbColor? color = null, double width = 0)
     {
