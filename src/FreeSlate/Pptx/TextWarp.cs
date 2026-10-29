@@ -225,13 +225,15 @@ public static class TextWarp
         // Text longer than its path as PowerPoint measures it shrinks until it fits (LibreOffice's tdf116350-texteffects:
         // an arch of 56° holds the whole line, small); old WordArt fills the path's own length (measured with circles
         // and a wide arch down), with several lines the longest whatever parallel it lies on (local/archwa-*: a long
-        // second line on the parallel outside an arch down covers the path's length of it, not all). Word sets its
-        // glyphs at 0.9 of their size along a path, shrunk further by the path's own length over the line's where that
-        // is longer (measured with docx/local/wwa-*, wwb-fonts: lines of 8 to 32 H in Arial Bold 24 pt on arches up and
-        // down and buttons of 300 by 100 and 300 by 60 pt, 0.896 of their size up to the arc's 334 and 315 pt, 0.724 and
-        // 0.540 at 24 and 32 H, all within 1 % of the rule; Calibri and Times New Roman Bold 0.907 and 0.903).
+        // second line on the parallel outside an arch down covers the path's length of it, not all). Word shrinks a line
+        // by the path's own length over the line's where that is longer and draws all of it, glyphs, their places and
+        // the path alike, at 0.9 of its size about the box's centre (measured with docx/local/wwa-*, wwb-fonts: lines of
+        // 8 to 32 H in Arial Bold 24 pt on arches up and down and buttons of 300 by 100 and 300 by 60 pt, glyphs 0.896 of
+        // their size up to the arc's 334 and 315 pt, 0.724 and 0.540 at 24 and 32 H, all within 1 % of the rule, Calibri
+        // and Times New Roman Bold 0.907 and 0.903; the glyphs' centres within 2 pt of PowerPoint's places so scaled,
+        // where those on the whole path lay up to 5.5 pt off and the lines' ends 4 pt further out).
         var scale = fromWordArt ? path.PathLength / widths.Max()
-            : word ? 0.9 * Math.Min(1, path.PathLength / widths.Max())
+            : word ? Math.Min(1, path.PathLength / widths.Max())
             : Math.Min(1, path.Reach / widths.Max());
         foreach (var line in group)
         {
@@ -269,7 +271,8 @@ public static class TextWarp
                     {
                         var along = (contour[k].X - middle) * scale;
                         var height = (baseline - contour[k].Y) * scale - drop;
-                        contour[k] = (p.X + tangent.X * along + tangent.Y * height, p.Y + tangent.Y * along - tangent.X * height);
+                        var (x, y) = (p.X + tangent.X * along + tangent.Y * height, p.Y + tangent.Y * along - tangent.X * height);
+                        contour[k] = word ? (cx + (x - cx) * 0.9, cy + (y - cy) * 0.9) : (x, y);
                     }
                 }
             }
