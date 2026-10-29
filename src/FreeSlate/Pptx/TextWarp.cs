@@ -83,10 +83,12 @@ public static class TextWarp
     /// Warps the glyphs into the preset's paths laid into <paramref name="box"/> (pixels); <paramref name="align"/> gives
     /// each line's paragraph alignment, its free space at the start and end of the text box and its width (pixels).
     /// </summary>
+    /// <param name="word">Whether the text is a Word document's text box (not its VML WordArt), whose lines Word fits to
+    /// paths by their own length (see FollowPath).</param>
     public static List<List<List<(double X, double Y)>>> Apply(GeometryDefinition definition, IEnumerable<Guide> adjustments,
         (double L, double T, double W, double H) box, IReadOnlyList<Glyph> glyphs, bool fromWordArt = false,
         Func<int, (string Align, double Before, double After, double Width)>? align = null,
-        IReadOnlyList<Line>? lines = null)
+        IReadOnlyList<Line>? lines = null, bool word = false)
     {
         var geometry = GeometryEvaluator.Evaluate(definition, box.W * Units.EmuPerPixel, box.H * Units.EmuPerPixel, adjustments);
         var follows = FollowsPaths(definition);
@@ -190,7 +192,7 @@ public static class TextWarp
         {
             var group = Enumerable.Range(0, lineCount).Where(l => Math.Min(paths.Count - 1, l * paths.Count / lineCount) == p).ToList();
             if (group.Count > 0)
-                FollowPath(paths[p], box, glyphs, result, laidOut, fromWordArt, align, group);
+                FollowPath(paths[p], box, glyphs, result, laidOut, fromWordArt, word, align, group);
         }
         return result;
     }
@@ -210,7 +212,7 @@ public static class TextWarp
     /// Black, 0.288 in Arial, 0.231 in Calibri, 0.200 in Courier New, 0.249 in Segoe UI: 0.5 less usWinDescent).
     /// </summary>
     static void FollowPath(Polyline path, (double L, double T, double W, double H) box, IReadOnlyList<Glyph> glyphs,
-        List<List<List<(double X, double Y)>>> result, IReadOnlyList<Line> lines, bool fromWordArt,
+        List<List<List<(double X, double Y)>>> result, IReadOnlyList<Line> lines, bool fromWordArt, bool word,
         Func<int, (string Align, double Before, double After, double Width)>? align, IReadOnlyList<int> group)
     {
         // Which side is up for the glyphs at the path's middle: away from the box's center or towards it.
@@ -223,8 +225,14 @@ public static class TextWarp
         // Text longer than its path as PowerPoint measures it shrinks until it fits (LibreOffice's tdf116350-texteffects:
         // an arch of 56° holds the whole line, small); old WordArt fills the path's own length (measured with circles
         // and a wide arch down), with several lines the longest whatever parallel it lies on (local/archwa-*: a long
-        // second line on the parallel outside an arch down covers the path's length of it, not all).
-        var scale = fromWordArt ? path.PathLength / widths.Max() : Math.Min(1, path.Reach / widths.Max());
+        // second line on the parallel outside an arch down covers the path's length of it, not all). Word sets its
+        // glyphs at 0.9 of their size along a path, shrunk further by the path's own length over the line's where that
+        // is longer (measured with docx/local/wwa-*, wwb-fonts: lines of 8 to 32 H in Arial Bold 24 pt on arches up and
+        // down and buttons of 300 by 100 and 300 by 60 pt, 0.896 of their size up to the arc's 334 and 315 pt, 0.724 and
+        // 0.540 at 24 and 32 H, all within 1 % of the rule; Calibri and Times New Roman Bold 0.907 and 0.903).
+        var scale = fromWordArt ? path.PathLength / widths.Max()
+            : word ? 0.9 * Math.Min(1, path.PathLength / widths.Max())
+            : Math.Min(1, path.Reach / widths.Max());
         foreach (var line in group)
         {
             var members = Enumerable.Range(0, glyphs.Count).Where(i => glyphs[i].Line == line).ToList();

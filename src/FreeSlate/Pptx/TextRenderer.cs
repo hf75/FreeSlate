@@ -598,7 +598,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     ? (left + last.X + last.Width) * PxPerPt : null,
             };
         }).ToList();
-        var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment, lines);
+        var warped = TextWarp.Apply(definition, adjustments, box, glyphs, fromWordArt, Alignment, lines, word: slide.Presentation.Word && !fromWordArt);
         for (var i = 0; i < warped.Count && Outlines != null; i++)
             Outlines.Add((warped[i], (owners[i].Paint is { } warpedPaint ? Fill.MainColor(warpedPaint) : null) ?? owners[i].Color,
                 owners[i].Paint is not (null or SolidFill or NoFill)));
