@@ -304,7 +304,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         var outlinedPaths = geometry.Paths.Select(Outlined).ToList();
         List<SceneItem> ends = outline is { Visible: true }
             ? LineEnds.Apply(outline, outlinedPaths, paint.Fill(outline.Fill, pw, ph, defs, rotation, origin),
-                paint.Stroke(outline with { Dash = "solid" }, pw, ph, defs, origin, drawnWidth: drawnWidth))
+                paint.Stroke(LineEnds.OpenPen(outline), pw, ph, defs, origin, drawnWidth: drawnWidth), drawnWidth)
             : [];
         // A fill overlay blends a second fill over the shape's fill, not its outline (catalog: effect.blur).
         var effects = Effects(chain, style);

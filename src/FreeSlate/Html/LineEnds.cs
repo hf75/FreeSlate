@@ -6,17 +6,38 @@ namespace FreeSlate.Html;
 
 /// <summary>
 /// Draws arrowheads (a:headEnd at the start of an open path, a:tailEnd at its end) and pulls the line back under
-/// them, as PowerPoint does (catalog: line.ends). Sizes are multiples of the line width (at least 2 pt): sm 2, med 3, lg 5.
+/// them, as PowerPoint does (catalog: line.ends). Sizes are multiples of the width the line is drawn with (at least
+/// 2 pt): sm 2, med 3, lg 5; the open arrow's are its own (OpenWidth, OpenLength).
 /// </summary>
 public static class LineEnds
 {
     static double Factor(string size) => size switch { "sm" => 2, "lg" => 5, _ => 3 };
 
     /// <summary>
-    /// Adds the decorations of <paramref name="outline"/> to the first open, stroked path and returns them as shape items
-    /// (filled with the outline's fill, an open arrow stroked as the line), with the given paint attributes in HTML.
+    /// The open arrow (type arrow) in widths: its wing ends lie 2.5, 3.5 or 5 apart and 2, 3 or 4.5 behind its bend
+    /// (measured with LibreOffice's sd-data/tdf100491 on lines of 0 to 5.25 pt, generated/lines at 2.25 and 6 pt,
+    /// poi/customGeo at 3.25 pt and poi/aascu.org_workarea_downloadasset.aspx_id=5864 at 2.75 and 4 pt: each size
+    /// within 2 %).
     /// </summary>
-    public static List<SceneItem> Apply(Outline? outline, List<EvaluatedPath> paths, string fillAttributes, string strokeAttributes)
+    static double OpenWidth(string size) => size switch { "sm" => 2.5, "lg" => 5, _ => 3.5 };
+
+    static double OpenLength(string size) => size switch { "sm" => 2, "lg" => 4.5, _ => 3 };
+
+    /// <summary>
+    /// The pen of an open arrow: the line's, solid, with round ends and a sharp bend whatever the line's caps and
+    /// joins (measured: flat-capped lines with mitered joins and with none given alike).
+    /// </summary>
+    public static Outline OpenPen(Outline outline) => outline with { Dash = "solid", Cap = "rnd", Join = "miter", MiterLimit = 10 };
+
+    /// <summary>
+    /// Adds the decorations of <paramref name="outline"/> to the first open, stroked path and returns them as shape items
+    /// (filled with the outline's fill, an open arrow stroked with OpenPen), with the given paint attributes in HTML.
+    /// </summary>
+    /// <param name="drawnWidth">The width the line is drawn with where the renderer puts it on whole pixels as PowerPoint
+    /// does (SlideRenderer.PixelWidth): the heads are multiples of it (measured: the medium triangles of 2.5 pt lines,
+    /// 3.33 px, are 9 px; the large one of a 2 pt line, 2.67 px, 15 px; the medium ovals of 2.83 pt lines 12 px).</param>
+    public static List<SceneItem> Apply(Outline? outline, List<EvaluatedPath> paths, string fillAttributes, string strokeAttributes,
+        double? drawnWidth = null)
     {
         if (outline is not { Visible: true } || (outline.Head is not { Type: not "none" } && outline.Tail is not { Type: not "none" }))
             return [];
@@ -24,7 +45,7 @@ public static class LineEnds
         if (path == null)
             return [];
 
-        var lineWidth = Math.Max(Units.ToPx(outline.WidthEmu), 0.5);
+        var lineWidth = drawnWidth ?? Math.Max(Units.ToPx(outline.WidthEmu), 0.5);
         var items = new List<SceneItem>();
         var segments = path.Segments;
 
@@ -141,8 +162,8 @@ public static class LineEnds
         pullback = 0;
         if (u == default)
             return null;
-        // Heads of lines thinner than 2 pt keep the size of a 2 pt line's (measured: medium heads 6 pt wide on lines
-        // of 0.25 to 2 pt, 3 widths wide beyond).
+        // Heads of lines drawn thinner than 2 pt keep the size of a 2 pt line's (measured: medium heads 6 pt wide on
+        // lines of 0.25 to 1.75 pt, 3 drawn widths wide beyond).
         var size = Math.Max(lineWidth, 2 * 96 / 72.0);
         var length = size * Factor(end.Length);
         var width = size * Factor(end.Width);
@@ -163,8 +184,16 @@ public static class LineEnds
             case "oval":
                 return new ShapeEllipseItem(tip.X, tip.Y, length / 2, width / 2, Math.Atan2(u.Y, u.X) * 180 / Math.PI, outline.Fill, fill);
             case "arrow":
-                pullback = lineWidth / 2;
-                return new ShapePathItem($"M{P(-length, width / 2)}L{P(0, 0)}L{P(-length, -width / 2)}", Fill.None, outline with { Dash = "solid" }, $" fill=\"none\"{stroke}");
+            {
+                // Bent the stroke's half width over the sine of its half angle behind the line's end, so that its outer
+                // point lies on the end (measured: tdf100491's tips where its lines end, 0.1 px in, the bends 1 to 10 px
+                // behind); the line ends at the bend, under the stroke.
+                var (half, back) = (size * OpenWidth(end.Width) / 2, size * OpenLength(end.Length));
+                var bend = lineWidth / 2 * Math.Sqrt(half * half + back * back) / half;
+                pullback = bend;
+                return new ShapePathItem($"M{P(-bend - back, half)}L{P(-bend, 0)}L{P(-bend - back, -half)}", Fill.None, OpenPen(outline),
+                    $" fill=\"none\"{stroke}");
+            }
             default:
                 return null;
         }
