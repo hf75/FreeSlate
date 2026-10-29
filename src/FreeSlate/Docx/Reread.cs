@@ -89,10 +89,19 @@ public sealed partial class ModelReader
         var (nowEnds, nowBegins) = Unpaired(children);
         if (wasEnds != nowEnds || wasBegins.Count != nowBegins.Count)
             return null;
-        // What a content control showing its placeholder shows, the later ones show too (see Shown); what a document of
-        // another kind or a subdocument brings in (w:altChunk, w:subDoc) is not read again alone.
-        if (old.Concat(children).Any(Elsewhere))
+        // What a document of another kind or a subdocument brings in (w:altChunk, w:subDoc) is not read again alone. What
+        // a content control showing its placeholder shows, the later ones of its docPart show too (see Shown): the change
+        // may hold the first of a docPart, or make one, where no control after it in the body and none of another story
+        // shows that docPart; the first is taken out of placeholders below, for the new children to give anew.
+        if (old.Concat(children).Any(Imported))
             return null;
+        var shown = old.Concat(children).SelectMany(PlaceholderParts).Distinct().ToList();
+        foreach (var part in shown)
+        {
+            if (placeholders.TryGetValue(part, out var shownFirst) && !old.Any(e => e == shownFirst.Content || shownFirst.Content.Ancestors().Contains(e))
+                || storyPlaceholders.Contains(part) || Later(old.Count > 0 ? After(old[^1]) : before, part))
+                return null;
+        }
         // Reading begins at the last child up to the first changed one where it could begin afresh.
         var first = old.Count > 0 ? old[0] : before!;
         var leading = new List<XElement>();
@@ -220,6 +229,11 @@ public sealed partial class ModelReader
         // name the authors the old ones named, in the same order, or reading them would color otherwise than reading the
         // body whole (see AuthorsNamed).
         var named = context.Markup ? AuthorsNamed(old) : null;
+        // The first controls of the docParts the change holds (see above), taken out of placeholders, to be put back where
+        // reading it does not come out so (after the old children named their authors, which reads them).
+        var shownWere = new List<(string Part, (XElement Content, bool Block)? Was)>();
+        foreach (var part in shown)
+            shownWere.Add((part, placeholders.Remove(part, out var was) ? was : null));
         var putBack = Put(first, old, children);
         // Which fields of the body end in it (see Unclosed): the begins the change leaves unpaired are those it had (see
         // above), each new one in place of the old one. How the body's drawings stack is worked out anew where the change
@@ -254,6 +268,13 @@ public sealed partial class ModelReader
             {
                 foreach (var child in children)
                     sectionOf.Remove(child);
+            }
+            foreach (var (part, was) in shownWere)
+            {
+                if (was is { } entry)
+                    placeholders[part] = entry;
+                else
+                    placeholders.Remove(part);
             }
             unclosed.Remove(bodyElement);
             if (stacked)
@@ -558,6 +579,25 @@ public sealed partial class ModelReader
     /// </summary>
     static bool Elsewhere(XElement child) =>
         child.DescendantsAndSelf().Any(d => d.Name == Wml.W + "showingPlcHdr" || d.Name == Wml.W + "altChunk" || d.Name == Wml.W + "subDoc");
+
+    /// <summary>Whether a child of the body brings in a document of another kind or a subdocument (w:altChunk, w:subDoc).</summary>
+    static bool Imported(XElement child) => child.DescendantsAndSelf().Any(d => d.Name == Wml.W + "altChunk" || d.Name == Wml.W + "subDoc");
+
+    /// <summary>The docParts of the content controls of a child of the body that show their placeholder (see Shown).</summary>
+    static IEnumerable<string> PlaceholderParts(XElement child) =>
+        child.DescendantsAndSelf(Wml.W + "sdt").Select(s => s.Child("sdtPr")).Where(p => p.Child("showingPlcHdr") != null)
+            .Select(p => p.Child("placeholder").Child("docPart").Attr("val")).OfType<string>();
+
+    /// <summary>Whether the children of the body from one on hold a content control showing the placeholder of a docPart.</summary>
+    static bool Later(XElement? from, string part)
+    {
+        for (var e = from; e != null; e = After(e))
+        {
+            if (PlaceholderParts(e).Contains(part))
+                return true;
+        }
+        return false;
+    }
 
     /// <summary>The ids of the comment ranges a child of the body begins (w:commentRangeStart), in order.</summary>
     static IEnumerable<string?> CommentRanges(XElement child) => child.Descendants(Wml.W + "commentRangeStart").Select(c => c.Attr("id"));

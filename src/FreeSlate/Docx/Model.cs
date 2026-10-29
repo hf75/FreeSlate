@@ -523,6 +523,9 @@ public sealed partial class ModelReader(DocumentContext context)
     /// </summary>
     readonly Dictionary<string, (XElement Content, bool Block)> placeholders = new(StringComparer.Ordinal);
 
+    /// <summary>The docParts whose placeholders controls of stories other than the body show (headers, footers, notes), see Reread.</summary>
+    readonly HashSet<string> storyPlaceholders = new(StringComparer.Ordinal);
+
     /// <summary>
     /// What a content control shows: in every control showing its placeholder (w:showingPlcHdr) Word shows the content
     /// of the first such control of the same docPart in the document, a block control's paragraphs in later block
@@ -536,6 +539,8 @@ public sealed partial class ModelReader(DocumentContext context)
         if (sdt.Child("sdtPr") is not { } properties || properties.Child("showingPlcHdr") == null
             || properties.Child("placeholder").Child("docPart").Attr("val") is not { } part)
             return content;
+        if (currentPart != context.MainPart)
+            storyPlaceholders.Add(part);
         if (!placeholders.TryGetValue(part, out var first))
         {
             placeholders[part] = (content, block);
