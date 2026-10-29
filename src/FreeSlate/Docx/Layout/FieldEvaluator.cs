@@ -243,6 +243,9 @@ public sealed class FieldEvaluator
 
     static readonly ConditionalWeakTable<DocumentContext, object> storiesRefer = new();
 
+    /// <summary>A header or footer of the document changed: whether they hold REF fields is worked out anew (see StoriesRefer).</summary>
+    public static void StoriesChanged(DocumentContext context) => storiesRefer.Remove(context);
+
     /// <summary>Whether the fields know what a snapshot of the same layout knew: those that came out empty and whether another layout follows.</summary>
     internal bool Knows(Snapshot snapshot) => emptied.SetEquals(snapshot.Emptied) && guessed == snapshot.Guessed && newlyEmptied == snapshot.NewlyEmptied;
 

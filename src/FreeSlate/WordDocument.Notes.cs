@@ -101,7 +101,7 @@ public sealed partial class WordDocument
             foreach (var block in blocks)
             {
                 noteOf[block] = key;
-                CollectNote(block, block);
+                Collect(noteParagraphs, block, block);
             }
         }
         layout?.Forget(gone);
@@ -120,15 +120,15 @@ public sealed partial class WordDocument
         (notesKnown, notesPending) = (true, true);
     }
 
-    /// <summary>The paragraphs of a block of a note (itself, those of its tables and text boxes) by id, with the block.</summary>
-    void CollectNote(Block block, Block top)
+    /// <summary>The paragraphs of a block of a note or story (itself, those of its tables and text boxes) by id, with the block.</summary>
+    static void Collect(Dictionary<int, (ParagraphBlock Paragraph, Block Top)> into, Block block, Block top)
     {
         if (block is ParagraphBlock paragraph)
-            noteParagraphs.TryAdd(paragraph.Id, (paragraph, top));
+            into.TryAdd(paragraph.Id, (paragraph, top));
         foreach (var list in ModelReader.Inner(block))
         {
             foreach (var inner in list)
-                CollectNote(inner, top);
+                Collect(into, inner, top);
         }
     }
 
@@ -152,13 +152,11 @@ public sealed partial class WordDocument
     static bool Numbered(IEnumerable<Block> blocks) =>
         blocks.Any(block => block is ParagraphBlock { Label: not null } || ModelReader.Inner(block).Any(Numbered));
 
-    /// <summary>The list a block of the body or of a note stands in (the body's blocks, the note's) and its place there.</summary>
+    /// <summary>The list a block of the body, of a note or of a header or footer stands in (the body's blocks, the note's, the story's) and its place there.</summary>
     (List<Block> List, int Index) TopList(Block top, bool walking = false)
     {
-        if (!noteOf.TryGetValue(top, out var key))
-            return (blocks, IndexOf(top, walking));
-        var list = notesRead[key];
-        return (list, list.FindIndex(b => ReferenceEquals(b, top)));
+        var list = noteOf.TryGetValue(top, out var key) ? notesRead[key] : storyOf.TryGetValue(top, out var part) ? reader.Stories[part] : null;
+        return list == null ? (blocks, IndexOf(top, walking)) : (list, list.FindIndex(b => ReferenceEquals(b, top)));
     }
 
     /// <summary>The footnotes' or the endnotes' part, where the package has it.</summary>
@@ -189,8 +187,10 @@ public sealed partial class WordDocument
         var (open, close) = (text.TagEnd(start), text.Text.LastIndexOf('<', text.End(start) - 1));
         var head = text.Text[rootStart..text.TagEnd(rootStart)] + text.Text[start..open];
         var tail = text.Text[close..text.End(start)] + $"</{Qualified(text.Text, rootStart)}>";
-        var stretch = new Stretch(head, text.Text[open..close], tail, e => text.Start(e) is var at && at >= open && at < close ? at - open + head.Length : -1);
-        var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
+        // An element read from the note (not one a control showing a placeholder shows from another part, see ModelReader.Shown).
+        var stretch = new Stretch(head, text.Text[open..close], tail,
+            e => e.Document == element.Document && text.Start(e) is var at && at >= open && at < close ? at - open + head.Length : -1);
+        var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId(part, () => notes.Text.Text)) : null;
         var inner = edit(stretch, tracking);
         if (tracking != null)
             changeId = tracking.NextId;
@@ -231,7 +231,7 @@ public sealed partial class WordDocument
             foreach (var block in alone)
             {
                 noteOf[block] = key;
-                CollectNote(block, block);
+                Collect(noteParagraphs, block, block);
             }
             layout?.Forget(gone);
             (notesRead[key], notesXml[key], notesTexts[key.Endnote]) = (alone, note, notes with { Islands = islandsNow });

@@ -53,7 +53,7 @@ public sealed partial class ModelReader
     /// </summary>
     public List<Block>? Reread(List<Block> body, IReadOnlyList<XElement> old, XElement? before, IReadOnlyList<XElement> children, IReadOnlyList<Block>? like = null)
     {
-        if (bodyElement == null || old.Count == 0 && (before == null || children.Count == 0)
+        if (bodyElement == null || bodyShowsEarlier || old.Count == 0 && (before == null || children.Count == 0)
             || old.Append(before).OfType<XElement>().Any(e => e.Parent != bodyElement || !bodyPoints.ContainsKey(e)))
             return null;
         // In the markup view comments are numbered in the order of their ranges in the body (see CommentAnchored), and

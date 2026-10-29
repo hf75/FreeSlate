@@ -25,7 +25,8 @@ namespace FreeSlate;
 /// the numbers of the lists after it worked out anew; its pages are laid out again from the last checkpoint before it
 /// (Paginator.Relayout). Where reading cannot begin afresh around a change (a paragraph whose mark is hidden, a field
 /// reaching to the body's end, a content control showing a placeholder that later ones show too), the document is read
-/// again whole. Changes reach the body's paragraphs, in tables and text boxes too, and the notes' (see ReadNotes).
+/// again whole. Changes reach the body's paragraphs, in tables and text boxes too, the notes' (see ReadNotes) and those
+/// of headers and footers (see ChangeStory).
 /// </summary>
 public sealed partial class WordDocument : IEditableDocument
 {
@@ -199,6 +200,9 @@ public sealed partial class WordDocument : IEditableDocument
     /// <summary>The id the next tracked change takes: one more than the greatest id the main part's elements have.</summary>
     int changeId = -1;
 
+    /// <summary>The parts besides the main part whose ids the next tracked change's id is past (see ChangeId).</summary>
+    readonly HashSet<string> idsKnown = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>The body's blocks as the document reads now.</summary>
     public IReadOnlyList<Block> Blocks
     {
@@ -209,31 +213,17 @@ public sealed partial class WordDocument : IEditableDocument
         }
     }
 
-    /// <summary>A paragraph of the body or of a note (of their tables and text boxes too) by its id, or null.</summary>
-    public ParagraphBlock? Paragraph(int id)
-    {
-        Read();
-        if (paragraphs.TryGetValue(id, out var found))
-            return found.Paragraph;
-        KnowNotes();
-        return noteParagraphs.TryGetValue(id, out found) ? found.Paragraph : null;
-    }
+    /// <summary>A paragraph of the body, of a note or of a header or footer (of their tables and text boxes too) by its id, or null.</summary>
+    public ParagraphBlock? Paragraph(int id) => Found(id)?.Paragraph;
 
     /// <summary>The text of a paragraph (see ParagraphText).</summary>
     public string Text(int paragraph) => ParagraphText.Of(Find(paragraph).Paragraph);
 
     /// <summary>
-    /// Whether a paragraph of that id is the body's or a footnote's or endnote's (in tables and text boxes too), which the
-    /// document changes.
+    /// Whether a paragraph of that id is the body's, a footnote's or endnote's or a header's or footer's (in tables and
+    /// text boxes too), which the document changes; those of headers and footers once the layout read them.
     /// </summary>
-    public bool Contains(int paragraph)
-    {
-        Read();
-        if (paragraphs.ContainsKey(paragraph))
-            return true;
-        KnowNotes();
-        return noteParagraphs.ContainsKey(paragraph);
-    }
+    public bool Contains(int paragraph) => Found(paragraph) != null;
 
     /// <summary>The word a place stands inside, as Word's formatting buttons take it (see Editing.Words).</summary>
     public (int Offset, int Length)? WordAt(int paragraph, int offset)
@@ -381,9 +371,10 @@ public sealed partial class WordDocument : IEditableDocument
         return fresh.SelectMany(Within);
     }
 
-    /// <summary>Whether a paragraph of the body or of a note reads so (as all its tracked changes accepted).</summary>
+    /// <summary>Whether a paragraph of the body, of a note or of a header or footer reads so (as all its tracked changes accepted).</summary>
     bool Reads(int paragraph, string text) =>
-        (paragraphs.TryGetValue(paragraph, out var found) || noteParagraphs.TryGetValue(paragraph, out found)) && ParagraphText.Of(found.Paragraph) == text;
+        (paragraphs.TryGetValue(paragraph, out var found) || noteParagraphs.TryGetValue(paragraph, out found) || storyParagraphs.TryGetValue(paragraph, out found))
+        && ParagraphText.Of(found.Paragraph) == text;
 
     /// <summary>The change just made taken back and forgotten, as if it had not been made: a refusal of it.</summary>
     NotSupportedException Refused(string why)
@@ -560,7 +551,7 @@ public sealed partial class WordDocument : IEditableDocument
             return Early();
         if (early)
             return scenes!;
-        if (scenes != null && ReferenceEquals(laid, blocks) && !notesPending && !NotesChanged())
+        if (scenes != null && ReferenceEquals(laid, blocks) && !notesPending && !NotesChanged() && storiesChanged.Count == 0)
             return scenes;
         List<PageBox> pages;
         if (paginator == null || layout == null || renderer == null)
@@ -570,6 +561,7 @@ public sealed partial class WordDocument : IEditableDocument
             var (footnotes, endnotes, separator, continuation) = notesLaid;
             notesPending = false;
             notesChanged.Clear();
+            storiesChanged.Clear();
             paginator = new Paginator(context, layout, reader) { EndnoteContinuation = continuation, KeepCheckpoints = true };
             pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, separator, PagesAtOnce);
             renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
@@ -585,6 +577,12 @@ public sealed partial class WordDocument : IEditableDocument
                 paginator.Renote(footnotes, endnotes, separator, continuation, [.. notesChanged.Select(n => (n.Endnote, n.Id))]);
                 notesChanged.Clear();
                 notesPending = false;
+            }
+            // Headers and footers read anew too, which it finishes anew on the pages that show them.
+            if (storiesChanged.Count > 0)
+            {
+                paginator.Restory(storiesChanged);
+                storiesChanged.Clear();
             }
             pages = paginator.Relayout(blocks, PagesAtOnce).Pages;
         }
@@ -612,7 +610,7 @@ public sealed partial class WordDocument : IEditableDocument
     /// Whether pages after those the last change laid out still stand as they did before it, or are not laid out yet where
     /// the document's layout grows from its first pages (see LayOut).
     /// </summary>
-    public bool LayingOut => reading || early || paginator?.Paused == true || !ReferenceEquals(laid, blocks) || notesPending || NotesChanged();
+    public bool LayingOut => reading || early || paginator?.Paused == true || !ReferenceEquals(laid, blocks) || notesPending || NotesChanged() || storiesChanged.Count > 0;
 
     /// <summary>
     /// Lays out about so many more of the pages the last change left as they were (see LayingOut), and draws those that
@@ -639,7 +637,7 @@ public sealed partial class WordDocument : IEditableDocument
             Scenes();
             return LayingOut;
         }
-        if (scenes == null || !ReferenceEquals(laid, blocks) || notesPending || NotesChanged())
+        if (scenes == null || !ReferenceEquals(laid, blocks) || notesPending || NotesChanged() || storiesChanged.Count > 0)
             Scenes();
         else if (paginator?.Continue(pages) is { } relaid)
             Draw(relaid.Pages);
@@ -760,13 +758,20 @@ public sealed partial class WordDocument : IEditableDocument
 
     public void Dispose() => package.Dispose();
 
-    (ParagraphBlock Paragraph, Block Top) Find(int id)
+    (ParagraphBlock Paragraph, Block Top) Find(int id) =>
+        Found(id) ?? throw new ArgumentException($"The document's body, notes, headers and footers have no paragraph {id}.", nameof(id));
+
+    /// <summary>A paragraph of the body, of a note or of a header or footer by its id, with the block of its story it stands in, or null.</summary>
+    (ParagraphBlock Paragraph, Block Top)? Found(int id)
     {
         Read();
         if (paragraphs.TryGetValue(id, out var found))
             return found;
         KnowNotes();
-        return noteParagraphs.TryGetValue(id, out found) ? found : throw new ArgumentException($"The document's body and notes have no paragraph {id}.", nameof(id));
+        if (noteParagraphs.TryGetValue(id, out found))
+            return found;
+        KnowStories();
+        return storyParagraphs.TryGetValue(id, out found) ? found : null;
     }
 
     /// <summary>
@@ -781,9 +786,11 @@ public sealed partial class WordDocument : IEditableDocument
     Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, Func<IReadOnlyList<Block>?>? like = null,
         IReadOnlyDictionary<string, byte[]?>? changes = null)
     {
-        // A change in a note is made in its part (see ChangeNote).
+        // A change in a note is made in its part (see ChangeNote), in a header or footer in its own (see ChangeStory).
         if (noteOf.TryGetValue(from, out var note))
             return ChangeNote(note, edit, changes);
+        if (storyOf.TryGetValue(from, out var story))
+            return ChangeStory(story, edit, changes);
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
         var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
         var text = edit(stretch, tracking);
@@ -815,24 +822,31 @@ public sealed partial class WordDocument : IEditableDocument
         return where;
     }
 
-    /// <summary>The id the next tracked change takes (see changeId).</summary>
-    int ChangeId()
+    /// <summary>
+    /// The id the next tracked change takes (see changeId); one made in another part (a note's, a header's) past the
+    /// greatest id of that part's text too, the first time a change is made there (the ids given since are below it).
+    /// </summary>
+    int ChangeId(string? part = null, Func<string>? text = null)
     {
         if (changeId < 0)
-        {
-            var greatest = islands.Select(i => i.Text).Prepend(wholeText.Text)
-                .SelectMany(text => System.Text.RegularExpressions.Regex.Matches(text, @"(?<=[\s:]id="")\d{1,9}(?="")").Select(m => int.Parse(m.Value, CultureInfo.InvariantCulture)))
-                .DefaultIfEmpty(0).Max();
-            changeId = greatest + 1;
-        }
+            changeId = islands.Select(i => i.Text).Prepend(wholeText.Text).Select(Greatest).DefaultIfEmpty(0).Max() + 1;
+        if (part != null && text != null && idsKnown.Add(part))
+            changeId = Math.Max(changeId, Greatest(text()) + 1);
         return changeId;
+
+        static int Greatest(string text) =>
+            System.Text.RegularExpressions.Regex.Matches(text, @"(?<=[\s:]id="")\d{1,9}(?="")").Select(m => int.Parse(m.Value, CultureInfo.InvariantCulture)).DefaultIfEmpty(0).Max();
     }
 
     /// <summary>The document as it reads in another of its versions: the stretches whose text differs read anew (see Apply).</summary>
     void Go(int target)
     {
         var to = versions[target];
+        // Headers and footers the version has otherwise are read anew (see Restory).
+        var stories = StoriesDiffering(partBytes, to.Parts);
         Restore(to.Parts);
+        if (stories.Count > 0)
+            Restory(stories);
         if (Island.Differing(islands, to.Islands) is { Count: > 0 } differ)
         {
             var (old, before, start, end) = Covering(differ.Min(i => i.Start), differ.Max(i => i.End));
@@ -1244,7 +1258,7 @@ public sealed partial class WordDocument : IEditableDocument
     /// </summary>
     void ReadWhole(bool portions = false)
     {
-        var last = reader?.LastId ?? 0;
+        var (last, before) = (reader?.LastId ?? 0, reader);
         wholeReads++;
         notesKnown = false;
         // The main part's bytes kept by the package, so that the context reads its XML from them: unpacked once.
@@ -1253,6 +1267,9 @@ public sealed partial class WordDocument : IEditableDocument
         context = new DocumentContext(package, fonts, bodyBitByBit: portions) { Culture = culture, Printed = printed, Markup = markup };
         budget = context.Text3DBudget;
         reader = new ModelReader(context) { LastId = last };
+        // The headers and footers read for the layout, which the new reader reads with their ids (see ModelReader.KeepStories).
+        if (before != null)
+            reader.KeepStories(before);
         whole = package.ReadBytes(context.MainPart);
         wholeText = context.MainText;
         body = context.Document.Root.Child("body");

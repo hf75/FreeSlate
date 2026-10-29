@@ -196,6 +196,29 @@ public sealed class PageBox
     internal (int Pages, int SectionPages)? Counted { get; set; }
 
     /// <summary>
+    /// Where the items the header and the footer of a finished page (see Paginator.PaginateRun) added begin among its
+    /// lines, fills, strokes and drawings, and where they end; null for a page as laid out. A page finished anew for a
+    /// story read anew takes the other story's items from them (see Paginator.refinished).
+    /// </summary>
+    internal (StoryItems Header, StoryItems Footer, StoryItems End)? Stories { get; set; }
+
+    /// <summary>How many lines, fills, strokes and drawings a page holds at a point (see Stories).</summary>
+    internal readonly record struct StoryItems(int Lines, int Shading, int Borders, int Strokes, int Drawings)
+    {
+        public static StoryItems Of(PageBox page) => new(page.Lines.Count, page.Shading.Count, page.Borders.Count, page.Strokes.Count, page.Drawings.Count);
+
+        /// <summary>The items of another page between two points of it (this one and <paramref name="end"/>) added to a page.</summary>
+        public void Copy(PageBox from, StoryItems end, PageBox to)
+        {
+            to.Lines.AddRange(from.Lines.GetRange(Lines, end.Lines - Lines));
+            to.Shading.AddRange(from.Shading.GetRange(Shading, end.Shading - Shading));
+            to.Borders.AddRange(from.Borders.GetRange(Borders, end.Borders - Borders));
+            to.Strokes.AddRange(from.Strokes.GetRange(Strokes, end.Strokes - Strokes));
+            to.Drawings.AddRange(from.Drawings.GetRange(Drawings, end.Drawings - Drawings));
+        }
+    }
+
+    /// <summary>
     /// The page without what stands on it (its lines, fills, drawings, notes), as the fields keep a layout they read
     /// (see FieldEvaluator.Update): its number, section, chapter, headers and paragraphs.
     /// </summary>
@@ -1428,6 +1451,95 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The changing notes of the paginator that runs this run (see changingNotes), or null.</summary>
     HashSet<string>? waitingNotes;
 
+    /// <summary>
+    /// The stories of headers or footers read anew after changes gave their parts new bytes (see ModelReader.Restory),
+    /// for the layouts from now on: the next one lays the pages out again from the first one that shows one of them
+    /// taking other room than it took there (see Reroomed), on to the end (see throughToEnd), and finishes the pages that
+    /// show them anew; the others as they were.
+    /// </summary>
+    public void Restory(IEnumerable<string> parts)
+    {
+        restoried.UnionWith(parts);
+        (reads, lookBack) = (null, null);
+    }
+
+    /// <summary>The stories read anew since the last layout (see Restory).</summary>
+    readonly HashSet<string> restoried = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The stories read anew of the paginator that runs this run (see restoried), whose pages it finishes anew, or null.</summary>
+    HashSet<string>? refinish;
+
+    /// <summary>
+    /// Whether a block of a header or footer reads otherwise from page to page: it holds a field (the page's number, its
+    /// counts, the text of its paragraphs; w:pgNum is read as a PAGE field) or a drawing placed on the page (see
+    /// Placed: it may be held where a run before put it), in its tables and text boxes too.
+    /// </summary>
+    static bool PageDependent(Block block) => block switch
+    {
+        ParagraphBlock paragraph => paragraph.Content.Any(i => i is FieldInline or AnchorInline) || ModelReader.Inner(paragraph).Any(list => list.Any(PageDependent)),
+        TableBlock table => table.Table.Rows.Any(row => row.Cells.Any(cell => cell.Blocks.Any(PageDependent))),
+        _ => false,
+    };
+
+    /// <summary>The paragraphs of a block (itself, those of its tables and text boxes) added to a set.</summary>
+    static void Paragraphs(Block block, HashSet<ParagraphBlock> into)
+    {
+        if (block is ParagraphBlock paragraph)
+            into.Add(paragraph);
+        foreach (var list in ModelReader.Inner(block))
+        {
+            foreach (var inner in list)
+                Paragraphs(inner, into);
+        }
+    }
+
+    /// <summary>Whether a page shows a header or footer read anew (see refinish): the run finishes it anew, not taking it as the run before finished it.</summary>
+    bool Refinishes(PageBox page) =>
+        refinish != null && (page.Header != null && refinish.Contains(page.Header) || page.Footer != null && refinish.Contains(page.Footer));
+
+    /// <summary>
+    /// The number of the first page laid out that shows a header or footer read anew (see Restory) taking other room than
+    /// it took when the page was made (see NewPage): where a header ends or a footer begins, and room kept free of the
+    /// body's text (frames, floating tables, drawings text goes around), which counts as other room wherever a page or
+    /// the story has any; 0 where none does. Laid out without fields as NewPage lays them out, once for pages alike
+    /// (but for headers that look back over the pages, STYLEREF).
+    /// </summary>
+    int Reroomed()
+    {
+        var alike = !StoriesLookBack();
+        var known = new Dictionary<(string Part, bool Header, SectionProperties Section, double Left, double Width, bool Even), (double Edge, bool Room)>();
+        var area = tables.PageArea;
+        try
+        {
+            foreach (var p in laid!)
+            {
+                foreach (var (part, header, edge) in new[] { (p.Header, true, p.HeaderBottom), (p.Footer, false, p.FooterTop) })
+                {
+                    if (part == null || edge == null || !restoried.Contains(part))
+                        continue;
+                    var key = (part, header, p.Section, p.TextLeft, p.TextWidth, p.DisplayNumber % 2 == 0);
+                    if (!alike || !known.TryGetValue(key, out var room))
+                    {
+                        tables.PageArea = AreaOf(p.Section);
+                        if (header && layout.Evaluator != null)
+                            layout.Evaluator.Laying = p;
+                        var box = Story(part, p, null, header);
+                        if (layout.Evaluator != null)
+                            layout.Evaluator.Laying = null;
+                        known[key] = room = (header ? box.Bottom : box.Top, box.Floats.Count > 0 || StoryObstacles(box).Any());
+                    }
+                    if (room.Edge != edge || room.Room || p.FloatingTables.Any(e => e.Story))
+                        return p.Number;
+                }
+            }
+            return 0;
+        }
+        finally
+        {
+            tables.PageArea = area;
+        }
+    }
+
     /// <summary>The place of the first block that refers to one of some notes (in its tables and text boxes too), or -1.</summary>
     static int Referring(List<Block> blocks, HashSet<(bool Endnote, string Id)> notes)
     {
@@ -1769,6 +1881,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 EndnoteContinuation = EndnoteContinuation, checkpoints = [], settledCopy = from.State.settled, stopPages = laid, stopSettings = settings,
                 knownEnds = ends, stopFinished = finishedPages, waitingNotes = changingNotes.Count > 0 ? changingNotes : null,
+                refinish = restoried.Count > 0 ? restoried : null,
                 // The run stops only after the last block that differs, and not where the pages after it may read
                 // otherwise (see throughToEnd) or headers look back over the pages before theirs (STYLEREF).
                 stops = throughToEnd || StoriesLookBack() || before == null ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
@@ -1808,6 +1921,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     throughToEnd = false;
                 if (!run.pausedHere)
                     changingNotes.Clear();
+                // The pages that show the stories read anew are finished with them, also those after a pause.
+                restoried.Clear();
                 if (refielding)
                     refields = null;
                 // From a checkpoint on a page before the first one that holds such a field: a checkpoint stands at the
@@ -1836,6 +1951,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var (_, lastSection, footnotes, endnotes, endnoteSeparator) = input!.Value;
         (paused, refields, fieldPasses, throughToEnd) = (null, null, 0, false);
         changingNotes.Clear();
+        restoried.Clear();
         settings = new TextSettings();
         layout.Evaluator = null;
         layout.NoteMarks = null;
@@ -1869,8 +1985,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             else if (refers >= 0)
                 (head, tail) = (Math.Min(head, refers), Math.Min(tail, a.Length - refers - 1));
         }
+        // A header or footer read anew that takes other room on a page (see Restory): the pages are laid out again from
+        // before that page is made, on to the end, the first page anew (its first checkpoint stands on it).
+        Checkpoint? storyFrom = null;
+        if (restoried.Count > 0 && Reroomed() is var reroomed and > 0)
+        {
+            storyFrom = checkpoints!.LastOrDefault(c => c.Page < reroomed);
+            if (storyFrom == null)
+                return (null, [], head, tail, sectionEnds, null);
+            throughToEnd = true;
+        }
         if (head == a.Length && head == b.Length)
-            return (checkpoints![^1], [], head, 0, sectionEnds, paused);
+            return (storyFrom ?? checkpoints![^1], [], head, 0, sectionEnds, paused);
         var ends = Ends(sectionEnds, blocks, head, tail, given.Count);
         // The first checkpoint, before any block, knows nothing of the blocks; the others may know the block they
         // stand before (the one before looked ahead at it), and the blocks kept with the next one stand where the blocks
@@ -1899,6 +2025,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var at = first < given.Count ? Place(sectionEnds, first) : (Section: int.MaxValue, Block: 0);
         var from = checkpoints!.LastOrDefault(c => c.Section < at.Section || c.Section == at.Section && c.Block < at.Block)
             ?? (checkpoints![0] is { Section: 0, Block: 0 } start ? start : null);
+        if (storyFrom != null && from != null && Position(storyFrom).CompareTo(Position(from)) < 0)
+            from = storyFrom;
         var after = new List<Checkpoint>();
         // Where a layout paused: as it is before the blocks that differ, moved after them, gone among them.
         var held = paused != null && Index(sectionEnds, given.Count, paused.Section, paused.Block) is { } pausedAt && pausedAt < head ? paused : null;
@@ -1996,7 +2124,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         for (var k = 0; k < pages.Count; k++)
         {
             var p = pages[k];
-            if (taken?[k] == true)
+            // Those finished anew for stories read anew stand as they stood: their room was compared then (see Reroomed).
+            if (taken?[k] == true || refinished?[k] == true)
                 continue;
             if (p is { HeaderBottom: { } bottom, Header: { } header } && Reads(header))
             {
@@ -2039,6 +2168,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     List<PageBox>? stopFinished;
     bool[]? taken;
     List<int>? knownEnds;
+
+    /// <summary>The pages of this run the run before laid out and finished that it finishes anew, as they show stories read anew (see refinish).</summary>
+    bool[]? refinished;
 
     /// <summary>The pages Paginate or Relayout returned last.</summary>
     List<PageBox>? finishedPages;
@@ -2131,7 +2263,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             or nameof(stopSettings) or nameof(stoppedAt) or nameof(stopFinished) or nameof(taken) or nameof(knownEnds) or nameof(finishedPages)
             or nameof(sectionEnds) or nameof(paused) or nameof(pauseAt) or nameof(pausedHere) or nameof(refields)
             or nameof(fieldPasses) or nameof(steps) or nameof(growth) or nameof(firstRun) or nameof(renoted) or nameof(changingNotes)
-            or nameof(waitingNotes) or nameof(throughToEnd)))
+            or nameof(waitingNotes) or nameof(throughToEnd) or nameof(restoried) or nameof(refinish) or nameof(refinished)))
         .ToArray();
 
     /// <summary>
@@ -2534,16 +2666,31 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         storyOwners.Clear();
         // The headers and footers are read in the order of their sections, so that their blocks' ids do not follow the
         // order of the pages they are first laid out on (a growing layout finishes pages step by step, see Paginate);
-        // within a section in Word's order of its stories, in which their lists count on (see ModelReader.Story).
+        // within a section in Word's order of its stories, in which their lists count on (see ModelReader.Story). Read
+        // before in another order where that counts (sections came or went since), they are read anew in this one, and
+        // the pages that show them finished anew.
+        var storyParts = new List<string>();
         foreach (var (_, own) in sections)
         {
             var order = new[] { own.Headers.GetValueOrDefault("even"), own.Headers.GetValueOrDefault("default"), own.Footers.GetValueOrDefault("even"),
                 own.Footers.GetValueOrDefault("default"), own.Headers.GetValueOrDefault("first"), own.Footers.GetValueOrDefault("first") };
             foreach (var part in order.OfType<string>().Concat(own.Headers.Values).Concat(own.Footers.Values))
             {
-                storyOwners.TryAdd(part, own);
-                reader?.Story(part);
+                if (storyOwners.TryAdd(part, own))
+                    storyParts.Add(part);
             }
+        }
+        if (reader?.Order(storyParts) is { Count: > 0 } reordered)
+        {
+            refinish = new HashSet<string>(refinish ?? [], StringComparer.OrdinalIgnoreCase);
+            var gone = new HashSet<ParagraphBlock>(ReferenceEqualityComparer.Instance);
+            foreach (var (part, before) in reordered)
+            {
+                refinish.Add(part);
+                foreach (var block in before)
+                    Paragraphs(block, gone);
+            }
+            layout.Forget(gone);
         }
         // A section without a header or footer of a type has the previous section's (ISO/IEC 29500 17.10.5).
         for (var s = 1; s < sections.Count; s++)
@@ -2699,11 +2846,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 && (pausedHere || Finished(pages[k], parts) is { } counts
                     && (!counts || stopFinished[k].Counted == (pages.Count, sectionPages.GetValueOrDefault(pages[k].SectionIndex)))))
             {
-                finished.Add(stopFinished[k]);
-                (taken ??= new bool[pages.Count])[k] = true;
+                if (!Refinishes(pages[k]))
+                {
+                    finished.Add(stopFinished[k]);
+                    (taken ??= new bool[pages.Count])[k] = true;
+                    continue;
+                }
+                // A page that shows a story read anew is finished anew, as it was laid out (see StoriesKept).
+                (refinished ??= new bool[pages.Count])[k] = true;
             }
-            else
-                finished.Add(pages[k].Copy());
+            finished.Add(pages[k].Copy());
         }
         if (layout.Evaluator != null)
             layout.Evaluator.Current = finished;
@@ -2725,8 +2877,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         {
             // Headers and footers are finished by their page alone, whichever section the run stands in by then: the
             // drawings of their cells sized relative to the page or the margins take its section's page area (see
-            // TableLayout.PageArea).
+            // TableLayout.PageArea). One without fields and drawings placed on the page stands alike on pages alike (of
+            // one section, place and side): laid out once for them. A page finished anew for a story read anew takes the
+            // other story's items as the run before finished it (see refinished).
             var area = tables.PageArea;
+            var plain = new Dictionary<List<Block>, bool>(ReferenceEqualityComparer.Instance);
+            var alike = new Dictionary<(string Part, bool Header, SectionProperties Section, double Left, double Width, double Top, double Bottom, bool Even), StoryBox>();
+            StoryBox Finish(string part, PageBox on, PageFields fields, bool header)
+            {
+                var blocks = reader.Story(part);
+                if (!(plain.TryGetValue(blocks, out var known) ? known : plain[blocks] = !blocks.Any(PageDependent)))
+                    return Story(part, on, fields, header);
+                var key = (part, header, on.Section, on.TextLeft, on.TextWidth, on.BodyTop, on.BodyBottom, on.DisplayNumber % 2 == 0);
+                if (!alike.TryGetValue(key, out var box))
+                    alike[key] = box = Story(part, on, fields, header);
+                return box;
+            }
             for (var k = 0; k < finished.Count; k++)
             {
                 if (taken?[k] == true)
@@ -2736,10 +2902,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // Headers and footers of pages of vertical text stand upright (measured with docx/local/vertical2).
                 var on = p.Upright ?? p;
                 tables.PageArea = AreaOf(on.Section);
+                var before = refinished?[k] == true && (stopFinished![k].Upright ?? stopFinished[k]) is { Stories: { } items } old ? (Page: old, Items: items) : default((PageBox Page, (PageBox.StoryItems Header, PageBox.StoryItems Footer, PageBox.StoryItems End) Items)?);
+                var header = PageBox.StoryItems.Of(on);
                 if (p.Header != null)
-                    Story(p.Header, on, fields, header: true).AddTo(on);
+                {
+                    if (before is { } was && !refinish!.Contains(p.Header))
+                        was.Items.Header.Copy(was.Page, was.Items.Footer, on);
+                    else
+                        Finish(p.Header, on, fields, header: true).AddTo(on);
+                }
+                var footer = PageBox.StoryItems.Of(on);
                 if (p.Footer != null)
-                    Story(p.Footer, on, fields, header: false).AddTo(on);
+                {
+                    if (before is { } was && !refinish!.Contains(p.Footer))
+                        was.Items.Footer.Copy(was.Page, was.Items.End, on);
+                    else
+                        Finish(p.Footer, on, fields, header: false).AddTo(on);
+                }
+                on.Stories = (header, footer, PageBox.StoryItems.Of(on));
             }
             tables.PageArea = area;
         }

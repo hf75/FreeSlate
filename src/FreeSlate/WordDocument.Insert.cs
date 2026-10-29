@@ -71,8 +71,9 @@ public sealed partial class WordDocument
     IReadOnlyList<int> Insert(int paragraph, int offset, string markup, IReadOnlyList<NewPart>? added, Dictionary<string, byte[]?> changes)
     {
         var (p, top) = Find(paragraph);
-        var known = paragraphs.Keys.Concat(noteParagraphs.Keys).ToHashSet();
-        var elements = Elements(Added(markup, added, changes), context.Document.Root!);
+        var known = paragraphs.Keys.Concat(noteParagraphs.Keys).Concat(storyParagraphs.Keys).ToHashSet();
+        var source = PartOf(top);
+        var elements = Elements(Added(markup, added, changes, source), RootOf(source));
         Change(top, top, (stretch, tracking) => TextEdits.InsertMarkup(stretch, p, offset, [.. elements.Select(e => new XElement(e))], tracking), changes: changes);
         return [.. Within(Find(paragraph).Paragraph).Where(id => !known.Contains(id))];
     }
@@ -88,11 +89,12 @@ public sealed partial class WordDocument
     {
         var (p, top) = Find(paragraph);
         var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
-        var elements = Elements(Added(markup, parts, changes), context.Document.Root!);
+        var source = PartOf(top);
+        var elements = Elements(Added(markup, parts, changes, source), RootOf(source));
         if (elements.Any(e => e.Name != Wml.W + "p" && e.Name != Wml.W + "tbl"))
             throw new NotSupportedException("Blocks put in are paragraphs and tables.");
-        if (noteOf.ContainsKey(top) && elements.Any(e => e.Descendants(Wml.W + "sectPr").Any()))
-            throw new NotSupportedException("A note holds no section break.");
+        if (source != context.MainPart && elements.Any(e => e.Descendants(Wml.W + "sectPr").Any()))
+            throw new NotSupportedException("A note, header or footer holds no section break.");
         if (!before && elements.Count > 0 && elements[^1].Name == Wml.W + "tbl" && ListOf(top, p) is var (list, index) && index == list.Count - 1)
             elements.Add(new XElement(Wml.W + "p"));
         var count = elements.Count;
@@ -119,8 +121,8 @@ public sealed partial class WordDocument
     /// <exception cref="ArgumentException">The markup is not well-formed XML; nothing changes.</exception>
     public void InsertNote(int paragraph, int offset, string markup, bool endnote = false)
     {
-        if (noteOf.ContainsKey(Find(paragraph).Top))
-            throw new NotSupportedException("A note holds no note.");
+        if (PartOf(Find(paragraph).Top) != context.MainPart)
+            throw new NotSupportedException("A note, header or footer holds no note.");
         var (w, kind) = (Wml.W, endnote ? "endnote" : "footnote");
         var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
         var part = package.FirstRelationship(context.MainPart, kind + "s") is { External: false } related && package.Exists(related.Target) ? related.Target : null;
@@ -152,12 +154,19 @@ public sealed partial class WordDocument
     /// <summary>A text escaped for an XML attribute's value.</summary>
     static string Escaped(string text) => System.Security.SecurityElement.Escape(text);
 
+    /// <summary>The part a block of the body, of a note or of a header or footer was read from, which what is put into it is related from.</summary>
+    string PartOf(Block top) =>
+        noteOf.TryGetValue(top, out var note) ? NotePart(note.Endnote) ?? context.MainPart : storyOf.TryGetValue(top, out var story) ? story : context.MainPart;
+
+    /// <summary>The root of a part's XML as loaded, whose namespaces markup put into it is parsed within (see Elements).</summary>
+    XElement RootOf(string part) => (part == context.MainPart ? context.Document : context.Load(part)).Root!;
+
     /// <summary>
-    /// The parts to add put among the changes (see NewPart): named, related from the main part or from one another, listed
-    /// with their content types; returns the markup with the ids of the relationships from the main part in place of
-    /// their keys.
+    /// The parts to add put among the changes (see NewPart): named, related from the part the markup goes into
+    /// (<paramref name="source"/>: the main part, a notes part, a header's or footer's) or from one another, listed with
+    /// their content types; returns the markup with the ids of the relationships from that part in place of their keys.
     /// </summary>
-    string Added(string markup, IReadOnlyList<NewPart>? added, Dictionary<string, byte[]?> changes)
+    string Added(string markup, IReadOnlyList<NewPart>? added, Dictionary<string, byte[]?> changes, string source)
     {
         if (added is not { Count: > 0 })
             return markup;
@@ -165,10 +174,10 @@ public sealed partial class WordDocument
             throw new ArgumentException("The new parts' keys are not each their own, or a part is related from one not among them.", nameof(added));
         var names = added.ToDictionary(p => p.Key, p => Unique(p.Name), StringComparer.Ordinal);
         var ids = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var group in added.GroupBy(p => p.From is { } from ? names[from] : context.MainPart, StringComparer.OrdinalIgnoreCase))
+        foreach (var group in added.GroupBy(p => p.From is { } from ? names[from] : source, StringComparer.OrdinalIgnoreCase))
         {
-            var source = group.Key;
-            var relationshipsPart = OpcPackage.RelationshipsPart(source);
+            var from = group.Key;
+            var relationshipsPart = OpcPackage.RelationshipsPart(from);
             var rels = Current(relationshipsPart, changes) is { } bytes ? Xml(bytes)
                 : new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), new XElement(Relationships + "Relationships"));
             var taken = rels.Root!.Elements(Relationships + "Relationship").Select(r => (string?)r.Attribute("Id")).OfType<string>().ToHashSet(StringComparer.Ordinal);
@@ -181,7 +190,7 @@ public sealed partial class WordDocument
                 taken.Add(id);
                 ids[part.Key] = id;
                 rels.Root.Add(new XElement(Relationships + "Relationship", new XAttribute("Id", id), new XAttribute("Type", part.Relationship),
-                    new XAttribute("Target", Relative(source, names[part.Key]))));
+                    new XAttribute("Target", Relative(from, names[part.Key]))));
             }
             changes[relationshipsPart] = Bytes(rels);
         }

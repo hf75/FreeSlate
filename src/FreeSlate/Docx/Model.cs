@@ -527,6 +527,13 @@ public sealed partial class ModelReader(DocumentContext context)
     readonly HashSet<string> storyPlaceholders = new(StringComparer.Ordinal);
 
     /// <summary>
+    /// Whether a header's or footer's story is being read (see Story); whether one showed a placeholder; the docParts
+    /// whose first control showing it stands in one (see Shown), which reading the stories anew gives anew (see Restory).
+    /// </summary>
+    bool readingStory, storiesShowPlaceholders;
+    readonly HashSet<string> storyFirsts = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// What a content control shows: in every control showing its placeholder (w:showingPlcHdr) Word shows the content
     /// of the first such control of the same docPart in the document, a block control's paragraphs in later block
     /// controls and its first paragraph's runs in inline ones; a block control after an inline one keeps its own
@@ -541,15 +548,27 @@ public sealed partial class ModelReader(DocumentContext context)
             return content;
         if (currentPart != context.MainPart)
             storyPlaceholders.Add(part);
+        storiesShowPlaceholders |= readingStory;
         if (!placeholders.TryGetValue(part, out var first))
         {
             placeholders[part] = (content, block);
+            if (readingStory)
+                storyFirsts.Add(part);
             return content;
         }
-        if (block)
-            return first.Block ? first.Content : content;
-        return first.Block ? first.Content.Descendants(Wml.W + "p").FirstOrDefault() ?? content : first.Content;
+        var shown = block ? first.Block ? first.Content : content
+            : first.Block ? first.Content.Descendants(Wml.W + "p").FirstOrDefault() ?? content : first.Content;
+        bodyShowsEarlier |= shown != content && currentPart == context.MainPart;
+        return shown;
     }
+
+    /// <summary>
+    /// Whether a content control of the body shows what an earlier one holds (its placeholder, see Shown): the blocks it
+    /// shows were read from that one's elements, which the children of the body the blocks stand for are found by (see
+    /// Tops), so the body is not read anew in part (see Reread; found with docx/external/poi/60316: a paragraph between
+    /// two controls of one docPart taken away and put back again took the id of the one after it).
+    /// </summary>
+    bool bodyShowsEarlier;
 
     /// <summary>How deep the table being read is nested, and how deep tables may nest before only their paragraphs are
     /// read (a guard for the stack: Word itself does not open a test document with 5000 nested tables).</summary>
@@ -995,7 +1014,140 @@ public sealed partial class ModelReader(DocumentContext context)
     {
         if (stories.TryGetValue(part, out var blocks))
             return blocks;
-        blocks = [];
+        blocks = ReadStory(part);
+        // Read for a document read whole again, its paragraphs take the ids they had (see KeepStories).
+        if (storiesBefore.Remove(part, out var before))
+            Keep(before, blocks);
+        storyOrder.Add(part);
+        StoriesRead++;
+        return stories[part] = blocks;
+    }
+
+    /// <summary>
+    /// The header and footer parts in the order their stories were read (see Story), and the order the paginator lays
+    /// them out in (see Order), where it gave one: a reading of all of them anew reads them in it.
+    /// </summary>
+    readonly List<string> storyOrder = [];
+    List<string>? laidOrder;
+
+    /// <summary>The stories read so far by part (see Story), and how often one was read or read anew: the index of their paragraphs follows (WordDocument).</summary>
+    public IReadOnlyDictionary<string, List<Block>> Stories => stories;
+    public int StoriesRead { get; private set; }
+
+    /// <summary>Whether the stories count their lists on from one to the next (see Story) or show placeholders (see Shown): their order counts.</summary>
+    bool StoriesCount => normalList != null || storiesShowPlaceholders || storyOrder.Any(numberSteps.ContainsKey);
+
+    /// <summary>
+    /// The stories another reader read of the document before it was read whole again, in the order it read them, whose
+    /// ids those read take (see Story).
+    /// </summary>
+    readonly Dictionary<string, List<Block>> storiesBefore = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The stories another reader of the document read (before it was read whole again), whose paragraphs' ids those this one reads take.</summary>
+    public void KeepStories(ModelReader before)
+    {
+        foreach (var part in before.storyOrder)
+            storiesBefore[part] = before.stories[part];
+    }
+
+    /// <summary>The stories the reader before read (see KeepStories) read, where they were not yet, in the order it read them.</summary>
+    public void ReadKeptStories()
+    {
+        if (storiesBefore.Count == 0)
+            return;
+        foreach (var part in storiesBefore.Keys.ToList())
+        {
+            if (context.Package.Exists(part))
+                Story(part);
+        }
+        storiesBefore.Clear();
+    }
+
+    /// <summary>
+    /// The stories read in the order the paginator lays them out in, section by section (see Story): those not read yet
+    /// after the others; where the stories count (see StoriesCount) and were read in another order (sections came, went
+    /// or name other stories since), all of them anew in this one (see ReadAll). Returns the stories read anew and
+    /// forgotten, each with its blocks as they were.
+    /// </summary>
+    public List<(string Part, List<Block> Before)> Order(IReadOnlyList<string> parts)
+    {
+        laidOrder = [.. parts];
+        var common = 0;
+        while (common < storyOrder.Count && common < parts.Count && string.Equals(storyOrder[common], parts[common], StringComparison.OrdinalIgnoreCase))
+            common++;
+        if (common < storyOrder.Count && common < parts.Count && StoriesCount)
+            return ReadAll(parts);
+        foreach (var part in parts.Skip(common))
+            Story(part);
+        return [];
+    }
+
+    /// <summary>
+    /// A header's or footer's story read anew after a change gave its part new bytes (see WordDocument.ChangeStory), its
+    /// paragraphs taking the ids they had (see Keep): alone, unless the stories count (see StoriesCount): then all of
+    /// them (see ReadAll). Returns the stories read anew and forgotten, each with its blocks as they were.
+    /// </summary>
+    public List<(string Part, List<Block> Before)> Restory(string part)
+    {
+        if (!stories.TryGetValue(part, out var was))
+            return [];
+        if (!StoriesCount)
+        {
+            var alone = ReadStory(part);
+            // Read alone, it may ask for numbers or show placeholders now: then all are read anew.
+            if (!numberSteps.ContainsKey(part) && !storiesShowPlaceholders)
+            {
+                Keep(was, alone);
+                stories[part] = alone;
+                StoriesRead++;
+                return [(part, was)];
+            }
+        }
+        return ReadAll(laidOrder ?? storyOrder);
+    }
+
+    /// <summary>
+    /// All stories read anew in an order (that the paginator lays them out in), with what they counted and showed given
+    /// anew: their list counter (see Story), the placeholders they showed first (see Shown); their paragraphs keeping
+    /// their ids (see Keep), the stories not in the order forgotten. Returns the stories read anew and forgotten, each
+    /// with its blocks as they were.
+    /// </summary>
+    List<(string Part, List<Block> Before)> ReadAll(IReadOnlyList<string> order)
+    {
+        var read = new List<(string Part, List<Block> Before)>();
+        (storyCounter, normalList, storiesShowPlaceholders) = (null, null, false);
+        foreach (var docPart in storyFirsts)
+            placeholders.Remove(docPart);
+        storyFirsts.Clear();
+        var named = new HashSet<string>(order, StringComparer.OrdinalIgnoreCase);
+        foreach (var story in storyOrder)
+        {
+            numberSteps.Remove(story);
+            if (!named.Contains(story) && stories.Remove(story, out var gone))
+                read.Add((story, gone));
+        }
+        storyOrder.Clear();
+        foreach (var story in order)
+        {
+            if (storyOrder.Contains(story, StringComparer.OrdinalIgnoreCase))
+                continue;
+            var blocks = ReadStory(story);
+            if (stories.TryGetValue(story, out var before) || storiesBefore.Remove(story, out before))
+            {
+                Keep(before, blocks);
+                read.Add((story, before));
+            }
+            stories[story] = blocks;
+            storyOrder.Add(story);
+        }
+        StoriesRead++;
+        return read;
+    }
+
+    /// <summary>The blocks of a header or footer part, read with the list counter the stories share (see Story).</summary>
+    List<Block> ReadStory(string part)
+    {
+        var blocks = new List<Block>();
         var (bodyCounter, bodyPart) = (counter, currentPart);
         if (storyCounter == null)
         {
@@ -1008,15 +1160,20 @@ public sealed partial class ModelReader(DocumentContext context)
                     storyCounter.Next(normal.NumberingId, normal.NumberingLevel ?? 0);
             }
         }
-        counter = storyCounter;
-        currentPart = part;
-        if (context.Load(part).Root is { } root)
-            ReadBlocks(root, blocks);
-        if (normalList is var (list, level))
-            storyCounter.Next(list, level);
-        JoinHidden(blocks, cell: false);
-        (counter, currentPart) = (bodyCounter, bodyPart);
-        return stories[part] = blocks;
+        (counter, currentPart, readingStory) = (storyCounter, part, true);
+        try
+        {
+            if (context.Load(part).Root is { } root)
+                ReadBlocks(root, blocks);
+            if (normalList is var (list, level))
+                storyCounter.Next(list, level);
+            JoinHidden(blocks, cell: false);
+            return blocks;
+        }
+        finally
+        {
+            (counter, currentPart, readingStory) = (bodyCounter, bodyPart, false);
+        }
     }
 
     /// <summary>Bookmarks that start between paragraphs, for the next paragraph.</summary>

@@ -317,7 +317,7 @@ public sealed class EditSession(IEditableDocument document)
     void Act(bool typing, Func<(TextPlace Caret, TextPlace Anchor)> change)
     {
         if (!document.Contains(Caret.Paragraph) || !document.Contains(Anchor.Paragraph))
-            throw new NotSupportedException("The place is in text the document does not change (a header, footer or comment).");
+            throw new NotSupportedException("The place is in text the document does not change (a comment).");
         var start = document.Changes;
         var couldRedo = document.CanRedo;
         var (caretBefore, anchorBefore) = (Caret, Anchor);
@@ -451,7 +451,7 @@ public sealed class EditSession(IEditableDocument document)
                 fromCaret.Add(nextC);
             }
         }
-        throw new NotSupportedException("The selection's ends are not of one story (the body, a text box, a shape).");
+        throw new NotSupportedException("The selection's ends are not of one story (the body, a note, a header or footer, a text box, a shape).");
     }
 
     static (TextPlace, TextPlace) Same(TextPlace place) => (place, place);
