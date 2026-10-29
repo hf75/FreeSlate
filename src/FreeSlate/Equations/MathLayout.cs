@@ -1074,8 +1074,11 @@ public sealed class MathLayout
     // ------------------------------------------------------------------ n-ary operators
 
     /// <summary>
-    /// An n-ary operator with its limits and its operand, as one atom; in inline equations the limits always go
-    /// beside the operator (measured: Office's inline ∑).
+    /// An n-ary operator with its limits and its operand, as one atom; below display style the limits always go
+    /// beside the operator, also under m:limLoc undOvr (measured: Office's inline ∑; docx/local/mnx-cases: a sum or
+    /// integral in a fraction's numerator or denominator, a skewed fraction, a superscript and a delimiter of two
+    /// parts has them beside it, in parentheses, a matrix, a radical, an equation array, a box, under a bar or an
+    /// accent and in a linear fraction under and over it).
     /// </summary>
     Atom Nary(XElement nary, Env env, double baseSize)
     {
@@ -1083,7 +1086,7 @@ public sealed class MathLayout
         var color = runStyle(nary.Element(M + "naryPr")?.Element(M + "ctrlPr")?.Element(runProperties)).Color;
         var chr = Property(nary, "naryPr", "chr") is { Length: > 0 } c ? char.ConvertToUtf32(c, 0) : 0x222B;
         var integral = chr is >= 0x222B and <= 0x2233 or >= 0x2A0B and <= 0x2A1C;
-        var limLoc = env.Inline ? "subSup" : Property(nary, "naryPr", "limLoc") ?? (integral ? IntegralLimits : NaryLimits);
+        var limLoc = env.Level != Level.Display ? "subSup" : Property(nary, "naryPr", "limLoc") ?? (integral ? IntegralLimits : NaryLimits);
         var display = env.Level == Level.Display;
         var glyph = font.GlyphFor(chr);
         var op = GlyphOf(glyph, size, color, char.ConvertFromUtf32(chr));
