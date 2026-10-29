@@ -144,15 +144,13 @@ public static class OfficeCrypto
         }
         var key = Pad(0x36).Concat(Pad(0x5C)).Take(keyBits / 8).ToArray();
 
-        using var aes = Aes.Create();
-        aes.Key = key;
-        var plainVerifier = aes.DecryptEcb(encryptedVerifier, PaddingMode.None);
-        var verifierHash = aes.DecryptEcb(encryptedVerifierHash, PaddingMode.None);
+        var plainVerifier = DecryptEcb(key, encryptedVerifier);
+        var verifierHash = DecryptEcb(key, encryptedVerifierHash);
         if (!SHA1.HashData(plainVerifier).AsSpan().SequenceEqual(verifierHash.AsSpan(0, 20)))
             return null;
         var size = (long)BinaryPrimitives.ReadUInt64LittleEndian(package);
         var length = (package.Length - 8) / 16 * 16;
-        var plain = aes.DecryptEcb(package.AsSpan(8, length), PaddingMode.None);
+        var plain = DecryptEcb(key, package.AsSpan(8, length));
         return plain[..(int)Math.Min(size, plain.Length)];
     }
 
@@ -163,7 +161,7 @@ public static class OfficeCrypto
         "SHA256" or "SHA-256" => SHA256.HashData,
         "SHA384" or "SHA-384" => SHA384.HashData,
         "SHA512" or "SHA-512" => SHA512.HashData,
-        "MD5" => MD5.HashData,
+        "MD5" => Managed ? data => ManagedCrypto.Md5(data) : MD5.HashData,
         _ => throw new PasswordException($"The document uses an unsupported hash algorithm ({name})."),
     };
 
@@ -175,11 +173,26 @@ public static class OfficeCrypto
         var cfb = parameters.Str("cipherChaining") == "ChainingModeCFB";
         return (key, iv, data) =>
         {
+            data = data.Length % 16 == 0 ? data : data[..(data.Length / 16 * 16)];
+            if (Managed)
+                return cfb ? ManagedCrypto.DecryptCfb8(key, iv, data) : ManagedCrypto.DecryptCbc(key, iv, data);
             using var aes = Aes.Create();
             aes.Key = key;
-            data = data.Length % 16 == 0 ? data : data[..(data.Length / 16 * 16)];
             return cfb ? aes.DecryptCfb(data, iv, PaddingMode.None, 8) : aes.DecryptCbc(data, iv, PaddingMode.None);
         };
+    }
+
+    /// <summary>Whether AES and MD5 are managed code (see ManagedCrypto): where the platform has none, in the browser.</summary>
+    internal static bool Managed { get; set; } = OperatingSystem.IsBrowser();
+
+    /// <summary>Whole blocks decrypted with AES in ECB mode, without padding.</summary>
+    static byte[] DecryptEcb(byte[] key, ReadOnlySpan<byte> data)
+    {
+        if (Managed)
+            return ManagedCrypto.DecryptEcb(key, data);
+        using var aes = Aes.Create();
+        aes.Key = key;
+        return aes.DecryptEcb(data, PaddingMode.None);
     }
 
     /// <summary>Bytes cut or padded with 0x36 to the given length ([MS-OFFCRYPTO] 2.3.4.11).</summary>
