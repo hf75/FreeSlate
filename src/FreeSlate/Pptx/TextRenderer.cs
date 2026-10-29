@@ -744,6 +744,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 items = [];
                 block.Items.Add(new SvgGroupItem($" data-p=\"{paragraph}\"", items));
             }
+            // Hinted text starts its line on the slide's whole pixels, the line's runs moving with it (see HintedShift).
+            var lineLeft = left + HintedShift(line, left);
             // Baselines and glyphs sit on whole pixels counted from the top of the text area and from the start of
             // each format run (measured with the text-snap deck; see Snap and Text).
             var shiftBy = lineShift?.Invoke(line) ?? 0;
@@ -756,7 +758,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             double formatOrigin = 0, formatEnd = double.NaN;
             // Where each run's format run starts, from which the places of its characters count (see Places).
             var origins = line.Id != null ? new List<double>(line.Runs.Count) : null;
-            var shared = Shared(line, left, baseline);
+            var shared = Shared(line, lineLeft, baseline);
             foreach (var run in line.Runs)
             {
                 sharedUnderline = shared != null && shared.TryGetValue(run, out var common) ? common : null;
@@ -769,19 +771,19 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 origins?.Add(formatOrigin);
                 if (run.Style.Highlight is { } highlight)
                 {
-                    items.Add(new ShapeRectItem((left + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt,
+                    items.Add(new ShapeRectItem((lineLeft + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt,
                         new SolidFill(highlight), null, $" fill=\"{highlight.ToHex()}\""));
                 }
                 if (run.Picture != null)
                 {
                     var pictureHeight = run.PictureHeight;
-                    items.Add(new ImageItem(run.Picture, (left + run.X) * PxPerPt, (baseline - pictureHeight) * PxPerPt, run.Width * PxPerPt, pictureHeight * PxPerPt));
+                    items.Add(new ImageItem(run.Picture, (lineLeft + run.X) * PxPerPt, (baseline - pictureHeight) * PxPerPt, run.Width * PxPerPt, pictureHeight * PxPerPt));
                     continue;
                 }
                 if (string.IsNullOrWhiteSpace(run.Text))
                 {
                     if (BetweenWords(line, run))
-                        items.AddRange(SpaceDecorations(run, left + run.X, run.Style.BaselineShift == 0 && run.Lift == 0
+                        items.AddRange(SpaceDecorations(run, lineLeft + run.X, run.Style.BaselineShift == 0 && run.Lift == 0
                             ? baseline
                             : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size - run.Lift)));
                     continue;
@@ -789,10 +791,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 if (run.Style.Inline is Equations.Equation equation)
                 {
                     // An equation: its glyphs and rules, its characters transparent on top for selection.
-                    var (drawn, mathText) = equation.Draw(left + run.X, baseline - run.Lift, slide.Presentation.Glyphs);
+                    var (drawn, mathText) = equation.Draw(lineLeft + run.X, baseline - run.Lift, slide.Presentation.Glyphs);
                     items.AddRange(drawn);
                     if (mathText.Length > 0)
-                        items.Add(new HiddenSpanItem(mathText, left + run.X, baseline - run.Lift, run.Style.Size, equation.Width));
+                        items.Add(new HiddenSpanItem(mathText, lineLeft + run.X, baseline - run.Lift, run.Style.Size, equation.Width));
                     continue;
                 }
                 var filter = run.Style.Effects is { } effects
@@ -803,15 +805,15 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var shifted = run.Style.BaselineShift == 0 && run.Lift == 0 ? baseline : top + Snap(offset + line.Baseline + shiftBy - run.Style.BaselineShift * run.Style.Size - run.Lift);
                 // Gradient and pattern fills span the line (measured: every line of a two-line text box starts the
                 // gradient anew, from the line's start to its end and from its ascent to its descent).
-                var box = (left + (line.Runs.Count > 0 ? line.Runs[0].X : 0), baseline - line.Ascent, line.Width, line.Ascent + line.Descent);
+                var box = (lineLeft + (line.Runs.Count > 0 ? line.Runs[0].X : 0), baseline - line.Ascent, line.Width, line.Ascent + line.Descent);
                 if (units && run.Start >= 0 && !run.RightToLeft && !run.Upright
-                    && Characters(run, left + run.X - (left + formatOrigin)) is { } characters)
+                    && Characters(run, lineLeft + run.X - (lineLeft + formatOrigin)) is { } characters)
                 {
                     foreach (var (piece, at, from) in characters)
                     {
                         var index = paragraphStarts.GetValueOrDefault(line.Paragraph) + run.Start + at;
                         var word = index < words.Length ? words[index] : -1;
-                        items.Add(new SvgGroupItem($" data-c=\"{index}\" data-w=\"{word}\"", Text(piece, left + piece.X, shifted, filter, left + formatOrigin, box, defs, from, effectSize)));
+                        items.Add(new SvgGroupItem($" data-c=\"{index}\" data-w=\"{word}\"", Text(piece, lineLeft + piece.X, shifted, filter, lineLeft + formatOrigin, box, defs, from, effectSize)));
                     }
                     continue;
                 }
@@ -822,22 +824,22 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 {
                     var (bx, by, bw, bh) = ShapeSize is { } shape
                         ? (0.0, 0.0, shape.Width, shape.Height)
-                        : ((left + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt);
+                        : ((lineLeft + run.X) * PxPerPt, (baseline - line.Ascent) * PxPerPt, run.Width * PxPerPt, (line.Ascent + line.Descent) * PxPerPt);
                     if (SvgEffects.Shadow(runEffects, Colors, bw, bh, defs, scale: effectScale.Outer) is { } copy)
                         items.Add(new TransformItem(Matrix.Translate(bx, by), [new FilterItem(copy.Filter, copy.Model, [new TransformItem(copy.Transform,
-                            [new TransformItem(Matrix.Translate(-bx, -by), Text(run, left + run.X, shifted, null, left + formatOrigin, box, defs))
+                            [new TransformItem(Matrix.Translate(-bx, -by), Text(run, lineLeft + run.X, shifted, null, lineLeft + formatOrigin, box, defs))
                                 { Css = $"translate({Units.Css(-bx)} {Units.Css(-by)})" }])])]) { Css = $"translate({Units.Css(bx)} {Units.Css(by)})" });
                 }
-                var drawnRun = Text(run, left + run.X, shifted, filter, left + formatOrigin, box, defs, effectSize: effectSize);
+                var drawnRun = Text(run, lineLeft + run.X, shifted, filter, lineLeft + formatOrigin, box, defs, effectSize: effectSize);
                 // Upright characters in vertical text turn back about the middle of their em box.
                 if (run.Upright)
-                    items.Add(new RotatedItem(-90, left + run.X + run.Width / 2, shifted - 0.38 * run.Style.Size, drawnRun));
+                    items.Add(new RotatedItem(-90, lineLeft + run.X + run.Width / 2, shifted - 0.38 * run.Style.Size, drawnRun));
                 else
                     items.AddRange(drawnRun);
             }
             sharedUnderline = null;
             if (line.Id is { } id)
-                items.Add(Places(id, line, left, baseline, origins!, Device));
+                items.Add(Places(id, line, lineLeft, baseline, origins!, Device));
         }
         return defs.Length > 0 ? [new DefsItem(defs.ToString()), block] : [block];
     }
@@ -1106,6 +1108,26 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     double Snap(double points) => Device.OnY(points * PxPerPt, HalfUp) / PxPerPt;
 
     static double HalfUp(double v) => Math.Floor(v + 0.5);
+
+    /// <summary>
+    /// How far (points) a line moves so that its text starts on the slide's whole pixels, where it stands on the slide
+    /// (Grid), reads left to right and is hinted throughout (see HintedBelow); else not at all: its start on the slide in
+    /// master units, then to the pixel half up. Measured with local/tsnap-probe: Aptos 12 and 18 pt, Arial 12 and Times
+    /// New Roman 18 pt in boxes at 0, 1/4, 1/2 and 3/4 of a pixel start on the pixel their start rounds to (the half a
+    /// box at 385 762 EMU, 40.49995 px, gives as 243 master units, up), lines aligned left, centered, right and justified
+    /// alike, later runs, text after a tab, a bullet's text and a line's end moving with it, an inset of 9.6 px counted
+    /// in; Aptos 24 pt (32 px an em) where it falls; generated/lists, whose columns start at x.27, x.6 and x.93, and
+    /// text-snap.
+    /// </summary>
+    double HintedShift(LaidOutLine line, double left)
+    {
+        if (Grid is not { } onSlide || line.Runs.Count == 0
+            || line.Runs.Any(r => r.RightToLeft || r.Upright || r.Style.Size * PxPerPt >= HintedBelow))
+            return 0;
+        var startPx = (left + line.Runs.Min(r => r.X)) * PxPerPt;
+        var onUnits = FontData.MasterUnits((onSlide.X + startPx) / PxPerPt) * PxPerPt;
+        return (Device.OnX(onUnits, HalfUp) - onSlide.X - startPx) / PxPerPt;
+    }
 
     /// <summary>
     /// The scene items of a run with its first glyph at (x, y) in points. PowerPoint draws a format run with the glyph origins
