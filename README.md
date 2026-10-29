@@ -20,8 +20,8 @@ in Word documents of thousands of pages. It is meant to grow into the foundation
 |---|---|
 | PowerPoint features | 146 of 146 features of the [PowerPoint feature catalog](catalog/features/pptx.md) implemented; all 1,653 elements a PPTX file can contain are assigned to a feature |
 | Word features | 194 of 194 features of the [Word feature catalog](catalog/features/docx.md) implemented; all 2,093 elements a DOCX file can contain are assigned to a feature |
-| Fidelity, own test corpus | **98.5 %** over 414 slides in 57 decks built by PowerPoint (92 % of the slides score 95 % or better); **98.4 %** over 61 pages in 29 documents built by Word (97 % of the pages score 95 % or better) |
-| Fidelity, other projects' presentations | **94.6 %** over 1,232 slides in 670 decks from LibreOffice, Apache POI, Apache Tika, Open XML SDK and python-pptx |
+| Fidelity, own test corpus | **98.6 %** over 414 slides in 57 decks built by PowerPoint (92 % of the slides score 95 % or better); **98.4 %** over 61 pages in 29 documents built by Word (97 % of the pages score 95 % or better) |
+| Fidelity, other projects' presentations | **96.4 %** over 1,232 slides in 670 decks from LibreOffice, Apache POI, Apache Tika, Open XML SDK and python-pptx (76 % of the slides score 95 % or better) |
 | Fidelity, other projects' Word documents | **98.7 %** over 7,035 pages in 3,179 documents from LibreOffice, Apache POI, Apache Tika, Open XML SDK, Open XML PowerTools, pandoc, python-docx and mammoth (95 % of the pages score 95 % or better) |
 
 The score of a slide or page is the share of its content pixels that match the Office rendering within a small
