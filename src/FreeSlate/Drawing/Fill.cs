@@ -84,6 +84,13 @@ public sealed record PictureFill(string Image, (double L, double T, double R, do
 
     /// <summary>The picture's own size in pixels at its resolution (tiles are sized from it).</summary>
     public (double W, double H) NaturalSize { get; init; }
+
+    /// <summary>
+    /// Whether the picture is drawn as it is, an image clipped to its path, rather than as a pattern tile, which the
+    /// browser resamples where the picture lies between pixels: a metafile whose brushes lie on the slide's pixels
+    /// (Metafiles.PixelBox) keeps them crisp so.
+    /// </summary>
+    public bool Direct { get; init; }
 }
 
 /// <summary>a:tile: offsets in points, scales as factors, flip x/y/xy/none and alignment (tl, ctr, br …).</summary>

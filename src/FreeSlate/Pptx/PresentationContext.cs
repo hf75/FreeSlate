@@ -13,6 +13,9 @@ public sealed class PresentationContext : IDisposable
     readonly Dictionary<string, Theme> themes = new(StringComparer.OrdinalIgnoreCase);
     readonly Dictionary<string, string?> images = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Metafiles (image keys) without brushes on the slide's pixels, which look the same wherever they lie.</summary>
+    readonly HashSet<string> unplaced = new(StringComparer.OrdinalIgnoreCase);
+
     /// <param name="fonts">Where fonts are found; <see cref="FontLocator.Default"/> when null.</param>
     /// <param name="embeddedFontsFirst">Use the presentation's embedded fonts even where the family is installed.</param>
     /// <param name="lines">Read the parts with line info, for finding their elements in their text (see Opc.PartText).</param>
@@ -241,8 +244,18 @@ public sealed class PresentationContext : IDisposable
 
     /// <summary>An embedded image of a part as data URI, or null for missing or linked images.</summary>
     /// <param name="displayWidth">The width the picture is shown at, in pixels: metafile hatches are output pixels.</param>
-    public string? Image(string sourcePart, string relationshipId, double? displayWidth = null)
+    public string? Image(string sourcePart, string relationshipId, double? displayWidth = null) =>
+        Image(sourcePart, relationshipId, displayWidth, null, out _);
+
+    /// <summary>An embedded image of a part as data URI, or null for missing or linked images.</summary>
+    /// <param name="displayWidth">The width the picture is shown at, in pixels: metafile hatches are output pixels.</param>
+    /// <param name="box">Where the picture lies on the slide's pixels, which a metafile's pattern and hatch brushes lie
+    /// on (Metafiles.PixelBox).</param>
+    /// <param name="placed">Whether the picture is a metafile with such brushes, converted for this box (each place a
+    /// picture of its own; other metafiles look the same wherever they lie).</param>
+    public string? Image(string sourcePart, string relationshipId, double? displayWidth, Metafiles.PixelBox? box, out bool placed)
     {
+        placed = false;
         // Pictures of imported content (RTF chunks) come as data URIs; metafiles among them are converted.
         if (relationshipId.StartsWith("data:", StringComparison.Ordinal))
             return relationshipId.StartsWith("data:image/x-emf", StringComparison.Ordinal) || relationshipId.StartsWith("data:image/x-wmf", StringComparison.Ordinal)
@@ -254,6 +267,23 @@ public sealed class PresentationContext : IDisposable
         var type = Package.ContentType(rel.Target);
         var metafile = type is "image/x-emf" or "image/emf" or "image/x-wmf" or "image/wmf" or "application/x-msmetafile";
         var key = metafile && displayWidth is { } w ? $"{rel.Target}@{Math.Round(w)}" : rel.Target;
+        if (metafile && box is { } pixels && !unplaced.Contains(key))
+        {
+            var placedKey = FormattableString.Invariant($"{key}#{pixels.X:0.##},{pixels.Y:0.##},{pixels.Width:0.##},{pixels.Height:0.##}");
+            if (images.TryGetValue(placedKey, out var placedUri))
+            {
+                placed = true;
+                return placedUri;
+            }
+            if (Package.ReadBytes(rel.Target) is var bytes && IsMetafile(bytes))
+            {
+                var svg = Metafiles.MetafileConverter.ToSvg(bytes, $"mf{images.Count}_", displayWidth, Word, pixels, out placed);
+                if (placed)
+                    return images[placedKey] = Metafiles.MetafileConverter.DataUri(svg);
+                unplaced.Add(key);
+                images.TryAdd(key, Metafiles.MetafileConverter.DataUri(svg));
+            }
+        }
         if (!images.TryGetValue(key, out var uri))
         {
             uri = type switch

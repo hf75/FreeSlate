@@ -402,7 +402,7 @@ public sealed class SvgPaint
     public (string Clip, string Image, double X, double Y, double Width, double Height, string Filter)? PictureImage(Fill fill, double w, double h, string clipData,
         StringBuilder defs, string crisp = "")
     {
-        if (!PrintedPictures || fill is not PictureFill p || p.Tiling is not null && p.NaturalSize.W > 0 && p.NaturalSize.H > 0)
+        if (fill is not PictureFill p || !PrintedPictures && !p.Direct || p.Tiling is not null && p.NaturalSize.W > 0 && p.NaturalSize.H > 0)
             return null;
         var filter = "";
         if (p.Filter != null)

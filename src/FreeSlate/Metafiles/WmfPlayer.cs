@@ -33,14 +33,24 @@ public sealed class WmfPlayer
         data.Length >= 18 && (BinaryPrimitives.ReadUInt32LittleEndian(data) == 0x9AC6CDD7
                               || (BinaryPrimitives.ReadUInt16LittleEndian(data) is 1 or 2 && BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(2)) == 9));
 
-    public static string? ToSvg(byte[] data, string idPrefix = "w", double? displayWidth = null)
+    public static string? ToSvg(byte[] data, string idPrefix = "w", double? displayWidth = null) => ToSvg(data, idPrefix, displayWidth, null, out _);
+
+    /// <param name="box">Where the picture lies on the output: its brushes lie on the output's pixels (see PixelBox).</param>
+    /// <param name="placed">Whether the picture has such brushes, which depend on the box.</param>
+    public static string? ToSvg(byte[] data, string idPrefix, double? displayWidth, PixelBox? box, out bool placed)
     {
+        placed = false;
         if (!IsWmf(data))
             return null;
-        return new WmfPlayer(data, idPrefix) { displayWidth = displayWidth }.Play();
+        var player = new WmfPlayer(data, idPrefix) { displayWidth = displayWidth, box = box };
+        var svg = player.Play();
+        placed = player.placedEmf || player.gdi is { Placed: true };
+        return svg;
     }
 
     double? displayWidth;
+    PixelBox? box;
+    bool placedEmf;
 
     short I16(int o) => o + 2 <= data.Length ? BinaryPrimitives.ReadInt16LittleEndian(data.AsSpan(o)) : (short)0;
     ushort U16(int o) => o + 2 <= data.Length ? BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(o)) : (ushort)0;
@@ -65,8 +75,11 @@ public sealed class WmfPlayer
         var offset = start + headerWords * 2;
 
         // An embedded EMF (META_ESCAPE_ENHANCED_METAFILE) is a better picture than the WMF records.
-        if (EmbeddedEmf(offset) is { } emf && EmfPlayer.ToSvg(emf, svg.NewId() + "e") is { } emfSvg)
+        if (EmbeddedEmf(offset) is { } emf && EmfPlayer.ToSvg(emf, svg.NewId() + "e", null, false, box, out var emfPlaced) is { } emfSvg)
+        {
+            placedEmf = emfPlaced;
             return emfSvg;
+        }
 
         // Without a placeable header, the first window origin and extent define the picture.
         if (w <= 0 || h <= 0)
@@ -76,7 +89,11 @@ public sealed class WmfPlayer
             if (w <= 0 || h <= 0) (w, h) = (1000, 1000);
         }
 
-        gdi = new GdiContext(svg, inch / 25.4) { UnitsPerPixel = displayWidth is > 0 ? w / displayWidth.Value : inch / 96 };
+        gdi = new GdiContext(svg, inch / 25.4)
+        {
+            UnitsPerPixel = displayWidth is > 0 ? w / displayWidth.Value : inch / 96,
+            BrushGrid = box is { Width: > 0, Height: > 0 } placedBox ? placedBox.BrushGrid((x, y, w, h)) : null,
+        };
         var s = gdi.State;
         s.MapMode = 8;
         s.WindowOrg = (x, y);

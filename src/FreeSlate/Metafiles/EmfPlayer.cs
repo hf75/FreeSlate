@@ -47,17 +47,26 @@ public sealed class EmfPlayer
         data.Length >= 88 && BinaryPrimitives.ReadUInt32LittleEndian(data) == 1 && BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(40)) == 0x464D4520;
 
     /// <param name="word">Whether the picture is a Word document's, which maps its frame onto the picture as Word does.</param>
-    public static string? ToSvg(byte[] data, string idPrefix = "m", double? displayWidth = null, bool word = false)
+    public static string? ToSvg(byte[] data, string idPrefix = "m", double? displayWidth = null, bool word = false) =>
+        ToSvg(data, idPrefix, displayWidth, word, null, out _);
+
+    /// <param name="box">Where the picture lies on the output: its GDI brushes lie on the output's pixels (see PixelBox).</param>
+    /// <param name="placed">Whether the picture has such brushes, which depend on the box.</param>
+    public static string? ToSvg(byte[] data, string idPrefix, double? displayWidth, bool word, PixelBox? box, out bool placed)
     {
+        placed = false;
         if (!IsEmf(data))
             return null;
-        var player = new EmfPlayer(data, idPrefix) { displayWidth = displayWidth, word = word };
+        var player = new EmfPlayer(data, idPrefix) { displayWidth = displayWidth, word = word, box = box };
         player.Play();
         if (player.gdi is not null)
             player.gdi.FlushXor();
+        placed = player.gdi is { Placed: true };
         var (x, y, w, h) = player.ViewBox;
         return player.svg.Finish(x, y, w, h);
     }
+
+    PixelBox? box;
 
     ReadOnlySpan<byte> Span(int offset, int length) =>
         offset >= 0 && length >= 0 && offset + length <= data.Length ? data.AsSpan(offset, length) : ReadOnlySpan<byte>.Empty;
@@ -114,6 +123,7 @@ public sealed class EmfPlayer
         {
             // Units per output pixel: from the display width, else the picture at its natural size (96 dpi).
             UnitsPerPixel = displayWidth is > 0 ? w / displayWidth.Value : (pxPerMmX + pxPerMmY) / 2 * 25.4 / 96,
+            BrushGrid = box is { Width: > 0, Height: > 0 } placedBox ? placedBox.BrushGrid((x, y, w, h)) : null,
             DevicePixels = true,
         };
 

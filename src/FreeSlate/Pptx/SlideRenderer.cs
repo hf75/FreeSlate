@@ -260,7 +260,9 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         }
         var style = chain.Select(s => s.Element.Element(Ns.P + "style")).FirstOrDefault(s => s != null);
 
-        var fill = shape.Name.LocalName == "pic" ? PictureFill(shape, part, Units.ToPx(bw)) : ResolveFill(chain, placement.GroupFill);
+        var fill = shape.Name.LocalName == "pic"
+            ? PictureFill(shape, part, Units.ToPx(bw), PictureBox(shape, placement.OnSlide(matrix), bw, bh))
+            : ResolveFill(chain, placement.GroupFill);
         // A shape filled with the slide's background shows the part of the background behind it.
         if (shape.Name.LocalName == "sp" && shape.Bool("useBgFill") == true)
         {
@@ -2119,18 +2121,38 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         return OutlineReader.Merge(layers);
     }
 
-    Fill PictureFill(XElement pic, string part, double displayWidth)
+    /// <summary>
+    /// Where a picture lies on the slide's pixels, which a metafile's pattern and hatch brushes lie on (Metafiles.PixelBox):
+    /// for a picture neither turned, scaled, flipped, cropped nor tiled, on a slide drawn on its own pixels.
+    /// </summary>
+    Metafiles.PixelBox? PictureBox(XElement pic, Matrix onSlide, double bw, double bh)
+    {
+        if (!slide.Presentation.Pixels.IsCss || Grid(onSlide) is not { } corner || pic.Element(Ns.P + "blipFill") is not { } blipFill)
+            return null;
+        static bool Inset(XElement? rect) => rect?.Attributes().Any(a => a.Name.LocalName is "l" or "t" or "r" or "b" && a.Value != "0") == true;
+        if (blipFill.Element(Ns.A + "tile") != null || Inset(blipFill.Element(Ns.A + "srcRect")) || Inset(blipFill.Element(Ns.A + "stretch")?.Element(Ns.A + "fillRect")))
+            return null;
+        return new Metafiles.PixelBox(corner.X, corner.Y, Units.ToPx(bw), Units.ToPx(bh));
+    }
+
+    Fill PictureFill(XElement pic, string part, double displayWidth, Metafiles.PixelBox? box)
     {
         var blipFill = pic.Element(Ns.P + "blipFill");
         var blip = blipFill?.Element(Ns.A + "blip");
         var svg = blip?.Descendants(Ns.Asvg + "svgBlip").FirstOrDefault()?.Attribute(Ns.R + "embed")?.Value;
         var embed = blip?.Attribute(Ns.R + "embed")?.Value;
-        var image = (svg != null ? slide.Presentation.Image(part, svg) : null) ?? (embed != null ? slide.Presentation.Image(part, embed, displayWidth) : null);
+        var placed = false;
+        var image = (svg != null ? slide.Presentation.Image(part, svg) : null)
+                    ?? (embed != null ? slide.Presentation.Image(part, embed, displayWidth, box, out placed) : null);
         if (image == null || blipFill == null)
             return Fill.None;
         // The blip's color effects and tiling come with the fill; the picture itself is the SVG or the bitmap.
         if (FillReader.Read(blipFill, slide.Colors, _ => image, slide.ImageSizes(part)) is not PictureFill fill)
             return Fill.None;
+        // A metafile's 1-pixel dithers stay on the slide's pixels only drawn as they are (PictureFill.Direct; measured:
+        // libreoffice/sd/activex_scrollbar 27 -> 92 %, activex_togglebutton 36 -> 91 % in Chrome).
+        if (placed)
+            fill = fill with { Direct = true };
         // Word's PDF holds a cropped TIFF's own pixels (see PresentationContext.CroppedImage).
         if (slide.Presentation.Word && svg == null && embed != null && fill.Tiling == null && fill.SourceRect is var (l, t, r, b)
             && l >= 0 && t >= 0 && r >= 0 && b >= 0 && l + t + r + b > 0 && slide.Presentation.CroppedImage(part, embed, fill.SourceRect) is { } cut)

@@ -133,6 +133,24 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
     public double UnitsPerPixel { get; init; } = 1;
 
     /// <summary>
+    /// Brush pixels to device units where the picture's place on the output is known (PixelBox.BrushGrid): pattern and
+    /// hatch brushes then lie on the output's pixels; else they are output pixels from the picture's corner.
+    /// </summary>
+    public Xform? BrushGrid { get; init; }
+
+    /// <summary>Whether a pattern or hatch brush was drawn on the BrushGrid, which depends on the picture's place.</summary>
+    public bool Placed { get; private set; }
+
+    /// <summary>The patternTransform of a pattern or hatch brush's tile (brush pixels to device units).</summary>
+    string BrushTransform()
+    {
+        if (BrushGrid is not { } grid)
+            return $"scale({SvgWriter.Num(UnitsPerPixel)})";
+        Placed = true;
+        return grid.Svg();
+    }
+
+    /// <summary>
     /// Whether device units are pixels of the metafile's reference device (EMF), in which GDI realizes fonts: top and
     /// bottom aligned text then stands by the font's ascent and descent in whole device pixels.
     /// </summary>
@@ -574,8 +592,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
             {
                 var id = Svg.NewId();
                 var b = brush.Pattern;
-                var scale = SvgWriter.Num(UnitsPerPixel);
-                Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{b.Width}\" height=\"{b.Height}\" patternTransform=\"scale({scale})\"><image width=\"{b.Width}\" height=\"{b.Height}\" href=\"{b.DataUri()}\" image-rendering=\"pixelated\"/></pattern>");
+                Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{b.Width}\" height=\"{b.Height}\" patternTransform=\"{BrushTransform()}\"><image width=\"{b.Width}\" height=\"{b.Height}\" href=\"{b.DataUri()}\" image-rendering=\"pixelated\"/></pattern>");
                 return $" fill=\"url(#{id})\"";
             }
             default:
@@ -599,8 +616,7 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         };
         var tile = SvgWriter.HatchTile(Set, Rgba(Resolve(brush.Color)), State.BkMode == 2 ? Rgba(Resolve(State.BkColor)) : null);
         // Hatches are 8 × 8 pixels of the output device, not of the reference device.
-        var scale = SvgWriter.Num(UnitsPerPixel);
-        Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"scale({scale})\">{tile}</pattern>");
+        Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"{BrushTransform()}\">{tile}</pattern>");
         return id;
     }
 
