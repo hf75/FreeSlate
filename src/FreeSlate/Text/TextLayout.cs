@@ -562,6 +562,11 @@ public static class TextLayout
             lastContentEnd = x + content;
             x += segment.Width;
         }
+        // A last line of nothing but tabs keeps the first tab's style, as a line of only a tab does where a word moves on
+        // (measured: poi/ae.ac.uaeu.faculty_nafaachbili_GeomLec1, slide 4: a paragraph of one tab in 28 pt between lines
+        // of 28 pt takes their pitch, not that of its mark's 18 pt).
+        if (current.Count == 0 && tabs.Count > 0)
+            current.Add((tabs[0].Start, tabs[0].Start, x));
         if (current.Count > 0 || lines.Count == 0 || endsWithBreak)
             Finish(true);
         return lines;
