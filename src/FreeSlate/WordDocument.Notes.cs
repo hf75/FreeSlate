@@ -9,8 +9,8 @@ namespace FreeSlate;
 /// references), and read anew where a change gives their part new bytes or moves their references, their paragraphs
 /// keeping their ids through that, note by note (ModelReader.Keep). A change is made in a note's paragraphs as in the
 /// body's (see TextEdits), in the XML of the note in its part (see ChangeNote): each change a version of its own with the
-/// part's bytes, which undoing and doing again put back; the pages are laid out again from the block that refers to a
-/// note whose XML changed (Paginator.Renote).
+/// part's bytes, which undoing and doing again put back; the note changed is read anew alone where it can be (see
+/// NotesText); the pages are laid out again from the block that refers to a note whose XML changed (Paginator.Renote).
 /// </summary>
 public sealed partial class WordDocument
 {
@@ -28,6 +28,19 @@ public sealed partial class WordDocument
 
     /// <summary>Whether the notes were read for the document as it reads now (not before it was read whole last).</summary>
     bool notesKnown;
+
+    /// <summary>
+    /// A notes part's text as the notes were read whole from it last, which the line info of their XML refers to, and the
+    /// notes changed since and read alone (see ChangeNote), each with the stretch of that text its children stood in,
+    /// their text now and that text within the start tags of the part's root and the note (Piece), which the note's XML
+    /// was parsed from: the part's text now is the text with those stretches in.
+    /// </summary>
+    sealed record NotesText(PartText Text, Dictionary<NoteKey, NoteIsland> Islands);
+
+    sealed record NoteIsland(int Start, int End, string Inner, PartText Piece);
+
+    /// <summary>The footnotes' and the endnotes' part's text (see NotesText), by whether they are endnotes.</summary>
+    readonly Dictionary<bool, NotesText> notesTexts = [];
 
     /// <summary>
     /// The notes as the layout takes them (see Notes), read anew since the layout had them where pending, and the notes
@@ -95,6 +108,12 @@ public sealed partial class WordDocument
         var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
             .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
         notesLaid = (footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"), endnoteParts.GetValueOrDefault("continuationSeparator"));
+        notesTexts.Clear();
+        foreach (var endnote in new[] { false, true })
+        {
+            if (NotePart(endnote) is { } part)
+                notesTexts[endnote] = new NotesText(new PartText(package.ReadBytes(part)), []);
+        }
         reader.NotesMoved = false;
         touched.Clear();
         noteParts = NoteParts();
@@ -113,6 +132,26 @@ public sealed partial class WordDocument
         }
     }
 
+    /// <summary>The paragraphs of a block of a note forgotten by id (itself, those of its tables and text boxes), and added to those gone.</summary>
+    void ForgetNote(Block block, HashSet<ParagraphBlock> gone)
+    {
+        if (block is ParagraphBlock paragraph)
+        {
+            gone.Add(paragraph);
+            if (noteParagraphs.TryGetValue(paragraph.Id, out var known) && ReferenceEquals(known.Paragraph, paragraph))
+                noteParagraphs.Remove(paragraph.Id);
+        }
+        foreach (var list in ModelReader.Inner(block))
+        {
+            foreach (var inner in list)
+                ForgetNote(inner, gone);
+        }
+    }
+
+    /// <summary>Whether blocks hold a numbered paragraph (in their tables and text boxes too).</summary>
+    static bool Numbered(IEnumerable<Block> blocks) =>
+        blocks.Any(block => block is ParagraphBlock { Label: not null } || ModelReader.Inner(block).Any(Numbered));
+
     /// <summary>The list a block of the body or of a note stands in (the body's blocks, the note's) and its place there.</summary>
     (List<Block> List, int Index) TopList(Block top, bool walking = false)
     {
@@ -130,14 +169,19 @@ public sealed partial class WordDocument
     /// A change made in the paragraphs of a note (see Change for the body's): <paramref name="edit"/> gives the new text of
     /// a stretch of the note's children in the XML of its part (see Stretch), which takes the place of theirs, every other
     /// character of the part as it was; the part's new bytes (with those of the other parts the change gives, see Put)
-    /// a version of their own, the notes read anew. Returns where an element of the note's new text stands in it.
+    /// a version of their own. The note's new text is parsed apart, made ready as the part's XML is when loaded, and the
+    /// note read alone, its paragraphs taking the ids they had (see NotesText); where it holds numbered paragraphs, which
+    /// count on over the notes, the notes are read whole (see ReadNotes). Returns where an element of the note's new text
+    /// stands in it.
     /// </summary>
     Func<XElement, int> ChangeNote(NoteKey key, Func<Stretch, Tracking?, string> edit, IReadOnlyDictionary<string, byte[]?>? changes)
     {
-        if (NotePart(key.Endnote) is not { } part || !notesXml.TryGetValue(key, out var element) || element.Document?.Root is not { } root)
+        if (NotePart(key.Endnote) is not { } part || !notesXml.TryGetValue(key, out var element) || element.Document?.Root is not { } root
+            || !notesTexts.TryGetValue(key.Endnote, out var notes))
             throw new NotSupportedException("The note is not where it was read.");
-        var bytes = package.ReadBytes(part);
-        var text = new PartText(bytes);
+        // The note's text as the last change left it (parsed apart), else as the part was read whole.
+        var island = notes.Islands.GetValueOrDefault(key);
+        var text = island?.Piece ?? notes.Text;
         var (start, rootStart) = (text.Start(element), text.Start(root));
         if (start < 0 || rootStart < 0 || text.Text[text.TagEnd(start) - 2] == '/')
             throw new NotSupportedException("The note is not where it was read.");
@@ -150,29 +194,76 @@ public sealed partial class WordDocument
         var inner = edit(stretch, tracking);
         if (tracking != null)
             changeId = tracking.NextId;
+        // The note's new text within the start tags of the part's root and the note, and the part's text with it.
+        var piece = new PartText(head + inner + tail);
+        var islandsNow = new Dictionary<NoteKey, NoteIsland>(notes.Islands)
+        {
+            [key] = island is { } was ? was with { Inner = inner, Piece = piece } : new NoteIsland(open, close, inner, piece),
+        };
         var given = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
         foreach (var (name, changed) in changes ?? new Dictionary<string, byte[]?>())
             given[name] = changed;
-        var spliced = text.Spliced([(open, close, inner)]);
+        var spliced = notes.Text.Spliced(islandsNow.Values.OrderBy(i => i.Start).Select(i => (i.Start, i.End, i.Inner)));
         given[part] = spliced;
+        var read = notesRead[key];
+        List<Block>? alone = null;
+        XElement? note = null;
+        if (!Numbered(read) && XDocument.Parse(piece.Text, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo).Root?.Elements().FirstOrDefault() is { } parsed)
+        {
+            parsed.Add(context.Prepare(parsed));
+            (alone, note) = (reader.Note(parsed, key.Endnote), parsed);
+        }
         var partsBefore = partBytes;
         Put(given);
-        try
+        Func<XElement, int> where;
+        if (alone != null && note != null)
         {
-            ReadNotes();
+            // The note read alone takes the place of what it was: its paragraphs with the ids they had, those before
+            // forgotten (by the layout too), its blocks among the notes the layout takes.
+            touched.Remove(part);
+            ModelReader.Keep(read, alone);
+            var gone = new HashSet<ParagraphBlock>(ReferenceEqualityComparer.Instance);
+            foreach (var block in read)
+            {
+                noteOf.Remove(block);
+                ForgetNote(block, gone);
+            }
+            foreach (var block in alone)
+            {
+                noteOf[block] = key;
+                CollectNote(block, block);
+            }
+            layout?.Forget(gone);
+            (notesRead[key], notesXml[key], notesTexts[key.Endnote]) = (alone, note, notes with { Islands = islandsNow });
+            if (!key.Endnote)
+                notesLaid.Footnotes[key.Id] = alone;
+            else if (notesLaid.Endnotes.FindIndex(e => ReferenceEquals(e.Blocks, read)) is var k and >= 0)
+                notesLaid.Endnotes[k] = (notesLaid.Endnotes[k].Section, alone);
+            notesChanged.Add(key);
+            notesPending = true;
+            where = e => piece.Start(e) is var at && at >= head.Length && at < head.Length + inner.Length ? at - head.Length : -1;
         }
-        catch
+        else
         {
-            Restore(partsBefore);
-            ReadNotes();
-            throw;
+            try
+            {
+                ReadNotes();
+            }
+            catch
+            {
+                Restore(partsBefore);
+                ReadNotes();
+                throw;
+            }
+            var now = new PartText(spliced);
+            var innerStart = notesXml.TryGetValue(key, out var reread) && now.Start(reread) is var found and >= 0 ? now.TagEnd(found) : -1;
+            where = e => now.Start(e) is var at && innerStart >= 0 && at >= innerStart && at < innerStart + inner.Length ? at - innerStart : -1;
         }
         versions.RemoveRange(version + 1, versions.Count - version - 1);
         versions.Add(new Version(whole, islands, kept, partBytes));
         version++;
         fresh = notesRead.GetValueOrDefault(key) ?? [];
-        var now = new PartText(spliced);
-        return e => now.Start(e) is var at && at >= open && at < open + inner.Length ? at - open : -1;
+        return where;
     }
 
     /// <summary>The qualified name of the element whose start tag begins at a place of a part's text.</summary>

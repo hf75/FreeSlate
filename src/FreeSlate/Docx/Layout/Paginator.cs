@@ -1418,6 +1418,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The notes changed since the last layout (see Renote), whose references the next one lays out again from.</summary>
     readonly HashSet<(bool Endnote, string Id)> renoted = [];
 
+    /// <summary>
+    /// The footnotes changed (see Renote) that no run has laid out again yet: a run does not meet the pages laid out
+    /// before while one of them waits on the page in hand, as those pages hold it as it was (see SameFlow, waitingNotes;
+    /// found with docx/local/fnkeep-g: a note kept for the next page, its text changed, met there as it was).
+    /// </summary>
+    readonly HashSet<string> changingNotes = new(StringComparer.Ordinal);
+
+    /// <summary>The changing notes of the paginator that runs this run (see changingNotes), or null.</summary>
+    HashSet<string>? waitingNotes;
+
     /// <summary>The place of the first block that refers to one of some notes (in its tables and text boxes too), or -1.</summary>
     static int Referring(List<Block> blocks, HashSet<(bool Endnote, string Id)> notes)
     {
@@ -1743,8 +1753,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             from = null;
         if (from != null)
         {
-            // The fields read the edited blocks (bookmarks' text, sequences) and know of the pages what the checkpoint's did.
-            var differing = given.Skip(head).Take(given.Count - tail - head).Concat(blocks.Skip(head).Take(blocks.Count - tail - head));
+            // The fields read the edited blocks (bookmarks' text, sequences) and know of the pages what the checkpoint's did;
+            // blocks laid out again as they were (whose notes changed, see Renote) are not edited.
+            var (was, now) = (given.Skip(head).Take(given.Count - tail - head).ToList(), blocks.Skip(head).Take(blocks.Count - tail - head).ToList());
+            var differing = was.Count == now.Count && was.Zip(now).All(p => ReferenceEquals(p.First, p.Second)) ? [] : was.Concat(now);
             var fields = layout.Evaluator?.For(blocks, differing) ?? new FieldEvaluator(context, blocks);
             var refielding = from == refields?.At;
             if (from.Fields != null)
@@ -1756,7 +1768,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var run = new Paginator(context, layout, reader)
             {
                 EndnoteContinuation = EndnoteContinuation, checkpoints = [], settledCopy = from.State.settled, stopPages = laid, stopSettings = settings,
-                knownEnds = ends, stopFinished = finishedPages,
+                knownEnds = ends, stopFinished = finishedPages, waitingNotes = changingNotes.Count > 0 ? changingNotes : null,
                 // The run stops only after the last block that differs, and not where the pages after it may read
                 // otherwise (see throughToEnd) or headers look back over the pages before theirs (STYLEREF).
                 stops = throughToEnd || StoriesLookBack() || before == null ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
@@ -1790,9 +1802,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     .. run.pausedHere ? after.Where(c => Position(c).CompareTo(Position(stop!)) > 0 && (held == null || Position(c).CompareTo(Position(held)) > 0))
                         : stop != null ? after.SkipWhile(c => c != stop) : []];
                 paused = run.pausedHere ? stop : stop != null && held != null && Position(stop).CompareTo(Position(held)) <= 0 ? held : null;
-                // A run that went on to the end laid out the pages as they now read.
+                // A run that went on to the end laid out the pages as they now read; one that met the pages before did
+                // so with the changed notes laid out (see SameFlow).
                 if (!run.pausedHere && stop == null)
                     throughToEnd = false;
+                if (!run.pausedHere)
+                    changingNotes.Clear();
                 if (refielding)
                     refields = null;
                 // From a checkpoint on a page before the first one that holds such a field: a checkpoint stands at the
@@ -1820,6 +1835,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         var (_, lastSection, footnotes, endnotes, endnoteSeparator) = input!.Value;
         (paused, refields, fieldPasses, throughToEnd) = (null, null, 0, false);
+        changingNotes.Clear();
         settings = new TextSettings();
         layout.Evaluator = null;
         layout.NoteMarks = null;
@@ -1846,6 +1862,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         if (renoted.Count > 0)
         {
             var refers = Referring(given, renoted);
+            changingNotes.UnionWith(renoted.Where(n => !n.Endnote).Select(n => n.Id));
             renoted.Clear();
             if (refers >= 0 && head == a.Length && head == b.Length)
                 (head, tail) = (refers, a.Length - refers - 1);
@@ -2079,6 +2096,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var state = old.State;
         if (pages.Count != old.Page || tables.PageArea != state.tables.PageArea || !LayoutValues.Same(page, state.page))
             return false;
+        // The notes go by their ids here; a changed one waiting on the page in hand stands otherwise there (see
+        // changingNotes).
+        if (waitingNotes is { } changed && (pageNotes.Any(changed.Contains) || unitNotes.Any(changed.Contains) || deferredNotes.Any(changed.Contains)
+            || splitNote is { } split && changed.Contains(split.Id)))
+            return false;
         foreach (var field in flowFields)
         {
             // Within a table the paragraph before it counts only as far as the table as laid out with it, which the
@@ -2108,7 +2130,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             or nameof(input) or nameof(laid) or nameof(settledRun) or nameof(lookBack) or nameof(reads) or nameof(stops) or nameof(stopPages)
             or nameof(stopSettings) or nameof(stoppedAt) or nameof(stopFinished) or nameof(taken) or nameof(knownEnds) or nameof(finishedPages)
             or nameof(sectionEnds) or nameof(paused) or nameof(pauseAt) or nameof(pausedHere) or nameof(refields)
-            or nameof(fieldPasses) or nameof(steps) or nameof(growth) or nameof(firstRun)))
+            or nameof(fieldPasses) or nameof(steps) or nameof(growth) or nameof(firstRun) or nameof(renoted) or nameof(changingNotes)
+            or nameof(waitingNotes) or nameof(throughToEnd)))
         .ToArray();
 
     /// <summary>

@@ -937,6 +937,43 @@ public sealed partial class ModelReader(DocumentContext context)
     }
 
     /// <summary>
+    /// A note of type normal read alone, as Notes reads each (its element as a change left it, see
+    /// WordDocument.ChangeNote), with a list counter of its own; null where it asks for numbers (a numbered paragraph, a
+    /// LISTNUM field), which count on over the notes, so that the notes have to be read whole.
+    /// </summary>
+    public List<Block>? Note(XElement note, bool endnotes)
+    {
+        if (context.Package.FirstRelationship(context.MainPart, endnotes ? "endnotes" : "footnotes")?.Target is not { } part)
+            return null;
+        var (savedCounter, savedPart) = (counter, currentPart);
+        var asked = numberSteps.GetValueOrDefault(part)?.Count ?? 0;
+        counter = new ListCounter(context.Numbering);
+        currentPart = part;
+        try
+        {
+            var id = note.Attr("id") ?? "";
+            noteMark = NoteNumbers.Marks.TryGetValue((endnotes, id), out var mark) ? mark : "";
+            noteId = id;
+            var blocks = new List<Block>();
+            ReadBlocks(note, blocks);
+            JoinHidden(blocks, cell: false);
+            if (blocks.Count == 0)
+                blocks.Add(Paragraph(new XElement(Wml.W + "p")));
+            if (numberSteps.GetValueOrDefault(part) is { } steps && steps.Count > asked)
+            {
+                steps.RemoveRange(asked, steps.Count - asked);
+                return null;
+            }
+            return blocks;
+        }
+        finally
+        {
+            noteMark = null;
+            (counter, currentPart) = (savedCounter, savedPart);
+        }
+    }
+
+    /// <summary>
     /// The list counter the header and footer stories share (see Story), and the list and level of the Normal style
     /// where it is numbered.
     /// </summary>
