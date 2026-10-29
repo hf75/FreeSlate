@@ -121,7 +121,7 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
 
     PresentationContext? presentation;
     readonly Dictionary<string, SlideRenderer> renderers = new(StringComparer.OrdinalIgnoreCase);
-    readonly SvgPaint paint = new() { PrintedPictures = true, ExactDashes = true };
+    readonly SvgPaint paint = new() { PrintedPictures = true, ExactDashes = true, CenteredCircles = true };
 
     /// <summary>The presentation context the slide renderer draws with: the same package, fonts and glyphs.</summary>
     public PresentationContext Presentation => presentation ??= new PresentationContext(context.Package, context.FontLocator)

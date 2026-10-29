@@ -26,6 +26,13 @@ public sealed class SvgPaint
     /// </summary>
     public bool ExactDashes { get; init; }
 
+    /// <summary>
+    /// Whether circle path gradients keep to the middle of their tile whatever their focus (Word: its PDFs of LibreOffice's
+    /// extras-ooxmlexport/fdo78957, tdf120551 and chart-data-label-char-color shade such fills along circles about the
+    /// box's middle out to its corners), not shrunk towards the focus as PowerPoint draws them.
+    /// </summary>
+    public bool CenteredCircles { get; init; }
+
     /// <summary>The unit of an outline's dash pattern in pixels (see <see cref="ExactDashes"/>).</summary>
     public double DashUnit(Outline outline) =>
         ExactDashes && outline.WidthEmu > 0 ? Units.ToPx(outline.WidthEmu) : Dashes.Unit(Math.Max(Units.ToPx(outline.WidthEmu), 0.5));
@@ -203,14 +210,42 @@ public sealed class SvgPaint
         if (g.Path is "rect" or "shape")
             return RectGradient(g, id, w, h, defs, offset);
 
-        // Circle: from the focus rectangle (offset 0) to the edge of the tile rectangle (offset 1).
-        var cx = w * (fl + (1 - fr)) / 2;
-        var cy = h * (ft + (1 - fb)) / 2;
-        double[] xs = [w * tl, w * (1 - tr)];
-        double[] ys = [h * tt, h * (1 - tb)];
-        var r = xs.SelectMany(x => ys.Select(y => Math.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)))).Max();
-        defs.Append($"<radialGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" cx=\"{Units.Css(offset.X + cx)}\" cy=\"{Units.Css(offset.Y + cy)}\" r=\"{Units.Css(Math.Max(r, 1))}\">{stops}</radialGradient>");
+        // Circle: the circle through the tile rectangle's corners (offset 1), round in any box, shrunk towards one point
+        // (offset 0), the point about which the tile rectangle shrinks to the focus rectangle; the focus rectangle's own
+        // size plays no part (measured: poi/ae.ac.uaeu.faculty_nafaachbili_GeomLec1, a background whose focus
+        // l=65 % b=98 % shades from the slide's top right corner along circles about the slide's middle shrunk towards
+        // that corner; LibreOffice's tdf94238, a focus point below its shape; tdf154858, no fillToRect; local/
+        // circgrad-probe in PowerPoint: backgrounds focused at 20/30/50/10, 60/10/10/60, 65/0/0/98 and the top right
+        // corner, shapes of 1:1, 4:1 and 2:1, one turned 30° with its gradient, an ellipse and tile rectangles reaching
+        // 50 and 100 % past the shape, each within 0.1 % of the gradient's length of the rule).
+        var tile = (L: w * tl, T: h * tt, R: w * (1 - tr), B: h * (1 - tb));
+        var (cx, cy) = ((tile.L + tile.R) / 2, (tile.T + tile.B) / 2);
+        var r = Math.Max(1, Math.Sqrt((tile.R - tile.L) * (tile.R - tile.L) + (tile.B - tile.T) * (tile.B - tile.T)) / 2);
+        var (fx, fy) = CenteredCircles ? (cx, cy) : (Focal(tile.L, tile.R, w * fl, w * (1 - fr)), Focal(tile.T, tile.B, h * ft, h * (1 - fb)));
+        // A focus on the circle (a corner of the tile) a little inside it: Chrome fills the whole gradient with its last
+        // color once the focus lies outside (by 0.6 px of 250). One outside the circle PowerPoint shrinks it towards too
+        // (circgrad-probe: Office 2007's background focused at 50/−80/50/180), which the browser cannot draw: moved
+        // inside, the error is half that of circles about the focus.
+        var away = Math.Sqrt((fx - cx) * (fx - cx) + (fy - cy) * (fy - cy));
+        var inside = away < 1e-6 ? 1 : Math.Min(1, (r - Math.Max(0.001 * r, 0.02)) / away);
+        (fx, fy) = (cx + (fx - cx) * inside, cy + (fy - cy) * inside);
+        var focal = away < 1e-6 ? "" : $" fx=\"{Units.Css(offset.X + fx)}\" fy=\"{Units.Css(offset.Y + fy)}\"";
+        defs.Append($"<radialGradient id=\"{id}\" gradientUnits=\"userSpaceOnUse\" cx=\"{Units.Css(offset.X + cx)}\" cy=\"{Units.Css(offset.Y + cy)}\" r=\"{Units.Css(r)}\"{focal}>{stops}</radialGradient>");
         return id;
+    }
+
+    /// <summary>
+    /// Along one axis, the point about which the tile's span [t0, t1] shrinks or grows to the focus span [f0, f1] (a
+    /// focus point is its own); the middle of the focus where both are as long (a shift without a fixed point), the
+    /// tile's middle where the focus span is turned round (measured: local/circgrad-probe, a focus of 50/50/100/100
+    /// shades about the middle of the slide).
+    /// </summary>
+    static double Focal(double t0, double t1, double f0, double f1)
+    {
+        if (f1 < f0 - 1e-9)
+            return (t0 + t1) / 2;
+        var scale = Math.Abs(t1 - t0) < 1e-9 ? 1 : (f1 - f0) / (t1 - t0);
+        return Math.Abs(1 - scale) < 1e-9 ? (f0 + f1) / 2 : (f0 - scale * t0) / (1 - scale);
     }
 
     /// <summary>
