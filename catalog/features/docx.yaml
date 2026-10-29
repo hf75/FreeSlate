@@ -3298,7 +3298,11 @@ areas:
           however far it reaches past its room (lkb-1-*: a first line 0.5 to 5 pt taller than the room stays, lkb-2-*:
           the second line 0.5 pt past the bottom inset goes on), unless it has no room at all inside its insets and
           outline: then no box shows that line (lkc-*: 0.55 pt keeps "Line one", 0.5 pt loses it; lkd-*: a picture's
-          line alike); the chain's last box shows all the rest past its room (lkf-1: three lines in a box for one).
+          line alike); the chain's last box holds all the rest past its room (lkf-1: three lines in a box for one). What
+          does not fit a box Word cuts at its rectangle less its top and bottom insets, across its whole width: its PDF
+          clips every box's text so, also a first line taller than the box, a table's rows, a group's box, a VML box and
+          a box in the header, in compatibility modes 12 and 15 (docx/local/tbc-lines-12 and -15 92.4 → 98.3 %,
+          bxc-boxes 89.4 → 93.4 %; lkf-1 shows one line of its three).
           VML text boxes chain by their links (v:textbox style mso-next-textbox:#id): the first box of a chain holds
           the story, the boxes its links lead to continue it in the links' order, whatever theirs in the document; a
           box linked to itself or to none ends its chain (LibreOffice's extras-ooxmlexport/tdf87348_linkedTextboxes:
