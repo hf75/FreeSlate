@@ -144,7 +144,9 @@ public sealed class SvgPaint
                 var (d, space) = (dash[i], i + 1 < dash.Length ? dash[i + 1] : 0);
                 (lengths[i], lengths[i + 1]) = round ? (Math.Max(0, d - 1), space + 1) : (d, space);
             }
-            sb.Append($" stroke-dasharray=\"{string.Join(' ', lengths.Select(d => Units.Css(d * unit)))}\"");
+            // Four decimals: a pattern of a third of a pixel would otherwise drift by a pixel along 200 (a table's 1 pt
+            // border, see TableRenderer.Draw).
+            sb.Append($" stroke-dasharray=\"{string.Join(' ', lengths.Select(d => Units.Css4(d * unit)))}\"");
             if (round && closed)
                 sb.Append($" stroke-dashoffset=\"{Units.Css(-unit / 2)}\"");
         }

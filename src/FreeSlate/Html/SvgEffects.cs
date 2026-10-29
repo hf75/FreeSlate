@@ -220,13 +220,15 @@ public static class SvgEffects
     /// An outer shadow that scales, skews or flips the shape (outerShdw sx, sy, kx, ky, the perspective shadows), or
     /// null: about its alignment point (algn, bottom center by default) the shape is scaled and skewed, then moved by
     /// dist in direction dir; the blur comes last (measured, generated/effects). Text passes the outer scale of its
-    /// line for dist and blur (see <see cref="TextScale"/>).
+    /// line for dist and blur (see <see cref="TextScale"/>). With <paramref name="moved"/> any outer shadow is such a
+    /// copy, one that is only moved too (a table's: it lands between pixels, which the browser's feOffset rounds to
+    /// whole ones); <paramref name="reach"/> is how far (pixels) what casts it reaches beyond the box.
     /// </summary>
     public static ShadowCopy? Shadow(XElement? effectLst, ColorContext colors, double width, double height, StringBuilder defs, Matrix? frame = null,
-        double scale = 1)
+        double scale = 1, bool moved = false, double reach = 0)
     {
         var shadow = effectLst?.Element(Ns.A + "outerShdw");
-        if (shadow == null || !Transformed(shadow))
+        if (shadow == null || !moved && !Transformed(shadow))
             return null;
         var sx = (shadow.Long("sx") ?? 100000) / 100000.0;
         var sy = (shadow.Long("sy") ?? 100000) / 100000.0;
@@ -254,7 +256,7 @@ public static class SvgEffects
         // The filter covers the transformed box with room for the blur.
         (double X, double Y)[] corners = [(0, 0), (width, 0), (0, height), (width, height)];
         var mapped = corners.Select(c => (X: transform.A * c.X + transform.C * c.Y + transform.E, Y: transform.B * c.X + transform.D * c.Y + transform.F)).ToList();
-        var margin = blur * 2 + 2;
+        var margin = blur * 2 + 2 + reach;
         var (minX, minY) = (mapped.Min(c => c.X) - margin, mapped.Min(c => c.Y) - margin);
         var (maxX, maxY) = (mapped.Max(c => c.X) + margin, mapped.Max(c => c.Y) + margin);
         var id = $"e{Interlocked.Increment(ref nextId)}";
