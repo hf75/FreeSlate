@@ -148,6 +148,9 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// <summary>The formatting the text being rendered takes instead of its own (see <see cref="TextChain.Override"/>).</summary>
     TextOverride? runOverride;
 
+    /// <summary>Whether the runs being rendered advance as their fonts give them: a Word document's WordArt (see TextStyle.Unrounded).</summary>
+    bool unrounded;
+
     public List<SceneItem> Render(TextChain chain, EvaluatedGeometry geometry, double boxWidth, bool unflip)
     {
         units = chain.Units;
@@ -169,6 +172,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         {
             units = false;
             runOverride = null;
+            unrounded = false;
             Grid = grid;
         }
     }
@@ -230,6 +234,8 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var warp = bodies.Select(b => b?.Element(Ns.A + "prstTxWarp")).FirstOrDefault(e => e != null);
         var warpDefinition = warp != null ? TextWarp.Definition(warp) : null;
         var wrap = wraps && !(warpDefinition != null && TextWarp.FollowsPaths(warpDefinition));
+        // Word lays its WordArt's text out on the font's own advances (TextStyle.Unrounded).
+        unrounded = slide.Presentation.Word && warpDefinition != null;
         // Space before the first paragraph and after the last counts only when the body asks for it (measured).
         var spaceFirstLast = Body("spcFirstLastPara") is "1" or "true";
         // Warped text keeps its size and scale (measured with PowerPoint 365's object model: WordArt growing to its text
@@ -347,7 +353,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                     continue;
                 }
                 var style = run.Style;
-                var advances = style.Font.Data.LayoutAdvances(run.Text, style.Size, style.Kerning, style.LetterSpacing);
+                var advances = style.Advances(run.Text, style.Kerning);
                 var x = run.X;
                 var start = 0;
                 for (var i = 0; i <= run.Text.Length; i++)
@@ -439,7 +445,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var center = x + pitches[index] / 2;
             foreach (var (text, style) in visible)
             {
-                var w = style.Font.Data.LayoutWidth(text, style.Size, false);
+                var w = style.Width(text, false, spacing: false);
                 if (text != " ")
                     stack.Items.AddRange(Text(new PlacedRun(text, style, 0, w), center - w / 2, y + BaselineDepth * style.Size));
                 y += Step * style.Size;
@@ -521,7 +527,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 var text = style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
                 var scale = style.Size * PxPerPt / data.UnitsPerEm;
                 var position = (left + run.X) * PxPerPt;
-                var spacing = FontData.MasterUnits(style.LetterSpacing) * PxPerPt;
+                var spacing = style.Rounded(style.LetterSpacing) * PxPerPt;
                 foreach (var g in data.Glyphs(text, style.Kerning))
                 {
                     var outline = data.Outline(g.Id);
@@ -531,11 +537,11 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                         var y = baseline * PxPerPt - g.OffsetY * style.Size * PxPerPt;
                         glyphs.Add(new TextWarp.Glyph(TextWarp.Contours(outline, x, y, scale, slide.Presentation.Word), lineIndex, baseline * PxPerPt)
                         {
-                            Middle = textPath ? position + FontData.MasterUnits(g.Advance * style.Size) * PxPerPt / 2 : null,
+                            Middle = textPath ? position + style.Rounded(g.Advance * style.Size) * PxPerPt / 2 : null,
                         });
                         owners.Add(style);
                     }
-                    position += (FontData.MasterUnits(g.Advance * style.Size) + FontData.MasterUnits(g.Kerning * style.Size)) * PxPerPt + spacing;
+                    position += (style.Rounded(g.Advance * style.Size) + style.Rounded(g.Kerning * style.Size)) * PxPerPt + spacing;
                 }
                 selection.Add(new SvgTextItem(text, Enumerable.Repeat((left + run.X) * PxPerPt, text.Length).ToArray(), baseline * PxPerPt, data, style.Size * PxPerPt, style.Color)
                 {
@@ -855,7 +861,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var style = run.Style;
             var origin = left + origins[k];
             double At(double from) => origin + device.OnX(from * PxPerPt, HalfUp) / PxPerPt;
-            var advances = style.Inline != null ? [run.Width] : style.Font.Data.LayoutAdvances(run.Text, style.Size, style.Kerning, style.LetterSpacing);
+            var advances = style.Inline != null ? [run.Width] : style.Advances(run.Text, style.Kerning);
             var from = run.X - origins[k];
             var before = 0.0;
             var format = (byte)((style.Bold ? PlacesItem.Bold : 0) | (style.Italic ? PlacesItem.Italic : 0) | (style.Underline != null ? PlacesItem.Underlined : 0));
@@ -1125,7 +1131,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // Glyph positions in whole pixels from the format run's start; characters take their cluster's position.
         var glyphX = new double[glyphs.Length];
         var clusterX = new double?[text.Length];
-        var spacing = FontData.MasterUnits(style.LetterSpacing);
+        var spacing = style.Rounded(style.LetterSpacing);
         var position = from ?? x - start;
         for (var i = 0; i < glyphs.Length; i++)
         {
@@ -1134,7 +1140,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var firstOfCluster = glyph.Cluster < text.Length && clusterX[glyph.Cluster] == null;
             if (firstOfCluster)
                 clusterX[glyph.Cluster] = glyphX[i];
-            position += FontData.MasterUnits(glyph.Advance * style.Size) + FontData.MasterUnits(glyph.Kerning * style.Size) + (firstOfCluster ? spacing : 0);
+            position += style.Rounded(glyph.Advance * style.Size) + style.Rounded(glyph.Kerning * style.Size) + (firstOfCluster ? spacing : 0);
         }
         var xs = new StringBuilder();
         var places = new double[text.Length];
@@ -1309,7 +1315,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var style = run.Style;
         var text = style.AllCaps ? run.Text.ToUpperInvariant() : run.Text;
         var glyphs = style.Font.Data.Glyphs(text, style.Kerning, false);
-        var spacing = FontData.MasterUnits(style.LetterSpacing);
+        var spacing = style.Rounded(style.LetterSpacing);
         var starts = new double?[text.Length + 1];
         var position = from;
         foreach (var glyph in glyphs)
@@ -1317,7 +1323,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             var first = glyph.Cluster < text.Length && starts[glyph.Cluster] == null;
             if (first)
                 starts[glyph.Cluster] = position;
-            position += FontData.MasterUnits(glyph.Advance * style.Size) + FontData.MasterUnits(glyph.Kerning * style.Size) + (first ? spacing : 0);
+            position += style.Rounded(glyph.Advance * style.Size) + style.Rounded(glyph.Kerning * style.Size) + (first ? spacing : 0);
         }
         starts[text.Length] = position;
         var result = new List<(PlacedRun, int, double)>();
@@ -2039,6 +2045,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             NormalizeHeight = R("normalizeH") is "1" or "true",
             HoverLink = rPr?.Element(Ns.A + "hlinkMouseOver") is { } mouseOver && linkPart != null ? Links.Resolve(mouseOver, linkPart, slide.Presentation) : null,
             UprightDigits = R("kumimoji") is "1" or "true",
+            Unrounded = unrounded,
         };
     }
 

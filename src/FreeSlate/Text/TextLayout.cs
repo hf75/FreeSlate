@@ -53,6 +53,32 @@ public sealed record TextStyle(
     /// line's other characters (see TextLayout.BuildLine).
     /// </summary>
     public bool BreakInText { get; init; }
+
+    /// <summary>
+    /// Whether the run's glyphs advance as the font gives them, as Word lays out the text of its WordArt (measured with
+    /// docx/local/wfw-noline: a title of 487.33 pt of advances stays on one line in boxes of 487.56 pt in textPlain and
+    /// textWave1, which on PowerPoint's master units it overran), rather than each on PowerPoint's master units.
+    /// </summary>
+    public bool Unrounded { get; init; }
+
+    /// <summary>A length of the run's layout (an advance, kerning, letter spacing): on PowerPoint's master units, or as it is where the run is Unrounded.</summary>
+    public double Rounded(double points) => Unrounded ? points : FontData.MasterUnits(points);
+
+    /// <summary>The advances of <paramref name="text"/>'s UTF-16 code units in points (FontData.LayoutAdvances, or as the font gives them where the run is Unrounded).</summary>
+    public double[] Advances(string text, bool kerning)
+    {
+        if (!Unrounded)
+            return Font.Data.LayoutAdvances(text, Size, kerning, LetterSpacing);
+        var advances = Font.Data.Advances(text, kerning);
+        for (var i = 0; i < advances.Length; i++)
+            advances[i] = char.IsLowSurrogate(text[i]) ? 0 : advances[i] * Size + LetterSpacing;
+        return advances;
+    }
+
+    /// <summary>The width of <paramref name="text"/> in points (FontData.LayoutWidth, or as the font gives it where the run is Unrounded).</summary>
+    public double Width(string text, bool kerning, bool spacing = true) => text.Length == 0 ? 0
+        : !Unrounded ? Font.Data.LayoutWidth(text, Size, kerning, spacing ? LetterSpacing : 0)
+        : Font.Data.Width(text, kerning) * Size + (spacing ? LetterSpacing * text.Count(c => !char.IsLowSurrogate(c)) : 0);
 }
 
 /// <summary>An object laid out inside a line of text: its width and how far it reaches above and below the baseline (points).</summary>
@@ -454,7 +480,7 @@ public static class TextLayout
 
         var lines = new List<LaidOutLine>();
         var bulletWidth = paragraph.Bullet is { } b
-            ? b.Picture != null ? b.PictureHeight * b.PictureAspect : b.Style.Font.Data.LayoutWidth(b.Text, b.Style.Size, b.Style.Kerning)
+            ? b.Picture != null ? b.PictureHeight * b.PictureAspect : b.Style.Width(b.Text, b.Style.Kerning, spacing: false)
             : 0;
         var limit = width - paragraph.MarginRight;
         // A hanging indent reaching left of the text area moves the whole paragraph right: the first line starts
@@ -842,7 +868,7 @@ public static class TextLayout
             return;
         var last = runs[^1];
         var text = string.Concat(runs.Select(r => r.Text)).TrimEnd();
-        double Width(string value) => last.Style.Font.Data.LayoutWidth(value, last.Style.Size, last.Style.Kerning, last.Style.LetterSpacing);
+        double Width(string value) => last.Style.Width(value, last.Style.Kerning);
         var start = runs[0].X;
         var cut = text;
         while (cut.Length > 0 && start + Width(cut + "\u2026") > limit + 0.01)
@@ -973,9 +999,7 @@ public static class TextLayout
             || char.IsSurrogate(all[at - 1]) || char.IsSurrogate(all[at]) || all[at - 1] is '\n' or '\t' || all[at] is '\n' or '\t')
             return 0;
         var style = styles[at];
-        var data = style.Font.Data;
-        return data.LayoutAdvances(all.Substring(at - 1, 2), style.Size, true, style.LetterSpacing)[0]
-               - data.LayoutAdvances(all.Substring(at - 1, 1), style.Size, true, style.LetterSpacing)[0];
+        return style.Advances(all.Substring(at - 1, 2), true)[0] - style.Advances(all.Substring(at - 1, 1), true)[0];
     }
 
     static double Measure(string all, List<TextStyle> styles, int start, int end)
@@ -988,7 +1012,7 @@ public static class TextLayout
                 continue;
             var style = styles[runStart];
             var text = all[runStart..i];
-            width += style.Inline is { } inline ? inline.Width * text.Length : style.Font.Data.LayoutWidth(text, style.Size, style.Kerning, style.LetterSpacing);
+            width += style.Inline is { } inline ? inline.Width * text.Length : style.Width(text, style.Kerning);
             runStart = i;
         }
         return width;
