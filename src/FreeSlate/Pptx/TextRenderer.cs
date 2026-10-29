@@ -245,7 +245,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 columns > 1 ? (columns, columnGap, Body("rtlCol") is "1" or "true") : null);
             Fitted = new TextFit(fontScale, spacingReduction, null);
         }
-        var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast);
+        // In PowerPoint text that does not wrap keeps the spaces ending its lines (TextLayout.BreakLines); warped text
+        // counts its lines' ends itself (TextWarp.Apply).
+        var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast,
+            trailingSpaces: !wrap && warp == null && !slide.Presentation.Word);
         // A shape that grows to its text is as high as the text (Bound) and its insets, by 517/512 (measured with
         // PowerPoint 365's object model: 144 boxes of 1 to 6 lines in four fonts, three sizes and three spacings, all to 0.001 pt).
         if (refit && columns == 1 && autofit?.Name.LocalName == "spAutoFit")
@@ -1072,13 +1075,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     }
 
     LaidOutText Layout(XElement txBody, List<Source> sources, double width, bool wrap, double fontScale, double spacingReduction,
-        bool spaceFirstLast = false)
+        bool spaceFirstLast = false, bool trailingSpaces = false)
     {
         var counters = new Numbering();
         var paragraphs = txBody.Elements(Ns.A + "p")
             .Select(p => Paragraph(p, sources, fontScale, spacingReduction, counters))
             .ToList();
-        return TextLayout.Layout(paragraphs, width, wrap, spaceFirstLast);
+        return TextLayout.Layout(paragraphs, width, wrap, spaceFirstLast, trailingSpaces);
     }
 
     static string Px(double points) => Units.Css(points * PxPerPt);

@@ -305,7 +305,10 @@ public sealed class LaidOutText
 /// </summary>
 public static class TextLayout
 {
-    public static LaidOutText Layout(IReadOnlyList<ParagraphInput> paragraphs, double width, bool wrap, bool spaceFirstLast = false)
+    /// <param name="trailingSpaces">Whether the spaces that end a line take room in it, which they do in text that does
+    /// not wrap (see BreakLines).</param>
+    public static LaidOutText Layout(IReadOnlyList<ParagraphInput> paragraphs, double width, bool wrap, bool spaceFirstLast = false,
+        bool trailingSpaces = false)
     {
         var result = new LaidOutText();
         double cursor = 0;
@@ -319,7 +322,7 @@ public static class TextLayout
                 cursor += pendingAfter + paragraph.SpaceBefore.Points(firstSize);
             pendingAfter = paragraph.SpaceAfter.Points(firstSize);
 
-            foreach (var line in BreakLines(paragraph, width, wrap))
+            foreach (var line in BreakLines(paragraph, width, wrap, trailingSpaces))
             {
                 line.Paragraph = p;
                 line.Id = paragraph.Id;
@@ -394,7 +397,16 @@ public static class TextLayout
         public bool IsTab { get; set; }
     }
 
-    static List<LaidOutLine> BreakLines(ParagraphInput paragraph, double width, bool wrap)
+    /// <param name="trailingSpaces">
+    /// Whether the spaces ending a line count in its width and so in its alignment. Lines that wrap hang them past
+    /// their end, the paragraph's last line too (measured: LibreOffice's oox/tdf139618_ThemeColorTransparency, "Happy "
+    /// centered in 96 pt as "Happy"); text that does not wrap keeps them, before a line break too (measured: centered
+    /// lines ending in a space half a space further left than without it, in POI's
+    /// aascu.org_workarea_downloadasset.aspx_id=5864 "Why Such Urgency " at 44 pt 9 px, the title of slide 7 at 20 pt 4
+    /// px, Open XML SDK's o09_Performance_typical "Shaded " and "Workgroup " before a break in Arial bold 18 and 20 pt
+    /// 3.5 px, POI's alterman_security "FPKI Medium &amp; " 3.3 px).
+    /// </param>
+    static List<LaidOutLine> BreakLines(ParagraphInput paragraph, double width, bool wrap, bool trailingSpaces = false)
     {
         // Flatten the runs into one string with a style per character (caps applied, which keeps the length) and the
         // offset each character shows in its paragraph's own text.
@@ -570,7 +582,7 @@ public static class TextLayout
             }
 
             current.Add((segment.Start, segment.End, x));
-            lastContentEnd = x + content;
+            lastContentEnd = x + (trailingSpaces ? segment.Width : content);
             x += segment.Width;
         }
         // A last line of nothing but tabs keeps the first tab's style, as a line of only a tab does where a word moves on
