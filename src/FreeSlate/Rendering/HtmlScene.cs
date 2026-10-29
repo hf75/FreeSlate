@@ -51,10 +51,25 @@ public static class HtmlScene
         return html.ToString();
     }
 
-    /// <summary>PowerPoint's sign for a picture it cannot show (see MissingPictureItem; class fs-nopic in the style sheet).</summary>
-    const string PowerPointMissingPicture =
-        "<div class=\"fs-nopic\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 13 13\"><rect x=\".5\" y=\".5\" width=\"12\" height=\"12\" fill=\"#fff\" stroke=\"#808080\"/>" +
-        "<path d=\"M4 4l5 5M9 4l-5 5\" stroke=\"#e00000\" stroke-width=\"2\"/></svg><span>The picture can't be displayed.</span></div>";
+    /// <summary>
+    /// PowerPoint's sign for a picture it cannot show (see SlideRenderer.PowerPointSign; class fs-nopic in the style
+    /// sheet): on white the frame, in its clip 7 pixels in the icon, PowerPoint's bitmap (a 14 × 16 raised box with a
+    /// 6 × 5 red cross), and the message, which the style sheet cuts with an ellipsis 11 pixels before the frame's right
+    /// edge (as GDI+ trims it) and makes 1-bit (its coverage from 40 % black, else clear). Where the item has a box on
+    /// the slide's pixels, it is moved there (a translation of its own: the browser rounds borders and clips in the
+    /// coordinates of the shape, which may stand between pixels).
+    /// </summary>
+    static string PowerPointMissingPicture(MissingPictureItem missing)
+    {
+        var box = missing.Box is var (x, y, width, height)
+            ? $" style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px;transform:translate({Units.Css(x)}px,{Units.Css(y)}px)\"" : "";
+        var text = Math.Abs(missing.TextLeft - 27.25) > 0.005 ? $" style=\"left:{Units.Css(missing.TextLeft - 7)}px\"" : "";
+        return $"<div class=\"fs-nopic\"{box}><div><svg width=\"14\" height=\"16\" viewBox=\"0 0 14 16\">" +
+               "<path fill=\"#808080\" d=\"M0 0h14v1H1v14H0z\"/><path fill=\"#000\" d=\"M13 1h1v15H0v-1h13z\"/>" +
+               "<path fill=\"#c0c0c0\" d=\"M12 1h1v14H1v-1h11z\"/><path fill=\"#fff\" d=\"M1 1h11v13H1z\"/>" +
+               "<path fill=\"#f00\" d=\"M4 5h2v1H4zM8 5h2v1H8zM5 6h4v1H5zM6 7h2v1H6zM5 8h4v1H5zM4 9h2v1H4zM8 9h2v1H8z\"/></svg>" +
+               $"<span{text}>The picture can't be displayed.</span></div></div>";
+    }
 
     /// <summary>
     /// Word's sign for a picture it cannot show: on white its broken-picture icon and the message in 1.2 pt Tahoma
@@ -157,7 +172,7 @@ public static class HtmlScene
                         + $"width=\"{Units.Css(picture.Width)}\" height=\"{Units.Css(picture.Height)}\" preserveAspectRatio=\"none\"{picture.Filter}/></g>");
                     break;
                 case MissingPictureItem missing:
-                    html.Append(missing.Message is { } message ? WordMissingPicture(message) : PowerPointMissingPicture);
+                    html.Append(missing.Message is { } message ? WordMissingPicture(message) : PowerPointMissingPicture(missing));
                     break;
                 case TransformItem transformed:
                     html.Append($"<g transform=\"{transformed.Css ?? transformed.Transform.Css()}\">");

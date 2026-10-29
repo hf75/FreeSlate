@@ -5,7 +5,7 @@
   'use strict';
   // A picture without its picture shows PowerPoint's sign; Office words it in its own language, here the viewer's.
   if (/^de\b/i.test(navigator.language || ''))
-    document.querySelectorAll('.fs-nopic>span').forEach(span => { span.textContent = 'Das Bild kann nicht angezeigt werden.'; });
+    document.querySelectorAll('.fs-nopic span').forEach(span => { span.textContent = 'Das Bild kann nicht angezeigt werden.'; });
 
   const dataElement = document.getElementById('freeslate-data');
   const slides = [...document.querySelectorAll('section.slide')];

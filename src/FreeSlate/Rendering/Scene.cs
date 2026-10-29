@@ -169,10 +169,21 @@ public sealed record PictureItem(string Source, double X, double Y, double Width
 
 /// <summary>
 /// Office's sign over a picture of Width × Height CSS pixels that it cannot show: Word's with its Message (on white in a
-/// 0.14 pt black frame, the broken-picture icon and the message in 1.2 pt Tahoma), PowerPoint's without one (a grey
-/// frame, the icon and "The picture can't be displayed." in 11-pixel Tahoma); in HTML a div over the picture's box.
+/// 0.14 pt black frame, the broken-picture icon and the message in 1.2 pt Tahoma), PowerPoint's without one (on white
+/// a grey frame, the 14 × 16 icon and "The picture can't be displayed." in 10.16-pixel Tahoma, see HtmlScene); in HTML
+/// a div over the picture's box.
 /// </summary>
-public sealed record MissingPictureItem(double Width, double Height, string? Message) : SceneItem;
+public sealed record MissingPictureItem(double Width, double Height, string? Message) : SceneItem
+{
+    /// <summary>
+    /// PowerPoint's: the frame's box in the item's coordinates where the picture is only moved on the slide, its edges
+    /// rounded to the slide's pixels; null for the picture's own box (turned, flipped or scaled).
+    /// </summary>
+    public (double X, double Y, double Width, double Height)? Box { get; init; }
+
+    /// <summary>PowerPoint's: where the message begins, from the frame's left edge (CSS pixels).</summary>
+    public double TextLeft { get; init; } = 27.25;
+}
 
 /// <summary>Items drawn transformed (in CSS pixels): a scaled, skewed or flipped shadow's copy of its shape, turned text.</summary>
 public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem, IHoldsItems

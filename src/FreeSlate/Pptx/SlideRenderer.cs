@@ -764,7 +764,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         drawn.AddRange(content);
         List<SceneItem> canvas = shapeLink != null ? [new WrappedItem(Links.Open(shapeLink), drawn, "</a>")] : drawn;
         var over = new StringBuilder();
-        var missing = shape.Name.LocalName == "pic" ? MissingPicture(shape, part, pw, ph) : null;
+        var missing = shape.Name.LocalName == "pic" ? MissingPicture(shape, part, pw, ph, Grid(slideMatrix)) : null;
         if (shape.Name.LocalName == "pic")
             over.Append(Media(shape, part)).Append(Model3D.Canvas(shape, part, slide));
         if (solidBody)
@@ -1088,11 +1088,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
     /// <summary>
     /// The sign over a picture of <paramref name="width"/> × <paramref name="height"/> pixels without its picture (an
     /// a:blip naming none, or a part the package lacks; in Word also a linked file it does not find), or null:
-    /// PowerPoint's is a 1-pixel grey frame on the picture's edge with the broken-picture icon and "The picture can't be
-    /// displayed." at its top left (measured: #6D6D6D, the icon 6 pixels in), worded in Office's language by
-    /// PowerPoint and in the viewer's by the player; Word's see MissingPictureItem.
+    /// PowerPoint's see PowerPointSign, worded in Office's language by PowerPoint and in the viewer's by the player;
+    /// Word's see MissingPictureItem. <paramref name="grid"/> is where the picture stands on the slide's pixels (Grid).
     /// </summary>
-    MissingPictureItem? MissingPicture(XElement pic, string part, double width, double height)
+    MissingPictureItem? MissingPicture(XElement pic, string part, double width, double height, (double X, double Y)? grid)
     {
         var blip = pic.Element(Ns.P + "blipFill")?.Element(Ns.A + "blip");
         var id = blip?.Descendants(Ns.Asvg + "svgBlip").FirstOrDefault()?.Attribute(Ns.R + "embed")?.Value
@@ -1126,7 +1125,32 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         if (nvPr != null && (nvPr.Elements().Any(e => e.Name.LocalName is "videoFile" or "audioFile" or "wavAudioFile" or "quickTimeFile")
                              || nvPr.Descendants(P14 + "media").Any()))
             return null;
-        return new MissingPictureItem(width, height, null);
+        return PowerPointSign(width, height, grid);
+    }
+
+    /// <summary>
+    /// PowerPoint's sign over a picture it cannot show, drawn on the slide's pixels at their size whatever the picture's
+    /// (measured at 96 dpi on Apache POI's missing-blip-fill and on the two pictures of LibreOffice's tdf147586, 95 to
+    /// 1186 pixels wide and 25 to 249 high): on white a 1-pixel #6D6D6D frame on the outermost pixels of the picture's
+    /// box rounded to whole pixels; in a clip 7 pixels in from them the 14 × 16 broken-picture icon at its top left and
+    /// the message on one line in 1-bit Tahoma, its baseline 17 pixels below the frame's top, cut with an ellipsis
+    /// where it does not fit ("Das Bild k…" in 95 pixels). The text is GDI+'s, which reproduces all three, glyph for
+    /// glyph, with an em of 10.11 to 10.21 pixels: its first stroke on the column that the picture's unrounded left
+    /// edge plus 28.25 rounds to (28 or 29 pixels right of the frame); the browser's text begins three quarters of a
+    /// pixel before it, where its unhinted glyphs fall best on GDI+'s.
+    /// </summary>
+    MissingPictureItem PowerPointSign(double width, double height, (double X, double Y)? grid)
+    {
+        if (grid is not var (x, y))
+            return new MissingPictureItem(width, height, null);
+        var device = slide.Presentation.Pixels;
+        var (left, top) = (device.OnX(x, Math.Round), device.OnY(y, Math.Round));
+        var (right, bottom) = (device.OnX(x + width, Math.Round), device.OnY(y + height, Math.Round));
+        return new MissingPictureItem(width, height, null)
+        {
+            Box = (left - x, top - y, right - left, bottom - top),
+            TextLeft = device.OnX(x + 28.25, Math.Round) - left - 0.75,
+        };
     }
 
     /// <summary>

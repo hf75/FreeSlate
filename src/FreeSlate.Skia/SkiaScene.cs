@@ -642,11 +642,34 @@ public static class SkiaScene
 
         static readonly SKTypeface Tahoma = SKTypeface.FromFamilyName("Tahoma") ?? SKTypeface.FromFamilyName("Segoe UI") ?? SKTypeface.Default;
 
+        /// <summary>PowerPoint's broken-picture icon, 14 × 16 pixels: a raised grey box with a red cross (rectangles of a color).</summary>
+        static readonly (SKColor Color, int X, int Y, int Width, int Height)[] PowerPointIcon =
+        [
+            (new SKColor(0x80, 0x80, 0x80), 0, 0, 14, 1), (new SKColor(0x80, 0x80, 0x80), 0, 1, 1, 14),
+            (SKColors.Black, 13, 1, 1, 15), (SKColors.Black, 0, 15, 13, 1),
+            (new SKColor(0xc0, 0xc0, 0xc0), 12, 1, 1, 14), (new SKColor(0xc0, 0xc0, 0xc0), 1, 14, 11, 1),
+            (SKColors.White, 1, 1, 11, 13),
+            (SKColors.Red, 4, 5, 2, 1), (SKColors.Red, 8, 5, 2, 1), (SKColors.Red, 5, 6, 4, 1), (SKColors.Red, 6, 7, 2, 1),
+            (SKColors.Red, 5, 8, 4, 1), (SKColors.Red, 4, 9, 2, 1), (SKColors.Red, 8, 9, 2, 1),
+        ];
+
+        /// <summary>The text, or as much of it as fits into the room with an ellipsis after it (as text-overflow cuts it).</summary>
+        static string Ellipsized(string text, SKFont font, float room)
+        {
+            if (font.MeasureText(text) <= room)
+                return text;
+            var length = text.Length - 1;
+            while (length > 0 && font.MeasureText(text[..length] + "…") > room)
+                length--;
+            return text[..length] + "…";
+        }
+
         /// <summary>
         /// Office's sign for a picture it cannot show, as the HTML draws it (see HtmlScene): Word's on white in four
         /// 0.14 pt black lines, its icon and the message wrapped in 1.2 pt Tahoma 1.45 pt apart within its padding;
-        /// PowerPoint's in a 1-pixel grey frame, its 13-pixel icon and the message on one line in 11-pixel Tahoma, cut
-        /// at the frame.
+        /// PowerPoint's on white in a 1-pixel grey frame on its box (on the slide's pixels where it has one), in a clip
+        /// 7 pixels in its 14 × 16 icon and the message on one line in 1-bit 10.16-pixel Tahoma, its baseline 17 pixels
+        /// down, cut with an ellipsis 11 pixels before the right edge.
         /// </summary>
         void MissingPicture(MissingPictureItem missing)
         {
@@ -694,17 +717,26 @@ public static class SkiaScene
             }
             else
             {
+                if (missing.Box is var (boxX, boxY, boxWidth, boxHeight))
+                {
+                    canvas.Translate((float)boxX, (float)boxY);
+                    (w, h) = ((float)boxWidth, (float)boxHeight);
+                }
+                canvas.DrawRect(SKRect.Create(w, h), white);
                 using var frame = new SKPaint { Color = new SKColor(0x6d, 0x6d, 0x6d), Style = SKPaintStyle.Stroke, StrokeWidth = 1 };
                 canvas.DrawRect(SKRect.Create(0.5f, 0.5f, w - 1, h - 1), frame);
-                canvas.ClipRect(SKRect.Create(1, 1, w - 2, h - 2));
-                using var font = new SKFont(Tahoma, 11) { Subpixel = true, Edging = SKFontEdging.Antialias };
-                canvas.DrawText("The picture can't be displayed.", 25, 6 + (13 - (font.Metrics.Descent - font.Metrics.Ascent)) / 2 - font.Metrics.Ascent, font, black);
-                canvas.Translate(7, 6);
-                canvas.DrawRect(SKRect.Create(0.5f, 0.5f, 12, 12), white);
-                canvas.DrawRect(SKRect.Create(0.5f, 0.5f, 12, 12), grey);
-                using var cross = new SKPaint { Color = new SKColor(0xe0, 0, 0), Style = SKPaintStyle.Stroke, StrokeWidth = 2, IsAntialias = true };
-                canvas.DrawLine(4, 4, 9, 9, cross);
-                canvas.DrawLine(9, 4, 4, 9, cross);
+                canvas.ClipRect(SKRect.Create(7, 7, Math.Max(0, w - 14), Math.Max(0, h - 14)));
+                foreach (var (color, x, y, width, height) in PowerPointIcon)
+                {
+                    using var pixels = new SKPaint { Color = color };
+                    canvas.DrawRect(SKRect.Create(7 + x, 7 + y, width, height), pixels);
+                }
+                // Worded in the viewer's language, as the player words the HTML's.
+                using var font = new SKFont(Tahoma, 10.16f) { Edging = SKFontEdging.Alias, Hinting = SKFontHinting.Full };
+                var text = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de"
+                    ? "Das Bild kann nicht angezeigt werden." : "The picture can't be displayed.";
+                var left = (float)missing.TextLeft;
+                canvas.DrawText(Ellipsized(text, font, w - 11 - left), left, 17, font, black);
             }
             canvas.Restore();
         }

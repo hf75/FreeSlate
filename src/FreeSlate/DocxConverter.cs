@@ -36,8 +36,10 @@ public static class DocxConverter
         .page .grp{position:absolute;left:0;top:0}
         .page .sp>svg{position:absolute;left:0;top:0;overflow:visible}
         .page .sp text{white-space:pre;font-variant-ligatures:none}
-        .fs-nopic{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:1px solid #6d6d6d;overflow:hidden;padding:5px 6px;font:11px/13px Tahoma,'Segoe UI',sans-serif;color:#000;white-space:nowrap;pointer-events:none}
-        .fs-nopic svg{vertical-align:top;margin-right:5px}
+        .fs-nopic{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:1px solid #6d6d6d;background:#fff;pointer-events:none}
+        .fs-nopic>div{position:absolute;left:6px;top:6px;right:6px;bottom:6px;overflow:hidden}
+        .fs-nopic svg{position:absolute;left:0;top:0;shape-rendering:crispEdges}
+        .fs-nopic span{position:absolute;left:20.25px;top:0;right:4px;overflow:hidden;font:10.16px/12px Tahoma,'Segoe UI',sans-serif;color:#000;white-space:nowrap;text-overflow:ellipsis;filter:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 1 1 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3C/svg%3E#a")}
         @media print{body{background:none}.page{margin:0;break-after:page}.page.markup{width:var(--pw)!important}.page.markup>.sheet{transform:translateY(var(--oy)) scale(var(--s));transform-origin:0 0}.page [shape-rendering][stroke]:not([stroke=none]){shape-rendering:auto}}
         """;
 
