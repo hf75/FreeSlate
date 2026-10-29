@@ -3431,6 +3431,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         /// <summary>
         /// The note cut where <paramref name="room"/> points end, between lines: the lines that end within them, and the
         /// rest moved up to begin at the top; no part shown where not even the first line fits, no rest where all fit.
+        /// Widow control keeps two lines of a paragraph on each side of the cut, else the paragraph goes on whole
+        /// (measured with docx/local/fna-z-12, fna-w-4 to -12: a note of one paragraph of two lines with room for one
+        /// does not show, and the lines kept with its reference go to the next page with it; fnkeep-z: a note of
+        /// single-line paragraphs shows what fits).
         /// </summary>
         public (NoteBox? Shown, NoteBox? Remainder) Cut(double room)
         {
@@ -3438,6 +3442,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 return (this, null);
             var cut = Lines.Select(l => l.Top).Where(t => t > 0.01 && Lines.Where(l => l.Top < t - 0.01).All(l => l.Top + l.Line.Height <= room + 0.01))
                 .DefaultIfEmpty(0).Max();
+            var k = Lines.FindIndex(l => l.Top >= cut - 0.01);
+            if (cut > 0.01 && k > 0 && Lines[k].Widow && !Lines[k].Line.First)
+            {
+                var first = k;
+                while (first > 0 && !Lines[first].Line.First)
+                    first--;
+                var last = k;
+                while (last + 1 < Lines.Count && !Lines[last].Line.Last)
+                    last++;
+                var (above, below) = (k - first, last - k + 1);
+                if (below < 2 && above >= 3)
+                    k--;
+                else if (above < 2 || below < 2)
+                    k = first;
+                cut = Lines[k].Top;
+            }
             if (cut <= 0.01)
                 return (null, this);
             var shown = Lines.Where(l => l.Top < cut - 0.01).ToList();
@@ -5374,6 +5394,13 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // docx/external/libreoffice/extras-ooxmlexport/tdf90810short).
             if (context.Profile.NotesNeedSpaceAfter && k == lines.Count - 1 && (notesHeight > 0.01 || notesNeeded > 0.01))
                 fitHeight = Math.Max(fitHeight, line.Height + SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null));
+            // Any other line above footnotes needs its whole height too: the extra space of multiple line spacing hangs
+            // past the bottom margin, not into the notes (measured with docx/local/fno-m-*: the seventh of eight lines of
+            // Calibri 11 at 1.08 goes on where its whole height reaches 0.15 pt into the notes, its text not; fno-n-*
+            // without notes stays where its whole height reaches 1 pt past the bottom margin; the bench's thesis300,
+            // page 34: a paragraph's first two lines go on).
+            else if (context.Profile.NotesNeedSpaceAfter && (notesHeight > 0.01 || notesNeeded > 0.01))
+                fitHeight = Math.Max(fitHeight, line.Height);
             // Before Word 2013 a last line that the paragraph's space after took below a floating table needs room for
             // that space too (measured with docx/local/fas-160-14: a line fitting below the table only without its 8 pt
             // after goes to the next page, fas-0-14 without space after stays; LibreOffice's core-text/
@@ -5518,12 +5545,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (keptNotes != null)
                 {
                     unitNotes.AddRange(pageNotes.Skip(had));
-                    notesYield |= y - line.Overhang > page!.BodyBottom - notesHeight + 0.01;
+                    notesYield |= y - (context.Profile.NotesNeedSpaceAfter ? 0 : line.Overhang) > page!.BodyBottom - notesHeight + 0.01;
                 }
             }
-            // A unit whose notes do not show below it goes to the next page with them, unless it began the page.
+            // A unit whose notes do not show below it goes to the next page with them, unless it began the page. From
+            // Word 2013 on its last line's whole height stands above them, and where it ends its paragraph the paragraph's
+            // space after too, as above the notes of a line not kept (measured with docx/local/fna-w-*: the last two lines
+            // of a paragraph under widow control, a note of two lines referred to in the last, 8 pt after, go on where
+            // the note's room is 0.8 pt short with them; fna-z-*: without space after where it is 0.8 pt short with
+            // the line's extra spacing; the bench's thesis300, page 15).
+            var unitBottom = !context.Profile.NotesNeedSpaceAfter ? y - line.Overhang
+                : k == lines.Count - 1 ? y + SpaceAfter(paragraph, index + 1 < blocks.Count ? blocks[index + 1] : null) : y;
             if (keptNotes is { } ending && !Binds(k) && unitStart >= 0 && !unitAtTop && line.EndBreak is not ("page" or "column")
-                && !NotesShow(y - line.Overhang, ending.Height, unitNotes))
+                && !NotesShow(unitBottom, ending.Height, unitNotes))
             {
                 var count = k - unitStart + 1;
                 page!.Lines.RemoveRange(page.Lines.Count - count, count);
@@ -6006,9 +6040,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     static double FirstLines(List<Line> lines, ParagraphFormat format) => Needed(lines.Take(FirstLineCount(lines, format)).ToList());
 
-    /// <summary>How many first lines of a paragraph go together: two under widow control, else one.</summary>
+    /// <summary>
+    /// How many first lines of a paragraph go together: two under widow control, all three of a paragraph of three (the
+    /// third would stand alone; measured with docx/local/kcw-a-70: a heading kept with three lines of which two fit goes
+    /// to the next page with them, kcw-c-70: with four it keeps two), else one.
+    /// </summary>
     static int FirstLineCount(List<Line> lines, ParagraphFormat format) =>
-        (format.WidowControl ?? true) && lines.Count > 1 && lines[0].EndBreak is not ("page" or "column") ? 2 : 1;
+        !(format.WidowControl ?? true) || lines.Count < 2 || lines[0].EndBreak is "page" or "column" ? 1
+        : lines.Count == 3 && lines[1].EndBreak is not ("page" or "column") ? 3 : 2;
 
     /// <summary>The height lines need on a page: all of them, the last without what may hang past the bottom.</summary>
     static double Needed(List<Line> lines) => lines.Count == 0 ? 0 : lines.Sum(l => l.Height) - lines[^1].Overhang;
@@ -6091,6 +6130,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 {
                     if (footnotes != null && footnotes.ContainsKey(id) && !pageNotes.Contains(id) && !notes.Contains(id))
                         notes.Add(id);
+                }
+                // Above the notes the lines take their whole height from Word 2013 on, and the paragraph's space after
+                // where they end it, as where they are placed (measured with docx/local/kcw-b-40, -50: a heading kept
+                // with three lines whose last refers to a note of two goes on with them where the note fits below them
+                // only without the 8 pt after; kcw-b-30 stays).
+                if (last && context.Profile.NotesNeedSpaceAfter && (notesHeight > 0.01 || notes.Count > 0))
+                {
+                    var taken = counted.ToList();
+                    needed = taken.Sum(l => l.Height) + (taken.Count == own.Count ? SpaceAfter(paragraph, k + 1 < blocks.Count ? blocks[k + 1] : null) : 0);
                 }
                 if (last)
                     return !gives && section.Columns == 1 && !NotesShow(y + needed, notesHeight, notes);
