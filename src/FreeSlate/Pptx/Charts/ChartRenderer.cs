@@ -269,7 +269,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         // PowerPoint rounds them where the element is missing too, by 9.8 pt at every chart size).
         var rounded = ChartModel.Flag(model.ChartSpace, "roundedCorners", true);
         (Fill? areaFill, List<(XElement, ColorContext)>? areaLine) = legacy != null ? LegacyChartArea() : (null, null);
-        svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false, rounded ? CornerRadius : 0, areaFill, areaLine));
+        svg.Append(Area(model.ChartSpace.Element(Ns.C + "spPr"), new Box(0, 0, width, height), snap: false, rounded ? CornerRadius : 0, areaFill, areaLine,
+            PixelOutline.Rounded));
 
         var title = BuildTitle();
         var legend = BuildLegend(title);
@@ -431,13 +432,15 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// PowerPoint draws chart lines with their vertices on the pixel grid: lines of odd pixel width centered in a
     /// pixel, even widths on pixel edges (a 3 px line at y = 472.07 covers rows 471 to 473). Returns points.
     /// </summary>
-    (double X, double Y) SnapPoint((double X, double Y) p, Outline? outline)
+    /// <param name="rounded">Whether a line of odd width lies in the pixel after the boundary the vertex rounds to, as a
+    /// shape's outline does (the chart area's, see PixelOutline), rather than in the pixel the vertex falls in.</param>
+    (double X, double Y) SnapPoint((double X, double Y) p, Outline? outline, bool rounded = false)
     {
         // Word prints its charts' lines at their exact places (GridLine).
         if (slide.Presentation.Word)
             return p;
         var width = Math.Max(1, Math.Round(Units.ToPx(outline?.WidthEmu ?? 9525)));
-        double Snap(double v, double origin) => (width % 2 == 1 ? Math.Floor(origin + v * PxPerPt) + 0.5 : Math.Round(origin + v * PxPerPt)) - origin;
+        double Snap(double v, double origin) => (width % 2 == 1 ? Math.Floor(origin + v * PxPerPt + (rounded ? 0.5 : 0)) + 0.5 : Math.Round(origin + v * PxPerPt)) - origin;
         var pixels = slide.Presentation.Pixels;
         return ((pixels.SampledX(originX + Snap(p.X, originX), width) - originX) / PxPerPt, (pixels.SampledY(originY + Snap(p.Y, originY), width) - originY) / PxPerPt);
     }
@@ -462,6 +465,45 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
 
     /// <summary>A dot of Word's 600 dpi device, in points.</summary>
     const double WordDot = 72.0 / 600;
+
+    /// <summary>
+    /// A bar (a column, an up/down bar, the bar of a bar of pie) as PowerPoint draws it: its fill to its edges rounded
+    /// to the nearest pixel (Rect), its outline in whole pixels through its corners put on the pixel grid as the
+    /// vertices of its lines are (SnapPoint), a 1 px outline so in the pixel each edge falls in (measured with POI's
+    /// aascu.org_workarea_downloadasset.aspx_id=5864: on slide 7 all 99 edges of 33 bars with 1 pt outlines, where
+    /// rounding misses 29 bars, on slide 11 the 56 edges of 28 bars without one rounded; generated/charts-more, slide
+    /// 2: the up/down bars' 0.75 pt outlines; local/legacy-*-column: the outlines of the Office 2007 styles 9 to 16 and
+    /// 33 to 40; LibreOffice's sd/tdf149985: an outlined series a pixel further left than the series stacked on it).
+    /// Office 2016 charts (histograms) are left as they were: their white outlines between the bars miss a pixel with
+    /// this rule too.
+    /// </summary>
+    string Bar(Box box, Fill fill, Outline? outline)
+    {
+        if (slide.Presentation.Word || ex != null || outline is not { Visible: true })
+            return Rect(box, fill, outline, snap: true);
+        return (fill is NoFill ? "" : Rect(box, fill, null, snap: true)) + OutlineOnPixels(box, outline);
+    }
+
+    /// <summary>
+    /// Where PowerPoint draws a chart rectangle's outline of whole pixels: in the pixel each edge falls in, as its lines
+    /// (Within: bars and the plot area, see Bar), or from the pixel boundary each edge rounds to, as a shape's outline
+    /// (Rounded: the chart area, measured with LibreOffice's chart2/PieChartWithAutomaticLayout_SizeAndPosition: nine
+    /// charts' 1 pt outlines in the pixel after the boundary every edge rounds to, 36 of 36 edges, where the pixel the
+    /// edge falls in holds 21; POI's chart-picture-bg and chart-texture-bg, 2.25 pt in 3 px from the pixel before that
+    /// boundary; generated/charts-details, 3 pt in 4 px about it).
+    /// </summary>
+    enum PixelOutline { None, Within, Rounded }
+
+    /// <summary>The outline of a rectangle as PowerPoint draws a bar's (see Bar), or a shape's (<paramref name="rounded"/>).</summary>
+    string OutlineOnPixels(Box box, Outline outline, bool rounded = false)
+    {
+        var width = Math.Max(1, Math.Round(Units.ToPx(outline.WidthEmu)));
+        var (a, b) = (SnapPoint((box.X, box.Y), outline, rounded), SnapPoint((box.Right, box.Bottom), outline, rounded));
+        var (x, y, w, h) = (a.X * PxPerPt, a.Y * PxPerPt, (b.X - a.X) * PxPerPt, (b.Y - a.Y) * PxPerPt);
+        return box.W > 0 && box.H > 0 && w > 0 && h > 0
+            ? $"<rect x=\"{Units.Css(x)}\" y=\"{Units.Css(y)}\" width=\"{Units.Css(w)}\" height=\"{Units.Css(h)}\" fill=\"none\"{paint.Stroke(outline, w, h, defs, drawnWidth: width)}/>"
+            : "";
+    }
 
     /// <param name="nudge">Pixels added after snapping: ½ puts a 1 px outline on whole pixels.</param>
     string Rect(Box box, Fill fill, Outline? outline, bool snap, double radius = 0, double nudge = 0, bool area = false)
@@ -536,7 +578,12 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
     /// Fill and outline of an element's c:spPr as a rectangle (chart area, plot area, legend, title), over a default fill
     /// and line (the style's).
     /// </summary>
-    string Area(XElement? spPr, Box box, bool snap, double radius = 0, Fill? defaultFill = null, List<(XElement, ColorContext)>? defaultLine = null)
+    /// <param name="pixelOutline">Where a solid outline lies on PowerPoint's pixels (see PixelOutline): the plot area's
+    /// as a bar's (measured with POI's aascu.org_workarea_downloadasset.aspx_id=5864, slide 7: the plot area's 1 pt
+    /// outline on the rows 83 and 616 its top and bottom at 83.72 and 616.61 px fall in, the columns of 47.21 and
+    /// 939.24), the chart area's as a shape's.</param>
+    string Area(XElement? spPr, Box box, bool snap, double radius = 0, Fill? defaultFill = null, List<(XElement, ColorContext)>? defaultLine = null,
+        PixelOutline pixelOutline = PixelOutline.None)
     {
         var fill = FillReader.FindFill(spPr) is { } f ? ReadFill(f) : defaultFill ?? Fill.None;
         var layers = new List<(XElement, ColorContext)>(defaultLine ?? []);
@@ -545,6 +592,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var outline = layers.Count > 0 ? OutlineReader.Merge(layers) : null;
         if (fill is NoFill && outline is not { Visible: true })
             return "";
+        if (pixelOutline != PixelOutline.None && outline is { Visible: true, Dash: "solid" or "" } && radius <= 0 && !slide.Presentation.Word && ex == null)
+            return (fill is NoFill ? "" : Rect(box, fill, null, snap, area: true)) + OutlineOnPixels(box, outline, pixelOutline == PixelOutline.Rounded);
         return Rect(box, fill, outline, snap, radius, area: true);
     }
 
@@ -1837,7 +1886,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         }
 
         var svg = new StringBuilder();
-        svg.Append(Area(model.PlotArea?.Element(Ns.C + "spPr"), plot, snap: false, defaultFill: legacy != null ? LegacyPlotArea() : null));
+        svg.Append(Area(model.PlotArea?.Element(Ns.C + "spPr"), plot, snap: false, defaultFill: legacy != null ? LegacyPlotArea() : null, pixelOutline: PixelOutline.Within));
 
         foreach (var layout in axes.Where(a => a.Visible || a.Axis.MajorGridlines != null))
             svg.Append(Gridlines(layout, plot));
@@ -3077,7 +3126,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 else if (slide.Presentation.Word)
                     svg.Append(ShapePart(series, i, Rect(OnWordGrid(box, group.Horizontal, v0, !group.Stacked || from == 0), barFill, barOutline, snap: false)));
                 else
-                    svg.Append(ShapePart(series, i, Rect(box, barFill, barOutline, snap: true)));
+                    svg.Append(ShapePart(series, i, Bar(box, barFill, barOutline)));
 
                 if (DataLabel(group, series, i) is { } spec && series.Values[i] is { } raw && !Beyond(value, to))
                 {
@@ -3209,7 +3258,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 var c = category.Center(i);
                 var (v0, v1) = (Math.Min(Along(from), Along(to)), Math.Max(Along(from), Along(to)));
                 var box = horizontal ? new Box(c - width / 2, v0, width, v1 - v0) : new Box(v0, c - width / 2, v1 - v0, width);
-                svg.Append(Rect(box, fill, outline, snap: true));
+                svg.Append(Bar(box, fill, outline));
             }
         }
         return svg.ToString();
@@ -4422,7 +4471,7 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             foreach (var i in second.OrderBy(i => i))
             {
                 var h = other > 0 ? values[i] / other * height : 0;
-                svg.Append(ShapePart(series, i, Rect(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i), snap: true)));
+                svg.Append(ShapePart(series, i, Bar(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i))));
                 y += h;
             }
             (top, bottom) = ((secondLeft, cy - height / 2), (secondLeft, cy + height / 2));
