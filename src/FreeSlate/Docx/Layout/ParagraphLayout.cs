@@ -1518,7 +1518,10 @@ public sealed class ParagraphLayout(DocumentContext context, RunStyles styles)
                     shortEnd -= advances[k - 1];
                     shortSpaces -= balanced.Contains(k - 1) ? 0 : advances[k - 1];
                 }
-                bool Takes(double contentEndX) => contentEndX <= Fit() + 0.005
+                // A word fits while its advances end inside the line, however little, and not where they reach past it,
+                // however little (measured with docx/local/lbf-cases: Calibri 11 lines whose words leave 0.0046 pt keep
+                // the last, those 0.0008 pt over move it on; the bench's science5k, page 178).
+                bool Takes(double contentEndX) => contentEndX <= Fit() + 1e-7
                     || squeezing && Squeezes(contentEndX - Fit(), innerSpaces, Fit() - shortEnd, shortSpaces);
                 // The automatic space after the content's last character goes where the line ends there.
                 // With punctuation compression a closing mark ending the content may hang half its width past the end:
