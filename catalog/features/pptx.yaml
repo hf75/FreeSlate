@@ -730,8 +730,11 @@ areas:
           Triangle, stealth, diamond, oval and open arrow heads as paths sized relative to the line width, with the
           line shortened under the head.
         office: >-
-          Heads are multiples of the line width but never smaller than a 2 pt line's (measured: medium heads 6 pt
-          wide on lines of 0.25 to 2 pt, three widths beyond; LibreOffice's fdo47434). A head points along the
+          Heads are multiples of the width the line is drawn with (whole pixels) but never smaller than a 2 pt
+          line's (measured: medium heads 6 pt wide on lines of 0.25 to 1.75 pt, three drawn widths beyond;
+          LibreOffice's fdo47434, tdf113187, slide-section-test). The open arrow is its own: a stroked V with
+          round ends and a sharp bend whatever the line's caps and joins, 2.5, 3.5 or 5 widths wide and 2, 3 or
+          4.5 long, its outer point on the line's end (LibreOffice's tdf100491 78.0 → 97.8 %). A head points along the
           nearest leg that has a length; on an arc along its tangent, the arc pulled back along itself
           (LibreOffice's tdf113187_arcTo_withoutReferences 57.7 → 90.1 %). Verified with generated/lines
           (arrowhead types, widths and lengths).
@@ -973,10 +976,13 @@ areas:
         strategy: SVG image with crop (srcRect; negative values pad) and the shape's geometry as clip path.
         office: >-
           Verified with generated/pictures (99.5 %). A picture without its picture (an a:blip naming none, or
-          a part the package lacks) shows PowerPoint's sign: a 1-pixel #6D6D6D frame on its edge, the
-          broken-picture icon 6 pixels in and "The picture can't be displayed." in Office's language ("Das
-          Bild kann nicht angezeigt werden."; Apache POI's missing-blip-fill, LibreOffice's tdf147586); the
-          player words it in the viewer's language.
+          a part the package lacks) shows PowerPoint's sign on the slide's pixels whatever the picture's size:
+          on white a 1-pixel #6D6D6D frame on the outermost pixels of its box, in a clip 7 pixels in from them
+          the 14 × 16 broken-picture icon and "The picture can't be displayed." in Office's language ("Das
+          Bild kann nicht angezeigt werden.") on one line of 1-bit Tahoma (GDI+'s, an em of 10.16 pixels), its
+          baseline 17 pixels below the frame, cut with an ellipsis where it does not fit (Apache POI's
+          missing-blip-fill 69.0 → 99.9 %, LibreOffice's tdf147586 68.6 → 96.8 %); the player words it in the
+          viewer's language.
 
       - id: picture.formats
         title: Raster image formats

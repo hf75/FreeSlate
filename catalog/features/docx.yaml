@@ -1948,7 +1948,12 @@ areas:
           not show (all but the last whole, the last with a line) go to the next page with them unless they begin
           their page, as a chain that cannot break (docx/local/fnkeep-*: 31 cases with Word's pages and note lines;
           known deviation: a chain going on at the top of a page that begins with notes from the page before, which
-          Word leaves to those notes alone). Notes left after the last page of text fill pages of their own. The notes
+          Word leaves to those notes alone). From Word 2013 on every line above notes needs its whole height (the
+          extra space of multiple line spacing hangs past the bottom margin, not into them), a paragraph's last line
+          its space after too, kept lines included; a note splits only where widow control leaves two lines of its
+          paragraph on each side, else it shows none, and a paragraph of three lines under widow control goes on whole
+          with what is kept with it (docx/local/fna-*, fno-*, kcw-*: 69 cases, all as Word's; the benchmark's
+          documents of 305 and 1 000 pages break as Word's). Notes left after the last page of text fill pages of their own. The notes
           stand at the bottom of the page, ending at the bottom margin, under the separator (144 pt long, its font's
           strikeout stroke on whole device dots: Aptos 12 pt 4.3 pt above the baseline and 0.6 pt thick, Times New
           Roman 10 pt 2.5 and 0.5 pt, Calibri 11 pt 2.8 and 0.8 pt; docx/generated/notes, docx/local/fbn-*,
@@ -4392,7 +4397,10 @@ areas:
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx text.warp (done). WordArt warps of shapes (wps:bodyPr prstTxWarp) and of
-          VML text paths (vml.watermarks).
+          VML text paths (vml.watermarks). Word sets a text box's lines along paths (arches, circle, button) at 0.9
+          of their size, shrunk further by the path's own length over the line's where that is longer (docx/local/
+          wwa-*, wwb-fonts: 8 to 32 H of Arial, Calibri and Times New Roman Bold on arches and buttons of 300 by 100
+          and 300 by 60 pt, the glyphs within 1 % of Word's size, the lines' ends up to 4 pt further out).
 
       - id: text.threeD
         title: 3D text
@@ -4860,6 +4868,10 @@ areas:
           (docx/local/dmath-*: one and two equations, left and right aligned paragraphs, m:defJc left; libreoffice/
           extras-ooxmlexport/math-*: math-escaping, math-placeholders, ooxmlimport/tdf169843 0 → 100 % of the lines;
           pandoc/golden/mark_math).
+          Below display style an n-ary operator's limits stand beside it, also under m:limLoc undOvr: in a fraction's
+          numerator or denominator, a skewed fraction, a superscript and a delimiter of two parts; in parentheses, a
+          matrix, a radical, an equation array, a box, under a bar or an accent and in a linear fraction they stay
+          under and over it (docx/local/mnx-cases).
           An n-ary operator that grows with its operand (m:grow), other than an integral, takes the first variant of
           the math font at least as tall as the operand less a small tolerance, displayed or inline (docx/local/
           mng-*-s-*: sums over x, a fraction, nested fractions and those in parentheses in Cambria Math 12, every size
