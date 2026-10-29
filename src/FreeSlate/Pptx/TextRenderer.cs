@@ -1117,12 +1117,13 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     /// box at 385 762 EMU, 40.49995 px, gives as 243 master units, up), lines aligned left, centered, right and justified
     /// alike, later runs, text after a tab, a bullet's text and a line's end moving with it, an inset of 9.6 px counted
     /// in; Aptos 24 pt (32 px an em) where it falls; generated/lists, whose columns start at x.27, x.6 and x.93, and
-    /// text-snap.
+    /// text-snap. Lines holding an equation stay where they are: the math engine sets them (generated/math and the
+    /// local math decks lost up to 5 points moved).
     /// </summary>
     double HintedShift(LaidOutLine line, double left)
     {
         if (Grid is not { } onSlide || line.Runs.Count == 0
-            || line.Runs.Any(r => r.RightToLeft || r.Upright || r.Style.Size * PxPerPt >= HintedBelow))
+            || line.Runs.Any(r => r.RightToLeft || r.Upright || r.Style.Inline != null || r.Style.Size * PxPerPt >= HintedBelow))
             return 0;
         var startPx = (left + line.Runs.Min(r => r.X)) * PxPerPt;
         var onUnits = FontData.MasterUnits((onSlide.X + startPx) / PxPerPt) * PxPerPt;
