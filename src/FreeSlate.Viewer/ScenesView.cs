@@ -932,7 +932,9 @@ sealed class ScenesView : Control
                 var size = PageSize(scene);
                 var links = new List<(SKRect Area, string Target)>();
                 var lines = new List<(SKMatrix ToPage, PlacesItem Line)>();
-                SkiaScene.Draw(scene, recorder.BeginRecording(SKRect.Create((float)size.Width, (float)size.Height)), links: links, places: lines);
+                // Its pictures decoded once, at two pixels a CSS pixel (sharp up to a zoom of 200 %), not again at every frame.
+                SkiaScene.Draw(scene, recorder.BeginRecording(SKRect.Create((float)size.Width, (float)size.Height)), links: links, places: lines,
+                    pictureScale: 2);
                 var places = new TextPlaces(lines);
                 var starts = new int[lines.Count];
                 for (var k = 1; k < lines.Count; k++)

@@ -51,18 +51,22 @@ public static class SkiaScene
     /// </summary>
     /// <param name="vector">Whether the canvas keeps vectors and pictures as they are (a PDF's): its pictures are then
     /// not evened for pixels (see SvgDrawing.Evened).</param>
+    /// <param name="pictureScale">For a screen (a recording a viewer plays at a zoom of its own): the pixels a unit of the
+    /// canvas its raster pictures are decoded for, each decoded once at about that size (at most its own) and kept among
+    /// the pictures shown (see ShownPictures); by default a picture is drawn from its own pixels, which Skia decodes
+    /// whenever it draws it and its cache does not hold them.</param>
     public static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics = null, List<(SKRect Area, string Target)>? links = null,
-        bool vector = false, List<(SKMatrix ToPage, PlacesItem Line)>? places = null) =>
-        Draw(scene, canvas, statistics, links, vector, null, places);
+        bool vector = false, List<(SKMatrix ToPage, PlacesItem Line)>? places = null, double? pictureScale = null) =>
+        Draw(scene, canvas, statistics, links, vector, null, places, vector ? null : pictureScale);
 
     /// <param name="fonts">Into a PDF, the fonts cut down to the glyphs its pages draw (see PdfFonts).</param>
     static void Draw(PageScene scene, SKCanvas canvas, SkiaStatistics? statistics, List<(SKRect Area, string Target)>? links, bool vector, PdfFonts? fonts,
-        List<(SKMatrix ToPage, PlacesItem Line)>? places = null)
+        List<(SKMatrix ToPage, PlacesItem Line)>? places = null, double? pictureScale = null)
     {
         using var paper = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
         canvas.DrawRect(0, 0, Px(scene.Width), Px(scene.Height), paper);
         var drawer = new Drawer(canvas, statistics ?? new SkiaStatistics(), glyphs: scene.Glyphs, exactDashes: scene.ExactDashes, links: links,
-            pixels: vector ? null : SKMatrix.Identity, subsets: fonts, places: places);
+            pixels: vector ? null : SKMatrix.Identity, subsets: fonts, places: places, shown: pictureScale);
         drawer.Predefine(scene.Items);
         drawer.Draw(scene.Items);
     }
@@ -215,10 +219,12 @@ public static class SkiaScene
     /// the identity for a canvas of pixels), or null where it lands in a PDF.</param>
     /// <param name="subsets">Into a PDF, its fonts cut down to the glyphs its pages draw (see PdfFonts).</param>
     /// <param name="places">The places of the lines drawn on the page itself, with what maps them onto it, or null.</param>
+    /// <param name="shown">For a screen, the pixels a unit of the page's canvas its raster pictures are decoded for (see
+    /// ShownPictures), or null.</param>
     sealed class Drawer(SKCanvas canvas, SkiaStatistics statistics, SKMatrix? onPage = null, Dictionary<string, Drawer.Decoded>? cache = null,
         GlyphCache? glyphs = null, Dictionary<string, System.Xml.Linq.XElement>? defined = null, bool exactDashes = false,
         List<(SKRect Area, string Target)>? links = null, SKMatrix? pixels = null, PdfFonts? subsets = null,
-        List<(SKMatrix ToPage, PlacesItem Line)>? places = null)
+        List<(SKMatrix ToPage, PlacesItem Line)>? places = null, double? shown = null)
     {
         /// <summary>The typeface a font's glyphs are drawn in: into a PDF its subset (see PdfFonts), else its own.</summary>
         SKTypeface? TypefaceFor(FontData font, IEnumerable<uint> drawn, string? text) =>
@@ -375,6 +381,13 @@ public static class SkiaScene
         }
 
         static readonly SKSamplingOptions Sampling = new(SKFilterMode.Linear, SKMipmapMode.Linear);
+
+        /// <summary>
+        /// How a picture decoded for a screen is drawn (see ShownPictures): from the mipmap level nearest its size, which it
+        /// stands within a factor of 1.4 of; blending two levels cost a raster canvas (Avalonia's software rendering) some
+        /// 7 ms a photo every frame.
+        /// </summary>
+        static readonly SKSamplingOptions Fitted = new(SKFilterMode.Linear, SKMipmapMode.Nearest);
 
         /// <summary>The pictures of the page, decoded once (a picture may stand on a page many times).</summary>
         readonly Dictionary<string, Decoded> pictures = cache ?? [];
@@ -1287,7 +1300,7 @@ public static class SkiaScene
             // The recording starts at this canvas's origin; patterns still align to the page.
             var at = page.TryInvert(out var inverse) ? inverse.PreConcat(canvas.TotalMatrix) : canvas.TotalMatrix;
             var origin = at.TryInvert(out var back) ? back : SKMatrix.Identity;
-            new Drawer(recording, statistics, origin, pictures, glyphs, definitions, exactDashes, pixels: OnPixels, subsets: subsets).Draw(items);
+            new Drawer(recording, statistics, origin, pictures, glyphs, definitions, exactDashes, pixels: OnPixels, subsets: subsets, shown: shown).Draw(items);
             return recorder.EndRecording();
         }
 
@@ -1610,7 +1623,11 @@ public static class SkiaScene
         /// <summary>A picture stretched over a rectangle, cut at a path where it has one (SVG path data).</summary>
         void Picture(string source, SKRect rect, string? clipPath)
         {
-            var decoded = Picture(source);
+            // For a screen, a raster picture as it is shown there: decoded once at about that size (see ShownPictures).
+            var fitted = shown is { } scale && OnPixels is { } toPixels
+                ? ShownPictures.Image(source, toPixels.MapVector(rect.Width, 0).Length * scale, toPixels.MapVector(0, rect.Height).Length * scale)
+                : null;
+            var decoded = fitted != null ? new Decoded(fitted, null) : Picture(source);
             if (decoded is { Image: null, Drawing: null })
             {
                 statistics.Pictures++;
@@ -1630,7 +1647,7 @@ public static class SkiaScene
                     : null;
                 // Its edges antialiased where they fall between pixels, as the browser draws a picture.
                 using var edges = new SKPaint { IsAntialias = true };
-                canvas.DrawImage(evened ?? image, rect, Sampling, edges);
+                canvas.DrawImage(evened ?? image, rect, fitted != null ? Fitted : Sampling, edges);
             }
             else if (decoded.Drawing is { Size: { Width: > 0, Height: > 0 } size } drawing)
             {
