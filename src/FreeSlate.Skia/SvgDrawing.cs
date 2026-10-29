@@ -1198,7 +1198,11 @@ public sealed class SvgDrawing
             }
         }
 
-        /// <summary>The font of a style: the first family of its list that the system has, in its weight and slant.</summary>
+        /// <summary>
+        /// The font of a style: the first family of its list that the system has, or that is found as a file of Office's
+        /// cloud fonts (charts' text in Aptos was drawn in Skia's default font, its letters apart where it stands at
+        /// Aptos's places), in its weight and slant.
+        /// </summary>
         static SKFont Font(Style style)
         {
             var slant = style.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
@@ -1208,7 +1212,7 @@ public sealed class SvgDrawing
             {
                 var family = raw.Trim().Trim('\'', '"');
                 family = family switch { "serif" => "Times New Roman", "sans-serif" => "Arial", "monospace" => "Courier New", _ => family };
-                if (family.Length > 0 && SKFontManager.Default.MatchFamily(family, fontStyle) is { } match)
+                if (family.Length > 0 && (SKFontManager.Default.MatchFamily(family, fontStyle) ?? FileTypeface(family, style.Bold, style.Italic)) is { } match)
                 {
                     typeface = match;
                     break;
@@ -1216,6 +1220,16 @@ public sealed class SvgDrawing
             }
             return new SKFont(typeface ?? SKTypeface.Default, (float)style.FontSize) { Subpixel = true, Edging = SKFontEdging.Antialias, LinearMetrics = true };
         }
+
+        static readonly System.Collections.Concurrent.ConcurrentDictionary<(string Family, bool Bold, bool Italic), SKTypeface?> fileTypefaces = new();
+
+        /// <summary>A family that is not installed but found as a font file (Office's cloud fonts), in its face nearest the style; made once.</summary>
+        static SKTypeface? FileTypeface(string family, bool bold, bool italic) => fileTypefaces.GetOrAdd((family, bold, italic), key =>
+        {
+            var faces = Fonts.FontLocator.Default.Faces(key.Family).Where(f => !f.System && f.Embedded == null && f.Variations == null).ToList();
+            var face = faces.FirstOrDefault(f => f.Bold == key.Bold && f.Italic == key.Italic) ?? faces.FirstOrDefault(f => f.Italic == key.Italic) ?? faces.FirstOrDefault();
+            return face == null ? null : SKTypeface.FromFile(face.Path, face.Index);
+        });
 
         /// <summary>An image: a picture of a data URI (another SVG among them) placed in its box as preserveAspectRatio asks.</summary>
         void Image(XElement image, SKCanvas canvas, Style style)
