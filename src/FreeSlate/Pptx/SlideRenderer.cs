@@ -1325,7 +1325,15 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
                     defaults.SetAttributeValue(attribute.Name, attribute.Value);
                 defaults.Add(chartText?.Elements());
                 textDefaults = new XElement(Ns.A + "lstStyle", Enumerable.Range(1, 9).Select(level => new XElement(Ns.A + $"lvl{level}pPr", new XElement(defaults))));
-                RenderUserShapes(slide.Presentation.Load(shapesPart).Root, shapesPart, items, placement, (x, y, w, h));
+                // PowerPoint cuts them at the chart's frame (measured: libreoffice/chart2/tdf106217, an ellipse whose 6 pt
+                // line and shadow reach 4 px below the frame end at its bottom edge, the pixel row it starts in drawn).
+                var onChart = new List<SceneItem>();
+                RenderUserShapes(slide.Presentation.Load(shapesPart).Root, shapesPart, onChart, placement, (x, y, w, h));
+                if (!slide.Presentation.Word && matrix.B == 0 && matrix.C == 0 && matrix.A > 0 && matrix.D > 0)
+                    items.Add(new ClipItem(matrix.E / Units.EmuPerPoint, matrix.F / Units.EmuPerPoint,
+                        bw * matrix.A / Units.EmuPerPoint, bh * matrix.D / Units.EmuPerPoint, onChart));
+                else
+                    items.AddRange(onChart);
                 textDefaults = null;
             }
             return;

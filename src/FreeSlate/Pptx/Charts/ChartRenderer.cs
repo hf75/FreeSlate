@@ -2187,8 +2187,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             right = Math.Min(right, outer.Right + LabelReach - Wide(layout.Labels[last]) / 2 + (layout.Categories - last - 0.5) * slot);
         }
 
-        // Labels rotated upwards reach left of the first category; they stay within 9 pt of the outer edge. Date
-        // axes choose their labels for the width without that reach (see FitDays).
+        // Labels rotated upwards reach left of the first category. Date axes choose their labels for the width without
+        // that reach (see FitDays).
         foreach (var layout in axes.Where(a => a.Axis.Horizontal && !a.Axis.IsValue))
             layout.FlatLength = right - left;
         foreach (var layout in axes.Where(a => a.HasLabels && !a.Inside && a.Rotation < 0 && a.Axis.Horizontal && a.Labels.Count > 0))
@@ -2210,9 +2210,22 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 right = Math.Min(right, layout.Between ? (last - left / (2 * count)) / (1 - 1.0 / (2 * count)) : last);
                 continue;
             }
-            var reach = Width(layout.Labels[0], layout.Style) * Math.Cos(angle) + LineHeight(layout.Style) / 2 * Math.Sin(angle);
-            var limit = outer.X - (manual ? 0 : 9) + reach;
             var n = Math.Max(1, layout.Categories);
+            var across = Width(layout.Labels[0], layout.Style) * Math.Cos(angle);
+            if (!manual)
+            {
+                // PowerPoint measures the first label once, in a slot of the room from the chart's edge (or the legend)
+                // to the plot area's right edge, and starts the plot area as far inside the outer edge as the label's
+                // width across reaches past the middle of that slot; the line's height takes no part (measured: the
+                // plot areas of libreoffice/chart2/tdf106217, local/catwrap-horizontal 3, 5 and 7, local/da-pptx,
+                // da-p32 to da-p120, da-w40 and generated/charts 17, 4 to 120 categories, 9 to 18 pt labels 43 to 151
+                // pt long, at -45 degrees, within 0.25 pt; the label's corner 2 pt inside the chart missed them by up to
+                // 5.8 pt).
+                var slot = layout.Between ? (right - outer.X + PlotGap) / n : 0;
+                left = Math.Max(left, outer.X + across - slot / 2);
+                continue;
+            }
+            var limit = outer.X + across + LineHeight(layout.Style) / 2 * Math.Sin(angle);
             var needed = layout.Between ? (limit - right / (2 * n)) / (1 - 1.0 / (2 * n)) : limit;
             left = Math.Max(left, needed);
         }
