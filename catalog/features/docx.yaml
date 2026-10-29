@@ -3738,7 +3738,10 @@ areas:
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx fill.gradient (done). Verified against Word with docx/generated/graphics
-          (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks).
+          (95.1 %; the rest Windows' PDF renderer ignoring Chrome's soft masks). Word's PDF shades circle path
+          gradients along circles about the box's middle out to its corners whatever their focus, where PowerPoint
+          shrinks them towards it (LibreOffice's extras-ooxmlexport/fdo78957, extras-ooxmlimport/tdf120551 99.9 → 100
+          %, chart-data-label-char-color).
 
       - id: fill.pattern
         title: Pattern fills
@@ -4397,10 +4400,15 @@ areas:
           Word drawings reach the renderer shared with PowerPoint as their PresentationML counterparts (wps:wsp as
           p:sp, pic:pic as p:pic, wpg as p:grpSp, charts and diagrams as p:graphicFrame) with the document's theme and
           w:clrSchemeMapping; drawn as pptx text.warp (done). WordArt warps of shapes (wps:bodyPr prstTxWarp) and of
-          VML text paths (vml.watermarks). Word sets a text box's lines along paths (arches, circle, button) at 0.9
-          of their size, shrunk further by the path's own length over the line's where that is longer (docx/local/
-          wwa-*, wwb-fonts: 8 to 32 H of Arial, Calibri and Times New Roman Bold on arches and buttons of 300 by 100
-          and 300 by 60 pt, the glyphs within 1 % of Word's size, the lines' ends up to 4 pt further out).
+          VML text paths (vml.watermarks). Word sets a text box's lines along paths (arches, circle, button) as
+          PowerPoint does, shrunk to the path's own length where they are longer, and draws the whole of it, glyphs,
+          their places and the path alike, at 0.9 of its size about the box's centre (docx/local/wwa-*, wwb-fonts: 8
+          to 32 H of Arial, Calibri and Times New Roman Bold on arches and buttons of 300 by 100 and 300 by 60 pt, the
+          glyphs within 1 % of Word's size and their centres within 1.5 pt of Word's, where they lay up to 15 pt off
+          on the whole path; the flat arch down 60 pt high still up to 4.7 pt). It lays the text of its WordArt out
+          on the fonts' own advances, not on PowerPoint's master units (docx/local/wfw-noline: a title of 487.33 pt of
+          advances on one line in boxes of 487.56 pt; LibreOffice's fdo80897 92.6 → 94.6 %; the VML WordArt probes
+          docx/local/vwa-* 96.0 → 96.3 % on average).
 
       - id: text.threeD
         title: 3D text
@@ -5358,7 +5366,10 @@ areas:
           snap lines to whole pitches (section.docGrid); East Asian spacing and alignment (paragraph.eastAsian).
           Glyphs are drawn as browser text at positions from our layout; Word's PDF and ours go through the same
           rasterizer, so equal positions give equal pixels. Punctuation compression changed nothing in Word's printout
-          (docx/local/ec-*).
+          (docx/local/ec-*). A word fits while its advances end inside the line, however little, and moves on where
+          they reach past it, however little (docx/local/lbf-cases: 22 lines of Calibri 11 pt whose last word leaves
+          −0.0062 to +0.0905 pt, all as Word, 18 with the 0.005 pt allowed before; LibreOffice's
+          extras-ooxmlexport/inheritFirstHeader 98.7 → 99.7 %; the bench's science5k a page closer to Word's).
 
       - id: engine.floats
         title: Floating objects and text wrapping
