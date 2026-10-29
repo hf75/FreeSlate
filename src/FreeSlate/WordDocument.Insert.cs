@@ -344,6 +344,7 @@ public sealed partial class WordDocument
         else
             package.Remove(name);
         named?.Add(name);
+        touched.Add(name);
         context.Forget(name);
     }
 

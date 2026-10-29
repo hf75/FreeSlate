@@ -1395,7 +1395,32 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             : properties.Attr(anchor) ?? "margin";
 
     /// <summary>The endnotes' continuation separator (w:endnote type continuationSeparator).</summary>
-    public List<Block>? EndnoteContinuation { get; init; }
+    public List<Block>? EndnoteContinuation { get; set; }
+
+    /// <summary>
+    /// The notes after a change put a reference in, took one away or moved one (see ModelReader.NotesMoved), read anew,
+    /// for the layouts from now on: Relayout lays the pages out with them from where the blocks differ, the blocks that
+    /// refer to notes numbered anew among those that differ; where the document has endnotes, which stand after the
+    /// blocks, it lays out on to the end (see throughToEnd).
+    /// </summary>
+    public void Renote(Dictionary<string, List<Block>>? footnotes, List<(int Section, List<Block> Blocks)>? endnotes, List<Block>? endnoteSeparator,
+        List<Block>? endnoteContinuation)
+    {
+        if (input is not var (blocks, lastSection, _, before, _))
+            return;
+        input = (blocks, lastSection, footnotes, endnotes, endnoteSeparator);
+        EndnoteContinuation = endnoteContinuation;
+        throughToEnd |= before is { Count: > 0 } || endnotes is { Count: > 0 };
+    }
+
+    /// <summary>
+    /// Whether the pages after the blocks that differ may read otherwise than they were laid out: the endnotes changed
+    /// (see Renote), or the fields read the edited blocks otherwise (a bookmark's text, a sequence's numbers, see Lay).
+    /// The runs from then on do not stop where they meet the pages laid out before, also after a run paused, until one
+    /// has laid them out to the end (found with docx/powertools/LIR004-en-US-upperRoman: a sequence's later field kept its
+    /// number on a page met after a pause).
+    /// </summary>
+    bool throughToEnd;
 
     /// <summary>The separator that heads each page the endnotes go on to while they are laid out.</summary>
     List<Block>? continuedEndnotes;
@@ -1709,14 +1734,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     ? latest.Take(null) with { Guessed = from.Fields.Guessed, NewlyEmptied = from.Fields.NewlyEmptied } : from.Fields);
             var before = layout.Evaluator;
             layout.Evaluator = fields;
+            throughToEnd |= before != null && !fields.ReadsAs(before);
             var run = new Paginator(context, layout, reader)
             {
                 EndnoteContinuation = EndnoteContinuation, checkpoints = [], settledCopy = from.State.settled, stopPages = laid, stopSettings = settings,
                 knownEnds = ends, stopFinished = finishedPages,
-                // The run stops only after the last block that differs, and not where the fields of the pages after it
-                // may read otherwise (the text of a bookmark, a sequence's numbers) or headers look back over the pages
-                // before theirs (STYLEREF).
-                stops = StoriesLookBack() || before == null || !fields.ReadsAs(before) ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
+                // The run stops only after the last block that differs, and not where the pages after it may read
+                // otherwise (see throughToEnd) or headers look back over the pages before theirs (STYLEREF).
+                stops = throughToEnd || StoriesLookBack() || before == null ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
                 pauseAt = limit == int.MaxValue ? null : from.Page + limit,
             };
             run.Take(from.State, CollectionsMarshal.AsSpan(laid)[..Math.Min(from.Page - 1, laid!.Count)]);
@@ -1747,9 +1772,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     .. run.pausedHere ? after.Where(c => Position(c).CompareTo(Position(stop!)) > 0 && (held == null || Position(c).CompareTo(Position(held)) > 0))
                         : stop != null ? after.SkipWhile(c => c != stop) : []];
                 paused = run.pausedHere ? stop : stop != null && held != null && Position(stop).CompareTo(Position(held)) <= 0 ? held : null;
+                // A run that went on to the end laid out the pages as they now read.
+                if (!run.pausedHere && stop == null)
+                    throughToEnd = false;
                 if (refielding)
                     refields = null;
-                if (fieldPages is var (firstPage, lastPage) && checkpoints.LastOrDefault(c => c.Page <= firstPage) is { } fieldsAt)
+                // From a checkpoint on a page before the first one that holds such a field: a checkpoint stands at the
+                // first block boundary of its page, which on that page may come after the field's paragraph (one that began
+                // on the page before, found with docx/local/leadbreak-h); at the first one where the field is on page 1.
+                if (fieldPages is var (firstPage, lastPage)
+                    && (checkpoints.LastOrDefault(c => c.Page < firstPage) ?? (checkpoints is [{ Section: 0, Block: 0, Row: -1 } start, ..] ? start : null)) is { } fieldsAt)
                 {
                     refields = (fieldsAt, checkpoints.LastOrDefault(c => c.Page <= lastPage) ?? fieldsAt);
                     fieldPasses++;
@@ -1769,7 +1801,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     Relaid Anew(List<Block> blocks, int pages)
     {
         var (_, lastSection, footnotes, endnotes, endnoteSeparator) = input!.Value;
-        (paused, refields, fieldPasses) = (null, null, 0);
+        (paused, refields, fieldPasses, throughToEnd) = (null, null, 0, false);
         settings = new TextSettings();
         layout.Evaluator = null;
         layout.NoteMarks = null;
@@ -1803,6 +1835,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var first = head;
         while (first > 0 && KeptWithNext(given[first - 1]))
             first--;
+        // Where the section the first block that differs stands in (the last where blocks were only added after all) ends
+        // with other properties now (a break put in, taken away or given others), its pages before that block are laid
+        // out otherwise too: the run begins before the section's first block, in the first section anew, whose first
+        // checkpoint holds the page as the section's old properties set it up (found with docx/local/kcs-2-2).
+        if (given.Count > 0 && Math.Min(first, given.Count - 1) is var last && Place(sectionEnds, last) is var (section, inSection))
+        {
+            var lastSection = input!.Value.LastSection;
+            var (endedBefore, endedNow) = (section < sectionEnds.Count ? ((ParagraphBlock)given[sectionEnds[section]]).EndsSection : lastSection,
+                section < ends.Count ? ((ParagraphBlock)blocks[ends[section]]).EndsSection : lastSection);
+            if (!ReferenceEquals(endedBefore, endedNow) && !XNode.DeepEquals(endedBefore?.Element, endedNow?.Element))
+            {
+                if (section == 0)
+                    return (null, [], head, tail, ends, null);
+                first = last - inSection;
+            }
+        }
         var at = first < given.Count ? Place(sectionEnds, first) : (Section: int.MaxValue, Block: 0);
         var from = checkpoints!.LastOrDefault(c => c.Section < at.Section || c.Section == at.Section && c.Block < at.Block)
             ?? (checkpoints![0] is { Section: 0, Block: 0 } start ? start : null);
@@ -2427,6 +2475,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             starts = end + 1;
         }
         sections.Add((starts == 0 ? blocks : blocks.GetRange(starts, blocks.Count - starts), lastSection));
+        // What sections have from the ones before them (see below) and which section names each story first are given
+        // anew in each run: the sections may have changed since an earlier run gave them (a break taken away left the
+        // last section with the first one's footer, found with docx/local/ifw-a-14).
+        foreach (var (_, own) in sections)
+            own.Uninherit();
+        storyOwners.Clear();
         // The headers and footers are read in the order of their sections, so that their blocks' ids do not follow the
         // order of the pages they are first laid out on (a growing layout finishes pages step by step, see Paginate);
         // within a section in Word's order of its stories, in which their lists count on (see ModelReader.Story).
@@ -2443,10 +2497,17 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // A section without a header or footer of a type has the previous section's (ISO/IEC 29500 17.10.5).
         for (var s = 1; s < sections.Count; s++)
         {
-            foreach (var (type, part) in sections[s - 1].Properties.Headers)
-                sections[s].Properties.Headers.TryAdd(type, part);
-            foreach (var (type, part) in sections[s - 1].Properties.Footers)
-                sections[s].Properties.Footers.TryAdd(type, part);
+            var (before, own) = (sections[s - 1].Properties, sections[s].Properties);
+            foreach (var (type, part) in before.Headers)
+            {
+                if (own.Headers.TryAdd(type, part))
+                    own.InheritedHeaders.Add(type);
+            }
+            foreach (var (type, part) in before.Footers)
+            {
+                if (own.Footers.TryAdd(type, part))
+                    own.InheritedFooters.Add(type);
+            }
         }
 
         for (var s = from?.Section ?? 0; s < sections.Count; s++)
@@ -3458,9 +3519,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     k = first;
                 cut = Lines[k].Top;
             }
-            if (cut <= 0.01)
-                return (null, this);
+            // Nothing shown where the cut came back to the first line, which may begin below the note's top (space before
+            // it; docx/external/libreoffice/extras-ooxmlexport/defaultStyle with a footnote put in).
             var shown = Lines.Where(l => l.Top < cut - 0.01).ToList();
+            if (cut <= 0.01 || shown.Count == 0)
+                return (null, this);
             return (new NoteBox(shown, Fills.Where(f => f.Y < cut).ToList(), Strokes.Where(s => s.Y1 < cut).ToList(), shown.Max(l => l.Top + l.Line.Height)),
                 new NoteBox(Lines.Where(l => l.Top >= cut - 0.01).Select(l => l with { Top = l.Top - cut }).ToList(),
                     Fills.Where(f => f.Y >= cut).Select(f => f with { Y = f.Y - cut }).ToList(),

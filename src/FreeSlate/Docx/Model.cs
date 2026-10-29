@@ -249,6 +249,23 @@ public sealed class SectionProperties
     /// <summary>The header and footer parts the section names, by type: default, first, even (catalog: headerFooter.parts).</summary>
     public Dictionary<string, string> Headers = new(StringComparer.Ordinal), Footers = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// The types of headers and footers among those that the section has from the section before it (a section without
+    /// one of a type has the previous one's, see Paginator), not of its own.
+    /// </summary>
+    public HashSet<string> InheritedHeaders = new(StringComparer.Ordinal), InheritedFooters = new(StringComparer.Ordinal);
+
+    /// <summary>Takes back the headers and footers the section has from the one before it (see InheritedHeaders).</summary>
+    public void Uninherit()
+    {
+        foreach (var type in InheritedHeaders)
+            Headers.Remove(type);
+        foreach (var type in InheritedFooters)
+            Footers.Remove(type);
+        InheritedHeaders.Clear();
+        InheritedFooters.Clear();
+    }
+
     /// <summary>Whether the section's first page has a header and footer of its own (w:titlePg).</summary>
     public bool TitlePage;
 
@@ -846,6 +863,8 @@ public sealed partial class ModelReader(DocumentContext context)
         var part = context.Package.FirstRelationship(context.MainPart, endnotes ? "endnotes" : "footnotes")?.Target;
         if (part == null || !context.Package.Exists(part) || context.Load(part).Root is not { } root)
             return notes;
+        // Read anew after a change (see NotesMoved): their steps as this reading asks them.
+        numberSteps.Remove(part);
         var (savedCounter, savedPart) = (counter, currentPart);
         counter = new ListCounter(context.Numbering);
         currentPart = part;

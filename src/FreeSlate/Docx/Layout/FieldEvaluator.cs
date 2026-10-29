@@ -201,15 +201,47 @@ public sealed class FieldEvaluator
     }
 
     /// <summary>
-    /// Whether fields read in these blocks what they read in another evaluator's (edited) blocks: the same bookmarks
-    /// with the same text and notes, and the same sequence numbers; what depends on pages aside.
+    /// Whether fields read in these blocks what they read in another evaluator's (edited) blocks: the same bookmarks,
+    /// those whose text a REF field reads with the same text (all where a header or footer holds a REF field, see
+    /// Referenced), the same marks of the notes in bookmarks, and the same sequence numbers in their order (a paragraph
+    /// read anew holds fields of its own, see Paginator.throughToEnd); what depends on pages aside.
     /// </summary>
-    internal bool ReadsAs(FieldEvaluator other) =>
-        ReferenceEquals(bookmarks, other.bookmarks) && ReferenceEquals(noteMarks, other.noteMarks) && ReferenceEquals(sequences, other.sequences)
-        || bookmarks.Count == other.bookmarks.Count
-        && bookmarks.All(b => other.bookmarks.TryGetValue(b.Key, out var o) && o.Text.ToString() == b.Value.Text.ToString())
-        && noteMarks.Count == other.noteMarks.Count && noteMarks.All(n => other.noteMarks.TryGetValue(n.Key, out var o) && ReferenceEquals(o, n.Value))
-        && sequences.Count == other.sequences.Count && sequences.All(s => other.sequences.TryGetValue(s.Key, out var o) && o == s.Value);
+    internal bool ReadsAs(FieldEvaluator other)
+    {
+        if (ReferenceEquals(bookmarks, other.bookmarks) && ReferenceEquals(noteMarks, other.noteMarks) && ReferenceEquals(sequences, other.sequences))
+            return true;
+        if (bookmarks.Count != other.bookmarks.Count || !bookmarks.Keys.All(other.bookmarks.ContainsKey))
+            return false;
+        var (mine, theirs) = (Referenced(), other.Referenced());
+        var read = mine == null || theirs == null ? bookmarks.Keys : mine.Union(theirs);
+        return read.All(name => bookmarks.GetValueOrDefault(name).Text?.ToString() == other.bookmarks.GetValueOrDefault(name).Text?.ToString())
+            && noteMarks.Count == other.noteMarks.Count && noteMarks.All(n => other.noteMarks.TryGetValue(n.Key, out var o) && o.Mark == n.Value.Mark)
+            && sequences.Values.SequenceEqual(other.sequences.Values);
+    }
+
+    /// <summary>
+    /// The names of the bookmarks whose text the body's REF fields read, or null where a header or footer holds a REF
+    /// field too, whose names are not worked out: then every bookmark's text counts (see ReadsAs).
+    /// </summary>
+    HashSet<string>? Referenced()
+    {
+        if (!referencedKnown)
+            (referenced, referencedKnown) = (StoriesRefer(context) ? null : [.. paragraphOf.Keys.Where(f => KindOf(f).Type == "REF").Select(WordsOf)
+                .Where(w => w.Count > 1 && !w[1].StartsWith('\\')).Select(w => w[1])], true);
+        return referenced;
+    }
+
+    HashSet<string>? referenced;
+    bool referencedKnown;
+
+    /// <summary>Whether a header or footer of the document holds a REF field (see Referenced).</summary>
+    static bool StoriesRefer(DocumentContext context) => (bool)storiesRefer.GetValue(context, c =>
+        c.Package.Relationships(c.MainPart).Where(r => !r.External && (r.Is("header") || r.Is("footer")) && c.Package.Exists(r.Target))
+            .Any(r => c.Load(r.Target).Root?.Descendants().Any(e =>
+                (e.Name == Wml.W + "instrText" ? e.Value : e.Name == Wml.W + "fldSimple" ? (string?)e.Attribute(Wml.W + "instr") : null) is { } instruction
+                && System.Text.RegularExpressions.Regex.IsMatch(instruction, @"^\s*REF\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) == true));
+
+    static readonly ConditionalWeakTable<DocumentContext, object> storiesRefer = new();
 
     /// <summary>Whether the fields know what a snapshot of the same layout knew: those that came out empty and whether another layout follows.</summary>
     internal bool Knows(Snapshot snapshot) => emptied.SetEquals(snapshot.Emptied) && guessed == snapshot.Guessed && newlyEmptied == snapshot.NewlyEmptied;

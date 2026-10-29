@@ -555,22 +555,57 @@ public sealed partial class WordDocument : IEditableDocument
         if (paginator == null || layout == null || renderer == null)
         {
             layout = new ParagraphLayout(context, new RunStyles(context));
-            // Notes are read after the body: their numbers come from the order of their references.
-            var footnotes = reader.Notes(endnotes: false);
-            var endnoteParts = reader.Notes(endnotes: true);
-            var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
-                .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
-            paginator = new Paginator(context, layout, reader) { EndnoteContinuation = endnoteParts.GetValueOrDefault("continuationSeparator"), KeepCheckpoints = true };
-            pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"), PagesAtOnce);
+            var (footnotes, endnotes, separator, continuation) = Notes();
+            paginator = new Paginator(context, layout, reader) { EndnoteContinuation = continuation, KeepCheckpoints = true };
+            pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, separator, PagesAtOnce);
             renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
             scenes = null;
         }
         else
+        {
+            if (NotesChanged())
+            {
+                var (footnotes, endnotes, separator, continuation) = Notes();
+                paginator.Renote(footnotes, endnotes, separator, continuation);
+            }
             pages = paginator.Relayout(blocks, PagesAtOnce).Pages;
+        }
         Draw(pages);
         laid = blocks;
         return scenes!;
     }
+
+    /// <summary>
+    /// The notes as the document reads now (see ModelReader.Notes), read after the body, as their numbers come from the
+    /// order of their references: the footnotes by id; the endnotes in the order of their references, with the sections
+    /// that refer to them; the endnotes' separator and continuation separator.
+    /// </summary>
+    (Dictionary<string, List<Block>> Footnotes, List<(int Section, List<Block> Blocks)> Endnotes, List<Block>? Separator, List<Block>? Continuation) Notes()
+    {
+        var footnotes = reader.Notes(endnotes: false);
+        var endnoteParts = reader.Notes(endnotes: true);
+        var endnotes = endnoteParts.Where(n => n.Key is not ("separator" or "continuationSeparator" or "continuationNotice")).OrderBy(n => reader.EndnoteNumber(n.Key))
+            .Where(n => reader.EndnoteNumber(n.Key) > 0).Select(n => (reader.EndnoteSection(n.Key), n.Value)).ToList();
+        reader.NotesMoved = false;
+        touched.Clear();
+        noteParts = NoteParts();
+        return (footnotes, endnotes, endnoteParts.GetValueOrDefault("separator"), endnoteParts.GetValueOrDefault("continuationSeparator"));
+    }
+
+    /// <summary>The parts other than the main part that changes gave new bytes, took away or added since the notes were read (see Set).</summary>
+    readonly HashSet<string> touched = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The footnotes' and the endnotes' parts when the notes were read (see Notes).</summary>
+    string?[] noteParts = [];
+
+    /// <summary>The footnotes' and the endnotes' parts as the package has them now.</summary>
+    string?[] NoteParts() => [package.FirstRelationship(context.MainPart, "footnotes")?.Target, package.FirstRelationship(context.MainPart, "endnotes")?.Target];
+
+    /// <summary>
+    /// Whether the notes read otherwise than when they were read (see Notes): changes moved their references
+    /// (ModelReader.NotesMoved), or gave a notes part new bytes, added it or took it away.
+    /// </summary>
+    bool NotesChanged() => reader.NotesMoved || touched.Count > 0 && NoteParts().Concat(noteParts).Any(p => p != null && touched.Contains(p));
 
     /// <summary>
     /// Whether pages after those the last change laid out still stand as they did before it, or are not laid out yet where

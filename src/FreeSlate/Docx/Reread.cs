@@ -41,12 +41,15 @@ public sealed partial class ModelReader
     /// paragraphs joins); their number steps are replayed with the body's others (see NumberStep), and the children after
     /// them whose numbers change are read anew too. The blocks read anew keep the ids of the blocks they stand for (see
     /// Keep), or of <paramref name="like"/> where given (another version of the body, the same but for the change); new
-    /// ones take ids of their own. Null, the XML left as it was, where reading cannot so begin or go on (a paragraph whose
-    /// mark is hidden, a field to the body's end, children the reader made of others), where note references come, go or
-    /// change their order (the notes' marks are read with the notes), where sections would begin or end elsewhere, where a
-    /// content control shows its placeholder (which later ones show too), and in the markup view where comment ranges
-    /// come, go or change their order (comments are numbered by them) or an author comes whom the body did not name
-    /// before (authors take their colors in the body's order): the document has to be read again.
+    /// ones take ids of their own. Where note references come, go or change their order, the references after them take
+    /// their new marks so, and the notes, whose marks are read with them, are to be read anew (see NotesMoved); where
+    /// section breaks come, go or change, the children of the sections around them take their sections anew. Null, the
+    /// XML left as it was, where reading cannot so begin or go on (a paragraph whose mark is hidden, a field to the body's
+    /// end, children the reader made of others), where a deleted mark holds a section break that comes, goes or changes,
+    /// or the sections the change makes number notes otherwise, where a content control shows its placeholder (which
+    /// later ones show too), and in the markup view where comment ranges come, go or change their order (comments are
+    /// numbered by them) or an author comes whom the body did not name before (authors take their colors in the body's
+    /// order): the document has to be read again.
     /// </summary>
     public List<Block>? Reread(List<Block> body, IReadOnlyList<XElement> old, XElement? before, IReadOnlyList<XElement> children, IReadOnlyList<Block>? like = null)
     {
@@ -64,15 +67,27 @@ public sealed partial class ModelReader
             if (After(old[k - 1]) != old[k])
                 return null;
         }
-        // Sections end where they did: only the last old child and the last new one may end one, both or neither, with
-        // the same properties, the mark that holds the break deleted in both or in neither.
+        // Sections end where they did where only the last old child and the last new one end one, both or neither, with
+        // the same properties, the mark that holds the break deleted in both or in neither. Else (a break put in, taken
+        // away or given other properties) the children of the sections the change stands in take their sections anew
+        // (below), where no mark that holds a break is deleted and the sections number their notes alike: the notes
+        // before the change keep their marks.
         var (oldEnd, newEnd) = (old.Count > 0 ? SectionEnd(old[^1]) : null, children.Count > 0 ? SectionEnd(children[^1]) : null);
-        if (old.SkipLast(1).Any(e => SectionEnd(e) != null) || children.SkipLast(1).Any(c => SectionEnd(c) != null) || old.Concat(children).Any(BreaksWithin)
-            || (oldEnd == null) != (newEnd == null) || oldEnd != null && (!XNode.DeepEquals(oldEnd, newEnd) || MarkDeleted(old[^1]) != MarkDeleted(children[^1])))
+        if (old.Concat(children).Any(BreaksWithin))
             return null;
-        // Whether a field reaches beyond its paragraphs is worked out from the field characters of the whole body (see
-        // Unclosed): where the change's are not those it had, children before it read otherwise.
-        if (!old.SelectMany(FieldCharacters).SequenceEqual(children.SelectMany(FieldCharacters)))
+        var sectionsKept = !old.SkipLast(1).Any(e => SectionEnd(e) != null) && !children.SkipLast(1).Any(c => SectionEnd(c) != null) && (oldEnd == null) == (newEnd == null)
+            && (oldEnd == null || XNode.DeepEquals(oldEnd, newEnd) && MarkDeleted(old[^1]) == MarkDeleted(children[^1]));
+        if (!sectionsKept && (old.Concat(children).Any(e => SectionEnd(e) != null && MarkDeleted(e))
+            || !NumberedAlike([.. old.Concat(children).Select(SectionEnd).OfType<XElement>(), sectionOf.GetValueOrDefault(old.Count > 0 ? old[0] : before!).Properties,
+                sectionOf.GetValueOrDefault(old.Count > 0 ? old[^1] : before!).Properties])))
+            return null;
+        // Whether a field's begin has no end in the body is worked out from the field characters of the whole body (see
+        // Unclosed), which pair as brackets do: fields the change puts in or takes away whole, begin and end among its
+        // children, pair no other characters otherwise. Those left unpaired among the old children and among the new
+        // ones are alike, or children before and after it read otherwise.
+        var (wasEnds, wasBegins) = Unpaired(old);
+        var (nowEnds, nowBegins) = Unpaired(children);
+        if (wasEnds != nowEnds || wasBegins.Count != nowBegins.Count)
             return null;
         // What a content control showing its placeholder shows, the later ones show too (see Shown); what a document of
         // another kind or a subdocument brings in (w:altChunk, w:subDoc) is not read again alone.
@@ -141,21 +156,77 @@ public sealed partial class ModelReader
             return null;
         var steps = numberSteps.GetValueOrDefault(context.MainPart) ?? [];
         var start = bodyPoints[leading.Count > 0 ? leading[0] : first].Steps;
-        // The new children in place of the old ones, in their section.
-        var section = sectionOf.GetValueOrDefault(first);
-        foreach (var child in children)
-            sectionOf[child] = section;
+        // The new children in place of the old ones, in their section. Where sections end elsewhere now, the children of
+        // the sections the change stands in take theirs anew, from the first child of the section it begins in to the one
+        // that ends the section it ends in (to the body's end in its last section), with what they had kept to put back;
+        // the children after them move on by the sections the change added (taken away where fewer).
+        List<(XElement Child, (XElement? Properties, int Index)? Was)>? sectionsWere = null;
+        var (sectionsAdded, sectionsBeyond, sectionFrom) = (0, (XElement?)null, (XElement?)null);
+        if (sectionsKept)
+        {
+            var section = sectionOf.GetValueOrDefault(first);
+            foreach (var child in children)
+                sectionOf[child] = section;
+        }
+        else
+        {
+            var prefix = new List<XElement>();
+            for (var e = ChildBefore(first); e != null && SectionEnd(e) == null; e = ChildBefore(e))
+                prefix.Insert(0, e);
+            var suffix = new List<XElement>();
+            for (var e = old.Count > 0 ? After(old[^1]) : before; e != null; e = After(e))
+            {
+                suffix.Add(e);
+                if (SectionEnd(e) != null)
+                    break;
+            }
+            sectionsBeyond = suffix.Count > 0 ? After(suffix[^1]) : null;
+            sectionFrom = prefix.Count > 0 ? prefix[0] : null;
+            sectionsAdded = children.Count(c => SectionEnd(c) != null) - old.Count(e => SectionEnd(e) != null);
+            var index = sectionOf.GetValueOrDefault(prefix.Count > 0 ? prefix[0] : first).Index;
+            var were = sectionsWere = [];
+            var pending = new List<XElement>();
+            void Give(XElement? properties)
+            {
+                foreach (var e in pending)
+                {
+                    were.Add((e, sectionOf.TryGetValue(e, out var was) ? was : null));
+                    sectionOf[e] = (properties, index);
+                }
+                pending.Clear();
+            }
+            foreach (var e in prefix.Concat(children).Concat(suffix))
+            {
+                pending.Add(e);
+                if (SectionEnd(e) is { } properties)
+                {
+                    Give(properties);
+                    index++;
+                }
+            }
+            Give(bodyElement.Child("sectPr") ?? context.SectionAhead());
+            Move(sectionsBeyond, sectionsAdded);
+        }
+        // The children from one on moved on by so many sections.
+        void Move(XElement? from, int by)
+        {
+            for (var e = by != 0 ? from : null; e != null; e = After(e))
+            {
+                if (sectionOf.TryGetValue(e, out var s))
+                    sectionOf[e] = (s.Properties, s.Index + by);
+            }
+        }
         // In the markup view authors take their colors in the order reading the body names them first: the new children
         // name the authors the old ones named, in the same order, or reading them would color otherwise than reading the
         // body whole (see AuthorsNamed).
         var named = context.Markup ? AuthorsNamed(old) : null;
         var putBack = Put(first, old, children);
-        // Which fields of the body end in it (see Unclosed): the change's field characters are those it had (see above),
-        // each new begin in place of the old one. How the body's drawings stack is worked out anew where the change holds
-        // drawings (see StackingOrder).
+        // Which fields of the body end in it (see Unclosed): the begins the change leaves unpaired are those it had (see
+        // above), each new one in place of the old one. How the body's drawings stack is worked out anew where the change
+        // holds drawings (see StackingOrder).
         if (unclosed.TryGetValue(bodyElement, out var open))
         {
-            foreach (var (was, now) in old.SelectMany(e => e.Descendants(Wml.W + "fldChar")).Zip(children.SelectMany(e => e.Descendants(Wml.W + "fldChar"))))
+            foreach (var (was, now) in wasBegins.Zip(nowBegins))
             {
                 if (open.Remove(was))
                     open.Add(now);
@@ -168,8 +239,22 @@ public sealed partial class ModelReader
         List<Block>? Undone()
         {
             putBack();
-            foreach (var child in children)
-                sectionOf.Remove(child);
+            if (sectionsWere != null)
+            {
+                foreach (var (child, was) in sectionsWere)
+                {
+                    if (was is { } section)
+                        sectionOf[child] = section;
+                    else
+                        sectionOf.Remove(child);
+                }
+                Move(sectionsBeyond, -sectionsAdded);
+            }
+            else
+            {
+                foreach (var child in children)
+                    sectionOf.Remove(child);
+            }
             unclosed.Remove(bodyElement);
             if (stacked)
                 context.Changed(bodyElement.Document!);
@@ -191,17 +276,27 @@ public sealed partial class ModelReader
             probe = Read([.. leading, .. children, .. trailing], null);
         }
         var end = next != null ? bodyPoints[next].Steps : steps.Count;
-        // Note references count where they stand, their marks read with the notes: the change keeps those it had, in
-        // their order, or the notes read otherwise.
-        if (probe is not { } asked || !asked.Steps.Select(s => s.Step).OfType<NoteStep>().SequenceEqual(steps.Skip(start).Take(end - start).Select(s => s.Step).OfType<NoteStep>()))
+        if (probe is not { } asked)
             return Undone();
+        // Note references count where they stand, their marks read with the notes: where the change's are not those it
+        // had, in their order, the notes read otherwise (see NotesMoved), the references after it numbered anew below.
+        var notesKept = asked.Steps.Select(s => s.Step).OfType<NoteStep>().SequenceEqual(steps.Skip(start).Take(end - start).Select(s => s.Step).OfType<NoteStep>());
+        // Where sections end elsewhere now, the note references of the section the change begins in before it stand in a
+        // section of other properties (numbered alike, see above), those after it in sections moved on.
+        var (sectionSteps, sectionNow) = sectionFrom != null && bodyPoints.TryGetValue(sectionFrom, out var sectionPoint)
+            ? (sectionPoint.Steps, sectionOf[sectionFrom].Properties) : (start, null);
+        NumberStep Given(int k, NumberStep step) => sectionsWere == null || step is not NoteStep note ? step
+            : k >= end ? note with { Section = note.Section + sectionsAdded } : k >= sectionSteps && k < start ? note with { SectionProperties = sectionNow } : note;
         // Where they ask the steps the old ones asked (a paragraph of no list asks none), the answers are those they had:
-        // no steps are replayed, and no blocks after them read anew.
-        var same = asked.Steps.Count == end - start && asked.Steps.Select(s => s.Step).SequenceEqual(steps.Skip(start).Take(end - start).Select(s => s.Step));
+        // no steps are replayed, and no blocks after them read anew; not where sections end elsewhere now, which may
+        // number the notes after it anew.
+        var same = sectionsWere == null && asked.Steps.Count == end - start
+            && asked.Steps.Select(s => s.Step).SequenceEqual(steps.Skip(start).Take(end - start).Select(s => s.Step));
         // Else the answers from their steps on, the body's steps before them counted first (their answers stay as they
-        // were: the same steps give the same answers).
-        var answers = same ? null : Numbers.Replay(asked.Steps.Select(s => s.Step).Concat(steps.Skip(end).Select(s => s.Step)), context.Numbering,
-            new NoteNumbers(context.Settings), steps.Take(start).Select(s => s.Step));
+        // were: the same steps give the same answers), on note numbers that then know every reference of the body.
+        var notes = new NoteNumbers(context.Settings);
+        var answers = same ? null : Numbers.Replay(asked.Steps.Select(s => s.Step).Concat(steps.Skip(end).Select((s, k) => Given(end + k, s.Step))), context.Numbering,
+            notes, steps.Take(start).Select((s, k) => Given(k, s.Step)));
         if (Read([.. leading, .. children, .. trailing], answers?.Take(asked.Steps.Count) ?? steps.Skip(start).Take(end - start).Select(s => s.Answer)) is not { } got)
             return Undone();
         var (from, to) = range;
@@ -279,12 +374,19 @@ public sealed partial class ModelReader
         // the change were read from the same).
         if (answers != null)
         {
+            for (var k = sectionsWere != null ? sectionSteps : start; k < start; k++)
+                steps[k] = (Given(k, steps[k].Step), steps[k].Answer);
+            for (var k = end; sectionsWere != null && k < steps.Count; k++)
+                steps[k] = (Given(k, steps[k].Step), steps[k].Answer);
             steps.RemoveRange(start, end - start);
             steps.InsertRange(start, got.Steps);
             for (var k = start; k < steps.Count; k++)
                 steps[k] = (steps[k].Step, answers[k - start]);
             numberSteps[context.MainPart] = steps;
+            noteNumbers = notes;
         }
+        // Sections that end elsewhere may hold endnotes or number footnotes otherwise.
+        NotesMoved |= !notesKept || sectionsWere != null;
         foreach (var e in old.Concat(leading).Concat(trailing))
             bodyPoints.Remove(e);
         // The old children are gone for good: a version that has them again reads them from its text.
@@ -366,6 +468,12 @@ public sealed partial class ModelReader
         }
     }
 
+    /// <summary>
+    /// Whether a re-read since the notes were read (see Notes) moved their references: one came or went, or their order
+    /// changed, so that the notes number and read otherwise now; set by Reread, taken back by the one who reads them anew.
+    /// </summary>
+    public bool NotesMoved { get; set; }
+
     /// <summary>The element before a child of the body (see childBefore), white space and comments aside.</summary>
     XElement? ChildBefore(XElement child) => childBefore.TryGetValue(child, out var before) ? before : Before(child);
 
@@ -437,6 +545,10 @@ public sealed partial class ModelReader
     /// <summary>The properties of the section a child of the body ends, a paragraph's (w:sectPr in its w:pPr), or null.</summary>
     static XElement? SectionEnd(XElement child) => child.Name == Wml.W + "p" ? child.Child("pPr").Child("sectPr") : null;
 
+    /// <summary>Whether sections number their notes alike: all with the same w:footnotePr and w:endnotePr, or without.</summary>
+    static bool NumberedAlike(IReadOnlyList<XElement?> sections) =>
+        sections.All(s => XNode.DeepEquals(s.Child("footnotePr"), sections[0].Child("footnotePr")) && XNode.DeepEquals(s.Child("endnotePr"), sections[0].Child("endnotePr")));
+
     /// <summary>Whether a paragraph's mark is deleted (a tracked change): it runs into the next one, a section break it holds with it.</summary>
     static bool MarkDeleted(XElement p) => p.Child("pPr").Child("rPr") is { } mark && (mark.Child("del") ?? mark.Child("moveFrom")) != null;
 
@@ -470,8 +582,40 @@ public sealed partial class ModelReader
         }
     }
 
-    /// <summary>The kinds of the field characters a child of the body holds (w:fldChar begin, separate, end), in order.</summary>
-    static IEnumerable<string?> FieldCharacters(XElement child) => child.Descendants(Wml.W + "fldChar").Select(c => c.Attr("fldCharType"));
+    /// <summary>
+    /// The field characters of children of the body that pair with none among them, as Unclosed pairs those of the body
+    /// (text boxes have their own): how many ends come before any begin to pair with, and the begins no end after them
+    /// pairs with, in order.
+    /// </summary>
+    static (int Ends, List<XElement> Begins) Unpaired(IReadOnlyList<XElement> children)
+    {
+        var (ends, begins) = (0, new List<XElement>());
+        void Walk(XElement element)
+        {
+            foreach (var child in element.Elements())
+            {
+                if (child.Name == Wml.W + "txbxContent")
+                    continue;
+                if (child.Name == Wml.W + "fldChar")
+                {
+                    if (child.Attr("fldCharType") == "begin")
+                        begins.Add(child);
+                    else if (child.Attr("fldCharType") == "end")
+                    {
+                        if (begins.Count > 0)
+                            begins.RemoveAt(begins.Count - 1);
+                        else
+                            ends++;
+                    }
+                    continue;
+                }
+                Walk(child);
+            }
+        }
+        foreach (var child in children)
+            Walk(child);
+        return (ends, begins);
+    }
 
     /// <summary>Whether a child of the body other than a paragraph holds a paragraph that ends a section (in a content control).</summary>
     static bool BreaksWithin(XElement child) => child.Name != Wml.W + "p" && child.Descendants(Wml.W + "sectPr").Any(s => s.Parent?.Name.LocalName == "pPr");
