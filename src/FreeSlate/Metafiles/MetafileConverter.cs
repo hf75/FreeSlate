@@ -12,11 +12,16 @@ public readonly record struct PixelBox(double X, double Y, double Width, double 
     /// (round(X) − 4, round(Y) − 4). Measured in PowerPoint's rendering: generated/metafiles' 8 × 8 DIB pattern brush at
     /// x 666.67 has its origin at 663 (mod 8), its EMF+ hatch at 53.33 at 49, both at y 173.33 at 169; the 1-pixel
     /// dithers of libreoffice/sd/activex_scrollbar and activex_togglebutton and the 4-pixel pattern of generated/
-    /// metafiles' WMF star (0.16 pixels a logical unit) lie as that predicts, on whole pixels at every scale.
+    /// metafiles' WMF star (0.16 pixels a logical unit) lie as that predicts, on whole pixels at every scale. A brush
+    /// pixel is a hundred-thousandth under an output pixel: Chrome draws a pattern through a bitmap of its tile's size in
+    /// device pixels rounded up, and a tile a hair over its 8 pixels comes out as 9, resampled (poi/45541_Footer's
+    /// checkered shadows in grey waves, 2938 units on 960 pixels written as 3.06042 units a pixel); the last brush pixel
+    /// of a picture 1000 pixels wide moves by a hundredth of a pixel so.
     /// </summary>
     public Xform BrushGrid((double X, double Y, double W, double H) viewBox)
     {
-        var (ux, uy) = (viewBox.W / Width, viewBox.H / Height);
+        const double under = 1 - 1e-5;
+        var (ux, uy) = (viewBox.W / Width * under, viewBox.H / Height * under);
         var (ox, oy) = (Math.Floor(X + 0.5) - 4 - X, Math.Floor(Y + 0.5) - 4 - Y);
         return new Xform(ux, 0, 0, uy, viewBox.X + ox * ux, viewBox.Y + oy * uy);
     }

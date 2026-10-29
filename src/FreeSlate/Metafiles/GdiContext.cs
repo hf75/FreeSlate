@@ -141,13 +141,16 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
     /// <summary>Whether a pattern or hatch brush was drawn on the BrushGrid, which depends on the picture's place.</summary>
     public bool Placed { get; private set; }
 
-    /// <summary>The patternTransform of a pattern or hatch brush's tile (brush pixels to device units).</summary>
-    string BrushTransform()
+    /// <summary>
+    /// The patternTransform of a pattern or hatch brush's tile (brush pixels to device units), GDI's or GDI+'s, the tile
+    /// moved by <paramref name="origin"/> brush pixels (GDI+'s rendering origin).
+    /// </summary>
+    public string BrushTransform((int X, int Y) origin = default)
     {
         if (BrushGrid is not { } grid)
-            return $"scale({SvgWriter.Num(UnitsPerPixel)})";
+            return $"scale({SvgWriter.Num(UnitsPerPixel)})" + (origin == default ? "" : $" translate({origin.X} {origin.Y})");
         Placed = true;
-        return grid.Svg();
+        return (origin == default ? grid : Xform.Translate(origin.X, origin.Y).Then(grid)).Svg();
     }
 
     /// <summary>
@@ -526,12 +529,22 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
     // the drawing inside the shape and the background around it, GDI's way to clip a gradient's strips to a shape
     // (Word's PDF of docx/external/libreoffice/extras-ooxmlexport/tdf136841: an arrow's gradient of 159 strips, the
     // square around the arrow white). The first pass and the mask are held back, the second pass drawn clipped to the
-    // mask; drawing that does not follow the pattern goes out as it came.
+    // mask; drawing that does not follow the pattern goes out as it came. A mask drawn with R2_MASKPEN and a black and
+    // white pattern brush clears only the pixels under its black bits, and what lay under the white ones comes back:
+    // the second pass shows through the black bits alone (the shadows in the picture of a PowerPoint.Slide.8 object,
+    // poi/45541_Footer, 45541_Header and 45545_Comment: #808080 through a 1-pixel checker, crisp in PowerPoint's
+    // rendering on the picture's brush grid, the dark pixels where x + y is even for the picture at the slide's corner).
     int xorPhase;
     readonly List<(string Element, Clip? Clip)> xorFirst = [];
     readonly List<(string Element, Clip? Clip)> xorMask = [];
     readonly List<(string Element, Clip? Clip)> xorSecond = [];
     readonly StringBuilder maskPath = new();
+
+    /// <summary>The mask as an SVG luminance mask's content: white where the second pass shows.</summary>
+    readonly StringBuilder maskBits = new();
+
+    /// <summary>Whether the mask has a pattern's bits, which a clip path cannot hold.</summary>
+    bool maskPatterned;
 
     /// <summary>Holds back an element drawn in an XOR pattern; false where it goes out now.</summary>
     bool Xor(string element, string d, bool fill)
@@ -547,6 +560,9 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
             xorPhase = 2;
             xorMask.Add((element, State.Clip));
             maskPath.Append(d).Append(' ');
+            var bits = State.Rop2 == 9 && State.Brush is { Style: 3 or 5 or 6, Pattern: { } pattern } ? Inverted(pattern) : null;
+            maskBits.Append($"<path d=\"{d}\" fill=\"{(bits != null ? $"url(#{PatternBrush(bits)})" : "#fff")}\"/>");
+            maskPatterned |= bits != null;
             return true;
         }
         if (xorPhase != 0)
@@ -554,10 +570,36 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         return false;
     }
 
-    /// <summary>Draws what an XOR pattern held back: the second pass clipped to the mask, else all of it as it came.</summary>
+    /// <summary>A black and white bitmap with its colors swapped, null for any other (an SVG mask's luminance).</summary>
+    static Bitmap? Inverted(Bitmap bitmap)
+    {
+        if (bitmap.Rgba is not { } rgba)
+            return null;
+        var inverted = new byte[rgba.Length];
+        for (var i = 0; i + 3 < rgba.Length; i += 4)
+        {
+            if (rgba[i + 3] != 255 || rgba[i] is not (0 or 255) || rgba[i + 1] != rgba[i] || rgba[i + 2] != rgba[i])
+                return null;
+            var v = (byte)(255 - rgba[i]);
+            (inverted[i], inverted[i + 1], inverted[i + 2], inverted[i + 3]) = (v, v, v, 255);
+        }
+        return new Bitmap { Width = bitmap.Width, Height = bitmap.Height, Rgba = inverted };
+    }
+
+    /// <summary>
+    /// Draws what an XOR pattern held back: the second pass clipped to the mask, or masked by its pattern's bits, else
+    /// all of it as it came.
+    /// </summary>
     public void FlushXor()
     {
-        if (xorPhase == 3)
+        if (xorPhase == 3 && maskPatterned)
+        {
+            var id = Svg.NewId();
+            Svg.Def($"<mask id=\"{id}\" maskUnits=\"userSpaceOnUse\" x=\"-10000000\" y=\"-10000000\" width=\"20000000\" height=\"20000000\">{maskBits}</mask>");
+            foreach (var (element, clip) in xorSecond)
+                Svg.Add($"<g mask=\"url(#{id})\">{element}</g>", clip);
+        }
+        else if (xorPhase == 3)
         {
             var masked = new Dictionary<object, Clip>(ReferenceEqualityComparer.Instance);
             var none = new object();
@@ -577,6 +619,8 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
         xorMask.Clear();
         xorSecond.Clear();
         maskPath.Clear();
+        maskBits.Clear();
+        maskPatterned = false;
         xorPhase = 0;
     }
 
@@ -589,15 +633,18 @@ public sealed class GdiContext(SvgWriter svg, double pixelsPerMm)
             case 2:
                 return $" fill=\"url(#{HatchPattern(brush)})\"";
             case 3 or 5 or 6 when brush.Pattern != null:
-            {
-                var id = Svg.NewId();
-                var b = brush.Pattern;
-                Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{b.Width}\" height=\"{b.Height}\" patternTransform=\"{BrushTransform()}\"><image width=\"{b.Width}\" height=\"{b.Height}\" href=\"{b.DataUri()}\" image-rendering=\"pixelated\"/></pattern>");
-                return $" fill=\"url(#{id})\"";
-            }
+                return $" fill=\"url(#{PatternBrush(brush.Pattern)})\"";
             default:
                 return $" fill=\"{SvgWriter.Color(Resolve(brush.Color))}\"";
         }
+    }
+
+    /// <summary>A pattern brush's bitmap as an SVG pattern on the brush grid (see BrushTransform); returns its id.</summary>
+    string PatternBrush(Bitmap b)
+    {
+        var id = Svg.NewId();
+        Svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{b.Width}\" height=\"{b.Height}\" patternTransform=\"{BrushTransform()}\"><image width=\"{b.Width}\" height=\"{b.Height}\" href=\"{b.DataUri()}\" image-rendering=\"pixelated\"/></pattern>");
+        return id;
     }
 
     string HatchPattern(GdiBrush brush)

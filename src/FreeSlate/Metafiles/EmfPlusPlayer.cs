@@ -88,13 +88,14 @@ public sealed class EmfPlusPlayer(byte[] data, GdiContext gdi, SvgWriter svg)
         public Clip? Clip;
     }
 
-    /// <summary>Device units per output pixel (hatch brushes are sized in output pixels).</summary>
-    public double UnitsPerPixel { get; init; } = 1;
+    /// <summary>Whether the picture is a Word document's, whose hatches keep their bits (see BrushPaint).</summary>
+    public bool Word { get; init; }
 
     readonly Dictionary<int, object> objects = [];
     readonly Dictionary<int, SavedState> stack = [];
     readonly Dictionary<int, (int Type, List<byte> Bytes, int Total)> continued = [];
     Xform world = Xform.Identity;
+    (int X, int Y) renderingOrigin;
     int pageUnit = 1;
     double pageScale = 1;
     double dpiX = 96, dpiY = 96;
@@ -301,6 +302,11 @@ public sealed class EmfPlusPlayer(byte[] data, GdiContext gdi, SvgWriter svg)
             case 0x401C:   // DrawString
                 DrawString(flags, o);
                 break;
+            case 0x401D:   // SetRenderingOrigin
+                // Where hatch brushes start, in output pixels (measured: local/hatchprobe in PowerPoint, a diagonal cross and
+                // a 30 % hatch with the origin at (3, 5) moved by 3 and 5 pixels).
+                renderingOrigin = (I32(o), I32(o + 4));
+                break;
             case 0x4025:   // Save
                 stack[I32(o)] = new SavedState { World = world, PageUnit = pageUnit, PageScale = pageScale, Clip = clip };
                 break;
@@ -393,7 +399,7 @@ public sealed class EmfPlusPlayer(byte[] data, GdiContext gdi, SvgWriter svg)
                 return;
             continued.Remove(id);
             var bytes = part.Bytes.ToArray();
-            var player = new EmfPlusPlayer(bytes, gdi, svg) { dpiX = dpiX, dpiY = dpiY, videoReference = videoReference, UnitsPerPixel = UnitsPerPixel };
+            var player = new EmfPlusPlayer(bytes, gdi, svg) { dpiX = dpiX, dpiY = dpiY, videoReference = videoReference };
             objects[id] = player.ParseObject(type, 0, bytes.Length) ?? new object();
             return;
         }
@@ -975,9 +981,16 @@ public sealed class EmfPlusPlayer(byte[] data, GdiContext gdi, SvgWriter svg)
                 var preset = HatchPreset(b.Hatch);
                 var tile = PatternPresets.Tiles.GetValueOrDefault(preset) ?? PatternPresets.Tiles["pct50"];
                 static (byte, byte, byte, byte) Rgba(uint argb) => ((byte)((argb >> 16) & 0xFF), (byte)((argb >> 8) & 0xFF), (byte)(argb & 0xFF), (byte)(argb >> 24));
-                var image = SvgWriter.HatchTile((x, y) => (tile[y] & (0x80 >> x)) != 0, Rgba(b.Color), Rgba(b.Color2));
-                // Hatches are 8 × 8 pixels of the output device, not of the 600 dpi reference device.
-                svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"scale({SvgWriter.Num(UnitsPerPixel)})\">{image}</pattern>");
+                // GDI+ draws its forward and backward diagonals and their cross antialiased (SvgWriter.HatchTile's lines;
+                // measured in PowerPoint's rendering of generated/metafiles' diagonal cross, its 30 % hatch crisp; local/
+                // hatchprobe: the forward and backward diagonals and their cross at 0.91 and 0.25 of their color whatever
+                // the picture's smoothing mode, the light downward diagonal, the outlined diamond and the 30 % hatch
+                // crisp); Word's are not measured.
+                var image = SvgWriter.HatchTile((x, y) => (tile[y] & (0x80 >> x)) != 0, Rgba(b.Color), Rgba(b.Color2), lines: !Word && b.Hatch is 2 or 3 or 5);
+                // Hatches are 8 × 8 pixels of the output device, not of the 600 dpi reference device, laid on its pixels as
+                // GDI's brushes (GdiContext.BrushTransform; measured: generated/metafiles' diagonal cross at x 53.33 and
+                // 30 % hatch at 453.33, y 173.33, start at 49, 449 and 169), moved by the rendering origin.
+                svg.Def($"<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"8\" height=\"8\" patternTransform=\"{gdi.BrushTransform(renderingOrigin)}\">{image}</pattern>");
                 return $" {attribute}=\"url(#{id})\"";
             }
             case 2 when b.Texture != null:
@@ -1050,7 +1063,7 @@ public sealed class EmfPlusPlayer(byte[] data, GdiContext gdi, SvgWriter svg)
     /// <summary>GDI+ hatch styles in the order of the DrawingML preset patterns.</summary>
     static string HatchPreset(int hatch) => hatch switch
     {
-        0 => "horz", 1 => "vert", 2 => "fdiag", 3 => "bdiag", 4 => "cross", 5 => "diagCross", 6 => "pct5", 7 => "pct10", 8 => "pct20",
+        0 => "horz", 1 => "vert", 2 => "dnDiag", 3 => "upDiag", 4 => "cross", 5 => "diagCross", 6 => "pct5", 7 => "pct10", 8 => "pct20",
         9 => "pct25", 10 => "pct30", 11 => "pct40", 12 => "pct50", 13 => "pct60", 14 => "pct70", 15 => "pct75", 16 => "pct80",
         17 => "pct90", 18 => "ltDnDiag", 19 => "ltUpDiag", 20 => "dkDnDiag", 21 => "dkUpDiag", 22 => "wdDnDiag", 23 => "wdUpDiag",
         24 => "ltVert", 25 => "ltHorz", 26 => "narVert", 27 => "narHorz", 28 => "dkVert", 29 => "dkHorz", 30 => "dashDnDiag",

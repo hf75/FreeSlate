@@ -535,7 +535,7 @@ public sealed class EmfPlayer
         var dataSize = (int)U32(o + 8);
         if (dataSize < 4 || U32(o + 12) != 0x2B464D45)   // "EMF+"
             return;
-        plus ??= new EmfPlusPlayer(data, gdi, svg) { UnitsPerPixel = gdi.UnitsPerPixel };
+        plus ??= new EmfPlusPlayer(data, gdi, svg) { Word = word };
         plus.Play(o + 16, Math.Min(dataSize - 4, size - 16));
     }
 

@@ -137,23 +137,49 @@ public sealed class SvgWriter(string idPrefix)
 
     /// <summary>
     /// An 8 × 8 hatch tile as a pixelated image: the pixels <paramref name="set"/> names in the foreground color, the
-    /// others in the background (transparent when null). GDI and GDI+ set whole device pixels (measured: crisp
-    /// diagonal crosses in PowerPoint's rendering), which vector squares blur once the picture is scaled.
+    /// others in the background (transparent when null). GDI and GDI+ set whole device pixels (measured: GDI's crisp
+    /// diagonal crosses in PowerPoint's rendering, GDI+'s 30 % hatch), which vector squares blur once the picture is
+    /// scaled; GDI+ draws its diagonals as lines (see <paramref name="lines"/>).
     /// </summary>
-    public static string HatchTile(Func<int, int, bool> set, (byte R, byte G, byte B, byte A) foreground, (byte R, byte G, byte B, byte A)? background)
+    /// <param name="lines">
+    /// Whether the pixels are 45° lines, antialiased: a line a pixel wide through the pixels' centres covers
+    /// 1 − (1 − 1/√2)² of each and a quarter of its neighbours along the row (measured: generated/metafiles' EMF+
+    /// diagonal cross, green on honeydew at 0.91 and 0.25 of the way, within a level on 4800 pixels).
+    /// </param>
+    public static string HatchTile(Func<int, int, bool> set, (byte R, byte G, byte B, byte A) foreground, (byte R, byte G, byte B, byte A)? background,
+        bool lines = false)
     {
         var rgba = new byte[8 * 8 * 4];
+        var under = background ?? (0, 0, 0, 0);
+        var line = 1 - (1 - Math.Sqrt(0.5)) * (1 - Math.Sqrt(0.5));
         for (var y = 0; y < 8; y++)
         {
             for (var x = 0; x < 8; x++)
             {
-                var (r, g, b, a) = set(x, y) ? foreground : background ?? (0, 0, 0, 0);
+                var coverage = set(x, y) ? 1.0 : 0;
+                if (lines)
+                    coverage = coverage > 0 ? line : ((set((x + 7) % 8, y) ? 1 : 0) + (set((x + 1) % 8, y) ? 1 : 0)) / 4.0;
+                var (r, g, b, a) = Mix(under, foreground, coverage);
                 var i = (y * 8 + x) * 4;
                 (rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) = (r, g, b, a);
             }
         }
         var uri = "data:image/png;base64," + Convert.ToBase64String(Png.Encode(8, 8, rgba));
         return $"<image width=\"8\" height=\"8\" href=\"{uri}\" style=\"image-rendering:pixelated\"/>";
+    }
+
+    /// <summary>A color over another by a coverage (0 to 1), as antialiasing blends them (premultiplied).</summary>
+    static (byte R, byte G, byte B, byte A) Mix((byte R, byte G, byte B, byte A) under, (byte R, byte G, byte B, byte A) over, double coverage)
+    {
+        if (coverage <= 0)
+            return under;
+        if (coverage >= 1)
+            return over;
+        var (wu, wo) = (under.A * (1 - coverage), over.A * coverage);
+        if (wu + wo <= 0)
+            return (0, 0, 0, 0);
+        byte Channel(byte u, byte o) => (byte)Math.Round((u * wu + o * wo) / (wu + wo));
+        return (Channel(under.R, over.R), Channel(under.G, over.G), Channel(under.B, over.B), (byte)Math.Round(wu + wo));
     }
 
     public static string Escape(string text)
