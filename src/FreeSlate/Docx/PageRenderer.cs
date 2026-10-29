@@ -641,6 +641,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var selection = new List<SceneItem>();
         // Pictures and shapes in the box's lines, drawn over it (an unturned box's).
         var inner = new List<PlacedDrawing>();
+        // Text that does not fit an unturned box of horizontal text is cut as Word cuts it (TextBoxLayout.Clip), inside
+        // the box's canvas (in SVG a nested viewport at its exact place, see HtmlScene).
+        if (vert == null && rotation == 0 && laid.Clip is (var clipTop, var clipBottom) && h - clipTop - clipBottom > 0 && laid.Overflows(h))
+        {
+            var cut = new ClipItem(x, y + clipTop, w, h - clipTop - clipBottom, []);
+            canvas.Items.Add(cut);
+            drawn = cut.Items;
+        }
         if (vert == null)
         {
             var (left, top) = (x + l, y + t + offset);

@@ -87,6 +87,23 @@ public static class HtmlScene
         "<svg x=\".84pt\" y=\".84pt\" width=\"1.68pt\" height=\"1.92pt\" viewBox=\"0 0 4 5\">" +
         "<rect x=\".5\" y=\".5\" width=\"3\" height=\"4\" fill=\"#fff\" stroke=\"#808080\"/><rect x=\"1.5\" y=\"1.5\" width=\"1\" height=\"1\" fill=\"#e00000\"/></svg></svg></div>";
 
+    /// <summary>How deep the items being written lie in SVG (canvases, SVG items), where a clip is a viewport of its own.</summary>
+    [ThreadStatic] static int svgDepth;
+
+    /// <summary>Items written inside an svg element (see svgDepth).</summary>
+    static void InSvg(IEnumerable<SceneItem> items, StringBuilder html)
+    {
+        svgDepth++;
+        try
+        {
+            Write(items, html);
+        }
+        finally
+        {
+            svgDepth--;
+        }
+    }
+
     /// <summary>Items as HTML and SVG, in their order.</summary>
     public static void Write(IEnumerable<SceneItem> items, StringBuilder html)
     {
@@ -99,13 +116,21 @@ public static class HtmlScene
                     break;
                 case CanvasItem canvas:
                     html.Append($"<svg width=\"{Px(canvas.Width)}\" height=\"{Px(canvas.Height)}\" viewBox=\"0 0 {Px(canvas.Width)} {Px(canvas.Height)}\">");
-                    Write(canvas.Items, html);
+                    InSvg(canvas.Items, html);
                     html.Append("</svg>");
                     break;
                 case TurnedItem turned:
                     html.Append($"<g transform=\"translate({Px(turned.Width)} 0) rotate(90)\">");
                     Write(turned.Items, html);
                     html.Append("</g>");
+                    break;
+                case ClipItem clip when svgDepth > 0:
+                    // In SVG a nested viewport cuts what it holds at its exact place, in the browser's print too (a text box's
+                    // text, PageRenderer.TextBox; HTML boxes would not show there at all).
+                    html.Append($"<svg x=\"{Px(clip.X)}\" y=\"{Px(clip.Y)}\" width=\"{Px(clip.Width)}\" height=\"{Px(clip.Height)}\" "
+                        + $"viewBox=\"{Px(clip.X)} {Px(clip.Y)} {Px(clip.Width)} {Px(clip.Height)}\" preserveAspectRatio=\"none\">");
+                    Write(clip.Items, html);
+                    html.Append("</svg>");
                     break;
                 case ClipItem clip:
                     html.Append($"<div style=\"position:absolute;overflow:hidden;left:{Px(clip.X)}px;top:{Px(clip.Y)}px;width:{Px(clip.Width)}px;height:{Px(clip.Height)}px\">"
@@ -128,7 +153,7 @@ public static class HtmlScene
                     break;
                 case SvgItem svg:
                     html.Append($"<svg width=\"{Units.Css(svg.Width)}\" height=\"{Units.Css(svg.Height)}\" viewBox=\"0 0 {Units.Css(svg.Width)} {Units.Css(svg.Height)}\">");
-                    Write(svg.Items, html);
+                    InSvg(svg.Items, html);
                     html.Append("</svg>");
                     break;
                 case GroupBoxItem group:

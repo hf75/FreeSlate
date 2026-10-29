@@ -10,7 +10,28 @@ namespace FreeSlate.Docx.Layout;
 /// null for horizontal text) and the box's insets.
 /// </summary>
 public sealed record BoxText(List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Offset, string? Vertical,
-    (double L, double T, double R, double B) Insets);
+    (double L, double T, double R, double B) Insets)
+{
+    /// <summary>
+    /// How far below the shape's top and above its bottom Word cuts the text (see TextBoxLayout.Clip); null where it is not
+    /// cut (shapes other than rectangles).
+    /// </summary>
+    public (double Top, double Bottom)? Clip { get; init; }
+
+    /// <summary>
+    /// Whether the text's lines or fills reach above or below where Word cuts it in a shape <paramref name="height"/>
+    /// high (see Clip): only such text is cut, a box whose text fits is drawn as it is.
+    /// </summary>
+    public bool Overflows(double height)
+    {
+        if (Clip is not (var top, var bottom))
+            return false;
+        // The cut in the lines' room, which starts at the top inset and the text's offset from it.
+        var (from, to) = (top - Insets.T - Offset - 0.01, height - bottom - Insets.T - Offset + 0.01);
+        return Lines.Any(p => p.Top < from || p.Top + p.Line.Height > to) || Fills.Any(f => f.Y < from || f.Y + f.Height > to)
+            || Strokes.Any(s => Math.Min(s.Y1, s.Y2) - s.Width / 2 < from || Math.Max(s.Y1, s.Y2) + s.Width / 2 > to);
+    }
+}
 
 /// <summary>
 /// The text boxes of drawings laid out (catalog: drawing.textBoxes): their shapes sized to their text, their text in
@@ -279,7 +300,26 @@ public sealed class TextBoxLayout(DocumentContext context, TableLayout blocks, D
         // testWPGZOrder: a line of 15.5 pt with 10 pt after in a box of 19.5 pt shaded 15.5 pt).
         if (lastShading is { } shade && free > 0.01 && fills.IndexOf(shade) is >= 0 and var at)
             fills[at] = shade with { Height = Math.Max(shade.Height, areaHeight - offset - shade.Y) };
-        return new BoxText(lines, fills, strokes, offset, vert, (l, t, r, b));
+        return new BoxText(lines, fills, strokes, offset, vert, (l, t, r, b)) { Clip = Clip(body, shape) };
+    }
+
+    /// <summary>
+    /// Where Word cuts a text box's text that does not fit: at the shape's rectangle less its top and bottom insets (not
+    /// its outline), across its whole width (measured in Word's PDFs: docx/local/bxc-boxes, three lines of Arial 20 pt in
+    /// boxes 50 pt high, cut 0.04 to 0.07 pt from the shape's edges and 3.6 pt in where the insets are Word's own, inline
+    /// and floating, anchored at the top, middle or bottom, with an outline of 0.25 pt or none; lkf-1: the last box of a
+    /// linked chain shows the one line that fits of three; tbc-lines-12 and -15, a clip rectangle in the PDF around
+    /// every box's text, also its first line where that alone is taller than the box, a table's rows, a group's box, a
+    /// VML box and a box in the header, in compatibility modes 12 and 15; LibreOffice's multiple-group-shapes: "Fly2"
+    /// its descender short). Only rectangles: other shapes' text areas are not measured.
+    /// </summary>
+    static (double Top, double Bottom)? Clip(XElement? body, XElement? shape)
+    {
+        if ((string?)shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "prstGeom")?.Attribute("prst") is not (null or "rect")
+            || shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "custGeom") != null)
+            return null;
+        double Inset(string name, double fallback) => double.TryParse((string?)body?.Attribute(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v / 12700 : fallback;
+        return (Inset("tIns", 3.6), Inset("bIns", 3.6));
     }
 
     /// <summary>
