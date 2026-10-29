@@ -103,6 +103,15 @@ public sealed record Bullet(string Text, TextStyle Style, string? Picture = null
     /// in Aptos; a picture wider than the indent pushes the text on by its width, 0.7 of the size times its proportions).
     /// </summary>
     public double PictureHeight => Style.Size * 0.7;
+
+    /// <summary>
+    /// What follows Text in fonts or sizes of its own: a number in another script draws its punctuation in the text's
+    /// font ("三" in MS Gothic, then "." in Aptos) or its Thai characters larger (see TextRenderer.NumberPieces).
+    /// </summary>
+    public IReadOnlyList<(string Text, TextStyle Style)> After { get; init; } = [];
+
+    /// <summary>The widths of the pieces After in points.</summary>
+    public IEnumerable<double> AfterWidths => After.Select(p => p.Style.Font.Data.LayoutWidth(p.Text, p.Style.Size, p.Style.Kerning));
 }
 
 public sealed class ParagraphInput
@@ -440,6 +449,8 @@ public static class TextLayout
         // at the edge (measured: marL 0 with indent -27 pt puts the bullet at 0 and the text at 27 pt).
         var marginLeft = EffectiveMargin(paragraph);
         var firstStart = marginLeft + paragraph.Indent;
+        // A number in two fonts or sizes is as wide as its pieces together (Bullet.After).
+        bulletWidth += paragraph.Bullet?.AfterWidths.Sum() ?? 0;
         var textStart = paragraph.Bullet != null ? Math.Max(Math.Max(marginLeft, firstStart), BulletAt(paragraph) + bulletWidth) : firstStart;
 
         var current = new List<(int Start, int End, double X)>();
@@ -635,11 +646,7 @@ public static class TextLayout
             Ascent = ascent, Descent = descent, SingleDescent = singleDescent, Width = lineWidth, Align = paragraph.Align, Start = lineStart, Origin = lineStart + offset,
         };
         if (first && paragraph.Bullet is { } bullet)
-            line.Runs.Add(new PlacedRun(bullet.Text, bullet.Style, BulletAt(paragraph) + offset, bulletWidth)
-            {
-                Picture = bullet.Picture,
-                PictureHeight = bullet.Picture != null ? bullet.PictureHeight : 0,
-            });
+            line.Runs.AddRange(BulletRuns(bullet, BulletAt(paragraph) + offset, bulletWidth, false));
 
         var shift = 0.0;
         foreach (var (start, end, x) in pieces)
@@ -738,13 +745,7 @@ public static class TextLayout
         {
             var bulletAt = BulletAt(paragraph);
             var bulletX = paragraph.RightToLeft ? width - bulletAt - bulletWidth : bulletAt + (x - lineStart);
-            // A bullet of a right-to-left paragraph reads right to left too ("1." shows as ".1", measured).
-            var text = paragraph.RightToLeft ? Visual(bullet.Text) : bullet.Text;
-            line.Runs.Add(new PlacedRun(text, bullet.Style, bulletX, bulletWidth)
-            {
-                Picture = bullet.Picture,
-                PictureHeight = bullet.Picture != null ? bullet.PictureHeight : 0,
-            });
+            line.Runs.AddRange(BulletRuns(bullet, bulletX, bulletWidth, paragraph.RightToLeft));
         }
         foreach (var k in Bidi.Reorder(items.Select(item => levels[item.Start]).ToList()))
         {
@@ -758,6 +759,33 @@ public static class TextLayout
             x += widths[k] + (justify && all[start] == ' ' ? spaceExtra : 0);
         }
         return line;
+    }
+
+    /// <summary>
+    /// The runs of a bullet <paramref name="width"/> wide from x (points): its text, then the pieces after it in fonts of
+    /// their own (Bullet.After). A bullet of a right-to-left paragraph reads right to left too ("1." shows as ".1",
+    /// measured): its pieces in reverse order, each in visual order.
+    /// </summary>
+    static IEnumerable<PlacedRun> BulletRuns(Bullet bullet, double x, double width, bool rightToLeft)
+    {
+        if (bullet.After.Count == 0)
+        {
+            yield return new PlacedRun(rightToLeft ? Visual(bullet.Text) : bullet.Text, bullet.Style, x, width)
+            {
+                Picture = bullet.Picture,
+                PictureHeight = bullet.Picture != null ? bullet.PictureHeight : 0,
+            };
+            yield break;
+        }
+        var after = bullet.After.Zip(bullet.AfterWidths, (p, w) => (p.Text, p.Style, Width: w)).ToList();
+        List<(string Text, TextStyle Style, double Width)> pieces = [(bullet.Text, bullet.Style, width - after.Sum(p => p.Width)), .. after];
+        if (rightToLeft)
+            pieces.Reverse();
+        foreach (var (text, style, w) in pieces)
+        {
+            yield return new PlacedRun(rightToLeft ? Visual(text) : text, style, x, w);
+            x += w;
+        }
     }
 
     /// <summary>A short right-to-left text (a bullet) in visual order, its brackets mirrored.</summary>

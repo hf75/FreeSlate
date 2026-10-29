@@ -1800,6 +1800,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
             counters.Reset(i);
         var kind = ParagraphElement(pPr, sources, level, "buNone", "buChar", "buAutoNum", "buBlip");
         string text;
+        string? wingdings = null;
         switch (kind?.Name.LocalName)
         {
             case "buBlip" when kind.Element(Ns.A + "blip")?.Attribute(Ns.R + "embed")?.Value is { } embed
@@ -1821,7 +1822,10 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
                 counters.Reset(level);
                 break;
             case "buAutoNum":
-                text = AutoNumbering.Format(kind.Str("type") ?? "arabicPeriod", counters.Next(level, kind.Str("type") ?? "arabicPeriod", kind.Int("startAt") ?? 1));
+                var scheme = kind.Str("type") ?? "arabicPeriod";
+                var number = counters.Next(level, scheme, kind.Int("startAt") ?? 1);
+                text = AutoNumbering.Format(scheme, number);
+                wingdings = AutoNumbering.Wingdings(scheme, number);
                 break;
             default:
                 counters.Reset(level);
@@ -1832,30 +1836,6 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var resolved = font?.Name.LocalName == "buFont" && Colors.Theme.ResolveTypeface(font.Str("typeface") ?? "") is { Length: > 0 } family
             ? fonts.ResolveTypeface(family, textStyle.Bold, textStyle.Italic)
             : textStyle.Font;
-        // Numbering in other scripts (Chinese numerals, Arabic letters, Thai digits …) needs a font that has them:
-        // PowerPoint numbers in MS Gothic (East Asian), Arial (Arabic, Hebrew) and Nirmala UI (Indic scripts), whatever
-        // the theme says (measured with the lists deck's PDF; its Thai numbers are Leelawadee UI drawn larger than the
-        // font's own, which the theme's Thai font comes closer to).
-        if (!resolved.Data.Covers(text) && Scripts.Split(text) is [var (_, slot, script)])
-        {
-            var candidates = Scripts.Fallbacks(slot, slot == FontSlot.EastAsian ? Scripts.EastAsianScript(null, script) : script);
-            var theme = slot switch
-            {
-                FontSlot.EastAsian => Colors.Theme.ScriptFonts.GetValueOrDefault((false, Scripts.EastAsianScript(null, script))),
-                FontSlot.Complex when script != null => Colors.Theme.ScriptFonts.GetValueOrDefault((false, script)),
-                _ => null,
-            };
-            var numbering = kind?.Name.LocalName != "buAutoNum" ? null : slot switch
-            {
-                FontSlot.EastAsian => "MS Gothic",
-                FontSlot.Complex when script is "Thai" => null,
-                FontSlot.Complex when script is "Arab" or "Hebr" => "Arial",
-                FontSlot.Complex => "Nirmala UI",
-                _ => null,
-            };
-            resolved = fonts.ResolveCovering(numbering ?? theme ?? candidates[0], textStyle.Bold, textStyle.Italic, text, candidates);
-        }
-
         var sizeElement = ParagraphElement(pPr, sources, level, "buSzTx", "buSzPct", "buSzPts");
         var size = sizeElement?.Name.LocalName switch
         {
@@ -1866,7 +1846,69 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
 
         var colorElement = ParagraphElement(pPr, sources, level, "buClrTx", "buClr");
         var color = colorElement?.Name.LocalName == "buClr" ? Colors.ResolveChild(colorElement) ?? textStyle.Color : textStyle.Color;
-        return new Bullet(text, new TextStyle(resolved, size, color, Kerning: false));
+        var style = new TextStyle(resolved, size, color, Kerning: false);
+        if (wingdings != null && fonts.TryResolveFamily("Wingdings", textStyle.Bold, textStyle.Italic) is { } symbols)
+            return new Bullet(wingdings, style with { Font = symbols });
+        if (resolved.Data.Covers(text))
+            return new Bullet(text, style);
+        if (kind?.Name.LocalName == "buAutoNum")
+        {
+            var pieces = NumberPieces(text, style, textStyle.Bold, textStyle.Italic);
+            return new Bullet(pieces[0].Text, pieces[0].Style) { After = pieces.Skip(1).ToList() };
+        }
+        // A bullet character of another script needs a font that has it.
+        if (Scripts.Split(text) is [var (_, slot, script)])
+        {
+            var candidates = Scripts.Fallbacks(slot, slot == FontSlot.EastAsian ? Scripts.EastAsianScript(null, script) : script);
+            var theme = slot switch
+            {
+                FontSlot.EastAsian => Colors.Theme.ScriptFonts.GetValueOrDefault((false, Scripts.EastAsianScript(null, script))),
+                FontSlot.Complex when script != null => Colors.Theme.ScriptFonts.GetValueOrDefault((false, script)),
+                _ => null,
+            };
+            style = style with { Font = fonts.ResolveCovering(theme ?? candidates[0], textStyle.Bold, textStyle.Italic, text, candidates) };
+        }
+        return new Bullet(text, style);
+    }
+
+    /// <summary>
+    /// How much larger than the text PowerPoint draws the Thai letters and digits of a number (measured with
+    /// generated/lists: Leelawadee UI's ค ง จ ๓ ๔ ๕ at 33.5 ± 0.2 px beside 18 pt text, their periods and parentheses at
+    /// the text's size; what follows them stands about a pixel further right than their advances at this size put it).
+    /// </summary>
+    const double ThaiNumberScale = 1.4;
+
+    /// <summary>
+    /// A number in another script than the bullet's font has, in pieces of one font and size each, as PowerPoint draws
+    /// it (catalog: text.bullets; measured with generated/lists): Chinese numerals and full-width digits in MS Gothic,
+    /// though the theme names Yu Gothic, DengXian and PMingLiU, and Indic letters and digits in Nirmala UI, their periods
+    /// and parentheses in the bullet's font; Arabic and Hebrew letters in Arial with their hyphen; Thai numbers in
+    /// Leelawadee UI, their letters and digits ThaiNumberScale times as large. (The theme's Thai and Devanagari fonts,
+    /// Cordia New and Mangal, were not installed when PowerPoint drew the deck.)
+    /// </summary>
+    List<(string Text, TextStyle Style)> NumberPieces(string text, TextStyle style, bool bold, bool italic)
+    {
+        if (text.EnumerateRunes().Select(r => Scripts.Of(r.Value)).FirstOrDefault(k => k is { Slot: not FontSlot.Latin }) is not { } first)
+            return [(text, style)];
+        var (slot, script) = first;
+        var family = slot == FontSlot.EastAsian ? "MS Gothic" : script switch { "Arab" or "Hebr" => "Arial", "Thai" => "Leelawadee UI", _ => "Nirmala UI" };
+        var candidates = Scripts.Fallbacks(slot, slot == FontSlot.EastAsian ? Scripts.EastAsianScript(null, script) : script);
+        var own = style with { Font = fonts.ResolveCovering(family, bold, italic, text, candidates) };
+        if (script is "Arab" or "Hebr")
+            return [(text, own)];
+        var thai = script == "Thai";
+        var large = own with { Size = own.Size * ThaiNumberScale };
+        var pieces = new List<(string Text, TextStyle Style)>();
+        foreach (var rune in text.EnumerateRunes())
+        {
+            var letter = Scripts.Of(rune.Value) is { Slot: not FontSlot.Latin };
+            var pieceStyle = letter ? thai ? large : own : thai ? own : style;
+            if (pieces.Count > 0 && ReferenceEquals(pieces[^1].Style, pieceStyle))
+                pieces[^1] = (pieces[^1].Text + rune, pieceStyle);
+            else
+                pieces.Add((rune.ToString(), pieceStyle));
+        }
+        return pieces;
     }
 
     /// <summary>A run's text in pieces of symbol font characters (U+F000 to U+F0FF) and other text.</summary>

@@ -66,6 +66,19 @@ public static class AutoNumbering
         };
     }
 
+    /// <summary>
+    /// The Wingdings character that PowerPoint draws for item <paramref name="n"/> of the circled Wingdings schemes
+    /// (circleNumWdWhitePlain: ① … ⑩ at F081 … F08A, circleNumWdBlackPlain: ❶ … ❿ at F08C … F095), whatever the text's
+    /// font (generated/lists: its ③ and ❸ are Wingdings' glyphs, though Aptos has both), or null: other schemes and
+    /// numbers Wingdings has no circle for.
+    /// </summary>
+    public static string? Wingdings(string scheme, int n) => n is < 1 or > 10 ? null : scheme switch
+    {
+        "circleNumWdWhitePlain" => ((char)(0xF080 + n)).ToString(),
+        "circleNumWdBlackPlain" => ((char)(0xF08B + n)).ToString(),
+        _ => null,
+    };
+
     static string Arabic(int n) => n.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Letters a … z, then aa … zz and so on (the letter repeats).</summary>
