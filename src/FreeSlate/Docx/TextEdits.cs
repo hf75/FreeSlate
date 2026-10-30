@@ -625,7 +625,8 @@ static class TextEdits
         var p = after != null ? PartOf(after, parts) : parts[^1];
         var w = p.Name.Namespace;
         var beside = (before ?? after)?.AncestorsAndSelf(w + "r").FirstOrDefault();
-        var properties = beside?.Element(w + "rPr") ?? p.Element(w + "pPr")?.Element(w + "rPr");
+        // (A run beside without properties of its own gives none: see Inserted.)
+        var properties = beside != null ? beside.Element(w + "rPr") : p.Element(w + "pPr")?.Element(w + "rPr");
         var t = new XElement(w + "t");
         var run = new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => !IsRevision(e) && e.Name.LocalName != "rPrChange")) : null, t);
         SetContent(t, text);
@@ -1814,7 +1815,11 @@ static class TextEdits
         var p = before != null ? PartOf(before, parts) : after != null ? PartOf(after, parts) : parts[^1];
         var w = p.Name.Namespace;
         var beside = (before ?? after)?.AncestorsAndSelf(w + "r").FirstOrDefault();
-        var properties = beside?.Element(w + "rPr") ?? p.Element(w + "pPr")?.Element(w + "rPr");
+        // A run beside without properties of its own gives none: the mark gives its own only where no run stands beside
+        // (measured in Word 365 by COM: "XX" typed at the end of plain text before an italic mark, and at the start of
+        // plain text before a bold one, is plain with changes tracked and without; the mark's gave tracked text typed
+        // before a hidden mark that mark's w:vanish, found with scratchpad tb/jmprobe.vbs).
+        var properties = beside != null ? beside.Element(w + "rPr") : p.Element(w + "pPr")?.Element(w + "rPr");
         var t = new XElement(w + "t");
         var ins = tracking.Mark(w, "ins");
         ins.Add(new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => !IsRevision(e) && e.Name.LocalName != "rPrChange")) : null, t));
