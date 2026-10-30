@@ -172,6 +172,20 @@ static class TextEdits
     /// <summary>The part of a paragraph an element stands in.</summary>
     static XElement PartOf(XElement element, List<XElement> parts) => element.Ancestors().First(parts.Contains);
 
+    /// <summary>
+    /// What stands in a run for an element of a paragraph's content: the alternate content it is a choice or the fallback
+    /// of (mc:AlternateContent, which holds nothing else), else the element itself (found with docx/external/libreoffice/
+    /// extras-ooxmlexport/dml-groupshape-relsize: a comment's range ending after a group put its end between the group's
+    /// choice and its fallback, and Word took the document for damaged).
+    /// </summary>
+    static XElement RunChild(XElement element)
+    {
+        while (element.Parent is { } branch && branch.Name.Namespace == MarkupCompatibility.Mc && branch.Parent is { } alternate
+            && alternate.Name == MarkupCompatibility.Mc + "AlternateContent")
+            element = alternate;
+        return element;
+    }
+
     /// <summary>Whether a paragraph's mark is deleted or moved away (a tracked change).</summary>
     static bool MarkDeleted(XElement p) =>
         p.Element(p.Name.Namespace + "pPr")?.Element(p.Name.Namespace + "rPr") is { } mark && (mark.Element(p.Name.Namespace + "del") ?? mark.Element(p.Name.Namespace + "moveFrom")) != null;
@@ -251,7 +265,7 @@ static class TextEdits
             {
                 if (!Removable(inline) || stretch.Find(inline.Xml) is not { } element || !In(element, parts))
                     throw new NotSupportedException($"The range holds what cannot be taken away so ({inline.GetType().Name}).");
-                removed.Add(element);
+                removed.Add(RunChild(element));
             }
             else if (s == offset && after == null)
                 after = stretch.Find(inline.Xml);
@@ -372,6 +386,7 @@ static class TextEdits
         var element = inline is TextInline { Xml.Name.LocalName: "t" } ? TextOf(stretch, inline, parts) : inline.Xml is { } xml ? stretch.Find(xml) : null;
         if (element == null || !In(element, parts))
             return null;
+        element = RunChild(element);
         if (inline is FieldInline && element.Name.LocalName == "fldChar" && element.Parent is { Name.LocalName: "r" } begin
             && FieldRuns(element, PartOf(element, parts)) is { Count: > 0 } runs)
             return last ? runs[^1] : begin;
@@ -489,7 +504,7 @@ static class TextEdits
                         continue;
                     throw new NotSupportedException($"What the place is before was not read from the paragraph ({inline.GetType().Name}).");
                 }
-                first = element;
+                first = RunChild(element);
                 break;
             }
             // Within a text: its run split there.
@@ -833,7 +848,7 @@ static class TextEdits
                 continue;
             }
             var text = inline is TextInline { Xml.Name.LocalName: "t" } t ? t : null;
-            var element = text != null ? TextOf(stretch, inline, parts) : inline is RubyInline or MathInline ? null : stretch.Find(inline.Xml);
+            var element = text != null ? TextOf(stretch, inline, parts) : inline is RubyInline or MathInline ? null : stretch.Find(inline.Xml) is { } found ? RunChild(found) : null;
             if (element == null || !In(element, parts) || element.Parent is not { Name.LocalName: "r" })
                 throw new NotSupportedException($"The range holds what cannot be formatted so ({inline.GetType().Name}).");
             if (text != null)
@@ -1109,7 +1124,7 @@ static class TextEdits
             }
             else if (within)
             {
-                if (!Removable(inline) || stretch.Find(inline.Xml) is not { } element || !In(element, parts) || element.Parent is not { Name.LocalName: "r" })
+                if (!Removable(inline) || stretch.Find(inline.Xml) is not { } found || !In(found, parts) || RunChild(found) is not { Parent.Name.LocalName: "r" } element)
                     throw new NotSupportedException($"The range holds what cannot be taken away so ({inline.GetType().Name}).");
                 SplitBefore(element);
                 if (element.ElementsAfterSelf().FirstOrDefault() is { } rest)
