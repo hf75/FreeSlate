@@ -81,6 +81,55 @@ static class Strict
         root.Name.NamespaceName.StartsWith(Prefix, StringComparison.Ordinal)
         || root.Attributes().Any(a => a.IsNamespaceDeclaration && a.Value.StartsWith(Prefix, StringComparison.Ordinal));
 
+    /// <summary>Whether a part's text is of Strict's namespaces: its root's start tag names one.</summary>
+    public static bool IsStrict(string text)
+    {
+        var start = text.IndexOf('<');
+        while (start >= 0 && start + 1 < text.Length && text[start + 1] is '?' or '!')
+            start = text.IndexOf('<', start + 1);
+        var end = start >= 0 ? text.IndexOf('>', start) : -1;
+        return end > start && text.AsSpan(start, end - start).Contains(Prefix, StringComparison.Ordinal);
+    }
+
+    /// <summary>The strict namespaces by the transitional ones (see Transitional).</summary>
+    static readonly Dictionary<string, string> StrictOf = Transitional.ToDictionary(p => p.Value, p => p.Key, StringComparer.Ordinal);
+
+    static readonly Dictionary<string, string> TransitionalDirections = StrictDirections.ToDictionary(p => p.Value, p => p.Key, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Markup of the transitional namespaces renamed to Strict's, to stand in a strict part (markup put in, see
+    /// WordDocument.InsertMarkup): Transition the other way for the namespaces, Word's shapes and groups, text boxes and
+    /// text directions; numbers stay as they are.
+    /// </summary>
+    public static void Revert(XElement root)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            if (element.Name == WordTextDirection && element.Attributes().FirstOrDefault(a => a.Name.LocalName == "val") is { } direction
+                && TransitionalDirections.TryGetValue(direction.Value, out var strictDirection))
+                direction.Value = strictDirection;
+            if (element.Name.NamespaceName is Wps or Wpg && StrictShapes.TryGetValue(element.Name.LocalName, out var shapeNs) && shapeNs == element.Name.NamespaceName)
+                element.Name = XNamespace.Get(StrictDrawing) + element.Name.LocalName;
+            else if (element.Name == TextBoxContent)
+                element.Name = StrictTextBoxContent;
+            else if (StrictOf.TryGetValue(element.Name.NamespaceName, out var ns))
+                element.Name = XNamespace.Get(ns) + element.Name.LocalName;
+            if (!element.Attributes().Any(a => StrictOf.ContainsKey(a.Name.NamespaceName) || a.IsNamespaceDeclaration && StrictOf.ContainsKey(a.Value)))
+                continue;
+            element.ReplaceAttributes(element.Attributes().Select(a =>
+                a.IsNamespaceDeclaration ? new XAttribute(a.Name, StrictOf.GetValueOrDefault(a.Value, a.Value))
+                : StrictOf.TryGetValue(a.Name.NamespaceName, out var attributeNs) ? new XAttribute(XNamespace.Get(attributeNs) + a.Name.LocalName, a.Value)
+                : new XAttribute(a)).ToList());
+        }
+    }
+
+    /// <summary>A relationship's type of the transitional namespace as Strict names it (officeDocument/relationships/…), others as they are.</summary>
+    public static string Relationship(string type) =>
+        type.StartsWith(TransitionalRelationships, StringComparison.Ordinal) ? StrictRelationships + type[TransitionalRelationships.Length..] : type;
+
+    const string TransitionalRelationships = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/";
+    const string StrictRelationships = "http://purl.oclc.org/ooxml/officeDocument/relationships/";
+
     /// <summary>An element of a strict part, and what it holds, renamed to the transitional namespaces.</summary>
     public static void Transition(XElement root)
     {

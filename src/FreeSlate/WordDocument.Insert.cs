@@ -74,6 +74,7 @@ public sealed partial class WordDocument
         var known = paragraphs.Keys.Concat(noteParagraphs.Keys).Concat(storyParagraphs.Keys).ToHashSet();
         var source = PartOf(top);
         var elements = Elements(Added(markup, added, changes, source), RootOf(source));
+        Strictly(source, elements);
         Change(top, top, (stretch, tracking) => TextEdits.InsertMarkup(stretch, p, offset, [.. elements.Select(e => new XElement(e))], tracking), changes: changes);
         return [.. Within(Find(paragraph).Paragraph).Where(id => !known.Contains(id))];
     }
@@ -97,6 +98,7 @@ public sealed partial class WordDocument
             throw new NotSupportedException("A note, header or footer holds no section break.");
         if (!before && elements.Count > 0 && elements[^1].Name == Wml.W + "tbl" && ListOf(top, p) is var (list, index) && index == list.Count - 1)
             elements.Add(new XElement(Wml.W + "p"));
+        Strictly(source, elements);
         var count = elements.Count;
         Change(top, top, (stretch, tracking) => TextEdits.InsertBlocks(stretch, p, [.. elements.Select(e => new XElement(e))], before, tracking),
             () => Plain(top, p) is { } i
@@ -123,25 +125,34 @@ public sealed partial class WordDocument
     {
         if (PartOf(Find(paragraph).Top) != context.MainPart)
             throw new NotSupportedException("A note, header or footer holds no note.");
-        var (w, kind) = (Wml.W, endnote ? "endnote" : "footnote");
+        var kind = endnote ? "endnote" : "footnote";
         var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
         var part = package.FirstRelationship(context.MainPart, kind + "s") is { External: false } related && package.Exists(related.Target) ? related.Target : null;
+        // The notes in their part's own namespaces, Strict's in a strict document (see Opc.Strict).
+        var had = part != null ? Xml(package.ReadBytes(part)) : null;
+        var strict = IsStrictPart(context.MainPart);
+        XNamespace w = had?.Root?.Name.Namespace ?? (strict ? StrictW : Wml.W), r = strict ? StrictR : Ns.R;
         XElement Separator(int id, string type) =>
             new(w + kind, new XAttribute(w + "type", type), new XAttribute(w + "id", id),
                 new XElement(w + "p", new XElement(w + "pPr", new XElement(w + "spacing", new XAttribute(w + "after", 0), new XAttribute(w + "line", 240), new XAttribute(w + "lineRule", "auto"))),
                     new XElement(w + "r", new XElement(w + type))));
-        var notes = part != null
-            ? Xml(package.ReadBytes(part))
-            : new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), new XElement(w + kind + "s", new XAttribute(XNamespace.Xmlns + "w", w.NamespaceName),
-                new XAttribute(XNamespace.Xmlns + "r", Ns.R.NamespaceName), Separator(-1, "separator"), Separator(0, "continuationSeparator")));
+        var notes = had
+            ?? new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), new XElement(w + kind + "s", new XAttribute(XNamespace.Xmlns + "w", w.NamespaceName),
+                new XAttribute(XNamespace.Xmlns + "r", r.NamespaceName), Separator(-1, "separator"), Separator(0, "continuationSeparator")));
         var root = notes.Root!;
-        var id = root.Elements(w + kind).Select(n => int.TryParse(n.Attr("id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var k) ? k : 0).DefaultIfEmpty(0).Max() + 1;
+        var id = root.Elements(w + kind).Select(n => int.TryParse((string?)n.Attribute(w + "id"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var k) ? k : 0).DefaultIfEmpty(0).Max() + 1;
         var reference = context.Styles.IdByName(kind + " reference", "character") is { } style
             ? $"<w:rStyle w:val=\"{Escaped(style)}\"/>" : "<w:vertAlign w:val=\"superscript\"/>";
         var textStyle = context.Styles.IdByName(kind + " text", "paragraph");
         var mark = Elements($"<w:r><w:rPr>{reference}</w:rPr><w:{kind}Ref/></w:r><w:r><w:t xml:space=\"preserve\"> </w:t></w:r>", root);
+        var text = Elements(markup, root);
+        if (strict)
+        {
+            foreach (var e in mark.Concat(text))
+                Strict.Revert(e);
+        }
         root.Add(new XElement(w + kind, new XAttribute(w + "id", id),
-            new XElement(w + "p", textStyle != null ? new XElement(w + "pPr", new XElement(w + "pStyle", new XAttribute(w + "val", textStyle))) : null, mark, Elements(markup, root))));
+            new XElement(w + "p", textStyle != null ? new XElement(w + "pPr", new XElement(w + "pStyle", new XAttribute(w + "val", textStyle))) : null, mark, text)));
         List<NewPart> added = [];
         if (part != null)
             changes[part] = Bytes(notes);
@@ -161,6 +172,21 @@ public sealed partial class WordDocument
     /// <summary>The root of a part's XML as loaded, whose namespaces markup put into it is parsed within (see Elements).</summary>
     XElement RootOf(string part) => (part == context.MainPart ? context.Document : context.Load(part)).Root!;
 
+    /// <summary>The main namespaces of WordprocessingML and of relationships in Strict (see Opc.Strict).</summary>
+    static readonly XNamespace StrictW = "http://purl.oclc.org/ooxml/wordprocessingml/main", StrictR = "http://purl.oclc.org/ooxml/officeDocument/relationships";
+
+    /// <summary>Whether a part's text is of Strict's namespaces, which markup put into it takes too (its loaded XML reads as transitional).</summary>
+    bool IsStrictPart(string part) => Strict.IsStrict(part == context.MainPart ? wholeText.Text : new PartText(package.ReadBytes(part)).Text);
+
+    /// <summary>Markup put into a strict part renamed to Strict's namespaces (it is parsed within the loaded root's, see Elements).</summary>
+    void Strictly(string part, List<XElement> elements)
+    {
+        if (!IsStrictPart(part))
+            return;
+        foreach (var e in elements)
+            Strict.Revert(e);
+    }
+
     /// <summary>
     /// The parts to add put among the changes (see NewPart): named, related from the part the markup goes into
     /// (<paramref name="source"/>: the main part, a notes part, a header's or footer's) or from one another, listed with
@@ -174,6 +200,8 @@ public sealed partial class WordDocument
             throw new ArgumentException("The new parts' keys are not each their own, or a part is related from one not among them.", nameof(added));
         var names = added.ToDictionary(p => p.Key, p => Unique(p.Name), StringComparer.Ordinal);
         var ids = new Dictionary<string, string>(StringComparer.Ordinal);
+        // A strict document's relationships take Strict's types.
+        var strict = IsStrictPart(context.MainPart);
         foreach (var group in added.GroupBy(p => p.From is { } from ? names[from] : source, StringComparer.OrdinalIgnoreCase))
         {
             var from = group.Key;
@@ -189,7 +217,7 @@ public sealed partial class WordDocument
                 var id = "rId" + next;
                 taken.Add(id);
                 ids[part.Key] = id;
-                rels.Root.Add(new XElement(Relationships + "Relationship", new XAttribute("Id", id), new XAttribute("Type", part.Relationship),
+                rels.Root.Add(new XElement(Relationships + "Relationship", new XAttribute("Id", id), new XAttribute("Type", strict ? Strict.Relationship(part.Relationship) : part.Relationship),
                     new XAttribute("Target", Relative(from, names[part.Key]))));
             }
             changes[relationshipsPart] = Bytes(rels);
