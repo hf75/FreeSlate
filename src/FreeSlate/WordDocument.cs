@@ -464,7 +464,10 @@ public sealed partial class WordDocument : IEditableDocument
     public void Format(int paragraph, int offset, int length, TextFormatting format)
     {
         var (p, top) = Find(paragraph);
-        Change(top, top, (stretch, tracking) => TextEdits.Format(stretch, p, offset, length, format, tracking));
+        // What the styles alone give a run (its character and table style under the paragraph's), which bold and italic
+        // are set against.
+        RunFormat? Styled(Inline inline) => inline.Format.Origin is { } origin ? context.Styles.Run(p.Format.Style, origin.CharacterStyle, null, origin.Table) : null;
+        Change(top, top, (stretch, tracking) => TextEdits.Format(stretch, p, offset, length, format, tracking, Styled));
     }
 
     /// <summary>Gives a paragraph paragraph formatting (see ParagraphFormatting).</summary>

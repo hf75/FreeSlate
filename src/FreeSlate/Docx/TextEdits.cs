@@ -928,9 +928,11 @@ static class TextEdits
     /// <summary>
     /// Character formatting given to a stretch of a paragraph's text (see TextFormatting): the runs that hold it split
     /// where it begins and ends, each run within it formatted, a field the layout computes with all its runs (begin to
-    /// end). Returns the stretch's new text.
+    /// end); bold and italic against what <paramref name="styled"/> gives of an inline's run (its format from its styles
+    /// alone). Returns the stretch's new text.
     /// </summary>
-    public static string Format(Stretch stretch, ParagraphBlock paragraph, int offset, int length, TextFormatting format, Tracking? tracking = null)
+    public static string Format(Stretch stretch, ParagraphBlock paragraph, int offset, int length, TextFormatting format, Tracking? tracking = null,
+        Func<Inline, RunFormat?>? styled = null)
     {
         if (offset < paragraph.TextOffset || length < 0 || offset + length > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The range is not in the paragraph's text.");
@@ -938,7 +940,7 @@ static class TextEdits
         Between(paragraph, offset + length);
         var parts = Parts(stretch, paragraph);
         var end = offset + length;
-        var runs = new List<XElement>();
+        var runs = new List<(XElement Run, Inline Inline)>();
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
         {
@@ -948,7 +950,7 @@ static class TextEdits
                 continue;
             if (inline is FieldInline && stretch.Find(inline.Xml) is { } begin && In(begin, parts) && FieldRuns(begin, PartOf(begin, parts)) is { } field)
             {
-                runs.AddRange(field);
+                runs.AddRange(field.Select(run => (run, (Inline)inline)));
                 continue;
             }
             var text = inline is TextInline { Xml.Name.LocalName: "t" } t ? t : null;
@@ -968,11 +970,11 @@ static class TextEdits
             SplitBefore(element);
             if (element.ElementsAfterSelf().FirstOrDefault() is { } next)
                 SplitBefore(next);
-            runs.Add(element.Parent!);
+            runs.Add((element.Parent!, inline));
         }
-        foreach (var run in runs.Distinct())
-            Format(run, format, tracking);
-        return stretch.Written(parts.Where(p => runs.Any(r => r.Ancestors().Contains(p))).Select(p => (p, (IEnumerable<XElement>)[p])));
+        foreach (var (run, inline) in runs.DistinctBy(r => r.Run))
+            Format(run, format, tracking, styled?.Invoke(inline));
+        return stretch.Written(parts.Where(p => runs.Any(r => r.Run.Ancestors().Contains(p))).Select(p => (p, (IEnumerable<XElement>)[p])));
     }
 
     /// <summary>A w:t cut in two at a place in its text (as the reader reads it); returns the second half, after it in its run.</summary>
@@ -1026,10 +1028,11 @@ static class TextEdits
     }
 
     /// <summary>
-    /// Character formatting set on a run's properties, as Word's buttons set it (see TextFormatting); as a tracked change
-    /// the properties it had kept in a w:rPrChange (the first change's, where it has one).
+    /// Character formatting set on a run's properties, as Word's buttons set it (see TextFormatting); bold and italic
+    /// against the format <paramref name="styled"/> its styles alone give it, where known; as a tracked change the
+    /// properties it had kept in a w:rPrChange (the first change's, where it has one).
     /// </summary>
-    static void Format(XElement run, TextFormatting format, Tracking? tracking)
+    static void Format(XElement run, TextFormatting format, Tracking? tracking, RunFormat? styled = null)
     {
         var w = run.Name.Namespace;
         var properties = Properties(run, "rPr");
@@ -1046,15 +1049,25 @@ static class TextEdits
             foreach (var attribute in taken)
                 e.Attribute(w + attribute)?.Remove();
         }
+        // A toggle the styles give already the run has no more of its own, any other it has (measured in Word 365 by COM,
+        // the ribbon's Bold button: off on direct bold takes w:b and w:bCs away, on the character style Strong or a bold
+        // paragraph style it writes them 0; on plain text both, on where the styles make the text bold nothing).
+        void Toggle(string name, bool value, bool? styles)
+        {
+            if (styles == value)
+                properties.Element(w + name)?.Remove();
+            else
+                Set(name, value ? null : "0");
+        }
         if (format.Bold is { } bold)
         {
-            Set("b", bold ? null : "0");
-            Set("bCs", bold ? null : "0");
+            Toggle("b", bold, styled?.Bold);
+            Toggle("bCs", bold, styled?.BoldComplex);
         }
         if (format.Italic is { } italic)
         {
-            Set("i", italic ? null : "0");
-            Set("iCs", italic ? null : "0");
+            Toggle("i", italic, styled?.Italic);
+            Toggle("iCs", italic, styled?.ItalicComplex);
         }
         if (format.Underline is { } underline)
             Set("u", underline);
@@ -1076,6 +1089,8 @@ static class TextEdits
             Set("color", color, "themeColor", "themeTint", "themeShade");
         if (format.Highlight is { } highlight)
             Set("highlight", highlight);
+        if (!properties.HasElements && !properties.HasAttributes)
+            properties.Remove();
     }
 
     /// <summary>
