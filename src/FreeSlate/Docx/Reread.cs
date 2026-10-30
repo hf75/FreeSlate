@@ -130,13 +130,22 @@ public sealed partial class ModelReader
             }
         }
         Further();
-        // Where none of those children has blocks, the new ones go before the blocks of the children after them.
-        var place = body.Count;
+        // Where none of those children has blocks, the new ones go before the blocks of the children after them; not past a
+        // child that may bring blocks but has none of its own, whose blocks stand for other elements (what an altChunk
+        // brings in, a field over paragraphs the reader joined into one, found with docx/external/libreoffice/
+        // writerfilter-dmapper/alt-chunk-html: a paragraph before the altChunk taken away and put back again went after it):
+        // there the place is not known.
+        int? place = body.Count;
         for (var e = first; e != null; e = After(e))
         {
             if (counts.ContainsKey(e))
             {
                 place = Find(tops, e);
+                break;
+            }
+            if (Imported(e) || e.Name.LocalName is "p" or "tbl" or "sdt" && !Absorbed(e))
+            {
+                place = null;
                 break;
             }
         }
@@ -145,12 +154,16 @@ public sealed partial class ModelReader
             var read = leading.Concat(old).Concat(trailing).ToHashSet<XElement>(ReferenceEqualityComparer.Instance);
             // The blocks read from them stand together: from the first, as many as they stand for, all of them.
             var count = read.Sum(e => counts.GetValueOrDefault(e));
-            var (from, to) = (place, place);
+            int from, to;
             if (count > 0)
             {
                 from = read.Where(counts.ContainsKey).Min(e => Find(tops, e));
                 to = from + count;
             }
+            else if (place is { } at)
+                (from, to) = (at, at);
+            else
+                return null;
             // The block before them took nothing of them (what a paragraph read took in, the one it went into is read
             // too), nor does it stay as it is only before what they were (a hidden mark's before a table).
             read.Add(first);
