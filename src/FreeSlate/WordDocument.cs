@@ -1620,7 +1620,7 @@ public sealed partial class WordDocument : IEditableDocument
         var own = new ModelReader(context);
         var first = own.BeginBody(childrenAtOnce);
         own.ReadBody(int.MaxValue);
-        layout = new ParagraphLayout(context, new RunStyles(context));
+        layout = new ParagraphLayout(context, new RunStyles(context)) { Evaluator = new FieldEvaluator(context, first) { OfFirstBlocks = true } };
         paginator = new Paginator(context, layout, own);
         renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
         Draw(paginator.Paginate(first, own.ReadingSection(), pages: PagesAtOnce));

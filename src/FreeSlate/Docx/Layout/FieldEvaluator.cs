@@ -456,8 +456,17 @@ public sealed class FieldEvaluator
 
     static readonly ConditionalWeakTable<DocumentContext, object> storiesReadLines = new();
 
+    /// <summary>
+    /// Whether the blocks are a long body's first ones while the rest is read (see WordDocument.Early): a field keeps the result
+    /// Word saved rather than show an error for what stands after them.
+    /// </summary>
+    public bool OfFirstBlocks { get; init; }
+
     /// <summary>A field's result, or null where it keeps the one Word saved; <paramref name="on"/> is the page of a header or footer.</summary>
-    public string? Value(FieldInline field, PageBox? on)
+    public string? Value(FieldInline field, PageBox? on) =>
+        Evaluated(field, on) is { } value && !(OfFirstBlocks && IsError(value)) ? value : null;
+
+    string? Evaluated(FieldInline field, PageBox? on)
     {
         var words = WordsOf(field);
         var (type, numberFormat) = KindOf(field);

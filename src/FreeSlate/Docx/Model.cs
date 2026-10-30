@@ -1789,7 +1789,8 @@ public sealed partial class ModelReader(DocumentContext context)
         var w = Wml.W;
         var story = begin.Ancestors().FirstOrDefault(a => a.Name == w + "txbxContent" || a.Name == w + "body" || a.Name == w + "hdr" || a.Name == w + "ftr"
             || a.Name == w + "footnote" || a.Name == w + "endnote" || a.Name == w + "comment");
-        if (story == null)
+        // (Of a body still being read its end may come yet.)
+        if (story == null || story == bodyElement && context.Loading)
             return false;
         if (!unclosed.TryGetValue(story, out var open))
         {
