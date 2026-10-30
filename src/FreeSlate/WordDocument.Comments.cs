@@ -52,9 +52,11 @@ public sealed partial class WordDocument
     void ReadComments()
     {
         var read = reader.CommentStories();
+        var part = CommentsPart();
         foreach (var (id, blocks) in read)
         {
-            if (commentsRead.TryGetValue(id, out var before))
+            // As it read from these bytes before (undoing, doing again; see readFrom), else as it reads now.
+            if (((part != null ? Recalled(part, ("comment", id)) : null) ?? commentsRead.GetValueOrDefault(id)) is { } before)
                 ModelReader.Keep(before, blocks);
         }
         commentsRead = read;
@@ -68,7 +70,6 @@ public sealed partial class WordDocument
                 Collect(commentParagraphs, block, block);
             }
         }
-        var part = CommentsPart();
         commentsIndexed = (reader, part, part != null ? partBytes.GetValueOrDefault(part) : null);
     }
 

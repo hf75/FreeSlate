@@ -82,7 +82,8 @@ public sealed partial class WordDocument
                 if (id is "separator" or "continuationSeparator" or "continuationNotice")
                     continue;
                 var key = new NoteKey(endnote, id);
-                if (wasRead.TryGetValue(key, out var before))
+                // As it read from these bytes before (undoing, doing again; see readFrom), else as it reads now.
+                if (((NotePart(endnote) is { } notesPart ? Recalled(notesPart, key) : null) ?? wasRead.GetValueOrDefault(key)) is { } before)
                     ModelReader.Keep(before, blocks);
                 notesRead[key] = blocks;
                 if (elements.TryGetValue(id, out var element))

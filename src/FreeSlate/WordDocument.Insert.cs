@@ -358,6 +358,8 @@ public sealed partial class WordDocument
     /// <summary>Gives parts new bytes, or takes them away (null), in the package and as the document reads now (see partBytes).</summary>
     void Put(IReadOnlyDictionary<string, byte[]?> changes)
     {
+        foreach (var name in changes.Keys)
+            Remember(name);
         var builder = partBytes.ToBuilder();
         foreach (var (name, bytes) in changes)
         {
@@ -377,10 +379,53 @@ public sealed partial class WordDocument
             var (had, has) = (partBytes.TryGetValue(name, out var now), to.TryGetValue(name, out var then));
             if (had && has && ReferenceEquals(now, then))
                 continue;
+            Remember(name);
             Set(name, has ? then : package.Original(name));
         }
         partBytes = to;
     }
+
+    /// <summary>
+    /// The blocks the stories of a part were read with from bytes it had (by those bytes; as opened, by its name): a
+    /// header's or footer's (by its part's name), the notes' (by NoteKey), the comments' (by ("comment", id)), whose ids
+    /// they take back where undoing or doing again reads them from those bytes again (see Recalled). By place and text
+    /// alone, paragraphs a change took away and undoing brings back would come with ids of their own.
+    /// </summary>
+    readonly System.Runtime.CompilerServices.ConditionalWeakTable<byte[], Dictionary<object, List<Block>>> readFrom = new();
+    readonly Dictionary<string, Dictionary<object, List<Block>>> readOpened = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The stories of a part as they read now, remembered for the bytes it has, before it takes others (see readFrom).</summary>
+    void Remember(string part)
+    {
+        var read = new Dictionary<object, List<Block>>();
+        if (reader.Stories.TryGetValue(part, out var story))
+            read[part] = [.. story];
+        if (notesKnown && !NotesChanged())
+        {
+            foreach (var (key, blocks) in notesRead)
+            {
+                if (string.Equals(NotePart(key.Endnote), part, StringComparison.OrdinalIgnoreCase))
+                    read[key] = [.. blocks];
+            }
+        }
+        if (string.Equals(commentsIndexed.Part, part, StringComparison.OrdinalIgnoreCase) && ReferenceEquals(commentsIndexed.Reader, reader)
+            && ReferenceEquals(commentsIndexed.Bytes, partBytes.GetValueOrDefault(part)))
+        {
+            foreach (var (id, blocks) in commentsRead)
+                read[("comment", id)] = [.. blocks];
+        }
+        if (read.Count == 0)
+            return;
+        if (!partBytes.TryGetValue(part, out var bytes))
+            readOpened[part] = read;
+        else if (bytes != null)
+            readFrom.AddOrUpdate(bytes, read);
+    }
+
+    /// <summary>The blocks a story of a part was read with from the bytes the part has now, where it was read from them before (see readFrom), or null.</summary>
+    List<Block>? Recalled(string part, object key) =>
+        (partBytes.TryGetValue(part, out var bytes) ? bytes != null && readFrom.TryGetValue(bytes, out var read) ? read : null : readOpened.GetValueOrDefault(part))
+            ?.GetValueOrDefault(key);
 
     void Set(string name, byte[]? bytes)
     {

@@ -1046,8 +1046,9 @@ public sealed partial class ModelReader(DocumentContext context)
         if (stories.TryGetValue(part, out var blocks))
             return blocks;
         blocks = ReadStory(part);
-        // Read for a document read whole again, its paragraphs take the ids they had (see KeepStories).
-        if (storiesBefore.Remove(part, out var before))
+        // Read for a document read whole again, or again after the layout stopped showing it, its paragraphs take the ids
+        // they had (see KeepStories, storiesGone).
+        if (storiesBefore.Remove(part, out var before) || storiesGone.Remove(part, out before))
             Keep(before, blocks);
         storyOrder.Add(part);
         StoriesRead++;
@@ -1074,11 +1075,25 @@ public sealed partial class ModelReader(DocumentContext context)
     /// </summary>
     readonly Dictionary<string, List<Block>> storiesBefore = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The stories another reader of the document read (before it was read whole again), whose paragraphs' ids those this one reads take.</summary>
+    /// <summary>
+    /// The stories forgotten where the layout no longer showed them (a change took away the sections that did, see
+    /// ReadAll), whose ids they take back where they are read again (undoing brings those sections back).
+    /// </summary>
+    readonly Dictionary<string, List<Block>> storiesGone = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The stories another reader of the document read (before it was read whole again), whose paragraphs' ids those this
+    /// one reads take; with those it had kept from a reader before it and not read since (a header the document read as
+    /// it was then did not show), which would else come with ids of their own when this one reads them.
+    /// </summary>
     public void KeepStories(ModelReader before)
     {
         foreach (var part in before.storyOrder)
             storiesBefore[part] = before.stories[part];
+        foreach (var (part, blocks) in before.storiesBefore)
+            storiesBefore.TryAdd(part, blocks);
+        foreach (var (part, blocks) in before.storiesGone)
+            storiesGone.TryAdd(part, blocks);
     }
 
     /// <summary>The stories the reader before read (see KeepStories) read, where they were not yet, in the order it read them.</summary>
@@ -1164,7 +1179,10 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             numberSteps.Remove(story);
             if (!named.Contains(story) && stories.Remove(story, out var gone))
+            {
                 read.Add((story, gone));
+                storiesGone[story] = gone;
+            }
         }
         storyOrder.Clear();
         foreach (var story in order)
@@ -1177,6 +1195,8 @@ public sealed partial class ModelReader(DocumentContext context)
                 Keep(before, blocks);
                 read.Add((story, before));
             }
+            else if (storiesGone.Remove(story, out var gone))
+                Keep(gone, blocks);
             stories[story] = blocks;
             storyOrder.Add(story);
         }

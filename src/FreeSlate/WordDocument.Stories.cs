@@ -67,6 +67,9 @@ public sealed partial class WordDocument
                 else
                     storiesChanged.Remove(story);
             }
+            // Read from bytes it had before (undoing, doing again), the story takes the ids it had then (see readFrom).
+            if (reader.Stories.TryGetValue(part, out var now) && Recalled(part, part) is { } then)
+                ModelReader.Keep(then, now);
         }
         layout?.Forget(gone);
         FieldEvaluator.StoriesChanged(context);
