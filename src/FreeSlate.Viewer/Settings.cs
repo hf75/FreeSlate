@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace FreeSlate.Viewer;
 
@@ -18,7 +19,7 @@ sealed class Settings
 
     public static Settings Load()
     {
-        try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(Location)) ?? new(); }
+        try { return JsonSerializer.Deserialize(File.ReadAllText(Location), SettingsJson.Default.Settings) ?? new(); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { return new(); }
     }
 
@@ -27,8 +28,12 @@ sealed class Settings
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Location)!);
-            File.WriteAllText(Location, JsonSerializer.Serialize(this));
+            File.WriteAllText(Location, JsonSerializer.Serialize(this, SettingsJson.Default.Settings));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 }
+
+/// <summary>How settings are read and written, generated when the viewer is built (no reflection at run time: NativeAOT).</summary>
+[JsonSerializable(typeof(Settings))]
+sealed partial class SettingsJson : JsonSerializerContext;

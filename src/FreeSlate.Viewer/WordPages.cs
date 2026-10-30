@@ -30,7 +30,7 @@ static class WordPages
 
     static Process? running;
 
-    public static bool Installed => Type.GetTypeFromProgID("Word.Application") != null;
+    public static bool Installed => System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported && Type.GetTypeFromProgID("Word.Application") != null;
 
     /// <summary>Ends the Word of a rendering in progress (when the viewer closes).</summary>
     public static void Abort()
