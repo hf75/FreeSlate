@@ -1051,11 +1051,39 @@ static class TextEdits
             // SessionCheck on docx/generated/equations and powertools/WC/WC023-Table-4-Row-Image-After-Delete-1-Row).
             if (p.Descendants(Equations.MathLayout.M + "oMath").Any(m => ParagraphOf(m) == p))
                 throw new NotSupportedException("An equation is not taken away as a tracked change.");
+            // A simple field's runs deleted would leave the field standing (and a w:del is not to hold a w:fldSimple): it
+            // goes as the complex field it stands for (found with SessionCheck, changes tracked, on docx/local/fsf3-a: a
+            // STYLEREF in a header's paragraph taken away went into the paragraph joined after it).
+            foreach (var field in p.Descendants(w + "fldSimple").Where(f => ParagraphOf(f) == p).Reverse().ToList())
+                Complex(field);
             foreach (var run in p.Descendants(w + "r").Where(r => ParagraphOf(r) == p).ToList())
                 Deleted(run, tracking);
             if (!MarkDeleted(p))
                 Marked(p, "del", tracking);
         }
+    }
+
+    /// <summary>
+    /// A simple field (w:fldSimple) written as the complex field it stands for: its beginning, instruction, separator and end
+    /// in runs of their own in the format of its first run, its result between them as it was (fields within it, done
+    /// before it, as their complex fields too).
+    /// </summary>
+    static void Complex(XElement field)
+    {
+        var w = field.Name.Namespace;
+        var format = field.Descendants(w + "r").FirstOrDefault()?.Element(w + "rPr");
+        XElement Run(XElement content) => new(w + "r", format != null ? new XElement(format) : null, content);
+        var result = field.Nodes().ToList();
+        foreach (var node in result)
+            node.Remove();
+        // (Its data, of a legacy form field, goes with its beginning.)
+        var data = result.OfType<XElement>().Where(e => e.Name == w + "fldData").ToList();
+        result.RemoveAll(n => n is XElement e && data.Contains(e));
+        XElement Character(string type) => new(w + "fldChar", new XAttribute(w + "fldCharType", type),
+            type == "begin" ? field.Attributes().Where(a => a.Name == w + "fldLock" || a.Name == w + "dirty").Select(a => new XAttribute(a)) : null,
+            type == "begin" ? data : null);
+        field.ReplaceWith([Run(Character("begin")), Run(new XElement(w + "instrText", new XAttribute(XNamespace.Xml + "space", "preserve"), field.Attribute(w + "instr")?.Value ?? "")),
+            Run(Character("separate")), .. result, Run(Character("end"))]);
     }
 
     /// <summary>A table row marked deleted as a tracked change (a w:del in its w:trPr, after an insertion of it, before a change of its properties: CT_TrPr).</summary>
