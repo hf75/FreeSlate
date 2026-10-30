@@ -215,6 +215,13 @@ static class TextEdits
             throw new ArgumentException("The text holds control characters other than tabs and breaks; paragraphs are not text.", nameof(text));
         Between(paragraph, offset);
         Between(paragraph, offset + length);
+        // Typing into what a content control shows as its placeholder replaces it, deleting there leaves it (see Placeholder).
+        if (Placeholder(paragraph, offset, length) is var (control, _, last))
+        {
+            if (offset + length > last)
+                throw new NotSupportedException("The range reaches out of a content control's placeholder.");
+            return text.Length == 0 ? stretch.Written([]) : ReplacePlaceholder(stretch, control, text, tracking);
+        }
         if (tracking != null)
             return ReplaceTracked(stretch, paragraph, offset, length, text, tracking);
         var parts = Parts(stretch, paragraph);
@@ -231,6 +238,13 @@ static class TextEdits
             at = e;
             if (e == s)
                 continue;
+            // A placeholder the range reaches into from outside stays (see Placeholder), new text going before it.
+            if (inline.Placeholder is { } shown)
+            {
+                if (s >= offset && after == null)
+                    after = stretch.Find(shown);
+                continue;
+            }
             var t = TextOf(stretch, inline, parts);
             // Text shown a second time (a placeholder showing another's) is not where it stands.
             if (t != null && !seen.Add(t))
@@ -303,6 +317,146 @@ static class TextEdits
         if (target == null && text.Length > 0)
             paragraphs.Add(NewRun(parts, before, after, text));
         return stretch.Written(Outermost(paragraphs).Select(p => (p, (IEnumerable<XElement>)[p])));
+    }
+
+    /// <summary>
+    /// The content control showing its placeholder (see Inline.Placeholder) a range of a paragraph's text goes into,
+    /// with where its text begins and ends: typing anywhere in it replaces its content, Backspace and Delete there leave
+    /// it as it is, a selection reaching into it from outside takes the text outside it alone (measured in Word 365 by
+    /// COM, scratchpad b7/edge.vbs: of "City: " and a plain text control showing Word's default placeholder, X typed at
+    /// its third character, at its start or its end, or over its characters from the third on, leaves "City: X", the X
+    /// in the control; a character of it deleted, or a selection in it, leaves it as it was; X typed over the space before
+    /// it and its first three characters leaves "City:X" and the placeholder). A range goes into it where it begins in it
+    /// (from its start on), an insertion where it stands after its first character up to its end, or at its start where
+    /// no text before it goes on there (see Continued). Null where the range goes into none.
+    /// </summary>
+    internal static (XElement Control, int Start, int End)? Placeholder(ParagraphBlock paragraph, int offset, int length)
+    {
+        foreach (var (control, s, e) in Placeholders(paragraph))
+        {
+            if (length > 0 ? s <= offset && offset < e : s < offset && offset <= e || offset == s && !Continued(paragraph, s))
+                return (control, s, e);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The stretches of a paragraph's text that content controls show as their placeholders (see Inline.Placeholder),
+    /// each with its control: the whole text of a paragraph a block control holds.
+    /// </summary>
+    static List<(XElement Control, int Start, int End)> Placeholders(ParagraphBlock paragraph)
+    {
+        if (paragraph.Placeholder is { } block)
+            return [(block, paragraph.TextOffset, ParagraphText.End(paragraph))];
+        var shown = new List<(XElement Control, int Start, int End)>();
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var (s, e) = (at, at + ParagraphText.Length(inline));
+            at = e;
+            if (e == s || inline.Placeholder is not { } control)
+                continue;
+            if (shown.Count > 0 && shown[^1].Control == control && shown[^1].End == s)
+                shown[^1] = (control, shown[^1].Start, e);
+            else
+                shown.Add((control, s, e));
+        }
+        return shown;
+    }
+
+    /// <summary>Whether text typed at a place of a paragraph goes on with text before it there (of a run of the paragraph's own: see Replace).</summary>
+    static bool Continued(ParagraphBlock paragraph, int offset)
+    {
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            at += ParagraphText.Length(inline);
+            if (at == offset && ParagraphText.Length(inline) > 0)
+                return inline is TextInline { Xml.Name.LocalName: "t", Placeholder: null };
+            if (at > offset)
+                break;
+        }
+        return false;
+    }
+
+    /// <summary>The stretch of the first placeholder a range of a paragraph's text reaches into (see Placeholders), or null.</summary>
+    internal static (int Start, int End)? Reached(ParagraphBlock paragraph, int offset, int length) =>
+        Placeholders(paragraph).FirstOrDefault(p => Math.Max(p.Start, offset) < Math.Min(p.End, offset + length)) is { Control: not null } reached
+            ? (reached.Start, reached.End) : null;
+
+    /// <summary>The text of the placeholders a range of a paragraph's text reaches into from outside, which replacing the range leaves (see Replace).</summary>
+    internal static string Kept(ParagraphBlock paragraph, int offset, int length)
+    {
+        var text = ParagraphText.Of(paragraph);
+        var kept = new System.Text.StringBuilder();
+        foreach (var (_, s, e) in Placeholders(paragraph))
+        {
+            if (Math.Max(s, offset) < Math.Min(e, offset + length))
+                kept.Append(text, Math.Max(s, offset) - paragraph.TextOffset, Math.Min(e, offset + length) - Math.Max(s, offset));
+        }
+        return kept.ToString();
+    }
+
+    /// <summary>
+    /// A content control's placeholder replaced by text typed into it (see Placeholder), as Word replaces it (measured in
+    /// Word 365 by COM, scratchpad b6/sphprobe.vbs, b7/edge.vbs, b7/track.vbs): the text in a run of its own in place of
+    /// the control's content (a block control's in its first paragraph, the others gone), in the format the control gives
+    /// what is put into it (w:sdtPr/w:rPr, of DefaultTextStyle), else in none; the control no longer shows its placeholder
+    /// (w:showingPlcHdr gone), a temporary one (w:temporary) goes, the text standing in its place; as a tracked change the
+    /// run stands in a w:ins, the placeholder not marked deleted. Marks of ranges in it stay. Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// The control takes no text typed (a drop-down list, a picture, a check box, a building block's gallery, a group),
+    /// its content is locked, or it is bound to data (which the text would go into too); nothing changes.
+    /// </exception>
+    static string ReplacePlaceholder(Stretch stretch, XElement control, string text, Tracking? tracking)
+    {
+        var sdt = stretch.Find(control) ?? throw new NotSupportedException("The content control is not where it was read.");
+        var w = sdt.Name.Namespace;
+        var properties = sdt.Element(w + "sdtPr");
+        var content = sdt.Element(w + "sdtContent") ?? throw new NotSupportedException("The content control has no content.");
+        if (properties?.Elements().Any(e => e.Name.LocalName is "dropDownList" or "picture" or "checkbox" or "docPartObj" or "docPartList" or "citation"
+                or "bibliography" or "equation" or "group") == true)
+            throw new NotSupportedException("The content control takes no text typed into it.");
+        if (properties?.Element(w + "lock")?.Attribute(w + "val")?.Value is "contentLocked" or "sdtContentLocked")
+            throw new NotSupportedException("The content control's content is locked.");
+        if (properties?.Element(w + "dataBinding") != null)
+            throw new NotSupportedException("The content control's text is bound to data (w:dataBinding).");
+        var t = new XElement(w + "t");
+        XElement put = new(w + "r", properties?.Element(w + "rPr") is { } format ? new XElement(format) : null, t);
+        SetContent(t, text);
+        if (tracking != null)
+        {
+            var ins = tracking.Mark(w, "ins");
+            ins.Add(put);
+            put = ins;
+        }
+        var temporary = properties?.Element(w + "temporary") is { } once && once.Attribute(w + "val")?.Value is null or "1" or "true" or "on";
+        properties?.Element(w + "showingPlcHdr")?.Remove();
+        if (content.Elements().Any(e => e.Name.LocalName is "p" or "tbl"))
+        {
+            var first = content.Elements(w + "p").FirstOrDefault();
+            if (content.Elements().Where(e => e != first).Any(e => e.DescendantsAndSelf(w + "sectPr").Any()))
+                throw new NotSupportedException("The content control's placeholder ends a section.");
+            var paragraph = new XElement(w + "p", first?.Attributes(), first?.Element(w + "pPr") is { } pPr ? new XElement(pPr) : null,
+                first?.Elements().Where(IsMark).Select(e => new XElement(e)), put);
+            List<XElement> blocks = [.. content.Elements().Where(IsMark).Select(e => new XElement(e)), paragraph];
+            // (In place, where the namespaces they are written with are declared.)
+            if (temporary)
+            {
+                sdt.ReplaceWith(blocks);
+                return stretch.Written([(sdt, blocks)]);
+            }
+            content.ReplaceNodes(blocks);
+            return stretch.Written([(sdt, [sdt])]);
+        }
+        var holder = ParagraphOf(sdt);
+        List<XElement> inlines = [.. content.Elements().Where(IsMark).Select(e => new XElement(e)), put];
+        if (temporary)
+            sdt.ReplaceWith(inlines);
+        else
+            content.ReplaceNodes(inlines);
+        return stretch.Written([(holder, [holder])]);
     }
 
     /// <summary>
@@ -1757,6 +1911,12 @@ static class TextEdits
             at = e;
             if (e == s)
                 continue;
+            if (inline.Placeholder is { } shown)
+            {
+                if (s >= offset && after == null)
+                    after = stretch.Find(shown);
+                continue;
+            }
             var t = TextOf(stretch, inline, parts);
             var within = Math.Max(s, offset) < Math.Min(e, end);
             if (t == null && Foreign(stretch, inline, parts))
@@ -1867,6 +2027,8 @@ static class TextEdits
                 SplitBefore(after);
             Out(after.Parent!, tracking, after: false).AddBeforeSelf(ins);
         }
+        else if (after?.AncestorsAndSelf().FirstOrDefault(a => a.Parent == p) is { } holder)
+            holder.AddBeforeSelf(ins);
         else
             p.Add(ins);
         return p;

@@ -373,8 +373,17 @@ public sealed partial class WordDocument : IEditableDocument
     public void Replace(int paragraph, int offset, int length, string text)
     {
         var (p, top) = Find(paragraph);
+        // Text put into a content control's placeholder takes its place, characters taken away there leave it, and a range
+        // reaching into it from outside leaves it (see TextEdits.Placeholder).
+        var shown = TextEdits.Placeholder(p, offset, length);
+        if (shown is var (_, _, last) && text.Length == 0 && offset + length <= last)
+            return;
+        if (shown is var (control, _, _))
+            ShownAlike(control);
         var expected = markup ? null : ParagraphText.Of(p) is var now && offset - p.TextOffset is var at and >= 0 && at + length <= now.Length
-            ? now.Remove(at, length).Insert(at, text) : null;
+            ? shown is var (_, start, end) ? now.Remove(start - p.TextOffset, end - start).Insert(start - p.TextOffset, text)
+                : now.Remove(at, length).Insert(at, TextEdits.Kept(p, offset, length)).Insert(at, text)
+            : null;
         Change(top, top, (stretch, tracking) => TextEdits.Replace(stretch, p, offset, length, text, tracking));
         if (expected != null && !Reads(paragraph, expected))
             throw Refused("The paragraph would not read so: the place is in what the document computes or keeps.");
@@ -471,6 +480,59 @@ public sealed partial class WordDocument : IEditableDocument
                 && both.StartsWith(joinedText, StringComparison.Ordinal) && Reads(apart, both[joinedText.Length..])))
             throw Refused("The paragraphs would not join so: one holds what the document computes or keeps.");
         return id;
+    }
+
+    public (int Start, int End)? Placeholder(int paragraph, int offset, int length)
+    {
+        var p = Find(paragraph).Paragraph;
+        return TextEdits.Placeholder(p, offset, length) is var (_, start, end) ? (start, end) : TextEdits.Reached(p, offset, length);
+    }
+
+    /// <summary>
+    /// Checks that text put into a content control's placeholder leaves what the later controls of its docPart show as
+    /// it was: those that show its content (see ModelReader.Shown) hold the same of their own, which they show once it
+    /// shows its placeholder no longer, as Word writes what they showed into them on saving (measured in Word 365 by COM,
+    /// scratchpad b6/sphprobe.vbs: of three controls of docx/local/sph-sep, "Alpha one", "Bravo two" and "Charlie three",
+    /// all showing "Alpha one", X typed into the first leaves the others holding "Alpha one"). Word makes its forms so
+    /// (its controls of one docPart alike); where they differ the change is refused, as the document would show them
+    /// otherwise.
+    /// </summary>
+    void ShownAlike(XElement control)
+    {
+        // The controls that show the control's content: read from its elements, standing in another.
+        bool Within(XElement? element) => element != null && element.Ancestors().Contains(control);
+        KnowStories();
+        var showing = new HashSet<XElement>();
+        foreach (var (paragraph, _) in paragraphs.Values.Concat(storyParagraphs.Values))
+        {
+            if (paragraph.Placeholder is { } block && block != control && Within(paragraph.Element))
+                showing.Add(block);
+            foreach (var inline in paragraph.Content)
+            {
+                if (inline.Placeholder is { } shown && shown != control && Within(inline.Xml))
+                    showing.Add(shown);
+            }
+        }
+        var w = control.Name.Namespace;
+        if (showing.Count == 0 || control.Element(w + "sdtContent") is not { } content)
+            return;
+        foreach (var other in showing)
+        {
+            // In an inline control a block control's first paragraph shows, its runs.
+            var own = other.Element(w + "sdtContent")?.Elements().ToList() ?? [];
+            var shown = own.Any(e => e.Name == w + "p") || content.Element(w + "p") is not { } first ? content.Elements() : first.Elements().Where(e => e.Name != w + "pPr");
+            if (Plain(own) != Plain(shown))
+                throw new NotSupportedException("Later content controls show the placeholder and hold other text of their own.");
+        }
+
+        // The elements' markup without the ids Word gives its editing sessions and paragraphs (w:rsid…, w14:paraId, w14:textId).
+        static string Plain(IEnumerable<XElement> elements) => string.Concat(elements.Select(e =>
+        {
+            var copy = new XElement(e);
+            foreach (var id in copy.DescendantsAndSelf().Attributes().Where(a => a.Name.LocalName.StartsWith("rsid", StringComparison.Ordinal) || a.Name.LocalName is "paraId" or "textId").ToList())
+                id.Remove();
+            return copy.ToString(SaveOptions.DisableFormatting);
+        }));
     }
 
     /// <summary>
@@ -1213,9 +1275,14 @@ public sealed partial class WordDocument : IEditableDocument
         return top.Parent == body && body != null ? top : null;
     }
 
-    /// <summary>The first and the last element a block was read from: a paragraph's parts where the reader joined several (see ParagraphBlock.Parts).</summary>
+    /// <summary>
+    /// The first and the last element a block was read from: a paragraph's parts where the reader joined several (see
+    /// ParagraphBlock.Parts); of a paragraph a block control shows as its placeholder the control, which may show another
+    /// control's paragraph (see ParagraphBlock.Placeholder).
+    /// </summary>
     static XElement First(Block block) => block switch
     {
+        ParagraphBlock { Placeholder: { } control } => control,
         ParagraphBlock paragraph => paragraph.Parts?[0] ?? paragraph.Element,
         TableBlock table => table.Element,
         _ => throw new ArgumentOutOfRangeException(nameof(block)),
@@ -1223,6 +1290,7 @@ public sealed partial class WordDocument : IEditableDocument
 
     static XElement Last(Block block) => block switch
     {
+        ParagraphBlock { Placeholder: { } control } => control,
         ParagraphBlock paragraph => paragraph.Parts?[^1] ?? paragraph.Element,
         TableBlock table => table.Element,
         _ => throw new ArgumentOutOfRangeException(nameof(block)),

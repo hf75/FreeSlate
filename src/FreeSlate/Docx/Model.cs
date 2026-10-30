@@ -11,6 +11,13 @@ public abstract record Inline(RunFormat Format)
     /// computed field result, an imported HTML run).
     /// </summary>
     public XElement? Xml { get; init; }
+
+    /// <summary>
+    /// The content control showing its placeholder (a w:sdt with w:showingPlcHdr) the inline stands in, the innermost:
+    /// its own content, or the first control's of its docPart, which a later one shows (see ModelReader.Shown) and whose
+    /// elements Xml then names; typing there replaces the control's content (see TextEdits.Placeholder). Null elsewhere.
+    /// </summary>
+    public XElement? Placeholder { get; init; }
 }
 
 /// <summary>Text of one run (catalog: run.basic).</summary>
@@ -191,6 +198,13 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
     /// without the page or column break that began it.
     /// </summary>
     public int TextOffset { get; init; }
+
+    /// <summary>
+    /// The block content control showing its placeholder the paragraph was read in (see Inline.Placeholder): its own
+    /// paragraph, or one of the first control's of its docPart, which a later one shows and whose paragraph Element then
+    /// is; its whole text is the placeholder. Null elsewhere.
+    /// </summary>
+    public XElement? Placeholder { get; init; }
 }
 
 /// <summary>A table (catalog: table.structure); laid out by the table engine.</summary>
@@ -1547,7 +1561,20 @@ public sealed partial class ModelReader(DocumentContext context)
                         }
                     }
                     else
+                    {
                         ReadBlocks(Shown(e, content, block: true), blocks, ref pending);
+                        if (e.Child("sdtPr").Child("showingPlcHdr") != null)
+                        {
+                            for (var k = start; k < blocks.Count; k++)
+                            {
+                                if (blocks[k] is ParagraphBlock { Placeholder: null } paragraph)
+                                {
+                                    Placeholders(paragraph.Content, 0, e);
+                                    blocks[k] = paragraph with { Placeholder = e };
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
             case "customXml" or "smartTag" or "ins" or "moveTo":
@@ -2174,10 +2201,25 @@ public sealed partial class ModelReader(DocumentContext context)
                             field.Target(content).Add(new TextInline(bound, format) { Xml = e });
                         }
                         else
+                        {
+                            var from = content.Count;
                             ReadInlines(Shown(e, sdtContent, block: false), paragraphStyle, content, field);
+                            if (e.Child("sdtPr").Child("showingPlcHdr") != null)
+                                Placeholders(content, from, e);
+                        }
                     }
                     break;
             }
+        }
+    }
+
+    /// <summary>The inlines from one on that stand in no placeholder of their own marked as standing in a control's (see Inline.Placeholder).</summary>
+    static void Placeholders(List<Inline> content, int from, XElement control)
+    {
+        for (var k = from; k < content.Count; k++)
+        {
+            if (content[k].Placeholder == null)
+                content[k] = content[k] with { Placeholder = control };
         }
     }
 

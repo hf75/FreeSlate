@@ -61,9 +61,19 @@ public interface IEditableDocument : IDisposable
     /// <summary>
     /// Replaces so many characters of a paragraph's text from a place by other text, its tabs ("\t"), line breaks ("\v"),
     /// page and column breaks ("\f", "\u000E") as the document's own, as the Tab key, Shift+Enter and Ctrl+Enter put them
-    /// in (on slides, which lack page and column breaks, as line breaks); it holds no paragraph breaks.
+    /// in (on slides, which lack page and column breaks, as line breaks); it holds no paragraph breaks. What a content
+    /// control shows as its placeholder goes as Word takes it (see Placeholder).
     /// </summary>
     void Replace(int paragraph, int offset, int length, string text);
+
+    /// <summary>
+    /// The stretch of a paragraph's text a content control shows as its placeholder where a range of it goes into one,
+    /// else the first one it reaches into from outside: text put in where it goes into one (see Replace) takes the whole
+    /// placeholder's place, taking characters away there leaves it as it is, and a range reaching into one from outside
+    /// is replaced around it, as Word does with what it shows so (see Docx.TextEdits.Placeholder); null elsewhere (a
+    /// slide's placeholder shows its prompt in no paragraph).
+    /// </summary>
+    (int Start, int End)? Placeholder(int paragraph, int offset, int length);
 
     /// <summary>
     /// The word a place in a paragraph's text stands inside, which the application's character formatting takes where no

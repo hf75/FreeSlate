@@ -176,14 +176,25 @@ public sealed class EditSession(IEditableDocument document)
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
         Act(typing && lines.Length == 1 && !Selecting, () =>
         {
-            var at = DeleteSelection(typing: true);
+            // Typed into what a content control shows as its placeholder (the cursor in it, or a selection within it), the
+            // text takes its whole place; over a selection reaching into one from outside, the selection's text around it
+            // (see IEditableDocument.Placeholder).
+            (int Start, int End)? shown = null;
+            if (lines[0].Length > 0 && Caret.Paragraph == Anchor.Paragraph && document.Contains(Caret.Paragraph))
+            {
+                var (from, to) = (Math.Min(Caret.Offset, Anchor.Offset), Math.Max(Caret.Offset, Anchor.Offset));
+                if (document.Placeholder(Caret.Paragraph, from, to - from) is var (s, e))
+                    shown = from >= s && to <= e ? (s, e) : (from, to);
+            }
+            var at = shown is var (begin, _) ? Caret with { Offset = begin } : DeleteSelection(typing: true);
             for (var k = 0; k < lines.Length; k++)
             {
                 if (k > 0)
                     at = new TextPlace(document.Split(at.Paragraph, at.Offset), 0);
                 if (lines[k].Length > 0)
                 {
-                    document.Replace(at.Paragraph, at.Offset, 0, lines[k]);
+                    var (offset, length) = k == 0 && shown is var (s, e) ? (s, e - s) : (at.Offset, 0);
+                    document.Replace(at.Paragraph, offset, length, lines[k]);
                     if (Pending is { } format)
                         document.Format(at.Paragraph, at.Offset, lines[k].Length, format);
                     at = at with { Offset = at.Offset + lines[k].Length };

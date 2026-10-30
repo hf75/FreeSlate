@@ -237,6 +237,8 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>A slide's paragraph is one of its own: it has no seams (see IEditableDocument.Seams).</summary>
     public IReadOnlyList<int> Seams(int paragraph) => [];
 
+    public (int Start, int End)? Placeholder(int paragraph, int offset, int length) => null;
+
     public int Separate(int paragraph, int offset) => throw new NotSupportedException("A slide's paragraphs are each one of their own.");
 
     /// <summary>
