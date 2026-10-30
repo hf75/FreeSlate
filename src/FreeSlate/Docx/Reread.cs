@@ -371,7 +371,14 @@ public sealed partial class ModelReader
                 result.AddRange(CollectionsMarshal.AsSpan(body)[i..]);
                 break;
             }
-            if (!Changed(point.Steps, until))
+            // Its steps begin where reading it begins: at the first child before it where reading could not begin afresh
+            // (a paragraph whose mark is deleted runs into it; found with docx/local/ns-over and tracked changes: a list
+            // item after one taken away took a note's answer).
+            var opening = top;
+            while (!bodyPoints[opening].Fresh && ChildBefore(opening) is { } earlier && bodyPoints.ContainsKey(earlier))
+                opening = earlier;
+            var begins = bodyPoints[opening].Steps;
+            if (!Changed(begins, until))
             {
                 result.AddRange(CollectionsMarshal.AsSpan(body)[i..j]);
                 i = j;
@@ -397,7 +404,7 @@ public sealed partial class ModelReader
                     return Undone();
                 marks.Insert(0, e = previous);
             }
-            if (Read([.. marks, top], answers.Skip(point.Steps + shift - start).Take(until - point.Steps)) is not { } again || again.Blocks.Count != j - i)
+            if (Read([.. marks, top], answers.Skip(begins + shift - start).Take(until - begins)) is not { } again || again.Blocks.Count != j - i)
                 return Undone();
             Keep(body.GetRange(i, j - i), again.Blocks);
             result.AddRange(again.Blocks);
