@@ -1774,6 +1774,9 @@ public sealed partial class ModelReader(DocumentContext context)
         {
             ReadInlines(new XElement(p.Name, p.Elements().Where(e => e.Name.Namespace != Equations.MathLayout.M)), styleId, content, field);
             ReadMath(new XElement(Equations.MathLayout.M + "oMathPara", maths.Select(o => new XElement(o))), styleId, content);
+            // One equation alone is changed where it stands in the paragraph (see TextEdits): its inline is read from it.
+            if (maths.Count == 1 && content.Count > 0 && content[^1] is MathInline lone)
+                content[^1] = lone with { Xml = maths[0] };
         }
         else
             ReadInlines(p, styleId, content, field);

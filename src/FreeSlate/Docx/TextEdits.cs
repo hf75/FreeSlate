@@ -138,9 +138,12 @@ static class TextEdits
         t.ReplaceWith(nodes);
     }
 
-    /// <summary>Whether an inline is taken away whole with the element it was read from (a tab, a break, a symbol, a drawing).</summary>
+    /// <summary>
+    /// Whether an inline is taken away whole with the element it was read from (a tab, a break, a symbol, a drawing, an
+    /// equation: its m:oMath, or the m:oMathPara of one shown on its own line, which leaves its paragraph empty).
+    /// </summary>
     static bool Removable(Inline inline) =>
-        inline is TabInline or BreakInline or DrawingInline or AnchorInline
+        inline is TabInline or BreakInline or DrawingInline or AnchorInline or MathInline
         || inline is TextInline { Xml.Name.LocalName: "sym" or "noBreakHyphen" or "softHyphen" };
 
     /// <summary>The paragraph (w:p) an element stands in, nearest.</summary>
