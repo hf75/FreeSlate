@@ -41,6 +41,9 @@ sealed class Stretch
     public XElement? Find(XElement? read) =>
         read != null && where(read) is var at and >= 0 && starts.TryGetValue(at, out var found) && found.Name.LocalName == read.Name.LocalName ? found : null;
 
+    /// <summary>Another text of the stretch's own parsed within the tags around it.</summary>
+    public XDocument Parsed(string own) => XDocument.Parse(Text.Text[..head] + own + Text.Text[^tail..]);
+
     /// <summary>The stretch's own text with the given elements (of Xml) written anew in their places, each with what follows it.</summary>
     public string Written(IEnumerable<(XElement Element, IEnumerable<XElement> Written)> elements) =>
         Spliced(elements.Select(e =>
@@ -143,7 +146,7 @@ static class TextEdits
     /// equation: its m:oMath, or the m:oMathPara of one shown on its own line, which leaves its paragraph empty).
     /// </summary>
     static bool Removable(Inline inline) =>
-        inline is TabInline or BreakInline or DrawingInline or AnchorInline or MathInline
+        inline is TabInline or BreakInline or DrawingInline or AnchorInline or MathInline or NoteReferenceInline
         || inline is TextInline { Xml.Name.LocalName: "sym" or "noBreakHyphen" or "softHyphen" };
 
     /// <summary>Whether an inline is all a field shows, which the document computes or keeps: a field the layout computes (see FieldInline), a list or automatic number, a form field's state.</summary>
@@ -238,15 +241,53 @@ static class TextEdits
     }
 
     /// <summary>
-    /// The stretch of a paragraph's text a link or a field shows that ends at a place (<paramref name="ending"/>) or begins
-    /// at it, the widest; null where none does.
+    /// The stretch of a paragraph's text a link, a field or a note's reference or own mark shows that ends at a place
+    /// (<paramref name="ending"/>) or begins at it, the widest; null where none does.
     /// </summary>
     public static (int Start, int End)? FieldAt(ParagraphBlock paragraph, int offset, bool ending)
     {
         var found = Shown(paragraph, inline => inline.Xml).Where(f => (ending ? f.End : f.Start) == offset).ToList();
         if (found.Count > 0)
             return found.MaxBy(f => f.End - f.Start) is var (start, end, _) ? (start, end) : null;
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var (s, e) = (at, at + ParagraphText.Length(inline));
+            at = e;
+            if (inline is NoteReferenceInline && e > s && (ending ? e : s) == offset)
+                return (s, e);
+        }
         return null;
+    }
+
+    /// <summary>
+    /// The notes a stretch's text refers to, by whether they are endnotes and their ids; not those of references deleted as
+    /// tracked changes.
+    /// </summary>
+    public static HashSet<(bool Endnote, string Id)> Referred(Stretch stretch, string text)
+    {
+        var referred = new HashSet<(bool, string)>();
+        foreach (var e in stretch.Parsed(text).Descendants().Where(e => e.Name.LocalName is "footnoteReference" or "endnoteReference"))
+        {
+            if (e.Attribute(e.Name.Namespace + "id") is { } id && !e.Ancestors().Any(a => a.Name.LocalName is "del" or "moveFrom"))
+                referred.Add((e.Name.LocalName == "endnoteReference", id.Value));
+        }
+        return referred;
+    }
+
+    /// <summary>
+    /// A note deleted as a tracked change, as a tracked deletion of its reference leaves it (measured in Word 365 by COM,
+    /// scratchpad b9/noteedit.vbs): its paragraphs' marks and their runs with its own mark.
+    /// </summary>
+    public static void NoteDeleted(XElement note, Tracking tracking)
+    {
+        var w = note.Name.Namespace;
+        foreach (var p in note.Descendants(w + "p").ToList())
+        {
+            Marked(p, "del", tracking);
+            foreach (var run in p.Descendants(w + "r").Where(r => r.Ancestors(w + "p").First() == p).ToList())
+                Deleted(run, tracking);
+        }
     }
 
     /// <summary>
@@ -560,9 +601,13 @@ static class TextEdits
                 }
             }
             else if (s == offset && after == null)
+            {
                 after = stretch.Find(inline.Xml);
+                if (inline is NoteReferenceInline && length == 0 && text.Length > 0 && target == null && beside == null && after is { Parent.Name.LocalName: "r" })
+                    beside = BesideNote(SplitOut(after, after.Parent!), false);
+            }
             else if (e == offset && length == 0 && text.Length > 0)
-                beside = Behind(stretch, inline, parts);
+                beside = inline is NoteReferenceInline && stretch.Find(inline.Xml) is { Parent.Name.LocalName: "r" } note ? BesideNote(SplitOut(note, note.Parent!), true) : Behind(stretch, inline, parts);
         }
         foreach (var (t, value) in changed.ToList())
         {
@@ -1148,6 +1193,23 @@ static class TextEdits
     /// <summary>Whether a run shows what the format of text beside it goes by: anything but a note's reference, not deleted.</summary>
     static bool Shows(XElement run) => run.Elements().Any(e => e.Name.LocalName != "rPr" && !IsNoteMark(e))
         && !run.Ancestors().Any(a => a.Name.LocalName is "del" or "moveFrom");
+
+    /// <summary>
+    /// Where text put beside a run of a note's reference goes, and in which format: never the reference's, but of what stands
+    /// nearest of the paragraph's other content before it, else after it, else of the paragraph's mark, not hidden (measured in
+    /// Word 365 by COM, scratchpad b9/notefmt: X after a bold word and a reference bold, before a reference that begins a paragraph
+    /// in the format of the text after it, before one alone in its paragraph in the mark's).
+    /// </summary>
+    static (XElement Node, bool After, XElement? Format) BesideNote(XElement run, bool after)
+    {
+        var p = ParagraphOf(run);
+        var w = p.Name.Namespace;
+        var others = p.Descendants(w + "r").Where(r => r != run && ParagraphOf(r) == p && Shows(r)).ToList();
+        if ((others.LastOrDefault(r => r.IsBefore(run)) ?? others.FirstOrDefault(r => r.IsAfter(run))) is { } near)
+            return (run, after, near.Parent is { Name.LocalName: "hyperlink" } ? null : near.Element(w + "rPr"));
+        var mark = p.Element(w + "pPr")?.Element(w + "rPr");
+        return (run, after, mark?.Elements().Any(e => e.Name.LocalName is "vanish" or "specVanish") == true ? null : mark);
+    }
 
     /// <summary>
     /// Where text put at an edge of a link or of a field's result goes, where text stands at it: Word's cursor stands outside
@@ -2486,12 +2548,16 @@ static class TextEdits
                 before = element;
             }
             else if (s >= end && after == null)
+            {
                 after = stretch.Find(inline.Xml);
+                if (inline is NoteReferenceInline && length == 0 && s == offset && text.Length > 0 && before == null && continued == null && beside == null && after is { Parent.Name.LocalName: "r" })
+                    beside = BesideNote(SplitOut(after, after.Parent!), false);
+            }
             else if (e == offset && Holder(stretch, inline, parts, last: true) is { } holder)
             {
                 before = holder.Name.LocalName == "r" ? holder.Elements().Last() : holder;
                 if (length == 0 && text.Length > 0)
-                    beside = Behind(stretch, inline, parts);
+                    beside = inline is NoteReferenceInline ? BesideNote(holder, true) : Behind(stretch, inline, parts);
             }
         }
         // A field the range holds whole is deleted whole, a simple one as the complex field it stands for (see Gone; Word, measured

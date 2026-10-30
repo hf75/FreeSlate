@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Xml.Linq;
 using FreeSlate.Docx;
 using FreeSlate.Opc;
@@ -164,6 +165,56 @@ public sealed partial class WordDocument
     /// <summary>The footnotes' or the endnotes' part, where the package has it.</summary>
     string? NotePart(bool endnote) =>
         package.FirstRelationship(context.MainPart, endnote ? "endnotes" : "footnotes") is { External: false } related && package.Exists(related.Target) ? related.Target : null;
+
+    /// <summary>
+    /// The other parts a change of a stretch of the body gives new bytes, with the notes it took the last references of away
+    /// gone from theirs, every other character as it was (measured in Word 365 by COM, scratchpad b9/noteedit.vbs: a reference
+    /// taken away takes its note along); as a tracked change, the notes stay deleted as such, as Word leaves them.
+    /// </summary>
+    IReadOnlyDictionary<string, byte[]?>? NotesGone(Stretch stretch, string text, ImmutableList<Island> changed, bool tracked, IReadOnlyDictionary<string, byte[]?>? changes)
+    {
+        if (!stretch.Text.Text.Contains("noteReference", StringComparison.Ordinal))
+            return changes;
+        var own = stretch.Written([]);
+        if (own == text)
+            return changes;
+        var gone = TextEdits.Referred(stretch, own);
+        gone.ExceptWith(TextEdits.Referred(stretch, text));
+        if (gone.Count == 0)
+            return changes;
+        // (Read as they are now, to be taken back with the ids they have where undoing brings them back: see Remember.)
+        KnowNotes();
+        var body = wholeText.Replaced(changed.Select(i => (i.Start, i.End, i.Text)));
+        var all = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
+        if (changes != null)
+        {
+            foreach (var (name, bytes) in changes)
+                all[name] = bytes;
+        }
+        foreach (var endnote in new[] { false, true })
+        {
+            var kind = endnote ? "endnote" : "footnote";
+            // (A reference left to the note, which Word does not make, keeps it.)
+            var notes = gone.Where(n => n.Endnote == endnote && (tracked || !System.Text.RegularExpressions.Regex.IsMatch(body, $@"<[^<>]*{kind}Reference\b[^<>]*\bid=""{n.Id}"""))).Select(n => n.Id).ToHashSet();
+            if (notes.Count == 0 || NotePart(endnote) is not { } part || all.ContainsKey(part))
+                continue;
+            var read = new PartText(package.ReadBytes(part));
+            var root = XDocument.Parse(read.Text, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo).Root!;
+            var tracking = tracked ? Tracked(() => ChangeId(part, () => read.Text)) : null;
+            var cuts = new List<(int Start, int End, string Text)>();
+            foreach (var note in root.Elements(root.Name.Namespace + kind).Where(n => notes.Contains((string?)n.Attribute(n.Name.Namespace + "id") ?? "")))
+            {
+                var at = read.Start(note);
+                if (tracking != null)
+                    TextEdits.NoteDeleted(note, tracking);
+                cuts.Add((at, read.End(at), tracking != null ? PartText.Xml(note) : ""));
+            }
+            if (tracking != null)
+                changeId = tracking.NextId;
+            all[part] = read.Spliced(cuts);
+        }
+        return all;
+    }
 
     /// <summary>
     /// A change made in the paragraphs of a note (see Change for the body's): <paramref name="edit"/> gives the new text of

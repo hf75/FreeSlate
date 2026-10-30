@@ -1094,6 +1094,7 @@ public sealed partial class WordDocument : IEditableDocument
         var changed = islands.RemoveRange(first, after - first);
         if (text != wholeText.Text[start..end])
             changed = changed.Insert(first, new Island(start, end, text));
+        changes = NotesGone(stretch, text, changed, tracking != null, changes);
         // The other parts the change gives new bytes before the body is read anew: it reads what they hold (notes, the
         // targets of relationships).
         var partsBefore = partBytes;
