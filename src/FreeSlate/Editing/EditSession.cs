@@ -13,8 +13,8 @@ public readonly record struct TextPlace(int Paragraph, int Offset);
 /// the last typing ended adds to it. A handling the document cannot make (see IEditableDocument) leaves it as it was and
 /// throws NotSupportedException. A selection reaches over the paragraphs of a story in reading order (a Word document's
 /// body over its tables too); deleting it or typing over it takes the whole tables in it away where its ends stand in
-/// one body, cell or text box (as Word does), and is refused where they do not (where Word takes rows away or empties
-/// cells).
+/// one body, cell or text box, and the rows of a table it reaches into from outside (see IEditableDocument.RemoveAcross),
+/// as Word does; one over cells of a table alone is refused (Word clears them or takes them away).
 /// </summary>
 public sealed class EditSession(IEditableDocument document)
 {
@@ -217,7 +217,22 @@ public sealed class EditSession(IEditableDocument document)
             return (Caret, Anchor);
         }
         if (document.After(paragraph) is null)
+        {
+            // A table after the paragraph (measured in Word 365 by COM): an empty paragraph goes, another goes on at the
+            // beginning of the table's first cell; at the end of a cell or story nothing happens.
+            if (document.Next(paragraph) is { } next)
+            {
+                try
+                {
+                    if (document.RemoveAcross(paragraph, offset, next, 0, typing: false) is { } across)
+                        return Same(new TextPlace(across.Paragraph, across.Offset));
+                }
+                catch (NotSupportedException)
+                {
+                }
+            }
             return (Caret, Anchor);
+        }
         var joined = document.Join(paragraph);
         return Same(new TextPlace(joined, joined == paragraph ? offset : 0));
     });
@@ -379,9 +394,10 @@ public sealed class EditSession(IEditableDocument document)
             document.Replace(start.Paragraph, start.Offset, end.Offset - start.Offset, "");
             return start;
         }
-        // Its ends of one body, cell or text box: where they are not, Word takes rows away or empties cells.
-        if (between.Count == 0 && document.After(start.Paragraph) != end.Paragraph)
-            throw new NotSupportedException("The selection's ends are not of one body, cell or text box (one stands in a table the other does not).");
+        // Its ends not of one body, cell or text box (one in a table the other is not in): Word takes the table's rows the
+        // selection reaches into away whole (from one into the paragraph after the table, from the row's beginning).
+        if (document.RemoveAcross(start.Paragraph, start.Offset, end.Paragraph, end.Offset, typing) is { } across)
+            return new TextPlace(across.Paragraph, across.Offset);
         var length = document.Text(start.Paragraph).Length;
         var apart = !typing && document.KeepsMarks && start.Offset > 0 && start.Offset < length && !(end.Offset == 0 && document.Before(end.Paragraph) == null);
         var spaced = !typing && start.Offset == length && length > 0 && (end.Offset > 0 || between.Count > 0);

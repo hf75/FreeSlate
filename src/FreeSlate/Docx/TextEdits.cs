@@ -807,8 +807,8 @@ static class TextEdits
     /// (measured in Word 365 by COM: a selection from within a paragraph over a whole table into the next paragraph
     /// deleted leaves the two paragraphs' ends joined, the table gone): the paragraphs there, whole tables and content
     /// controls, the marks between them (the sections those paragraphs end merging with the next one). As a tracked change
-    /// each paragraph's runs and mark are deleted (what the author inserted going away outright, see Remove); tables and
-    /// content controls are not deleted so. Returns the stretch's new text.
+    /// paragraphs and tables are deleted as Word deletes them (see Deleted); content controls are not deleted so. Returns
+    /// the stretch's new text.
     /// </summary>
     public static string RemoveBetween(Stretch stretch, ParagraphBlock first, ParagraphBlock last, Tracking? tracking = null)
     {
@@ -821,23 +821,183 @@ static class TextEdits
             throw new NotSupportedException("What stands between the paragraphs holds the beginning or the end of a field over several paragraphs.");
         if (tracking == null)
             return stretch.Spliced([(stretch.Text.End(stretch.Text.Start(p)), stretch.Text.Start(q), "")]);
-        if (between.FirstOrDefault(e => e.Name.LocalName != "p" && !IsMark(e)) is { } other)
+        return stretch.Written(Deleted(between, tracking));
+    }
+
+    /// <summary>
+    /// Blocks taken away as a tracked change, as Word deletes them with track changes on (measured in Word 365 by COM: a
+    /// table deleted so keeps its rows, each marked deleted in its w:trPr, and the paragraphs of its cells, their runs and
+    /// marks deleted): a paragraph's runs deleted (see Deleted) and its mark marked deleted, one the author inserted going
+    /// away outright (see Remove); a table's rows marked deleted, those of tables within it too, with all its paragraphs
+    /// (not those of text boxes, which go with their drawing's run); the marks between them (bookmarks) as they are. Returns
+    /// what takes each block's place, for Stretch.Written.
+    /// </summary>
+    /// <exception cref="NotSupportedException">A block is neither a paragraph nor a table (a content control); nothing changes.</exception>
+    static List<(XElement, IEnumerable<XElement>)> Deleted(IReadOnlyList<XElement> blocks, Tracking tracking)
+    {
+        if (blocks.FirstOrDefault(e => e.Name.LocalName is not ("p" or "tbl") && !IsMark(e)) is { } other)
             throw new NotSupportedException($"A w:{other.Name.LocalName} is not taken away as a tracked change.");
         var written = new List<(XElement, IEnumerable<XElement>)>();
-        foreach (var e in between.Where(e => e.Name.LocalName == "p"))
+        foreach (var e in blocks.Where(e => !IsMark(e)))
         {
-            if (OwnMark(e, tracking) && e.Descendants(e.Name.Namespace + "r").All(r => r.Ancestors().FirstOrDefault(IsRevision) is { Name.LocalName: "ins" } ins && tracking.Own(ins)))
+            if (e.Name.LocalName == "p" && OwnMark(e, tracking)
+                && e.Descendants(e.Name.Namespace + "r").All(r => r.Ancestors().FirstOrDefault(IsRevision) is { Name.LocalName: "ins" } ins && tracking.Own(ins)))
             {
                 written.Add((e, []));
                 continue;
             }
-            foreach (var run in e.Descendants(e.Name.Namespace + "r").Where(r => ParagraphOf(r) == e).ToList())
-                Deleted(run, tracking);
-            if (!MarkDeleted(e))
-                Marked(e, "del", tracking);
+            DeletedWithin(e, tracking);
             written.Add((e, [e]));
         }
-        return stretch.Written(written);
+        return written;
+    }
+
+    /// <summary>
+    /// What a paragraph, a table or a row holds deleted as a tracked change (see Deleted): its rows, those of tables within
+    /// too, marked deleted, its paragraphs' runs deleted and their marks marked deleted; not what text boxes hold.
+    /// </summary>
+    static void DeletedWithin(XElement element, Tracking tracking)
+    {
+        var w = element.Name.Namespace;
+        // (In a text box within it: one it stands in itself is where the deletion is made.)
+        bool InTextBox(XElement e) => e != element && e.Ancestors().TakeWhile(a => a != element).Any(a => a.Name.LocalName == "txbxContent");
+        foreach (var row in element.DescendantsAndSelf(w + "tr").Where(r => !InTextBox(r)).ToList())
+            DeletedRow(row, tracking);
+        foreach (var p in element.DescendantsAndSelf(w + "p").Where(p => !InTextBox(p)).ToList())
+        {
+            foreach (var run in p.Descendants(w + "r").Where(r => ParagraphOf(r) == p).ToList())
+                Deleted(run, tracking);
+            if (!MarkDeleted(p))
+                Marked(p, "del", tracking);
+        }
+    }
+
+    /// <summary>A table row marked deleted as a tracked change (a w:del in its w:trPr, after an insertion of it, before a change of its properties: CT_TrPr).</summary>
+    static void DeletedRow(XElement row, Tracking tracking)
+    {
+        var w = row.Name.Namespace;
+        var properties = row.Element(w + "trPr") ?? Made(row, w + "trPr");
+        if (properties.ElementsBeforeSelf().FirstOrDefault(e => e.Name == w + "tblPrEx") is { } exceptions)
+        {
+            properties.Remove();
+            exceptions.AddAfterSelf(properties);
+        }
+        if (properties.Element(w + "del") != null)
+            return;
+        if (properties.Element(w + "trPrChange") is { } change)
+            change.AddBeforeSelf(tracking.Mark(w, "del"));
+        else
+            properties.Add(tracking.Mark(w, "del"));
+    }
+
+    /// <summary>
+    /// Rows of a table taken away whole with what stands between the table and a paragraph outside it, as deleting a
+    /// selection that reaches from the one into the other does (measured in Word 365 by COM: a selection from within a
+    /// paragraph before a table into its k-th row, Delete, Backspace and Selection.Delete alike, takes the paragraph's
+    /// text from there, its mark and the first k rows away, whatever their cells hold, and the paragraph's text before
+    /// it goes on at the beginning of the row after, which keeps its own properties; one from within the r-th row into a
+    /// paragraph after the table takes the rows from the r-th on and that paragraph's text up to there; a cell left that
+    /// went on with the merge of one taken away comes out empty and unmerged). The rows are known by a paragraph of each
+    /// (<paramref name="rows"/>, none at all where the selection reaches to the table's beginning), the whole table with
+    /// <paramref name="all"/>; <paramref name="paragraph"/> stands before the table where <paramref name="into"/> is
+    /// given, the first paragraph of the first row left, which its content then begins, else after it. As a tracked
+    /// change (from within the table only) the rows and what stands between are deleted as Word deletes them (see
+    /// Deleted). Returns the stretch's new text and where the paragraph the content went into begins in it (-1 where none
+    /// did).
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// The table and the paragraph are not of one body, cell or text box, a row stands in a content control, the paragraph
+    /// before the table ends a section, or a field over several paragraphs would lose its beginning or end; nothing
+    /// changes.
+    /// </exception>
+    public static (string Text, int Into) RemoveRows(Stretch stretch, ParagraphBlock paragraph, TableBlock table, IReadOnlyList<ParagraphBlock> rows, bool all,
+        ParagraphBlock? into, Tracking? tracking = null)
+    {
+        var parts = Parts(stretch, paragraph);
+        var p = into != null ? parts[^1] : parts[0];
+        var tbl = stretch.Find(table.Element) ?? throw new NotSupportedException("The table is not where it was read.");
+        var w = tbl.Name.Namespace;
+        if (p.Parent != tbl.Parent || !(into != null ? p.ElementsAfterSelf().Contains(tbl) : tbl.ElementsAfterSelf().Contains(p)))
+            throw new NotSupportedException("The table and the paragraph are not of one body, cell or text box.");
+        if (into != null && (parts.Count > 1 || p.Element(w + "pPr")?.Element(w + "sectPr") != null))
+            throw new NotSupportedException("The paragraph before the table ends a section or runs into it over a deleted or hidden mark.");
+        var between = into != null ? p.ElementsAfterSelf().TakeWhile(e => e != tbl).ToList() : tbl.ElementsAfterSelf().TakeWhile(e => e != p).ToList();
+        // The rows' elements, one after another in the table (rows deleted as a tracked change, which the model leaves out, between them).
+        var trs = rows.Select(r => Parts(stretch, r)[0].Ancestors(w + "tr").FirstOrDefault(tr => tr.Parent == tbl)
+            ?? throw new NotSupportedException("A row stands in a content control or custom markup around rows.")).ToList();
+        var taken = new List<XElement>();
+        for (var tr = trs.FirstOrDefault(); tr != null; tr = tr.ElementsAfterSelf().FirstOrDefault())
+        {
+            if (tr.Name != w + "tr" || (!trs.Contains(tr) && tr.Element(w + "trPr")?.Element(w + "del") == null))
+                throw new NotSupportedException("The rows do not follow one another in the table.");
+            taken.Add(tr);
+            if (tr == trs[^1])
+                break;
+        }
+        if (taken.Count > 0 && taken[^1] != trs[^1])
+            throw new NotSupportedException("The rows do not follow one another in the table.");
+        if (OpenFields(taken.Concat(between).SelectMany(e => e.DescendantsAndSelf())) != 0)
+            throw new NotSupportedException("What is taken away holds the beginning or the end of a field over several paragraphs.");
+        // The cells of the row after that go on with the merge of cells taken away: each begins the merge where the row
+        // after it goes on with it too, else stands alone.
+        if (!all && tracking == null && taken.Count > 0 && taken[^1].ElementsAfterSelf(w + "tr").FirstOrDefault() is { } below)
+        {
+            var under = below.ElementsAfterSelf(w + "tr").FirstOrDefault();
+            foreach (var (tc, column) in Columns(below))
+            {
+                if (tc.Element(w + "tcPr")?.Element(w + "vMerge") is not { } merge || merge.Attribute(w + "val")?.Value is not (null or "continue"))
+                    continue;
+                if (under != null && Columns(under).FirstOrDefault(c => c.Column == column).Cell?.Element(w + "tcPr")?.Element(w + "vMerge") is { } next
+                    && next.Attribute(w + "val")?.Value is null or "continue")
+                    merge.SetAttributeValue(w + "val", "restart");
+                else
+                    merge.Remove();
+            }
+        }
+        if (tracking != null)
+        {
+            if (into != null)
+                throw new NotSupportedException("A paragraph does not go into a table's row as a tracked change.");
+            foreach (var tr in taken)
+                DeletedWithin(tr, tracking);
+            return (stretch.Written([(tbl, [tbl]), .. Deleted(between, tracking)]), -1);
+        }
+        foreach (var tr in taken)
+            tr.Remove();
+        if (into == null)
+        {
+            var (from, to) = (stretch.Text.Start(tbl), stretch.Text.End(stretch.Text.Start(between.Count > 0 ? between[^1] : tbl)));
+            return (stretch.Spliced([(from, to, all ? "" : PartText.Xml(tbl))]), -1);
+        }
+        if (all)
+            throw new ArgumentException("A paragraph's content goes into a row left.", nameof(all));
+        var c = Parts(stretch, into)[0];
+        var content = p.Nodes().Where(n => n is not XElement { Name.LocalName: "pPr" }).ToList();
+        foreach (var node in content)
+            node.Remove();
+        if (c.Element(w + "pPr") is { } own)
+            own.AddAfterSelf(content);
+        else
+            c.AddFirst(content);
+        var (start, end) = (stretch.Text.Start(p), stretch.Text.End(stretch.Text.Start(tbl)));
+        var xml = PartText.Xml(tbl);
+        return (stretch.Spliced([(start, end, xml)]), start - stretch.Head + xml.IndexOf(PartText.Xml(c), StringComparison.Ordinal));
+    }
+
+    /// <summary>The cells of a table row with the grid column each begins at (after its w:gridBefore, each spanning its w:gridSpan).</summary>
+    static List<(XElement Cell, int Column)> Columns(XElement tr)
+    {
+        var w = tr.Name.Namespace;
+        static int Number(XElement? e) =>
+            e?.Attribute(e.Name.Namespace + "val")?.Value is { } value && int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 0;
+        var column = Number(tr.Element(w + "trPr")?.Element(w + "gridBefore"));
+        var cells = new List<(XElement Cell, int Column)>();
+        foreach (var tc in tr.Elements(w + "tc"))
+        {
+            cells.Add((tc, column));
+            column += Math.Max(1, Number(tc.Element(w + "tcPr")?.Element(w + "gridSpan")));
+        }
+        return cells;
     }
 
     /// <summary>
@@ -870,6 +1030,11 @@ static class TextEdits
                 throw new NotSupportedException("The paragraphs do not follow one another.");
             if (node is XElement e)
             {
+                // With tracking a table deleted as a tracked change, gone where the changes are accepted (see ModelReader),
+                // as deleting a selection over it leaves it.
+                if (tracking != null && e.Name.LocalName == "tbl"
+                    && e.Descendants(e.Name.Namespace + "tr").Where(tr => tr.Ancestors(e.Name.Namespace + "tbl").First() == e).All(tr => tr.Element(e.Name.Namespace + "trPr")?.Element(e.Name.Namespace + "del") != null))
+                    continue;
                 if (!IsMark(e))
                     throw new NotSupportedException($"A w:{e.Name.LocalName} stands between the paragraphs.");
                 marks.Add(e);

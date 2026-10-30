@@ -299,6 +299,9 @@ public sealed partial class PresentationDocument : IEditableDocument
             Remove(p);
     }
 
+    /// <summary>A slide's paragraphs are walked within one shape's or table cell's text (see Next): no selection reaches over two (see IEditableDocument.RemoveAcross).</summary>
+    public (int Paragraph, int Offset)? RemoveAcross(int first, int offset, int last, int lastOffset, bool typing) => null;
+
     /// <summary>The shapes at the top of a slide's tree (a group as one), by the slide's id, as the presentation reads now.</summary>
     public IReadOnlyList<DeckShape> Shapes(uint slide)
     {

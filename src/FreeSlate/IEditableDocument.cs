@@ -121,6 +121,15 @@ public interface IEditableDocument : IDisposable
     /// </summary>
     void RemoveBetween(int first, int last);
 
+    /// <summary>
+    /// Takes away a selection from a place to a later one whose paragraphs are not of one body, table cell or text box
+    /// (one in a table the other is not in), as deleting it does in the application (typed over with
+    /// <paramref name="typing"/>): in a Word document the table's rows the selection reaches into go whole (see
+    /// WordDocument.RemoveAcross). Returns where the cursor then stands, or null where the paragraphs are of one body,
+    /// cell, text box or shape (as on slides, whose paragraphs are walked within one shape or cell: see Next).
+    /// </summary>
+    (int Paragraph, int Offset)? RemoveAcross(int first, int offset, int last, int lastOffset, bool typing);
+
     /// <summary>Gives a stretch of a paragraph's text character formatting, and a paragraph paragraph formatting.</summary>
     void Format(int paragraph, int offset, int length, TextFormatting format);
     void Format(int paragraph, ParagraphFormatting format);
