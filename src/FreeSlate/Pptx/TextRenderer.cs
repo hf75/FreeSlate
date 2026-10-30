@@ -242,8 +242,7 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         // stays as large with a line more); text in columns shrinks to fit its tallest column (see Columns), measured to its
         // last line's descent at its spacing (measured: three columns of 48 lines 12.6 pt apart at 62.5 % and 20 % less
         // spacing fit 224.68 pt, the tallest 224.2 pt high as TextRange.BoundHeight says, which to the descent at single
-        // spacing would not fit; four columns of 12 lines PowerPoint 365 fits at 92.5 % and 10 % less spacing), but a shape
-        // growing to it keeps its height (one shape of two columns measured, as large with a line more).
+        // spacing would not fit; four columns of 12 lines PowerPoint 365 fits at 92.5 % and 10 % less spacing).
         var refit = Refit && warp == null;
         if (refit && autofit?.Name.LocalName == "normAutofit")
         {
@@ -256,13 +255,25 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
         var layout = Layout(txBody, sources, Math.Max(0, columnWidth), wrap, fontScale, spacingReduction, spaceFirstLast,
             trailingSpaces: !wrap && warp == null && !slide.Presentation.Word);
         // A shape that grows to its text is as high as the text (Bound) and its insets, by 517/512 (measured with
-        // PowerPoint 365's object model: 144 boxes of 1 to 6 lines in four fonts, three sizes and three spacings, all to 0.001 pt).
-        if (refit && columns == 1 && autofit?.Name.LocalName == "spAutoFit")
-            Fitted = new TextFit(1, 0, (layout.Bound + Inset("tIns", 45720) + Inset("bIns", 45720)) * 517 / 512, Body("anchor") ?? "t");
+        // PowerPoint 365's object model: 144 boxes of 1 to 6 lines in four fonts, three sizes and three spacings, all to 0.001 pt);
+        // text in columns as its tallest column, shared out at the shape's height now, where the lines do not fit it or fill
+        // only the first column, there with the last paragraph's space after; lines that fit it in more columns leave it
+        // (scratchpad b9/colfit.ps1, scratch/ColFit: 14 boxes with their spacing, size, anchor and insets, 12 changes each,
+        // 179 of 182 heights to 0.02 pt, the others to 1 pt).
+        var bound = layout.Bound;
+        var fitted = true;
         if (columns > 1)
+        {
+            var (whole, after) = (layout.Height, layout.After);
             layout = Columns(layout, columns, columnWidth, columnGap, Body("rtlCol") is "1" or "true", height);
+            var grows = layout.Height > height + 0.01;
+            bound = grows ? layout.Bound : layout.Height + after;
+            fitted = grows || layout.Height >= whole - 0.01;
+        }
         else if (Body("anchorCtr") is "1" or "true")
             TextLayout.CenterBlock(layout, width);
+        if (refit && fitted && autofit?.Name.LocalName == "spAutoFit")
+            Fitted = new TextFit(1, 0, (bound + Inset("tIns", 45720) + Inset("bIns", 45720)) * 517 / 512, Body("anchor") ?? "t");
         // Text that does not fit the height loses its last lines with vertOverflow ellipsis (an ellipsis ends the
         // last line kept) or clip; the remaining lines are anchored as usual (measured).
         if (Body("vertOverflow") is "ellipsis" or "clip" && layout.Height > height + 0.01 && layout.Lines.Count > 1)
@@ -463,36 +474,63 @@ public sealed class TextRenderer(SlideContext slide, FontResolver fonts)
     }
 
     /// <summary>
-    /// The lines of a layout distributed over columns, each column starting at the top: a column takes the lines
-    /// that fit the text area's height, but at least an even share, and the last column the rest (measured with
-    /// the object model: 7 lines in 2 columns 5 lines high are 5 and 2, 3 lines high 4 and 3; 12 lines in 3 columns
-    /// 5 lines high 5, 5 and 2, 3 lines high 4, 4 and 4).
+    /// The lines of a layout distributed over columns, each column starting at the top: each takes the lines that fit
+    /// a height, the text area's or, where they do not all fit that, the least above an even share of the text's height
+    /// at which they do (measured with the object model, 783 boxes of 2 to 4 columns, 10 to 200 pt high: 7 lines in 2
+    /// columns 5 lines high are 5 and 2, 3 lines high 4 and 3; 13 lines in 3 columns 5, 5 and 3, plain and with space
+    /// between paragraphs all so, 91 % with one line of 48 pt among 18 pt, where the even share of lines gave 73 %).
     /// </summary>
     static LaidOutText Columns(LaidOutText layout, int columns, double columnWidth, double gap, bool rightToLeft, double areaHeight)
     {
         var lines = layout.Lines;
         if (lines.Count == 0)
             return layout;
-        var share = (int)Math.Ceiling(lines.Count / (double)columns);
+        double Bottom(int line, int from) => lines[line].Baseline + lines[line].Descent - (lines[from].Baseline - lines[from].Ascent);
+        var ends = new int[columns];
+        var fill = areaHeight;
+        // Where the lines fill a height, from each column's top: false, with the least height at which a column takes a line more.
+        bool Fills(double height, out double more)
+        {
+            more = double.MaxValue;
+            var from = 0;
+            for (var c = 0; c < columns; c++)
+            {
+                var end = from + 1;
+                while (end < lines.Count && Bottom(end, from) <= height + 0.01)
+                    end++;
+                ends[c] = end;
+                if (end >= lines.Count)
+                {
+                    for (var rest = c + 1; rest < columns; rest++)
+                        ends[rest] = end;
+                    return true;
+                }
+                more = Math.Min(more, Bottom(end, from));
+                from = end;
+            }
+            return false;
+        }
+        if (!Fills(fill, out var next))
+        {
+            fill = Math.Max(fill, Bottom(lines.Count - 1, 0) / columns);
+            while (!Fills(fill, out next))
+                fill = next;
+        }
         var result = new LaidOutText();
-        double height = 0;
+        double tallest = 0;
         var start = 0;
         for (var c = 0; c < columns && start < lines.Count; c++)
         {
             var columnTop = lines[start].Baseline - lines[start].Ascent;
-            var end = start + 1;
-            if (c == columns - 1)
-                end = lines.Count;
-            else
-                while (end < lines.Count && (end - start < share || lines[end].Baseline + lines[end].Descent - columnTop <= areaHeight + 0.01))
-                    end++;
             var dx = (rightToLeft ? columns - 1 - c : c) * (columnWidth + gap);
-            for (var i = start; i < end; i++)
+            for (var i = start; i < ends[c]; i++)
                 result.Lines.Add(lines[i].Moved(dx, lines[i].Baseline - columnTop));
-            height = Math.Max(height, lines[end - 1].Baseline + lines[end - 1].Descent - columnTop);
-            start = end;
+            var bottom = Bottom(ends[c] - 1, start);
+            if (bottom > tallest)
+                (tallest, result.Bound) = (bottom, bottom - lines[ends[c] - 1].Descent + lines[ends[c] - 1].SingleDescent);
+            start = ends[c];
         }
-        result.Height = height;
+        result.Height = tallest;
         return result;
     }
 

@@ -311,6 +311,9 @@ public sealed class LaidOutText
     /// where Height takes the descent of its spacing.
     /// </summary>
     public double Bound { get; set; }
+
+    /// <summary>The last paragraph's space after, which Height leaves out unless the body asks for it (bodyPr spcFirstLastPara).</summary>
+    public double After { get; set; }
 }
 
 /// <summary>
@@ -358,6 +361,7 @@ public static class TextLayout
             }
         }
         result.Height = cursor + (spaceFirstLast ? pendingAfter : 0);
+        result.After = spaceFirstLast ? 0 : pendingAfter;
         result.Bound = result.Lines.Count > 0 ? result.Height - result.Lines[^1].Descent + result.Lines[^1].SingleDescent : result.Height;
         return result;
     }
