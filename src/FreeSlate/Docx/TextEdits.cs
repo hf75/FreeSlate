@@ -1363,6 +1363,10 @@ static class TextEdits
         // Whether the place is at the start of the paragraph (of the part split): none of its text before it.
         var atStart = first != null && textBefore != p;
         var w = p.Name.Namespace;
+        var read = p;
+        var block = first != null && parts.Count == 1 ? AsBlock(p, first) : null;
+        if (block != null)
+            p = block.Element(w + "sdtContent")!.Element(w + "p")!;
         var second = new XElement(p.Name, p.Attributes().Where(a => a.Name.Namespace != W14));
         if (p.Element(w + "pPr") is { } pPr)
         {
@@ -1393,6 +1397,13 @@ static class TextEdits
             while (moved.Parent != p)
             {
                 var around = moved.Parent ?? throw new NotSupportedException("The place stands in no paragraph.");
+                // At the beginning of a content control it goes before it; within one Word splits none with text beside it (measured in
+                // Word 365 by COM, scratchpad b9/sdtkeys.vbs: TypeParagraph refused).
+                if (around.Name.LocalName == "sdtContent" && !moved.ElementsBeforeSelf().Any() && around.Parent is { Name.LocalName: "sdt" } control && control.Parent != null && control.Ancestors().Contains(p))
+                {
+                    moved = control;
+                    continue;
+                }
                 if (around.Name.LocalName is not ("r" or "hyperlink" or "ins" or "moveTo" or "smartTag" or "customXml" or "bdo" or "dir"))
                     throw new NotSupportedException($"The place is within a w:{around.Name.LocalName}, which is not split.");
                 if (moved.ElementsBeforeSelf().All(e => e.Name.LocalName is "rPr" or "smartTagPr" or "customXmlPr"))
@@ -1429,7 +1440,45 @@ static class TextEdits
             Marked(p, "ins", tracking);
         // In the stretch, so that it is written with the prefixes of its scope.
         p.AddAfterSelf(second);
+        if (block != null)
+            return (stretch.Written([(read, [block])]), stretch.Text.Start(read) - stretch.Head + PartText.Xml(block).IndexOf(PartText.Xml(p), StringComparison.Ordinal) + PartText.Xml(p).Length);
         return (stretch.Written([(p, [p, second])]), stretch.Text.Start(p) - stretch.Head + PartText.Xml(p).Length);
+    }
+
+    /// <summary>
+    /// A paragraph that holds nothing but a rich text content control (and marks), with a place within the control, made a control around the
+    /// paragraph, which holds the control's content, for the place to split it there (measured in Word 365 by COM, scratchpad
+    /// b9/sdtkeys.vbs: Enter in such a control leaves a block control around both halves, with tracking too; with text beside it, or in a
+    /// control of plain text, a list or a date, Word refuses it); returns the control standing where the paragraph did, or null where
+    /// that is not so.
+    /// </summary>
+    static XElement? AsBlock(XElement p, XElement first)
+    {
+        var w = p.Name.Namespace;
+        if (first.Ancestors().TakeWhile(a => a != p).LastOrDefault(a => a.Name == w + "sdt") is not { } control || control.Parent != p
+            || p.Elements().Any(e => e != control && e.Name.LocalName != "pPr" && !IsMark(e)) || control.Element(w + "sdtContent") is not { } content)
+            return null;
+        if (control.Element(w + "sdtPr")?.Elements().Any(e => e.Name.LocalName is "dataBinding" or "showingPlcHdr" or "text" or "date" or "comboBox" or "dropDownList"
+                or "docPartObj" or "docPartList" or "citation" or "bibliography" or "equation" or "picture" or "checkbox" or "lock") == true)
+            return null;
+        // At its very beginning the place stands before it (see Split).
+        if (!first.AncestorsAndSelf().TakeWhile(a => a != content).Any(a => a.ElementsBeforeSelf().Any(e => e.Name.LocalName != "rPr")))
+            return null;
+        var nodes = new List<XNode>();
+        foreach (var node in p.Nodes().ToList())
+        {
+            if (node == control)
+            {
+                nodes.AddRange(content.Nodes());
+                continue;
+            }
+            nodes.Add(node);
+        }
+        foreach (var node in nodes)
+            node.Remove();
+        var block = new XElement(control.Name, control.Attributes(), control.Elements().Where(e => e != content), new XElement(w + "sdtContent", new XElement(p.Name, p.Attributes(), nodes)));
+        p.ReplaceWith(block);
+        return block;
     }
 
     /// <summary>
