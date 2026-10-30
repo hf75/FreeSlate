@@ -666,7 +666,9 @@ public sealed partial class ModelReader(DocumentContext context)
                 Tops(blocks);
                 return false;
             }
+            var known = context.Authors.Count;
             ReadBlock(body, rest.Current, blocks, ref pending);
+            Named(rest.Current, known);
         }
         bodyReading = (body, blocks, rest, pending);
         return true;
@@ -1424,7 +1426,13 @@ public sealed partial class ModelReader(DocumentContext context)
     void ReadBlocks(XElement container, IEnumerable<XElement> elements, List<Block> blocks, ref ParagraphBlock? pending)
     {
         foreach (var e in JoinedFields(SplitTables(elements)))
+        {
+            // (Where the body's children name authors first, see firstNamed.)
+            var known = context.Authors.Count;
             ReadBlock(container, e, blocks, ref pending);
+            if (container == bodyElement)
+                Named(e, known);
+        }
     }
 
     /// <summary>An element of a container read into its blocks (see ReadBlocks).</summary>

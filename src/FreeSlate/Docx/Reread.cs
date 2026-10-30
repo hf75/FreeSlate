@@ -48,8 +48,8 @@ public sealed partial class ModelReader
     /// end, children the reader made of others), where a deleted mark holds a section break that comes, goes or changes,
     /// or the sections the change makes number notes otherwise, where a content control shows its placeholder (which
     /// later ones show too), and in the markup view where comment ranges come, go or change their order (comments are
-    /// numbered by them) or an author comes whom the body did not name before (authors take their colors in the body's
-    /// order): the document has to be read again.
+    /// numbered by them) or the authors the change names would take other colors (authors take theirs in the order the
+    /// body names them first, see AuthorsKept): the document has to be read again.
     /// </summary>
     public List<Block>? Reread(List<Block> body, IReadOnlyList<XElement> old, XElement? before, IReadOnlyList<XElement> children, IReadOnlyList<Block>? like = null)
     {
@@ -251,10 +251,10 @@ public sealed partial class ModelReader
                     sectionOf[e] = (s.Properties, s.Index + by);
             }
         }
-        // In the markup view authors take their colors in the order reading the body names them first: the new children
-        // name the authors the old ones named, in the same order, or reading them would color otherwise than reading the
-        // body whole (see AuthorsNamed).
+        // In the markup view authors take their colors in the order reading the body names them first: the change keeps
+        // that order (see AuthorsKept), or reading it would color otherwise than reading the body whole.
         var named = context.Markup ? AuthorsNamed(old) : null;
+        var zones = named != null ? AuthorZones(old, old.Count > 0 ? old[0] : before) : null;
         // The first controls of the docParts the change holds (see above), taken out of placeholders, to be put back where
         // reading it does not come out so (after the old children named their authors, which reads them).
         var shownWere = new List<(string Part, (XElement Content, bool Block)? Was)>();
@@ -309,7 +309,7 @@ public sealed partial class ModelReader
                 context.Changed(bodyElement.Document!);
             return null;
         }
-        if (named != null && !AuthorsNamed(children).SequenceEqual(named))
+        if (named != null && !AuthorsKept(children, zones!, named))
             return Undone();
         // Their steps first, asked of throwaway counters; then the body's steps with them replayed, and the children read
         // with their answers.
@@ -636,6 +636,94 @@ public sealed partial class ModelReader
 
     /// <summary>The ids of the comment ranges a child of the body begins (w:commentRangeStart), in order.</summary>
     static IEnumerable<string?> CommentRanges(XElement child) => child.Descendants(Wml.W + "commentRangeStart").Select(c => c.Attr("id"));
+
+    /// <summary>
+    /// The child of the body reading it named each author in first (see DocumentContext.Author), which the authors' colors
+    /// follow (see AuthorsKept); not those named first elsewhere (in a header, a note, a comment's balloon).
+    /// </summary>
+    readonly Dictionary<string, XElement> firstNamed = new(StringComparer.Ordinal);
+
+    /// <summary>The authors reading a child of the body named first, those after the <paramref name="known"/> before (see firstNamed).</summary>
+    void Named(XElement child, int known)
+    {
+        if (context.Named != null || context.Authors.Count <= known || child.AncestorsAndSelf().FirstOrDefault(a => a.Parent == bodyElement) is not { } top)
+            return;
+        for (var k = known; k < context.Authors.Count; k++)
+            firstNamed.TryAdd(context.Authors[k], top);
+    }
+
+    /// <summary>
+    /// Where each author known stands in the order reading the body names them first, against a change of the children
+    /// from <paramref name="at"/> on (<paramref name="old"/>, or none before it; null at the body's end): 0 named first
+    /// before it, 2 after it, 1 within it (or where it is not known), before the change is put in (see AuthorsKept).
+    /// </summary>
+    Dictionary<string, int> AuthorZones(IReadOnlyList<XElement> old, XElement? at)
+    {
+        var zones = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var author in context.Authors)
+        {
+            if (firstNamed.TryGetValue(author, out var first) && first.Parent == bodyElement && !old.Contains(first))
+                zones[author] = at == null || XNode.CompareDocumentOrder(first, at) < 0 ? 0 : 2;
+            else if (firstNamed.ContainsKey(author))
+                zones[author] = 1;
+        }
+        return zones;
+    }
+
+    /// <summary>
+    /// Whether the authors a change names keep the colors reading the whole body would give them, which follow the order
+    /// it names them first (see DocumentContext.Author): each known author named first before the change stays there, one
+    /// named in the new children is named first there (where not before), one named first after it stays there where they
+    /// do not name it; those orders must order the known authors as they stand, and authors not known yet come after them
+    /// all (reading the change adds them in its order). Where it holds, the authors named first in the new children are
+    /// named first there from now on. <paramref name="zones"/> is what AuthorZones told before the change was put in;
+    /// <paramref name="were"/> the authors the old children named.
+    /// </summary>
+    bool AuthorsKept(IReadOnlyList<XElement> children, Dictionary<string, int> zones, List<string> were)
+    {
+        var namedIn = children.Select(c => AuthorsNamed([c])).ToList();
+        var now = namedIn.SelectMany(n => n).Distinct().ToList();
+        // Where each is named first after the change: (zone, the child before or after it, or its place in the new children).
+        (int Zone, XElement? Child, int At, int In)? Key(string author)
+        {
+            var zone = zones.GetValueOrDefault(author, -1);
+            if (zone == 0)
+                return (0, firstNamed[author], 0, 0);
+            for (var i = 0; i < namedIn.Count; i++)
+            {
+                if (namedIn[i].IndexOf(author) is var j and >= 0)
+                    return (1, null, i, j);
+            }
+            return zone == 2 ? (2, firstNamed[author], 0, 0) : null;
+        }
+        static int Compare((int Zone, XElement? Child, int At, int In) a, (int Zone, XElement? Child, int At, int In) b) =>
+            a.Zone != b.Zone ? a.Zone.CompareTo(b.Zone)
+            : a.Zone == 1 ? (a.At, a.In).CompareTo((b.At, b.In))
+            : ReferenceEquals(a.Child, b.Child) ? 0 : XNode.CompareDocumentOrder(a.Child, b.Child);
+        if (!now.SequenceEqual(were))
+        {
+            // (Two named first in one child before or after the change keep the order reading it gives them.)
+            var known = context.Authors;
+            (int Zone, XElement? Child, int At, int In)? last = null;
+            foreach (var author in known)
+            {
+                if (Key(author) is not { } key || last is { } before && Compare(before, key) > 0)
+                    return false;
+                last = key;
+            }
+            foreach (var author in now.Where(a => !known.Contains(a)))
+            {
+                if (last is { } before && Compare(before, Key(author)!.Value) >= 0)
+                    return false;
+            }
+        }
+        foreach (var author in now)
+        {
+            if (zones.GetValueOrDefault(author, -1) != 0 && namedIn.FindIndex(n => n.Contains(author)) is var i and >= 0)
+                firstNamed[author] = children[i];
+        }
+        return true;
+    }
 
     /// <summary>
     /// The authors reading children of the body names (see DocumentContext.Named), in its order (which is not the
