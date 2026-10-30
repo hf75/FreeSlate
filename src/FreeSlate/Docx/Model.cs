@@ -2182,6 +2182,11 @@ public sealed partial class ModelReader(DocumentContext context)
                         {
                             var inner = new List<Inline>();
                             ReadInlines(sdtContent, paragraphStyle, inner, new FieldState());
+                            // All of its content deleted as a tracked change, it shows no more of its value, with all
+                            // changes accepted (found with SessionCheck, changes tracked, on docx/external/poi/52449: a
+                            // bound date stayed in the paragraph of a selection typed over).
+                            if (inner.All(i => ParagraphText.Length(i) == 0) && sdtContent.Descendants(Wml.W + "del").Any())
+                                break;
                             var plainFormat = context.Styles.Run(paragraphStyle, null, null, tableRun);
                             // Its five spaces for an empty node stand in the paragraph style's format, not the runs' (Word's
                             // PDF of docx/external/libreoffice/extras-ooxmlexport/sdt-2-run: Calibri 11 beside runs of 22 pt).
