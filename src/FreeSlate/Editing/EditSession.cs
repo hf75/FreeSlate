@@ -374,14 +374,19 @@ public sealed class EditSession(IEditableDocument document)
     /// in, the paragraphs and whole tables between and the text of the paragraph it ends in, the two then joined (in the
     /// first's format, an empty first going away), a space between them where it began at the first's end and both texts
     /// meet without one. Where the document keeps marks, deleting keeps a first paragraph the selection began inside
-    /// apart from the last (but where a table stands just before the last), and typing over a selection that ends where
-    /// a paragraph begins keeps the mark before it. Returns where the cursor then stands.
+    /// apart from the last (but where a table stands just before the last), typing over a selection that ends where a
+    /// paragraph begins keeps the mark before it, and deleting whole words tidies the spaces where they went (see
+    /// Tidied). Returns where the cursor then stands.
     /// </summary>
     TextPlace DeleteSelection(bool typing)
     {
         if (!Selecting)
             return Caret;
         var (start, end, between) = Ordered();
+        var (first, final) = (document.Text(start.Paragraph), document.Text(end.Paragraph));
+        var (fromWord, toWord) = (start.Offset < first.Length && char.IsLetter(first[start.Offset]) && (start.Offset == 0 || !char.IsLetterOrDigit(first[start.Offset - 1])),
+            end.Offset > 0 && char.IsLetter(final[end.Offset - 1]) && (end.Offset == final.Length || !char.IsLetterOrDigit(final[end.Offset])));
+        var tidy = !typing && document.KeepsMarks;
         // (An empty last paragraph is not where the selection begins one: it ends at its end too, as Ctrl+A does.)
         if (typing && document.KeepsMarks && start.Paragraph != end.Paragraph && end.Offset == 0 && document.Text(end.Paragraph).Length > 0
             && document.Before(end.Paragraph) is { } kept)
@@ -392,12 +397,15 @@ public sealed class EditSession(IEditableDocument document)
         if (start.Paragraph == end.Paragraph)
         {
             document.Replace(start.Paragraph, start.Offset, end.Offset - start.Offset, "");
-            return start;
+            return tidy && fromWord && toWord ? Tidied(start) : start;
         }
         // Its ends not of one body, cell or text box (one in a table the other is not in): Word takes the table's rows the
         // selection reaches into away whole (from one into the paragraph after the table, from the row's beginning).
         if (document.RemoveAcross(start.Paragraph, start.Offset, end.Paragraph, end.Offset, typing) is { } across)
-            return new TextPlace(across.Paragraph, across.Offset);
+        {
+            var place = new TextPlace(across.Paragraph, across.Offset);
+            return tidy && (fromWord || place.Paragraph == end.Paragraph && place.Offset == 0) && toWord ? Tidied(place) : place;
+        }
         var length = document.Text(start.Paragraph).Length;
         var apart = !typing && document.KeepsMarks && start.Offset > 0 && start.Offset < length && !(end.Offset == 0 && document.Before(end.Paragraph) == null);
         var spaced = !typing && start.Offset == length && length > 0 && (end.Offset > 0 || between.Count > 0);
@@ -422,12 +430,46 @@ public sealed class EditSession(IEditableDocument document)
             if (length > start.Offset)
                 document.Replace(start.Paragraph, start.Offset, length - start.Offset, "");
             if (apart)
+            {
+                if (tidy && fromWord && toWord && document.After(start.Paragraph) is { } following)
+                    Tidied(new TextPlace(following, 0));
                 return start;
+            }
             var joined = document.Join(start.Paragraph);
             at = new TextPlace(joined, joined == start.Paragraph ? start.Offset : 0);
         }
         if (spaced && rest.Length > 0 && !char.IsWhiteSpace(rest[0]) && at.Offset > 0 && !char.IsWhiteSpace(document.Text(at.Paragraph)[at.Offset - 1]))
             document.Replace(at.Paragraph, at.Offset, 0, " ");
+        return tidy && fromWord && toWord ? Tidied(at) : at;
+    }
+
+    /// <summary>
+    /// The spaces where deleted whole words went tidied, as Word's smart cut does (Options.SmartCutPaste, on by default;
+    /// measured in Word 365 by COM, WordBasic.EditClear and Selection.TypeBackspace alike, the selection beginning at a
+    /// word's first letter and ending at a word's last): where the text after the place begins with a space and the text
+    /// before it ends with one, or the paragraph begins there, that space goes; where the text before ends with a space
+    /// and the text after begins with a punctuation mark (. , ; : ! ?), the space before goes; a space that ends a
+    /// paragraph stays. A space the document does not change so (one it computes) stays too. Returns where the cursor then
+    /// stands.
+    /// </summary>
+    TextPlace Tidied(TextPlace at)
+    {
+        var text = document.Text(at.Paragraph);
+        // (A paragraph's beginning and end as a line feed, which its text does not hold.)
+        var (before, after) = (at.Offset > 0 ? text[at.Offset - 1] : '\n', at.Offset < text.Length ? text[at.Offset] : '\n');
+        try
+        {
+            if (after == ' ' && before is ' ' or '\n')
+                document.Replace(at.Paragraph, at.Offset, 1, "");
+            else if (before == ' ' && after is '.' or ',' or ';' or ':' or '!' or '?')
+            {
+                document.Replace(at.Paragraph, at.Offset - 1, 1, "");
+                return at with { Offset = at.Offset - 1 };
+            }
+        }
+        catch (NotSupportedException)
+        {
+        }
         return at;
     }
 
