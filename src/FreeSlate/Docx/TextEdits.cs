@@ -146,6 +146,250 @@ static class TextEdits
         inline is TabInline or BreakInline or DrawingInline or AnchorInline or MathInline
         || inline is TextInline { Xml.Name.LocalName: "sym" or "noBreakHyphen" or "softHyphen" };
 
+    /// <summary>Whether an inline is all a field shows, which the document computes or keeps: a field the layout computes (see FieldInline), a list or automatic number, a form field's state.</summary>
+    static bool IsField(Inline inline) => inline is FieldInline or CheckBoxInline || inline is TextInline { Xml.Name.LocalName: "fldChar" or "fldSimple" };
+
+    /// <summary>A place of a paragraph's text within what a field computes (a list number, a form field's entry), where the cursor cannot stand in Word, brought behind it; another as it is.</summary>
+    public static int Standing(ParagraphBlock paragraph, int offset)
+    {
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var end = at + ParagraphText.Length(inline);
+            if (at < offset && offset < end && (IsField(inline) || inline is TextInline { Xml.Name.LocalName: "noBreakHyphen" }))
+                return end;
+            at = end;
+            if (at >= offset)
+                break;
+        }
+        return offset;
+    }
+
+    /// <summary>The text saved as the result of a field that shows as the character at a place of a paragraph's text (a field the layout computes, see FieldInline), null where none does.</summary>
+    public static string? FieldAt(ParagraphBlock paragraph, int offset)
+    {
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            if (at == offset && ParagraphText.Length(inline) > 0)
+                return inline is FieldInline field ? string.Concat(field.Cached.OfType<TextInline>().Select(t => t.Text)) : null;
+            at += ParagraphText.Length(inline);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The links and the fields of a paragraph that end in it where they begin, with the stretch of its text each shows and
+    /// the element that stands for it: the link, the simple field, a complex field's beginning. Inline.Xml or <paramref name="found"/> of it
+    /// tell where an inline stands, its elements or those of a stretch.
+    /// </summary>
+    static List<(int Start, int End, XElement Element)> Shown(ParagraphBlock paragraph, Func<Inline, XElement?> found)
+    {
+        // What was read need not stand in a document, nor in a paragraph (a lone equation), and reads as transitional where the part is Strict.
+        static XElement? Holder(XElement element) => element.AncestorsAndSelf().FirstOrDefault(a => a.Name.LocalName == "p" && a.Name.NamespaceName.Contains("wordprocessingml", StringComparison.Ordinal));
+        // The complex fields open at each element in a run, of those that end in the paragraph.
+        var around = new Dictionary<XElement, List<XElement>>();
+        var ended = new HashSet<XElement>();
+        var seen = new HashSet<XElement>();
+        void Scan(XElement p)
+        {
+            var open = new List<XElement>();
+            foreach (var element in p.Descendants().Where(e => e.Parent is { Name.LocalName: "r" } && Holder(e) == p))
+            {
+                around[element] = [.. open];
+                if (element.Name.LocalName != "fldChar")
+                    continue;
+                var type = (string?)element.Attribute(element.Name.Namespace + "fldCharType");
+                if (type == "begin")
+                    open.Add(element);
+                else if (type == "end" && open.Count > 0)
+                {
+                    ended.Add(open[^1]);
+                    open.RemoveAt(open.Count - 1);
+                }
+            }
+        }
+        var shown = new Dictionary<XElement, (int Start, int End, int Order)>();
+        void Show(XElement element, int start, int end) =>
+            shown[element] = shown.TryGetValue(element, out var had) ? (Math.Min(had.Start, start), Math.Max(had.End, end), had.Order) : (start, end, shown.Count);
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var (s, e) = (at, at + ParagraphText.Length(inline));
+            at = e;
+            if (e == s || found(inline) is not { } element)
+                continue;
+            if (Holder(element) is not { } p)
+                continue;
+            if (seen.Add(p))
+                Scan(p);
+            if (IsField(inline) && element.Name.LocalName is "fldChar" or "fldSimple")
+                Show(element, s, e);
+            foreach (var over in element.Ancestors().TakeWhile(a => a.Name.LocalName != "p").Where(a => a.Name.LocalName is "hyperlink" or "fldSimple"))
+                Show(over, s, e);
+            if (around.TryGetValue(element, out var fields))
+            {
+                foreach (var field in fields)
+                    Show(field, s, e);
+            }
+        }
+        return [.. shown.Where(f => f.Key.Name.LocalName != "fldChar" || (string?)f.Key.Attribute(f.Key.Name.Namespace + "fldCharType") != "begin" || ended.Contains(f.Key))
+            .OrderBy(f => f.Value.Order).Select(f => (f.Value.Start, f.Value.End, f.Key))];
+    }
+
+    /// <summary>
+    /// The stretch of a paragraph's text a link or a field shows that ends at a place (<paramref name="ending"/>) or begins
+    /// at it, the widest; null where none does.
+    /// </summary>
+    public static (int Start, int End)? FieldAt(ParagraphBlock paragraph, int offset, bool ending)
+    {
+        var found = Shown(paragraph, inline => inline.Xml).Where(f => (ending ? f.End : f.Start) == offset).ToList();
+        if (found.Count > 0)
+            return found.MaxBy(f => f.End - f.Start) is var (start, end, _) ? (start, end) : null;
+        return null;
+    }
+
+    /// <summary>
+    /// A selection of a paragraph's text brought out over the links and fields that end in the paragraph where they begin and of which it
+    /// holds one end: selected from before one into its text to behind it, from its text out of it to before it; from or to
+    /// its very edge it stays in it.
+    /// </summary>
+    public static (int From, int To) Over(ParagraphBlock paragraph, int from, int to)
+    {
+        var fields = Shown(paragraph, inline => inline.Xml);
+        for (var changed = true; changed;)
+        {
+            changed = false;
+            foreach (var (start, end, _) in fields)
+            {
+                if (start < from && from < end && to > end)
+                    (from, changed) = (start, true);
+                if (from < start && start < to && to < end)
+                    (to, changed) = (end, true);
+            }
+        }
+        return (from, to);
+    }
+
+    /// <summary>The beginnings and ends of the complex fields in a paragraph in their order, each with the place of its text it stands at.</summary>
+    public static List<(XElement Mark, bool Begins, int At)> FieldMarks(ParagraphBlock paragraph)
+    {
+        var marks = new List<(XElement, bool, int)>();
+        if (paragraph.Element is not { } read)
+            return marks;
+        var shown = new Dictionary<XElement, (int Start, int End)>();
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var end = at + ParagraphText.Length(inline);
+            if (inline.Xml != null && end > at)
+                shown.TryAdd(inline.Xml, (at, end));
+            at = end;
+        }
+        var now = paragraph.TextOffset;
+        foreach (var part in paragraph.Parts ?? [read])
+        {
+            foreach (var e in part.Descendants())
+            {
+                var has = shown.TryGetValue(e, out var span);
+                if (has)
+                    now = span.Start;
+                if (e.Name.LocalName == "fldChar" && e.Parent is { Name.LocalName: "r" } && e.Ancestors(read.Name).First() == part
+                    && (string?)e.Attribute(e.Name.Namespace + "fldCharType") is ("begin" or "end") and var type)
+                    marks.Add((e, type == "begin", now));
+                if (has)
+                    now = span.End;
+            }
+        }
+        return marks;
+    }
+
+    /// <summary>
+    /// Fields over several paragraphs taken away, their results left as text: the runs from a beginning through its instruction to
+    /// its separator and of its end, as tracked changes deleted. Returns the stretch's new text.
+    /// </summary>
+    public static string Unfield(Stretch stretch, List<(XElement Begin, XElement End)> fields, Tracking? tracking)
+    {
+        var touched = new HashSet<XElement>();
+        foreach (var (readBegin, readEnd) in fields)
+        {
+            if (stretch.Find(readBegin) is not { } begin || stretch.Find(readEnd) is not { } end)
+                throw new NotSupportedException("The field is not where it was read.");
+            var w = begin.Name.Namespace;
+            // Its separator, where it has one (fields in its instruction have theirs), else its end.
+            var depth = 0;
+            var last = end;
+            foreach (var mark in stretch.Xml.Descendants(w + "fldChar").SkipWhile(c => c != begin))
+            {
+                var type = (string?)mark.Attribute(w + "fldCharType");
+                if (type == "begin")
+                    depth++;
+                else if (type == "end")
+                    depth--;
+                else if (type == "separate" && depth == 1)
+                {
+                    last = mark;
+                    break;
+                }
+                if (mark == end)
+                    break;
+            }
+            SplitBefore(begin);
+            if (last.ElementsAfterSelf().FirstOrDefault() is { } rest)
+                SplitBefore(rest);
+            var runs = begin.Parent!.Ancestors(w + "p").First().Document!.Descendants(w + "r").SkipWhile(r => r != begin.Parent).ToList();
+            runs = [.. runs.Take(runs.IndexOf(last.Parent!) + 1)];
+            if (last != end)
+                runs.Add(SplitOut(end, end.Parent!));
+            foreach (var run in runs)
+            {
+                touched.Add(ParagraphOf(run));
+                if (tracking != null)
+                    Deleted(run, tracking);
+                else
+                    run.Remove();
+            }
+        }
+        return stretch.Written(Outermost(touched).Select(p => (p, (IEnumerable<XElement>)[p])));
+    }
+
+    /// <summary>Whether an element stands in what a link or a field of <see cref="Shown"/> stands for: in the link or the simple field, between a complex field's beginning and end.</summary>
+    static bool Within(XElement element, XElement field, List<XElement> parts) =>
+        field.Name.LocalName != "fldChar" ? element.Ancestors().Contains(field)
+        : FieldRuns(field, PartOf(field, parts)) is { Count: > 0 } runs && XNode.CompareDocumentOrder(field, element) < 0 && XNode.CompareDocumentOrder(element, runs[^1]) < 0;
+
+    /// <summary>
+    /// What a field that shows as a character stands in, to take it away: a simple field, a page number, or the runs of a
+    /// complex field, its beginning and end each beginning and ending theirs; null for one that does not end in the
+    /// paragraph it begins in or is no field.
+    /// </summary>
+    static List<XElement>? FieldParts(Stretch stretch, Inline inline, List<XElement> parts)
+    {
+        if (!IsField(inline) || inline.Xml == null || stretch.Find(inline.Xml) is not { } element || !In(element, parts))
+            return null;
+        var w = element.Name.Namespace;
+        if (element.Name.LocalName is "fldSimple")
+            return [element];
+        if (element.Name.LocalName != "fldChar")
+            return element.Parent is { Name.LocalName: "r" } run ? [SplitOut(element, run)] : null;
+        if (FieldRuns(element, PartOf(element, parts)) is not { Count: > 0 } runs)
+            return null;
+        SplitBefore(element);
+        runs[0] = element.Parent!;
+        if (runs[^1].Elements(w + "fldChar").LastOrDefault()?.ElementsAfterSelf().FirstOrDefault() is { } rest)
+            SplitBefore(rest);
+        return runs;
+    }
+
+    /// <summary>A child of a run in a run of its own, the run's other content in others around it.</summary>
+    static XElement SplitOut(XElement child, XElement run)
+    {
+        SplitBefore(child);
+        if (child.ElementsAfterSelf().FirstOrDefault() is { } rest)
+            SplitBefore(rest);
+        return child.Parent!;
+    }
+
     /// <summary>The paragraph (w:p) an element stands in, nearest.</summary>
     static XElement ParagraphOf(XElement element) =>
         element.AncestorsAndSelf().FirstOrDefault(a => a.Name.LocalName == "p" && a.Name.Namespace == element.Document?.Root?.Name.Namespace)
@@ -230,6 +474,19 @@ static class TextEdits
         var removed = new List<XElement>();
         (XElement T, int Index)? target = null;
         XElement? before = null, after = null;
+        (XElement Node, bool After, XElement? Format)? beside = null;
+        // Links and fields the range holds whole go with their text (see Gone), but one typed over alone, which keeps the new text as its
+        // result: Word's selection then stands in it (see WordDocument.OverFields). New text at the beginning of one goes before it, in the format of its beginning (a link's has none).
+        var whole = length > 0 ? Shown(paragraph, inline => stretch.Find(inline.Xml)).Where(f => f.Start >= offset && f.End <= end && (text.Length == 0 || f.End - f.Start < length)).ToList() : [];
+        var gone = whole.Select(f => f.Element).ToList();
+        if (text.Length > 0 && whole.Where(f => f.Start == offset).OrderByDescending(f => f.End).Select(f => f.Element).FirstOrDefault() is { } opening)
+        {
+            var w = opening.Name.Namespace;
+            if (opening.Name.LocalName == "fldChar")
+                SplitBefore(opening);
+            beside = opening.Name.LocalName == "fldChar" ? (opening.Parent!, false, opening.Parent!.Element(w + "rPr"))
+                : (opening, false, opening.Name.LocalName == "hyperlink" ? null : opening.Descendants(w + "r").FirstOrDefault()?.Element(w + "rPr"));
+        }
         var seen = new HashSet<XElement>();
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
@@ -270,8 +527,13 @@ static class TextEdits
                 if (Math.Max(s, offset) < Math.Min(e, end))
                     current = current[..(Math.Max(offset, s) - s)] + current[(Math.Min(end, e) - s)..];
                 changed[t] = current;
-                // The new text continues the text before the place, else the text after it.
-                if (target == null && s <= offset && offset <= e)
+                // The new text continues the text before the place, else the text after it, but for the edge of a link or of a
+                // field's result: it goes beside that (see Outside).
+                if (length == 0 && text.Length > 0 && target == null && beside == null && (s == offset || e == offset))
+                    beside = Outside(t, atEnd: e == offset);
+                // (Over a selection it takes the format of the first character selected, as Word's (measured in Word 365 by COM,
+                // scratchpad b9/notefmt: of "plain ", "bold" and " italic", the word selected and typed over leaves X bold).)
+                if (target == null && beside == null && s <= offset && (length > 0 ? offset < e : offset <= e))
                     target = (t, offset - s);
                 if (e <= offset)
                     before = t;
@@ -282,12 +544,25 @@ static class TextEdits
                 throw new NotSupportedException($"The place is within text the document computes ({inline.GetType().Name}).");
             else if (Math.Max(s, offset) < Math.Min(e, end))
             {
-                if (!Removable(inline) || stretch.Find(inline.Xml) is not { } element || !In(element, parts))
+                List<XElement> gones;
+                if (FieldParts(stretch, inline, parts) is { } field)
+                    gones = field;
+                else if (!Removable(inline) || stretch.Find(inline.Xml) is not { } element || !In(element, parts))
                     throw new NotSupportedException($"The range holds what cannot be taken away so ({inline.GetType().Name}).");
-                removed.Add(RunChild(element));
+                else
+                    gones = [RunChild(element)];
+                removed.AddRange(gones);
+                if (text.Length > 0 && target == null && beside == null)
+                {
+                    var holder = gones[0].Parent is { Name.LocalName: "r" } run ? SplitOut(gones[0], run) : gones[0];
+                    var w = ParagraphOf(holder).Name.Namespace;
+                    beside = (holder, false, (holder.Name.LocalName == "r" ? holder : holder.Descendants(w + "r").FirstOrDefault())?.Element(w + "rPr"));
+                }
             }
             else if (s == offset && after == null)
                 after = stretch.Find(inline.Xml);
+            else if (e == offset && length == 0 && text.Length > 0)
+                beside = Behind(stretch, inline, parts);
         }
         foreach (var (t, value) in changed.ToList())
         {
@@ -295,26 +570,50 @@ static class TextEdits
                 changed[t] = value[..into.Index] + text + value[into.Index..];
         }
         var paragraphs = new HashSet<XElement>();
+        // (Beside what goes too: it stands there yet.)
+        if (target == null && text.Length > 0 && beside is { } place)
+            paragraphs.Add(Put(place, NewRun(place.Node, place.Format, text), null));
         foreach (var (t, value) in changed)
         {
             if (value == ReadText(t))
                 continue;
             paragraphs.Add(ParagraphOf(t));
-            if (target?.T == t)
+            // Text that goes whole takes its run along (see below), as Word's.
+            if (value.Length == 0)
+                removed.Add(t);
+            else if (target?.T == t)
                 SetContent(t, value);
             else
                 SetText(t, value);
         }
         foreach (var element in removed)
         {
+            // (What stood in a run that went above is gone with it.)
+            if (element.Document == null)
+                continue;
             paragraphs.Add(ParagraphOf(element));
             var run = element.Parent;
             element.Remove();
-            // A run left with nothing but its properties goes too.
+            // A run left with nothing but its properties goes too, then a link or an insertion with nothing in it.
             if (run is { Name.LocalName: "r" } && !run.Elements().Any(c => c.Name.LocalName != "rPr"))
+            {
+                var around = run.Parent;
+                run.Remove();
+                run = around;
+            }
+            if (run is { Name.LocalName: "hyperlink" or "ins" } && !run.Elements().Any())
                 run.Remove();
         }
-        if (target == null && text.Length > 0)
+        foreach (var element in gone)
+        {
+            // Those that stood in what went above are gone with it.
+            if (element.Document != null)
+            {
+                paragraphs.Add(ParagraphOf(element));
+                Gone(element, parts);
+            }
+        }
+        if (target == null && text.Length > 0 && beside == null)
             paragraphs.Add(NewRun(parts, before, after, text));
         return stretch.Written(Outermost(paragraphs).Select(p => (p, (IEnumerable<XElement>)[p])));
     }
@@ -648,7 +947,7 @@ static class TextEdits
         if (element == null || !In(element, parts))
             return null;
         element = RunChild(element);
-        if (inline is FieldInline && element.Name.LocalName == "fldChar" && element.Parent is { Name.LocalName: "r" } begin
+        if (IsField(inline) && element.Name.LocalName == "fldChar" && element.Parent is { Name.LocalName: "r" } begin
             && FieldRuns(element, PartOf(element, parts)) is { Count: > 0 } runs)
             return last ? runs[^1] : begin;
         if (element.Parent is not { Name.LocalName: "r" } run)
@@ -794,12 +1093,133 @@ static class TextEdits
         return ParagraphOf(run);
     }
 
+    /// <summary>
+    /// A link or a field whose text was taken away whole gone too, rather than left empty (measured in Word 365 by COM, scratchpad
+    /// b9/linkback.vbs, linkover.vbs: Backspace behind one or Delete before one selects it whole, the next key takes it away);
+    /// the marks in a link stay where it stood.
+    /// </summary>
+    static void Gone(XElement element, List<XElement> parts)
+    {
+        if (element.Name.LocalName == "fldChar")
+        {
+            foreach (var run in FieldRuns(element, PartOf(element, parts)) ?? [])
+                run.Remove();
+            return;
+        }
+        foreach (var mark in element.Descendants().Where(IsMark).ToList())
+        {
+            mark.Remove();
+            element.AddBeforeSelf(mark);
+        }
+        element.Remove();
+    }
+
+    /// <summary>A run of new text in the format of properties, not placed yet.</summary>
+    static XElement NewRun(XElement near, XElement? properties, string text)
+    {
+        var w = ParagraphOf(near).Name.Namespace;
+        var t = new XElement(w + "t");
+        var run = new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => !IsRevision(e) && e.Name.LocalName != "rPrChange")) : null, t);
+        SetContent(t, text);
+        return run;
+    }
+
+    /// <summary>New content put beside what it goes beside (see Outside), as a tracked change in a w:ins; returns the paragraph it went into.</summary>
+    static XElement Put((XElement Node, bool After, XElement? Format) place, XElement run, Tracking? tracking)
+    {
+        var w = run.Name.Namespace;
+        var (content, node) = (run, place.Node);
+        if (tracking != null)
+        {
+            content = tracking.Mark(w, "ins");
+            content.Add(run);
+            node = Out(node, tracking, place.After);
+        }
+        if (place.After)
+            node.AddAfterSelf(content);
+        else
+            node.AddBeforeSelf(content);
+        return ParagraphOf(run);
+    }
+
     /// <summary>Whether an element is a note's reference or own mark.</summary>
     static bool IsNoteMark(XElement e) => e.Name.LocalName is "footnoteReference" or "endnoteReference" or "footnoteRef" or "endnoteRef";
 
     /// <summary>Whether a run shows what the format of text beside it goes by: anything but a note's reference, not deleted.</summary>
     static bool Shows(XElement run) => run.Elements().Any(e => e.Name.LocalName != "rPr" && !IsNoteMark(e))
         && !run.Ancestors().Any(a => a.Name.LocalName is "del" or "moveFrom");
+
+    /// <summary>
+    /// Where text put at an edge of a link or of a field's result goes, where text stands at it: Word's cursor stands outside
+    /// there, and the text goes beside it, in the format of the field's end or beginning (a link's has none; measured in Word
+    /// 365 by COM, scratchpad b9/linkedge.vbs: the cursor brought there by End, Home and the arrow keys, X after w:hyperlink
+    /// plain, after a field's end in its format; a link's beginning with no text before it plain). Null where the text
+    /// does not end or begin one.
+    /// </summary>
+    static (XElement Node, bool After, XElement? Format)? Outside(XElement t, bool atEnd)
+    {
+        var w = t.Name.Namespace;
+        static bool Passed(XElement e) => e.Name.LocalName is "rPr" or "bookmarkStart" or "bookmarkEnd" or "proofErr" or "commentRangeStart" or "commentRangeEnd" or "permStart" or "permEnd";
+        XElement? Next(IEnumerable<XElement> after, IEnumerable<XElement> before) => (atEnd ? after : before.Reverse()).FirstOrDefault(e => !Passed(e));
+        if (t.Parent is not { Name.LocalName: "r" } run)
+            return null;
+        var next = Next(t.ElementsAfterSelf(), t.ElementsBeforeSelf());
+        if (next == null)
+        {
+            next = Next(run.ElementsAfterSelf(), run.ElementsBeforeSelf());
+            if (next == null)
+                return run.Parent?.Name.LocalName switch
+                {
+                    "hyperlink" => (run.Parent, atEnd, null),
+                    "fldSimple" => (run.Parent, atEnd, run.Element(w + "rPr")),
+                    _ => null,
+                };
+            if (next.Name.LocalName != "r")
+                return null;
+            next = Next(next.Elements(), next.Elements());
+        }
+        if (next is not { Name.LocalName: "fldChar", Parent: { Name.LocalName: "r" } } mark)
+            return null;
+        var type = (string?)mark.Attribute(w + "fldCharType");
+        if (atEnd && type == "end")
+        {
+            if (mark.ElementsAfterSelf().FirstOrDefault() is { } rest)
+                SplitBefore(rest);
+            return (mark.Parent, true, mark.Parent.Element(w + "rPr"));
+        }
+        if (atEnd || type != "separate")
+            return null;
+        // Its beginning, past the fields in its instruction.
+        var depth = 0;
+        foreach (var character in ParagraphOf(t).Descendants(w + "fldChar").Reverse().SkipWhile(c => c != mark).Skip(1))
+        {
+            var kind = (string?)character.Attribute(w + "fldCharType");
+            if (kind == "end")
+                depth++;
+            else if (kind == "begin" && depth-- == 0)
+            {
+                SplitBefore(character);
+                return (character.Parent!, false, character.Parent!.Element(w + "rPr"));
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Where text put behind a field that shows as a character goes: behind its end, past a link it ends, in the format of its
+    /// end (as Outside; measured in Word 365 by COM, scratchpad b9/fieldedit.vbs). Null for anything else.
+    /// </summary>
+    static (XElement Node, bool After, XElement? Format)? Behind(Stretch stretch, Inline inline, List<XElement> parts)
+    {
+        if (!IsField(inline) || Holder(stretch, inline, parts, last: true) is not { } holder)
+            return null;
+        var w = holder.Name.Namespace;
+        var format = (holder.Name.LocalName == "r" ? holder : holder.Descendants(w + "r").FirstOrDefault())?.Element(w + "rPr");
+        var node = holder;
+        while (node.Parent is { Name.LocalName: "hyperlink" } link && !node.ElementsAfterSelf().Any())
+            node = link;
+        return (node, true, format);
+    }
 
     /// <summary>The paragraphs not within another of them.</summary>
     static IEnumerable<XElement> Outermost(HashSet<XElement> paragraphs) => paragraphs.Where(p => !p.Ancestors().Any(paragraphs.Contains));
@@ -813,7 +1233,9 @@ static class TextEdits
     /// mark the first, at its end); a part that runs into the next (its mark deleted or hidden) keeps that mark in its
     /// second half, the first half ending with a mark of its own that does not (measured in Word 365 by COM: Enter in the
     /// first of two paragraphs joined by a deleted mark, the final view shown, leaves the first half a plain mark, the
-    /// second the deleted one). Returns the stretch's new text and where the second paragraph begins in it.
+    /// second the deleted one). At the edges of a link or a field it goes beside that, which stays whole (as Outside;
+    /// measured in Word 365 by COM, scratchpad b9/linkedge.vbs, fieldedit.vbs). Returns the stretch's new text and where the
+    /// second paragraph begins in it.
     /// </summary>
     public static (string Text, int Second) Split(Stretch stretch, ParagraphBlock paragraph, int offset, Tracking? tracking = null)
     {
@@ -826,6 +1248,9 @@ static class TextEdits
         // the place stands in, where the place is between elements.
         XElement? first = null, textBefore = null;
         var between = false;
+        var shown = Shown(paragraph, inline => stretch.Find(inline.Xml));
+        var opening = shown.Where(f => f.Start == offset).OrderByDescending(f => f.End).Select(f => f.Element).FirstOrDefault();
+        var closing = shown.Where(f => f.End == offset).OrderBy(f => f.Start).Select(f => f.Element).FirstOrDefault();
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
         {
@@ -837,6 +1262,8 @@ static class TextEdits
                     textBefore = PartOf(passed, parts);
                 continue;
             }
+            if (e == s && closing != null && stretch.Find(inline.Xml) is { } mark && Within(mark, closing, parts))
+                continue;
             if (s >= offset)
             {
                 between = true;
@@ -849,6 +1276,8 @@ static class TextEdits
                     throw new NotSupportedException($"What the place is before was not read from the paragraph ({inline.GetType().Name}).");
                 }
                 first = RunChild(element);
+                if (opening != null && (first == opening || Within(first, opening, parts)))
+                    first = opening;
                 break;
             }
             // Within a text: its run split there.
@@ -896,6 +1325,9 @@ static class TextEdits
             // The element and what follows it, out of each element around it up to the paragraph, which is split there:
             // where nothing of it but its properties stands before, it goes whole (no empty run stays behind).
             var moved = first;
+            // Within a simple field: it goes on as the complex field it stands for, whose result can span paragraphs.
+            foreach (var simple in first.Ancestors().TakeWhile(a => a != p).Where(a => a.Name.LocalName == "fldSimple").ToList())
+                Complex(simple);
             while (moved.Parent != p)
             {
                 var around = moved.Parent ?? throw new NotSupportedException("The place stands in no paragraph.");
@@ -919,9 +1351,8 @@ static class TextEdits
                 around.AddAfterSelf(copy);
                 moved = copy;
             }
-            // A field begun before the place and not ended there would be split, which Word does not do.
-            if (OpenFields(moved.ElementsBeforeSelf().SelectMany(e => e.DescendantsAndSelf())) != 0)
-                throw new NotSupportedException("The place is within a field.");
+            // (A field begun before the place and not ended there goes on in the second paragraph, its result spanning them, as
+            // in Word, measured in Word 365 by COM, scratchpad b9/enterfield.vbs: a link's and a table of contents' too.)
             var after = moved.NodesAfterSelf().ToList();
             moved.Remove();
             second.Add(moved);
@@ -1108,7 +1539,7 @@ static class TextEdits
     /// in runs of their own in the format of its first run, its result between them as it was (fields within it, done
     /// before it, as their complex fields too).
     /// </summary>
-    static void Complex(XElement field)
+    static XElement Complex(XElement field)
     {
         var w = field.Name.Namespace;
         var format = field.Descendants(w + "r").FirstOrDefault()?.Element(w + "rPr");
@@ -1122,8 +1553,10 @@ static class TextEdits
         XElement Character(string type) => new(w + "fldChar", new XAttribute(w + "fldCharType", type),
             type == "begin" ? field.Attributes().Where(a => a.Name == w + "fldLock" || a.Name == w + "dirty").Select(a => new XAttribute(a)) : null,
             type == "begin" ? data : null);
-        field.ReplaceWith([Run(Character("begin")), Run(new XElement(w + "instrText", new XAttribute(XNamespace.Xml + "space", "preserve"), field.Attribute(w + "instr")?.Value ?? "")),
+        var begin = Character("begin");
+        field.ReplaceWith([Run(begin), Run(new XElement(w + "instrText", new XAttribute(XNamespace.Xml + "space", "preserve"), field.Attribute(w + "instr")?.Value ?? "")),
             Run(Character("separate")), .. result, Run(Character("end"))]);
+        return begin;
     }
 
     /// <summary>A table row marked deleted as a tracked change (a w:del in its w:trPr, after an insertion of it, before a change of its properties: CT_TrPr).</summary>
@@ -1730,7 +2163,7 @@ static class TextEdits
             at = e;
             if (e == s || e <= offset || s >= end)
                 continue;
-            if (inline is FieldInline && stretch.Find(inline.Xml) is { } begin && In(begin, parts) && FieldRuns(begin, PartOf(begin, parts)) is { } field)
+            if (IsField(inline) && stretch.Find(inline.Xml) is { } begin && In(begin, parts) && FieldRuns(begin, PartOf(begin, parts)) is { } field)
             {
                 runs.AddRange(field.Select(run => (run, (Inline)inline)));
                 continue;
@@ -1794,7 +2227,7 @@ static class TextEdits
         var w = begin.Name.Namespace;
         if (begin.Name.LocalName == "fldSimple")
             return [.. begin.Descendants(w + "r").Where(r => ParagraphOf(r) == p)];
-        if (begin.Parent is not { Name.LocalName: "r" } first)
+        if (begin.Parent is not { Name.LocalName: "r" } first || (string?)begin.Attribute(w + "fldCharType") != "begin")
             return null;
         var runs = new List<XElement>();
         var depth = 0;
@@ -1972,6 +2405,7 @@ static class TextEdits
         // before, and the author's inserted text it goes into.
         XElement? before = null, after = null;
         (XElement T, int Index)? continued = null;
+        (XElement Node, bool After, XElement? Format)? beside = null;
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
         {
@@ -2012,6 +2446,9 @@ static class TextEdits
                 }
                 else if (length == 0 && s <= offset && offset <= e)
                 {
+                    // At the edge of a link or of a field's result it goes beside that (see Outside).
+                    if (text.Length > 0 && beside == null && continued == null && (e == offset || before == null && s == offset))
+                        beside = Outside(t, atEnd: e == offset);
                     // At the place: into the author's insertion, else after the text before it (cut there).
                     if (t.Ancestors().FirstOrDefault(IsRevision) is { Name.LocalName: "ins" } ins && tracking.Own(ins))
                         continued ??= (t, offset - s);
@@ -2029,6 +2466,15 @@ static class TextEdits
                 else if (after == null && s >= end)
                     after = t;
             }
+            else if (within && FieldParts(stretch, inline, parts) is { } field)
+            {
+                // A whole field in deletions, a simple one as the complex field it stands for (measured in Word 365 by COM,
+                // scratchpad b9/fieldedit2.vbs: Backspace twice or selected and deleted, complex and simple alike).
+                if (field is [{ Name.LocalName: "fldSimple" } simple] && Complex(simple) is var begin)
+                    field = FieldRuns(begin, ParagraphOf(begin)) ?? throw new NotSupportedException("The field does not end where it begins.");
+                deleted.AddRange(field);
+                before = field[^1].Elements().Last();
+            }
             else if (within)
             {
                 if (!Removable(inline) || stretch.Find(inline.Xml) is not { } found || !In(found, parts) || RunChild(found) is not { Parent.Name.LocalName: "r" } element)
@@ -2041,19 +2487,58 @@ static class TextEdits
             }
             else if (s >= end && after == null)
                 after = stretch.Find(inline.Xml);
+            else if (e == offset && Holder(stretch, inline, parts, last: true) is { } holder)
+            {
+                before = holder.Name.LocalName == "r" ? holder.Elements().Last() : holder;
+                if (length == 0 && text.Length > 0)
+                    beside = Behind(stretch, inline, parts);
+            }
+        }
+        // A field the range holds whole is deleted whole, a simple one as the complex field it stands for (see Gone; Word, measured
+        // in Word 365 by COM, scratchpad b9/linkover.vbs), but one typed over alone (see Replace); the text of a link in deletions in it, new
+        // text after it.
+        XElement? like = deleted.FirstOrDefault();
+        if (length > 0)
+        {
+            foreach (var (s, _, element) in Shown(paragraph, inline => stretch.Find(inline.Xml)).Where(f => f.Start >= offset && f.End <= end && (text.Length == 0 || f.End - f.Start < length)).ToList())
+            {
+                if (element.Parent == null)
+                    continue;
+                if (element.Name.LocalName == "hyperlink")
+                {
+                    if (before != null && before.Ancestors().Contains(element))
+                        before = element;
+                    if (s == offset)
+                        like = new XElement(element.Name.Namespace + "r");
+                    continue;
+                }
+                if (deleted.Contains(element))
+                    continue;
+                var begin = element.Name.LocalName == "fldSimple" ? Complex(element) : element;
+                var runs = FieldRuns(begin, ParagraphOf(begin)) ?? [];
+                deleted.InsertRange(s == offset ? 0 : deleted.Count, runs.Where(run => !deleted.Contains(run)));
+                if (runs.Count > 0 && text.Length > 0)
+                {
+                    before = runs[^1].Elements().Last();
+                    if (s == offset)
+                        like = runs[0];
+                }
+            }
         }
         // The new text first, while what it follows stands where it did; then the range deleted.
         var touched = new HashSet<XElement>(deleted.Select(run => PartOf(run, parts)));
         if (text.Length > 0)
         {
-            if (continued is { } into)
+            if (beside is { } place)
+                touched.Add(Put(place, NewRun(place.Node, place.Format, text), tracking));
+            else if (continued is { } into)
             {
                 var value = ReadText(into.T);
                 touched.Add(PartOf(into.T, parts));
                 SetContent(into.T, value[..into.Index] + text + value[into.Index..]);
             }
             else
-                touched.Add(Inserted(parts, before, after, text, tracking));
+                touched.Add(Inserted(parts, before, after, text, tracking, like));
         }
         foreach (var run in deleted)
             Deleted(run, tracking);
@@ -2069,11 +2554,11 @@ static class TextEdits
     /// the run does not end or begin them); in the format of the run it follows or precedes, else of the part's mark.
     /// Returns the part it went into.
     /// </summary>
-    static XElement Inserted(List<XElement> parts, XElement? before, XElement? after, string text, Tracking tracking)
+    static XElement Inserted(List<XElement> parts, XElement? before, XElement? after, string text, Tracking tracking, XElement? like = null)
     {
         var p = before != null ? PartOf(before, parts) : after != null ? PartOf(after, parts) : parts[^1];
         var w = p.Name.Namespace;
-        var beside = (before ?? after)?.AncestorsAndSelf(w + "r").FirstOrDefault();
+        var beside = (like ?? before ?? after)?.AncestorsAndSelf(w + "r").FirstOrDefault();
         // A run beside without properties of its own gives none: the mark gives its own only where no run stands beside
         // (measured in Word 365 by COM: "XX" typed at the end of plain text before an italic mark, and at the start of
         // plain text before a bold one, is plain with changes tracked and without; the mark's gave tracked text typed
@@ -2089,6 +2574,8 @@ static class TextEdits
                 SplitBefore(rest);
             Out(previous, tracking, after: true).AddAfterSelf(ins);
         }
+        else if (before?.AncestorsAndSelf().FirstOrDefault(a => a.Parent == p) is { } standing)
+            standing.AddAfterSelf(ins);
         else if (after?.AncestorsAndSelf(w + "r").FirstOrDefault() is { } next)
         {
             if (after.ElementsBeforeSelf().Any(e => e.Name.LocalName != "rPr"))

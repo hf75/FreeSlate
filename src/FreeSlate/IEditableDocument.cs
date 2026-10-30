@@ -74,6 +74,33 @@ public interface IEditableDocument : IDisposable
     void Replace(int paragraph, int offset, int length, string text);
 
     /// <summary>
+    /// The text a field shows where the character at a place of a paragraph's text is one, else null: Word's smart cut goes by
+    /// what it shows (see EditSession.Tidied).
+    /// </summary>
+    string? FieldText(int paragraph, int offset);
+
+    /// <summary>
+    /// The stretch of a paragraph's text a link or a field shows that ends at a place (<paramref name="ending"/>) or begins at
+    /// it, null where none does: Backspace behind one and Delete before one select it first (see EditSession.Backspace).
+    /// </summary>
+    (int Start, int End)? FieldAt(int paragraph, int offset, bool ending);
+
+    /// <summary>Where the cursor stands for a place of a paragraph's text: behind what a field computes where the place is within it (a list number), else there.</summary>
+    int Standing(int paragraph, int offset);
+
+    /// <summary>
+    /// A selection from a place to a later one, brought out over the links and fields it holds one end of, whose ends and
+    /// what they show go whole (see EditSession.Ordered).
+    /// </summary>
+    (int First, int From, int Last, int To) OverFields(int first, int from, int last, int to);
+
+    /// <summary>
+    /// The fields whose beginnings and ends stand in different paragraphs within a selection from a place to a later one taken away,
+    /// their results left as text, a step in taking the selection away.
+    /// </summary>
+    void Unfield(int first, int from, int last, int to);
+
+    /// <summary>
     /// The stretch of a paragraph's text a content control shows as its placeholder where a range of it goes into one,
     /// else the first one it reaches into from outside: text put in where it goes into one (see Replace) takes the whole
     /// placeholder's place, taking characters away there leaves it as it is, and a range reaching into one from outside

@@ -45,6 +45,9 @@ public sealed class EditSession(IEditableDocument document)
     /// <summary>Whether text is selected.</summary>
     public bool Selecting => Caret != Anchor;
 
+    /// <summary>The selection in reading order as it stands: over the links and fields it holds one end of (see IEditableDocument.OverFields), which an editor shows.</summary>
+    public (TextPlace Start, TextPlace End) Selection => Ordered() is var (start, end, _) ? (start, end) : default;
+
     /// <summary>
     /// The character formatting text typed at the cursor takes, given where no text was selected and the cursor stood in no
     /// word (see Format); null where none is. Placing the cursor forgets it, as undoing and doing again do; typing,
@@ -120,8 +123,8 @@ public sealed class EditSession(IEditableDocument document)
     public bool CanRedo => undone.Count > 0;
 
     /// <summary>
-    /// Puts the cursor at a place, within its paragraph's text and not between the halves of a character (a surrogate
-    /// pair); <paramref name="extend"/> keeps the selection's anchor (Shift).
+    /// Puts the cursor at a place, within its paragraph's text, not between the halves of a character (a surrogate pair) nor
+    /// within what a field computes (see IEditableDocument.Standing); <paramref name="extend"/> keeps the selection's anchor (Shift).
     /// </summary>
     public void Place(TextPlace caret, bool extend = false)
     {
@@ -131,7 +134,7 @@ public sealed class EditSession(IEditableDocument document)
             var offset = Math.Clamp(caret.Offset, 0, text.Length);
             if (offset > 0 && offset < text.Length && char.IsLowSurrogate(text[offset]) && char.IsHighSurrogate(text[offset - 1]))
                 offset--;
-            caret = caret with { Offset = offset };
+            caret = caret with { Offset = document.Standing(caret.Paragraph, offset) };
         }
         Caret = caret;
         if (!extend)
@@ -182,9 +185,15 @@ public sealed class EditSession(IEditableDocument document)
             (int Start, int End)? shown = null;
             if (lines[0].Length > 0 && Caret.Paragraph == Anchor.Paragraph && document.Contains(Caret.Paragraph))
             {
-                var (from, to) = (Math.Min(Caret.Offset, Anchor.Offset), Math.Max(Caret.Offset, Anchor.Offset));
+                var (from, to) = !Selecting ? (Caret.Offset, Caret.Offset) : Ordered() is var (start, end, _) && start.Paragraph == end.Paragraph ? (start.Offset, end.Offset) : (0, 0);
                 if (document.Placeholder(Caret.Paragraph, from, to - from) is var (s, e))
                     shown = from >= s && to <= e ? (s, e) : (from, to);
+                // With changes tracked the new text follows what it deletes (measured in Word 365 by COM, scratchpad
+                // b9/fieldedit2.vbs: a deletion, then the insertion), which a place in the text as it reads then cannot say;
+                // it takes the format of the first character selected, which is gone then (scratchpad b9/notefmt). Over a place
+                // paragraphs meet see Separated.
+                else if (to > from && (document.Tracks || document.KeepsMarks && !document.Seams(Caret.Paragraph).Any(s => s > from && s < to)))
+                    shown = (from, to);
             }
             var at = shown is var (begin, _) ? Caret with { Offset = begin } : DeleteSelection(typing: true);
             for (var k = 0; k < lines.Length; k++)
@@ -257,7 +266,12 @@ public sealed class EditSession(IEditableDocument document)
         return Same(at with { Offset = at.Offset + document.Text(at.Paragraph).Length - length });
     });
 
-    /// <summary>Takes the selection away, or the character before the cursor; at a paragraph's start joins it with the one before.</summary>
+    /// <summary>
+    /// Takes the selection away, or the character before the cursor; at a paragraph's start joins it with the one before.
+    /// A link or a field it selects first, and the next key takes it away (measured in Word 365 by COM, scratchpad
+    /// b9/fieldedit.vbs, linkback.vbs: Selection.TypeBackspace behind one, the Delete key's command EditClear before one,
+    /// complex and simple alike).
+    /// </summary>
     public void Backspace() => Act(false, () =>
     {
         if (Selecting)
@@ -265,6 +279,12 @@ public sealed class EditSession(IEditableDocument document)
         var (paragraph, offset) = Caret;
         if (offset > 0)
         {
+            if (document.FieldAt(paragraph, offset, ending: true) is var (from, to))
+            {
+                Place(new TextPlace(paragraph, from));
+                Place(new TextPlace(paragraph, to), extend: true);
+                return (Caret, Anchor);
+            }
             var length = Before(document.Text(paragraph), offset);
             document.Replace(paragraph, offset - length, length, "");
             return Same(new TextPlace(paragraph, offset - length));
@@ -276,7 +296,10 @@ public sealed class EditSession(IEditableDocument document)
         return Same(new TextPlace(joined, joined == before ? end : 0));
     });
 
-    /// <summary>Takes the selection away, or the character after the cursor; at a paragraph's end joins it with the one after.</summary>
+    /// <summary>
+    /// Takes the selection away, or the character after the cursor; at a paragraph's end joins it with the one after. A
+    /// link or a field it selects first (see Backspace).
+    /// </summary>
     public void Delete() => Act(false, () =>
     {
         if (Selecting)
@@ -285,6 +308,11 @@ public sealed class EditSession(IEditableDocument document)
         var text = document.Text(paragraph);
         if (offset < text.Length)
         {
+            if (document.FieldAt(paragraph, offset, ending: false) is var (from, to))
+            {
+                Place(new TextPlace(paragraph, to), extend: true);
+                return (Caret, Anchor);
+            }
             document.Replace(paragraph, offset, After(text, offset), "");
             return (Caret, Anchor);
         }
@@ -457,9 +485,13 @@ public sealed class EditSession(IEditableDocument document)
             return Caret;
         var (start, end, between) = Ordered();
         (start, end, between) = Separated(start, end, between);
+        if (start.Paragraph != end.Paragraph)
+            document.Unfield(start.Paragraph, start.Offset, end.Paragraph, end.Offset);
         var (first, final) = (document.Text(start.Paragraph), document.Text(end.Paragraph));
-        var (fromWord, toWord) = (start.Offset < first.Length && char.IsLetter(first[start.Offset]) && (start.Offset == 0 || !char.IsLetterOrDigit(first[start.Offset - 1])),
-            end.Offset > 0 && char.IsLetter(final[end.Offset - 1]) && (end.Offset == final.Length || !char.IsLetterOrDigit(final[end.Offset])));
+        // (Of a field what it shows, as of nothing where it shows nothing.)
+        string Shown(TextPlace place, string text) => document.FieldText(place.Paragraph, place.Offset) ?? text[place.Offset].ToString();
+        var (fromWord, toWord) = (start.Offset < first.Length && Shown(start, first) is var from && (from.Length == 0 || char.IsLetter(from[0])) && (start.Offset == 0 || !char.IsLetterOrDigit(first[start.Offset - 1])),
+            end.Offset > 0 && Shown(end with { Offset = end.Offset - 1 }, final) is var to && (to.Length == 0 || char.IsLetterOrDigit(to[^1])) && (end.Offset == final.Length || !char.IsLetterOrDigit(final[end.Offset])));
         var tidy = !typing && document.KeepsMarks;
         // With changes tracked Word deletes the marks the selection covers, the first paragraph not staying apart (see apart
         // below), but where it begins inside the first and ends where a paragraph begins the mark before that one stays, as
@@ -477,7 +509,7 @@ public sealed class EditSession(IEditableDocument document)
         if (start.Paragraph == end.Paragraph)
         {
             document.Replace(start.Paragraph, start.Offset, end.Offset - start.Offset, "");
-            return tidy && fromWord && toWord ? Tidied(start) : start;
+            return tidy ? Tidied(start, fromWord && toWord) : start;
         }
         // Its ends not of one body, cell or text box (one in a table the other is not in): Word takes the table's rows the
         // selection reaches into away whole (from one into the paragraph after the table, from the row's beginning).
@@ -528,20 +560,21 @@ public sealed class EditSession(IEditableDocument document)
     /// <summary>
     /// The spaces where deleted whole words went tidied, as Word's smart cut does (Options.SmartCutPaste, on by default;
     /// measured in Word 365 by COM, WordBasic.EditClear and Selection.TypeBackspace alike, the selection beginning at a
-    /// word's first letter and ending at a word's last): where the text after the place begins with a space and the text
-    /// before it ends with one, or the paragraph begins there, that space goes; where the text before ends with a space
-    /// and the text after begins with a punctuation mark (. , ; : ! ?), the space before goes; a space that ends a
-    /// paragraph stays. A space the document does not change so (one it computes) stays too. Returns where the cursor then
-    /// stands.
+    /// word's first letter and ending at a word's last, its last character a digit too, or <paramref name="words"/> not, a
+    /// selection in one paragraph that begins with a digit or a sign; of a field by what it shows, scratchpad
+    /// b9/smartnum.vbs): where the text after the place begins with a space and the text before it ends with one (whole
+    /// words only) or the paragraph begins there, that space goes; where the text before ends with a space and the text
+    /// after begins with a punctuation mark (. , ; : ! ?), the space before goes; a space that ends a paragraph stays. A
+    /// space the document does not change so (one it computes) stays too. Returns where the cursor then stands.
     /// </summary>
-    TextPlace Tidied(TextPlace at)
+    TextPlace Tidied(TextPlace at, bool words = true)
     {
         var text = document.Text(at.Paragraph);
         // (A paragraph's beginning and end as a line feed, which its text does not hold.)
         var (before, after) = (at.Offset > 0 ? text[at.Offset - 1] : '\n', at.Offset < text.Length ? text[at.Offset] : '\n');
         try
         {
-            if (after == ' ' && before is ' ' or '\n')
+            if (after == ' ' && (before == '\n' || words && before == ' '))
                 document.Replace(at.Paragraph, at.Offset, 1, "");
             else if (before == ' ' && after is '.' or ',' or ';' or ':' or '!' or '?')
             {
@@ -612,6 +645,21 @@ public sealed class EditSession(IEditableDocument document)
     /// both ends at once, so that a selection made backwards is not walked to the story's end first.
     /// </summary>
     (TextPlace Start, TextPlace End, List<int> Between) Ordered()
+    {
+        var (start, end, between) = Plain();
+        // Word's selection goes over the links and fields it holds one end of (see IEditableDocument.OverFields).
+        var (first, from, last, to) = document.OverFields(start.Paragraph, start.Offset, end.Paragraph, end.Offset);
+        if ((first, last) != (start.Paragraph, end.Paragraph))
+        {
+            between = [];
+            for (int? next = first; next != null && (next = document.Next(next.Value)) != null && next != last;)
+                between.Add(next.Value);
+        }
+        return (new TextPlace(first, from), new TextPlace(last, to), between);
+    }
+
+    /// <summary>The selection's ends in their order, with the paragraphs between them.</summary>
+    (TextPlace Start, TextPlace End, List<int> Between) Plain()
     {
         if (Caret.Paragraph == Anchor.Paragraph)
             return Caret.Offset <= Anchor.Offset ? (Caret, Anchor, []) : (Anchor, Caret, []);

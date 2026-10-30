@@ -482,6 +482,122 @@ public sealed partial class WordDocument : IEditableDocument
         return id;
     }
 
+    public string? FieldText(int paragraph, int offset) => TextEdits.FieldAt(Find(paragraph).Paragraph, offset);
+
+    public (int Start, int End)? FieldAt(int paragraph, int offset, bool ending) => TextEdits.FieldAt(Find(paragraph).Paragraph, offset, ending);
+
+    public int Standing(int paragraph, int offset) => TextEdits.Standing(Find(paragraph).Paragraph, offset);
+
+    /// <summary>
+    /// A selection from a place to a later one, brought out over the links and fields it holds one end of (measured in Word 365 by
+    /// COM, scratchpad b9/partial.vbs, keys2.vbs: Word's selection goes so as soon as it is made: from before a link or a
+    /// field into its result to behind its end, from its result out of it to before its beginning; over paragraphs too, a
+    /// table of contents' first entry and the text before it select all of it; within a result it stays).
+    /// </summary>
+    public (int First, int From, int Last, int To) OverFields(int first, int from, int last, int to)
+    {
+        for (var turn = 0; turn < 8 && (first, from) != (last, to); turn++)
+        {
+            var was = (first, from, last, to);
+            var (p, top) = Find(first);
+            var q = Find(last).Paragraph;
+            from = TextEdits.Over(p, from, first == last ? to : int.MaxValue).From;
+            to = TextEdits.Over(q, first == last ? from : -1, to).To;
+            if (ListOf(top, p, walking: true) is var (list, i) && (first == last ? i : list.FindIndex(i, b => ReferenceEquals(b, q))) is var j and >= 0)
+            {
+                // The ends of fields the selection holds and whether they find one another there.
+                var (ends, begins) = (0, 0);
+                for (var k = i; k <= j; k++)
+                {
+                    if (list[k] is not ParagraphBlock paragraph)
+                        continue;
+                    foreach (var (_, begin, at) in TextEdits.FieldMarks(paragraph))
+                    {
+                        if (k == i && (at < from || at == from && !begin) || k == j && (at > to || at == to && begin))
+                            continue;
+                        if (begin)
+                            begins += k == i && at == from ? 0 : 1;
+                        else if (begins > 0)
+                            begins--;
+                        else if (!(k == j && at == to))
+                            ends++;
+                    }
+                }
+                // Back to the beginning of the outermost that ends in it, on to the end of the outermost that begins in it.
+                for (var k = i; ends > 0 && k >= 0; k--)
+                {
+                    if (list[k] is not ParagraphBlock paragraph)
+                        continue;
+                    foreach (var (_, begin, at) in Enumerable.Reverse(TextEdits.FieldMarks(paragraph)))
+                    {
+                        if (k == i && (at > from || at == from && !begin))
+                            continue;
+                        ends += begin ? -1 : 1;
+                        if (ends == 0)
+                        {
+                            (first, from) = (paragraph.Id, at);
+                            break;
+                        }
+                    }
+                }
+                for (var k = j; begins > 0 && k < list.Count; k++)
+                {
+                    if (list[k] is not ParagraphBlock paragraph)
+                        continue;
+                    foreach (var (_, begin, at) in TextEdits.FieldMarks(paragraph))
+                    {
+                        if (k == j && (at < to || at == to && begin))
+                            continue;
+                        begins += begin ? 1 : -1;
+                        if (begins == 0)
+                        {
+                            (last, to) = (paragraph.Id, at);
+                            break;
+                        }
+                    }
+                }
+            }
+            if ((first, from, last, to) == was)
+                break;
+        }
+        return (first, from, last, to);
+    }
+
+    /// <summary>
+    /// The fields whose beginnings and ends stand in different paragraphs within a selection from a place to a later one taken away,
+    /// their results left as text (see EditSession.DeleteSelection); as tracked changes their parts deleted.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The paragraphs would not read as they did; nothing changes.</exception>
+    public void Unfield(int first, int from, int last, int to)
+    {
+        var (p, top) = Find(first);
+        var (q, lastTop) = Find(last);
+        if (ListOf(top, p, walking: true) is not var (list, i) || list.FindIndex(i, b => ReferenceEquals(b, q)) is not (var j and > 0))
+            return;
+        var fields = new List<(XElement Begin, XElement End)>();
+        var open = new Stack<(XElement Mark, int In)>();
+        for (var k = i; k <= j; k++)
+        {
+            if (list[k] is not ParagraphBlock paragraph)
+                continue;
+            foreach (var (mark, begin, at) in TextEdits.FieldMarks(paragraph))
+            {
+                if (k == i && (at < from || at == from && !begin) || k == j && (at > to || at == to && begin))
+                    continue;
+                if (begin)
+                    open.Push((mark, k));
+                else if (open.TryPop(out var begun) && begun.In != k)
+                    fields.Add((begun.Mark, mark));
+            }
+        }
+        if (fields.Count == 0)
+            return;
+        var texts = list.GetRange(i, j - i + 1).OfType<ParagraphBlock>().Select(b => (b.Id, Text: ParagraphText.Of(b))).ToList();
+        Change(ReferenceEquals(list, blocks) ? p : top, ReferenceEquals(list, blocks) ? q : top, (stretch, tracking) => TextEdits.Unfield(stretch, fields, tracking));
+        if (!markup && !texts.All(t => Reads(t.Id, t.Text)))
+            throw Refused("The paragraphs would not read so without the fields over them.");
+    }
+
     public (int Start, int End)? Placeholder(int paragraph, int offset, int length)
     {
         var p = Find(paragraph).Paragraph;

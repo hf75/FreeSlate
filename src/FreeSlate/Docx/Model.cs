@@ -1946,6 +1946,9 @@ public sealed partial class ModelReader(DocumentContext context)
             /// <summary>Whether the field is locked (w:fldLock): Word keeps its saved result.</summary>
             public bool Locked;
 
+            /// <summary>Its beginning (w:fldChar), which an edit goes before and from which it is taken away (see Inline.Xml).</summary>
+            public XElement? Begin;
+
             /// <summary>
             /// The instruction of the date or time a legacy text form field shows instead of its saved result (w:textInput
             /// of w:type currentDate or currentTime, in its w:format), or null.
@@ -2383,6 +2386,13 @@ public sealed partial class ModelReader(DocumentContext context)
     bool deleting;
     List<TextInline>? deletedText;
 
+    /// <summary>The element a field that ends at <paramref name="end"/> stands for in the paragraph's text: its beginning, if it begins in the paragraph, else its end.</summary>
+    static XElement BegunHere(FieldState.Frame field, XElement end)
+    {
+        static XElement? Paragraph(XElement e) => e.Ancestors().FirstOrDefault(a => a.Name.LocalName == "p");
+        return field.Begin is { } begin && Paragraph(begin) == Paragraph(end) ? begin : end;
+    }
+
     void Run(XElement r, string? paragraphStyle, List<Inline> content, FieldState field)
     {
         var direct = new RunFormat();
@@ -2473,7 +2483,7 @@ public sealed partial class ModelReader(DocumentContext context)
                             var current = e.Child("ffData")?.Child("textInput") is { } input && input.Child("type").Val() is "currentDate" or "currentTime"
                                 ? input.Child("format").Val() is { Length: > 0 } picture ? $"TIME \\@ \"{picture}\"" : input.Child("type").Val() == "currentDate" ? "DATE" : "TIME"
                                 : null;
-                            field.Frames.Push(new FieldState.Frame(format) { Locked = e.Attr("fldLock") is "1" or "true" or "on", CurrentDate = current });
+                            field.Frames.Push(new FieldState.Frame(format) { Locked = e.Attr("fldLock") is "1" or "true" or "on", CurrentDate = current, Begin = e });
                             break;
                         case "separate" when field.Frames.Count > 0:
                             var frame = field.Frames.Peek();
@@ -2508,20 +2518,20 @@ public sealed partial class ModelReader(DocumentContext context)
                             if (FieldInline.TypeOf(instruction) == "LISTNUM")
                             {
                                 if (!field.Hidden && ListNumber(instruction, e) is { } listed)
-                                    field.Target(content).Add(new TextInline(listed, ended.InstructionFormat ?? ended.Format) { Xml = e });
+                                    field.Target(content).Add(new TextInline(listed, ended.InstructionFormat ?? ended.Format) { Xml = BegunHere(ended, e) });
                                 break;
                             }
                             if (FieldInline.IsAutoNumber(instruction))
                             {
                                 if (!field.Hidden)
-                                    field.Target(content).Add(AutoNumber(instruction, e, ended.InstructionFormat ?? ended.Format) with { Xml = e });
+                                    field.Target(content).Add(AutoNumber(instruction, e, ended.InstructionFormat ?? ended.Format) with { Xml = BegunHere(ended, e) });
                                 break;
                             }
                             if (ended.Cached == null && !ended.InResult && !ended.Locked && !field.Hidden && FieldInline.IsPageField(instruction) && instruction.Trim().Length > 0)
                                 ended.Cached = [];
                             // A field nested in another's instruction shows nothing of its own.
                             if (ended.Cached != null && !field.Hidden)
-                                field.Target(content).Add(new FieldInline(ended.CurrentDate ?? instruction, ResultFormat(ended, instruction), ended.Cached) { ErrorFormat = ended.SeparateFormat, Xml = e });
+                                field.Target(content).Add(new FieldInline(ended.CurrentDate ?? instruction, ResultFormat(ended, instruction), ended.Cached) { ErrorFormat = ended.SeparateFormat, Xml = BegunHere(ended, e) });
                             break;
                     }
                     break;

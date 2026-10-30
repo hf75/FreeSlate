@@ -239,6 +239,19 @@ public sealed partial class PresentationDocument : IEditableDocument
 
     public (int Start, int End)? Placeholder(int paragraph, int offset, int length) => null;
 
+    /// <summary>A slide's field is text of its own (a:fld), taken away as any text.</summary>
+    public string? FieldText(int paragraph, int offset) => null;
+
+    public (int Start, int End)? FieldAt(int paragraph, int offset, bool ending) => null;
+
+    public int Standing(int paragraph, int offset) => offset;
+
+    public (int First, int From, int Last, int To) OverFields(int first, int from, int last, int to) => (first, from, last, to);
+
+    public void Unfield(int first, int from, int last, int to)
+    {
+    }
+
     public int? PageOf(int paragraph, int offset) => paragraphs.TryGetValue(paragraph, out var at) ? slides.IndexOf(at.Slide) : null;
 
     public int Separate(int paragraph, int offset) => throw new NotSupportedException("A slide's paragraphs are each one of their own.");
