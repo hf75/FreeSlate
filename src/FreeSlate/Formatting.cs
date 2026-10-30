@@ -68,3 +68,50 @@ public sealed record ParagraphFormatting
     public double? After { get; init; }
     public double? Lines { get; init; }
 }
+
+/// <summary>
+/// Page setup to give a section of a Word document (catalog: section.page, section.columns), as Word's Page Setup gives
+/// it: each property given is set in the section's w:sectPr, the others stay as they are; lengths in points.
+/// </summary>
+public sealed record SectionFormatting
+{
+    /// <summary>
+    /// The page's size (w:pgSz w:w, w:h) and its orientation (w:orient): portrait or landscape, the width and the height
+    /// swapped where they do not fit it, as Word turns the page.
+    /// </summary>
+    public double? PageWidth { get; init; }
+    public double? PageHeight { get; init; }
+    public string? Orientation { get; init; }
+
+    /// <summary>
+    /// The margins (w:pgMar), the header's and the footer's distance from the page's edge, and the gutter; a top or bottom
+    /// margin negative where it is exact (the text keeps it however high the header or footer is), as Word gives it.
+    /// </summary>
+    public double? Top { get; init; }
+    public double? Bottom { get; init; }
+    public double? Left { get; init; }
+    public double? Right { get; init; }
+    public double? Header { get; init; }
+    public double? Footer { get; init; }
+    public double? Gutter { get; init; }
+
+    /// <summary>Columns of equal width (w:cols w:num and w:space), any widths of their own taken away.</summary>
+    public int? Columns { get; init; }
+    public double? ColumnSpace { get; init; }
+
+    /// <summary>Where the section begins (w:type): nextPage, continuous, evenPage, oddPage or nextColumn.</summary>
+    public string? Start { get; init; }
+
+    /// <summary>Whether the section's first page has a header and footer of its own (w:titlePg).</summary>
+    public bool? TitlePage { get; init; }
+
+    /// <summary>How the text stands on the page between the top and the bottom margin (w:vAlign): top, center, both or bottom.</summary>
+    public string? VerticalAlign { get; init; }
+
+    /// <summary>
+    /// The page numbering (w:pgNumType): the number of the section's first page, negative to go on from the section before;
+    /// and the numbers' format (decimal, upperRoman, lowerRoman, upperLetter, lowerLetter …).
+    /// </summary>
+    public int? PageNumberStart { get; init; }
+    public string? PageNumberFormat { get; init; }
+}

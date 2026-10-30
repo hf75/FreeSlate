@@ -357,6 +357,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         steps?.Dispose();
         (steps, growth) = (null, pages);
+        resectioned = false;
         var paginating = Paginating(blocks, lastSection, footnotes, endnotes, endnoteSeparator).GetEnumerator();
         if (paginating.MoveNext())
         {
@@ -1974,6 +1975,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var tail = 0;
         while (tail < a.Length - head && tail < b.Length - head && ReferenceEquals(a[^(tail + 1)], b[^(tail + 1)]))
             tail++;
+        // The last section given other properties (see Resection): its first block laid out again as one that differs,
+        // the first section anew.
+        if (resectioned)
+        {
+            resectioned = false;
+            if (sectionEnds.Count == 0 || sectionEnds[^1] + 1 >= a.Length)
+                return (null, [], head, tail, Ends(sectionEnds, blocks, head, tail, given.Count), null);
+            var opening = sectionEnds[^1] + 1;
+            (head, tail) = (Math.Min(head, opening), Math.Min(tail, a.Length - opening - 1));
+        }
         // A note changed (see Renote): the block that refers to it first is laid out again as one that differs.
         if (renoted.Count > 0)
         {
@@ -2045,6 +2056,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>The places of the blocks Paginate was given (see input) that end sections, the paragraphs that hold their breaks, in order.</summary>
     List<int> sectionEnds = [];
 
+    /// <summary>The properties of the document's last section the layout has (see Resection).</summary>
+    public SectionProperties? LastSection => input?.LastSection;
+
+    /// <summary>Whether the last section has other properties than it was laid out with (see Resection).</summary>
+    bool resectioned;
+
+    /// <summary>
+    /// The document's last section given other properties (the body's own w:sectPr, which no block holds): the next
+    /// relayout lays it out anew from its first block, the document anew where it has one section.
+    /// </summary>
+    public void Resection(SectionProperties last)
+    {
+        if (input is not var (blocks, _, footnotes, endnotes, endnoteSeparator))
+            return;
+        input = (blocks, last, footnotes, endnotes, endnoteSeparator);
+        resectioned = true;
+    }
+
     /// <summary>The places of the blocks that end sections (see sectionEnds).</summary>
     static List<int> Ends(List<Block> blocks)
     {
@@ -2109,7 +2138,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// </summary>
     bool StoriesLookBack() =>
         lookBack ??= laid!.SelectMany(p => new[] { p.Header, p.Footer }).OfType<string>().Distinct(StringComparer.Ordinal)
-            .Any(part => context.Load(part).Root is { } root && root.Descendants().Any(e =>
+            .Any(part => context.Package.Exists(part) && context.Load(part).Root is { } root && root.Descendants().Any(e =>
                 (e.Name == Wml.W + "instrText" ? e.Value : (string?)e.Attribute(Wml.W + "instr"))?.Contains("STYLEREF", StringComparison.OrdinalIgnoreCase) == true));
 
     bool? lookBack;
@@ -2145,7 +2174,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
     /// <summary>Whether a header's or footer's part holds fields.</summary>
     bool Reads(string part) => (reads ??= new(StringComparer.Ordinal)).TryGetValue(part, out var has) ? has
-        : reads[part] = context.Load(part).Root?.Descendants().Any(e => e.Name == Wml.W + "fldChar" || e.Name == Wml.W + "fldSimple") == true;
+        : reads[part] = context.Package.Exists(part) && context.Load(part).Root?.Descendants().Any(e => e.Name == Wml.W + "fldChar" || e.Name == Wml.W + "fldSimple") == true;
 
     Dictionary<string, bool>? reads;
 
@@ -2195,7 +2224,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return null;
         bool? Counts(string? part)
         {
-            if (part == null)
+            // A part a change made and undoing took back (on a page laid out before) holds nothing.
+            if (part == null || !context.Package.Exists(part))
                 return false;
             if (parts.TryGetValue(part, out var known))
                 return known;

@@ -1122,6 +1122,15 @@ public sealed partial class ModelReader(DocumentContext context)
     {
         if (!stories.TryGetValue(part, out var was))
             return [];
+        // A part a change made and undoing took back: its story forgotten.
+        if (!context.Package.Exists(part))
+        {
+            stories.Remove(part);
+            numberSteps.Remove(part);
+            storyOrder.RemoveAll(story => string.Equals(story, part, StringComparison.OrdinalIgnoreCase));
+            StoriesRead++;
+            return [(part, was)];
+        }
         if (!StoriesCount)
         {
             var alone = ReadStory(part);
@@ -1160,7 +1169,7 @@ public sealed partial class ModelReader(DocumentContext context)
         storyOrder.Clear();
         foreach (var story in order)
         {
-            if (storyOrder.Contains(story, StringComparer.OrdinalIgnoreCase))
+            if (storyOrder.Contains(story, StringComparer.OrdinalIgnoreCase) || !context.Package.Exists(story))
                 continue;
             var blocks = ReadStory(story);
             if (stories.TryGetValue(story, out var before) || storiesBefore.Remove(story, out before))

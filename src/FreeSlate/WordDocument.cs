@@ -588,6 +588,10 @@ public sealed partial class WordDocument : IEditableDocument
                 paginator.Restory(storiesChanged);
                 storiesChanged.Clear();
             }
+            // The last section's properties (the body's own w:sectPr, see SectionFormatting), changed or put back, which it
+            // lays out anew from the section's first block.
+            if (reader.LastSection() is var lastSection && !XNode.DeepEquals(lastSection.Element, paginator.LastSection?.Element))
+                paginator.Resection(lastSection);
             pages = paginator.Relayout(blocks, PagesAtOnce).Pages;
         }
         Draw(pages);
@@ -791,7 +795,7 @@ public sealed partial class WordDocument : IEditableDocument
     /// element of the new text stands in it.
     /// </summary>
     Func<XElement, int> Change(Block from, Block to, Func<Stretch, Tracking?, string> edit, Func<IReadOnlyList<Block>?>? like = null,
-        IReadOnlyDictionary<string, byte[]?>? changes = null)
+        IReadOnlyDictionary<string, byte[]?>? changes = null, bool lastSection = false)
     {
         // A change in a note is made in its part (see ChangeNote), in a header or footer in its own (see ChangeStory).
         if (noteOf.TryGetValue(from, out var note))
@@ -800,7 +804,7 @@ public sealed partial class WordDocument : IEditableDocument
             return ChangeStory(story, edit, changes);
         if (commentOf.TryGetValue(from, out var comment))
             return ChangeComment(comment, edit, changes);
-        var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
+        var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to), lastSection);
         var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
         var text = edit(stretch, tracking);
         if (tracking != null)
@@ -851,11 +855,16 @@ public sealed partial class WordDocument : IEditableDocument
     void Go(int target)
     {
         var to = versions[target];
-        // Headers and footers the version has otherwise are read anew (see Restory).
+        // Headers and footers the version has otherwise are read anew (see Restory), settings it has otherwise given the
+        // layout (see SettingsChanged).
         var stories = StoriesDiffering(partBytes, to.Parts);
+        var settings = SettingsPart() is { } settingsPart
+            && (partBytes.TryGetValue(settingsPart, out var was) != to.Parts.TryGetValue(settingsPart, out var now) || !ReferenceEquals(was, now));
         Restore(to.Parts);
         if (stories.Count > 0)
             Restory(stories);
+        if (settings)
+            SettingsChanged();
         if (Island.Differing(islands, to.Islands) is { Count: > 0 } differ)
         {
             var (old, before, start, end) = Covering(differ.Min(i => i.Start), differ.Max(i => i.End));
@@ -995,12 +1004,22 @@ public sealed partial class WordDocument : IEditableDocument
     /// The stretch of the main part's text (as read whole) that the blocks <paramref name="first"/> to
     /// <paramref name="last"/> of the body were read from: the children of the body they stand in, with the others read
     /// from the same pieces and those between them; its start, its end, the children and the stretch as it reads now,
-    /// parsed afresh.
+    /// parsed afresh; with <paramref name="lastSection"/> on to the body's own section properties after them (see
+    /// SectionFormatting), which no block holds.
     /// </summary>
-    (int Start, int End, List<XElement> Old, Stretch Stretch) StretchOf(int first, int last)
+    (int Start, int End, List<XElement> Old, Stretch Stretch) StretchOf(int first, int last, bool lastSection = false)
     {
-        if (head.Length == 0 || Top(First(blocks[first])) is not { } a || Top(Last(blocks[last])) is not { } b || RangeOf(a) is not { } from
-            || RangeOf(b) is not { } to)
+        if (head.Length == 0 || Top(First(blocks[first])) is not { } a || Top(Last(blocks[last])) is not { } b)
+            throw new NotSupportedException("The paragraph is not where it was read.");
+        if (lastSection && BodySection() is { } section)
+        {
+            // Where Word keeps them, after the last block (docx/external/libreoffice/extras-ooxmlimport/tdf108849 has
+            // them before it).
+            if (section.Parent != b.Parent || !b.IsBefore(section))
+                throw new NotSupportedException("The body's own section properties do not follow its last block.");
+            b = section;
+        }
+        if (RangeOf(a) is not { } from || RangeOf(b) is not { } to)
             throw new NotSupportedException("The paragraph is not where it was read.");
         var (start, end) = (from.Start, to.End);
         // The children of the pieces they were read from, whole.

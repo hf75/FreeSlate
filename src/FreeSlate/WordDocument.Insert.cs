@@ -201,6 +201,8 @@ public sealed partial class WordDocument
         if (added.Select(p => p.Key).Distinct(StringComparer.Ordinal).Count() != added.Count || added.Any(p => p.From != null && added.All(q => q.Key != p.From)))
             throw new ArgumentException("The new parts' keys are not each their own, or a part is related from one not among them.", nameof(added));
         var names = added.ToDictionary(p => p.Key, p => Unique(p.Name), StringComparer.Ordinal);
+        foreach (var part in added.Where(p => p.Relationships != null))
+            changes[OpcPackage.RelationshipsPart(names[part.Key])] = part.Relationships;
         var ids = new Dictionary<string, string>(StringComparer.Ordinal);
         // A strict document's relationships take Strict's types.
         var strict = IsStrictPart(context.MainPart);

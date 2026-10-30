@@ -61,7 +61,11 @@ public sealed partial class WordDocument
             {
                 foreach (var block in before)
                     Gone(block, gone);
-                storiesChanged.Add(story);
+                // A part undoing took away again is laid out anew with the section that named it.
+                if (package.Exists(story))
+                    storiesChanged.Add(story);
+                else
+                    storiesChanged.Remove(story);
             }
         }
         layout?.Forget(gone);

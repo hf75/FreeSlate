@@ -229,6 +229,19 @@ public sealed partial class ModelReader
             Give(bodyElement.Child("sectPr") ?? context.SectionAhead());
             Move(sectionsBeyond, sectionsAdded);
         }
+        // The body's own section properties (the last section's, see SectionFormatting) taken out for new ones: the
+        // children of the last section stand in a section of those now.
+        var lastSectionWere = new List<(XElement Child, (XElement? Properties, int Index) Was)>();
+        if (old.LastOrDefault(e => e.Name == Wml.W + "sectPr") is { } wasLast && children.LastOrDefault(e => e.Name == Wml.W + "sectPr") is { } nowLast)
+        {
+            foreach (var (child, section) in sectionOf)
+            {
+                if (ReferenceEquals(section.Properties, wasLast))
+                    lastSectionWere.Add((child, section));
+            }
+            foreach (var (child, was) in lastSectionWere)
+                sectionOf[child] = (nowLast, was.Index);
+        }
         // The children from one on moved on by so many sections.
         void Move(XElement? from, int by)
         {
@@ -266,6 +279,8 @@ public sealed partial class ModelReader
         List<Block>? Undone()
         {
             putBack();
+            foreach (var (child, was) in lastSectionWere)
+                sectionOf[child] = was;
             if (sectionsWere != null)
             {
                 foreach (var (child, was) in sectionsWere)

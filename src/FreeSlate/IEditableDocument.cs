@@ -147,5 +147,7 @@ public interface IEditableDocument : IDisposable
 /// has a part so named or had one since it was opened (pictures are known by their part's name). The relationship to it,
 /// of the type given, goes from the main part, or from the new part whose key <see cref="From"/> names; where "{key}"
 /// stands in the markup or in the bytes of the part the relationship goes from, the relationship's id takes its place.
+/// <see cref="Relationships"/> are the part's own (the bytes of a .rels part, its targets relative to the part's folder),
+/// where it is a copy of another that has them (a header unlinked from the one before it).
 /// </summary>
-public sealed record NewPart(string Key, string Name, string ContentType, string Relationship, byte[] Bytes, string? From = null);
+public sealed record NewPart(string Key, string Name, string ContentType, string Relationship, byte[] Bytes, string? From = null, byte[]? Relationships = null);

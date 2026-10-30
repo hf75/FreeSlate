@@ -944,6 +944,153 @@ static class TextEdits
         return (stretch.Spliced([(start, end, PartText.Xml(p))]), true);
     }
 
+    /// <summary>
+    /// Page setup given to a section (see SectionFormatting): its properties as the document read them (a paragraph's
+    /// w:sectPr or the body's own, <paramref name="sectPr"/>), found in the stretch and set; where the body has none of its
+    /// own, one made after the stretch's last child (which the body's last is then). As a tracked change the properties
+    /// it had (but for its headers and footers) are kept in a w:sectPrChange. Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The section's properties are not in the stretch; nothing changes.</exception>
+    public static string Format(Stretch stretch, XElement? sectPr, SectionFormatting format, Tracking? tracking = null)
+    {
+        var (properties, written) = Section(stretch, sectPr);
+        Format(properties, format, tracking);
+        return written();
+    }
+
+    /// <summary>
+    /// Header and footer references put into a section's properties (see WordDocument.Header), after those it has, before
+    /// its other properties; a missing w:sectPr of the body made as Format makes it. Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The section's properties are not in the stretch; nothing changes.</exception>
+    public static string AddReferences(Stretch stretch, XElement? sectPr, IReadOnlyList<XElement> references)
+    {
+        var (properties, written) = Section(stretch, sectPr);
+        if (properties.Elements().LastOrDefault(e => e.Name.LocalName is "headerReference" or "footerReference") is { } last)
+            last.AddAfterSelf(references);
+        else
+            properties.AddFirst(references);
+        return written();
+    }
+
+    /// <summary>A section's reference to its header (with <paramref name="footer"/> its footer) of a kind taken away (see WordDocument.LinkToPrevious). Returns the stretch's new text.</summary>
+    /// <exception cref="NotSupportedException">The section's properties are not in the stretch; nothing changes.</exception>
+    public static string RemoveReference(Stretch stretch, XElement sectPr, string kind, bool footer)
+    {
+        var (properties, written) = Section(stretch, sectPr);
+        var w = properties.Name.Namespace;
+        foreach (var reference in properties.Elements(w + (footer ? "footerReference" : "headerReference")).Where(r => ((string?)r.Attribute(w + "type") ?? "default") == kind).ToList())
+            reference.Remove();
+        return written();
+    }
+
+    /// <summary>
+    /// A section's properties as the document read them (a paragraph's w:sectPr or the body's own) found in the stretch,
+    /// or where the body has none, one made after the stretch's last child (which the body's last is then); and how the
+    /// stretch's new text is written once they are changed.
+    /// </summary>
+    static (XElement Properties, Func<string> Written) Section(Stretch stretch, XElement? sectPr)
+    {
+        var body = stretch.Xml.Root!.Elements().First();
+        if (sectPr == null)
+        {
+            var last = body.Elements().Last();
+            var made = new XElement(body.Name.Namespace + "sectPr");
+            last.AddAfterSelf(made);
+            return (made, () => stretch.Written([(last, [last, made])]));
+        }
+        var properties = stretch.Find(sectPr) ?? throw new NotSupportedException("The section's properties are not in the stretch.");
+        var top = properties.AncestorsAndSelf().First(e => e.Parent == body);
+        return (properties, () => stretch.Written([(top, [top])]));
+    }
+
+    static void Format(XElement properties, SectionFormatting format, Tracking? tracking)
+    {
+        var w = properties.Name.Namespace;
+        if (tracking != null && properties.Element(w + "sectPrChange") == null)
+        {
+            var change = tracking.Mark(w, "sectPrChange");
+            change.Add(new XElement(w + "sectPr", properties.Elements().Where(e => e.Name.LocalName is not ("headerReference" or "footerReference"))
+                .Select(e => new XElement(e))));
+            properties.Add(change);
+        }
+        XElement Set(string name) => Property(properties, name, SectionOrder);
+        // What a section is without them (a page upright, numbers going on in decimals, one column, its text at the top,
+        // beginning on a new page) is not written.
+        void Unset(string name) => properties.Element(w + name)?.Remove();
+        if (format.PageWidth != null || format.PageHeight != null || format.Orientation != null)
+        {
+            var size = Set("pgSz");
+            if (format.PageWidth is { } width)
+                size.SetAttributeValue(w + "w", Twips(width));
+            if (format.PageHeight is { } height)
+                size.SetAttributeValue(w + "h", Twips(height));
+            if (format.Orientation is { } orientation)
+                size.SetAttributeValue(w + "orient", orientation == "landscape" ? "landscape" : null);
+        }
+        if (format.Top != null || format.Bottom != null || format.Left != null || format.Right != null || format.Header != null || format.Footer != null
+            || format.Gutter != null)
+        {
+            var margins = Set("pgMar");
+            foreach (var (name, value) in new[] { ("top", format.Top), ("right", format.Right), ("bottom", format.Bottom), ("left", format.Left),
+                ("header", format.Header), ("footer", format.Footer), ("gutter", format.Gutter) })
+            {
+                if (value is { } points)
+                    margins.SetAttributeValue(w + name, Twips(points));
+            }
+        }
+        if (format.Columns != null || format.ColumnSpace != null)
+        {
+            var columns = Set("cols");
+            if (format.Columns is { } count)
+            {
+                columns.SetAttributeValue(w + "num", count > 1 ? count.ToString(System.Globalization.CultureInfo.InvariantCulture) : null);
+                columns.Attribute(w + "equalWidth")?.Remove();
+                columns.Elements(w + "col").Remove();
+            }
+            if (format.ColumnSpace is { } space)
+                columns.SetAttributeValue(w + "space", Twips(space));
+        }
+        if (format.Start is { } start)
+        {
+            if (start == "nextPage")
+                Unset("type");
+            else
+                Set("type").SetAttributeValue(w + "val", start);
+        }
+        if (format.TitlePage is { } title)
+        {
+            if (title)
+                Set("titlePg").Attribute(w + "val")?.Remove();
+            else
+                Unset("titlePg");
+        }
+        if (format.VerticalAlign is { } align)
+        {
+            if (align == "top")
+                Unset("vAlign");
+            else
+                Set("vAlign").SetAttributeValue(w + "val", align);
+        }
+        if (format.PageNumberStart != null || format.PageNumberFormat != null)
+        {
+            var numbers = Set("pgNumType");
+            if (format.PageNumberStart is { } first)
+                numbers.SetAttributeValue(w + "start", first >= 0 ? first.ToString(System.Globalization.CultureInfo.InvariantCulture) : null);
+            if (format.PageNumberFormat is { } numberFormat)
+                numbers.SetAttributeValue(w + "fmt", numberFormat == "decimal" ? null : numberFormat);
+            if (!numbers.HasAttributes && !numbers.HasElements)
+                numbers.Remove();
+        }
+    }
+
+    /// <summary>The order of the section properties in w:sectPr (CT_SectPr): headers and footers first, a change of them last.</summary>
+    static readonly string[] SectionOrder =
+    [
+        "headerReference", "footerReference", "footnotePr", "endnotePr", "type", "pgSz", "pgMar", "paperSrc", "pgBorders", "lnNumType", "pgNumType",
+        "cols", "formProt", "vAlign", "noEndnote", "titlePg", "textDirection", "bidi", "rtlGutter", "docGrid", "printerSettings", "sectPrChange",
+    ];
+
     /// <summary>The order of the run properties in w:rPr (CT_ParaRPr, EG_RPrBase): a mark's revisions first.</summary>
     static readonly string[] RunOrder =
     [
