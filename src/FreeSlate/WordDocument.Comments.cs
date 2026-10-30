@@ -300,8 +300,10 @@ public sealed partial class WordDocument
         var (from, to) = (IndexOf(top), IndexOf(lastTop));
         if (from > to || from == to && (ReferenceEquals(p, q) ? start.Offset > end.Offset : Flat(top).IndexOf(p) > Flat(top).IndexOf(q)))
             throw new ArgumentException("The range's end comes before its start.", nameof(end));
-        var who = author ?? Author ?? "";
-        var mark = initials ?? string.Concat(who.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => char.ToUpperInvariant(w[0])));
+        // As the document's settings let them be (see Tracked): by "Author", with no time.
+        var (who, when) = Writer(author ?? Author ?? "");
+        var mark = who == "Author" && who != (author ?? Author) ? "A"
+            : initials ?? string.Concat(who.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => char.ToUpperInvariant(w[0])));
         var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
         List<NewPart> added = [];
         Action<Stretch, XElement?>? place = null;
@@ -320,11 +322,11 @@ public sealed partial class WordDocument
             taken.Add(e.Attr("id") ?? "");
         var id = Enumerable.Range(0, taken.Count + 1).First(k => !taken.Contains(k.ToString(CultureInfo.InvariantCulture))).ToString(CultureInfo.InvariantCulture);
         var paraId = NewParaId(part);
-        var date = (ChangedAt ?? DateTime.Now).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        var date = when is { } at ? $" w:date=\"{at.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture)}\"" : "";
         var textStyle = context.Styles.IdByName("annotation text", "paragraph");
         var referenceStyle = context.Styles.IdByName("annotation reference", "character");
         var referenceFormat = referenceStyle != null ? $"<w:rPr><w:rStyle w:val=\"{Escaped(referenceStyle)}\"/></w:rPr>" : "";
-        var comment = $"<w:comment w:id=\"{id}\" w:author=\"{Escaped(who)}\" w:date=\"{date}\" w:initials=\"{Escaped(mark)}\">"
+        var comment = $"<w:comment w:id=\"{id}\" w:author=\"{Escaped(who)}\"{date} w:initials=\"{Escaped(mark)}\">"
             + $"<w:p w14:paraId=\"{paraId}\" w14:textId=\"77777777\">{(textStyle != null ? $"<w:pPr><w:pStyle w:val=\"{Escaped(textStyle)}\"/></w:pPr>" : "")}"
             + $"<w:r>{referenceFormat}<w:annotationRef/></w:r>{markup}</w:p></w:comment>";
         if (part != null && text != null)
@@ -571,7 +573,7 @@ public sealed partial class WordDocument
         var tail = text.Text[close..text.End(start)] + $"</{Qualified(text.Text, rootStart)}>";
         var stretch = new Stretch(head, text.Text[open..close], tail,
             e => e.Document == element.Document && text.Start(e) is var at && at >= open && at < close ? at - open + head.Length : -1);
-        var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId(part, () => text.Text)) : null;
+        var tracking = Tracked(() => ChangeId(part, () => text.Text));
         var inner = edit(stretch, tracking);
         if (tracking != null)
             changeId = tracking.NextId;

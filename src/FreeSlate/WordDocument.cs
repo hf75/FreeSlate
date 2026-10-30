@@ -197,6 +197,20 @@ public sealed partial class WordDocument : IEditableDocument
     public string? Author { get; set; }
     public DateTime? ChangedAt { get; set; }
 
+    /// <summary>
+    /// The tracked changes a change is made as, from the id <paramref name="firstId"/> gives on, or null without Author: by
+    /// Author at ChangedAt (now where null); by "Author" where the document's settings ask for personal information to be
+    /// removed (w:removePersonalInformation), at no time where they ask for times to be removed (w:removeDateAndTime), as
+    /// Word writes them on saving (found with scratch/CommentTrip: Word saves the comments of such documents by its own
+    /// word for an author, "Autor" in German).
+    /// </summary>
+    Tracking? Tracked(Func<int> firstId) => Author is { } author && Writer(author) is var (name, date) ? new Tracking(name, date, firstId()) : null;
+
+    /// <summary>Who a change or a comment is written by and when, as the document's settings let them be (see Tracked).</summary>
+    (string Author, DateTime? Date) Writer(string author) =>
+        (context.Settings.Child("removePersonalInformation").OnOff() == true ? "Author" : author,
+            context.Settings.Child("removeDateAndTime").OnOff() == true ? null : ChangedAt ?? DateTime.Now);
+
     /// <summary>The id the next tracked change takes: one more than the greatest id the main part's elements have.</summary>
     int changeId = -1;
 
@@ -805,7 +819,7 @@ public sealed partial class WordDocument : IEditableDocument
         if (commentOf.TryGetValue(from, out var comment))
             return ChangeComment(comment, edit, changes);
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to), lastSection);
-        var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
+        var tracking = Tracked(() => ChangeId());
         var text = edit(stretch, tracking);
         if (tracking != null)
             changeId = tracking.NextId;

@@ -108,7 +108,7 @@ public sealed partial class WordDocument
         // An element read from the part (not one a control showing a placeholder shows from another part, see ModelReader.Shown).
         var stretch = new Stretch(head, text.Text[open..close], tail,
             e => e.Document == root.Document && text.Start(e) is var at && at >= open && at < close ? at - open + head.Length : -1);
-        var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId(part, () => text.Text)) : null;
+        var tracking = Tracked(() => ChangeId(part, () => text.Text));
         var inner = edit(stretch, tracking);
         if (tracking != null)
             changeId = tracking.NextId;
