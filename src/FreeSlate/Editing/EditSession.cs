@@ -494,8 +494,10 @@ public sealed class EditSession(IEditableDocument document)
         // What stands between them, whole tables too (the document refuses where the ends are not of one body or cell).
         if (between.Count > 0)
             document.RemoveBetween(start.Paragraph, end.Paragraph);
-        // The last paragraph now follows the first (by place: read anew, it may have taken another id).
-        var rest = document.After(start.Paragraph) is { } last ? document.Text(last) : "";
+        // The last paragraph now follows the first (by place: read anew, it may have taken another id), or is one with it: a hidden
+        // mark before a table joins them as the table goes.
+        var one = document.Text(start.Paragraph).Length > length;
+        var rest = one ? document.Text(start.Paragraph)[length..] : document.After(start.Paragraph) is { } last ? document.Text(last) : "";
         TextPlace at;
         if (!document.KeepsMarks && length > 0)
         {
@@ -515,7 +517,7 @@ public sealed class EditSession(IEditableDocument document)
                     Tidied(new TextPlace(following, 0));
                 return start;
             }
-            var joined = document.Join(start.Paragraph);
+            var joined = one ? start.Paragraph : document.Join(start.Paragraph);
             at = new TextPlace(joined, joined == start.Paragraph ? start.Offset : 0);
         }
         if (spaced && rest.Length > 0 && !char.IsWhiteSpace(rest[0]) && at.Offset > 0 && !char.IsWhiteSpace(document.Text(at.Paragraph)[at.Offset - 1]))
