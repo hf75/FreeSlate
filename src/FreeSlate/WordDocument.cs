@@ -85,7 +85,10 @@ public sealed partial class WordDocument : IEditableDocument
     PageRenderer? renderer;
     List<PageBox> shown = [];
     List<PageScene>? scenes;
-    List<(int Paper, double Budget, double Cost)> drawnAs = [];
+    List<(int Paper, double Budget, double Cost, int Papers)> drawnAs = [];
+
+    /// <summary>The papers of the pages drawn, in the order they came (a page's scene names its paper by its place here), of which a page and those before it hold so many (see drawnAs).</summary>
+    readonly List<(double Width, double Height)> papers = [];
 
     /// <summary>
     /// How many pages drawn when they were asked for stay drawn (see Scene): those nearest the page asked for last, the
@@ -917,28 +920,48 @@ public sealed partial class WordDocument : IEditableDocument
     void Draw(List<PageBox> pages)
     {
         renderer!.Settings = paginator!.Settings;
-        var sizes = new List<(double Width, double Height)>();
+        // The first pages as they stand stay as they were drawn (of the same budget, the first's, on the same papers), not one by
+        // one: a step of a growing layout is not to take time by all its pages.
+        var same = 0;
+        if (scenes != null && !markup && drawnAs.Count > 0 && drawnAs[0].Budget == budget)
+        {
+            var these = CollectionsMarshal.AsSpan(pages);
+            var those = CollectionsMarshal.AsSpan(shown);
+            for (var most = Math.Min(Math.Min(these.Length, those.Length), scenes.Count); same < most && ReferenceEquals(these[same], those[same]);)
+                same++;
+        }
         var drawn = new List<PageScene>(pages.Count);
-        var how = new List<(int Paper, double Budget, double Cost)>(pages.Count);
+        if (same > 0)
+        {
+            drawn.AddRange(CollectionsMarshal.AsSpan(scenes)[..same]);
+            for (var k = same; k < scenes!.Count; k++)
+                drawnScenes -= scenes[k].Drawn ? 1 : 0;
+        }
+        else
+            drawnScenes = 0;
+        var was = drawnAs.GetRange(same, drawnAs.Count - same);
+        drawnAs.RemoveRange(same, was.Count);
+        var papersKept = same > 0 ? drawnAs[same - 1].Papers : 0;
+        papers.RemoveRange(papersKept, papers.Count - papersKept);
         // The pages take the budget of 3D text in their order, as a pass over all of them gives it: a page drawn before is
         // kept where it had the same.
-        context.Text3DBudget = budget;
+        context.Text3DBudget = same > 0 ? drawnAs[same - 1].Budget - drawnAs[same - 1].Cost : budget;
         // The markup view shades comment ranges over the pages they reach: a page drawn takes those the pages before left open.
         var open = markup ? new HashSet<string>() : null;
-        for (var k = 0; k < pages.Count; k++)
+        for (var k = same; k < pages.Count; k++)
         {
             var page = pages[k];
             var (width, height) = (page.PaperWidth, page.PaperHeight);
             var paper = 0;
-            while (paper < sizes.Count && !(Math.Abs(sizes[paper].Width - width) < 0.01 && Math.Abs(sizes[paper].Height - height) < 0.01))
+            while (paper < papers.Count && !(Math.Abs(papers[paper].Width - width) < 0.01 && Math.Abs(papers[paper].Height - height) < 0.01))
                 paper++;
-            if (paper == sizes.Count)
-                sizes.Add((width, height));
+            if (paper == papers.Count)
+                papers.Add((width, height));
             var left = context.Text3DBudget;
-            if (scenes != null && k < scenes.Count && k < shown.Count && ReferenceEquals(page, shown[k]) && drawnAs[k].Paper == paper && drawnAs[k].Budget == left)
+            if (scenes != null && k < scenes.Count && k < shown.Count && ReferenceEquals(page, shown[k]) && k - same < was.Count && was[k - same] is var before && before.Paper == paper && before.Budget == left)
             {
                 drawn.Add(scenes[k]);
-                context.Text3DBudget -= drawnAs[k].Cost;
+                context.Text3DBudget -= before.Cost;
             }
             else
             {
@@ -948,10 +971,10 @@ public sealed partial class WordDocument : IEditableDocument
             }
             if (open != null)
                 PageRenderer.LeftOpen(page, open);
-            how.Add((paper, left, left - context.Text3DBudget));
+            drawnAs.Add((paper, left, left - context.Text3DBudget, papers.Count));
+            drawnScenes += drawn[k].Drawn ? 1 : 0;
         }
-        (scenes, drawnAs, shown) = (drawn, how, pages);
-        drawnScenes = drawn.Count(scene => scene.Drawn);
+        (scenes, shown) = (drawn, pages);
     }
 
     /// <summary>

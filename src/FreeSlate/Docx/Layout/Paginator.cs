@@ -408,25 +408,32 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 };
                 var returned = paginator.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator);
                 var points = paginator.checkpoints;
+                var lookedAt = 0;
                 // A run of a growing layout goes on from where it paused, as Resume goes on, in the next step.
                 while (paginator.pausedHere)
                 {
                     var at = paginator.stoppedAt!;
                     (laid, checkpoints, finishedPages, settings, paused) = (paginator.pages, points, returned, paginator.Ended, at);
                     NumberLines(returned, paginator.taken);
-                    // Relayout takes a layout up where it paused where nothing of its pages needs another run (see Relayout).
-                    firstRun &= run == 0 && Found(returned).Count == 0 && Bands(returned).Count == 0 && paginator.reaching.Count == 0;
+                    // Relayout takes a layout up where it paused where nothing of its pages needs another run (see Relayout); those
+                    // before where the step before paused were looked at then.
+                    firstRun = firstRun && run == 0 && paginator.reaching.Count == 0 && returned.GetRange(lookedAt, returned.Count - lookedAt) is var unseen
+                        && Found(unseen).Count == 0 && Bands(unseen).Count == 0;
+                    lookedAt = at.Page - 1;
                     yield return returned;
                     var next = new Paginator(context, layout, reader)
                     {
                         EndnoteContinuation = EndnoteContinuation, checkpoints = [], knownEnds = sectionEnds, settledCopy = at.State.settled,
-                        pauseAt = growth == int.MaxValue ? null : at.Page + growth, stopPages = paginator.pages, stopFinished = returned,
+                        pauseAt = growth == int.MaxValue ? null : at.Page + growth, stopPages = paginator.pages, stopFinished = returned, stopCounts = paginator.sectionCounts,
                     };
                     next.Take(at.State, CollectionsMarshal.AsSpan(paginator.pages)[..(at.Page - 1)]);
                     if (at.Fields != null)
                         layout.Evaluator?.Restore(at.Fields);
                     returned = next.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator, at);
-                    points = [.. points!.TakeWhile(c => c != at), .. next.checkpoints!];
+                    // (The run's list alone holds them: in place, as a step is not to copy all of them.)
+                    if (points!.LastIndexOf(at) is var stood and >= 0)
+                        points.RemoveRange(stood, points.Count - stood);
+                    points.AddRange(next.checkpoints!);
                     paginator = next;
                 }
                 (result, resultTaken) = (returned, paginator.taken);
@@ -2253,6 +2260,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     bool[]? taken;
     List<int>? knownEnds;
 
+    /// <summary>The non-blank pages of each section of the run (see PaginateRun), and of the run before, where it goes on from where that paused, which it takes over.</summary>
+    Dictionary<int, int>? sectionCounts, stopCounts;
+
     /// <summary>The pages of this run the run before laid out and finished that it finishes anew, as they show stories read anew (see refinish).</summary>
     bool[]? refinished;
 
@@ -2348,7 +2358,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             or nameof(stopSettings) or nameof(stoppedAt) or nameof(stopFinished) or nameof(taken) or nameof(knownEnds) or nameof(finishedPages)
             or nameof(sectionEnds) or nameof(paused) or nameof(pauseAt) or nameof(pausedHere) or nameof(refields)
             or nameof(fieldPasses) or nameof(steps) or nameof(growth) or nameof(firstRun) or nameof(firstLaid) or nameof(pausedBeyond) or nameof(renoted) or nameof(changingNotes)
-            or nameof(waitingNotes) or nameof(throughToEnd) or nameof(restoried) or nameof(refinish) or nameof(refinished)))
+            or nameof(waitingNotes) or nameof(throughToEnd) or nameof(restoried) or nameof(refinish) or nameof(refinished) or nameof(sectionCounts) or nameof(stopCounts)))
         .ToArray();
 
     /// <summary>
@@ -2925,10 +2935,26 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // which finished all its 7 000 pages anew for their footers' page count, 230 ms).
         // NUMPAGES counts the blank pages, SECTIONPAGES does not (measured with docx/local/hf-parity).
         var countsLater = pausedHere || stoppedAt != null && pausedBeyond != null && Position(stoppedAt).CompareTo(Position(pausedBeyond)) <= 0;
-        var sectionPages = Counts(pages);
+        // Where the counts can wait, the first pages it shares with the run before go as they are, not one by one: a step of a
+        // growing layout is not to take time by all its pages.
+        var same = 0;
+        if (countsLater && refinish == null && stopFinished != null && stopPages != null)
+        {
+            var these = CollectionsMarshal.AsSpan(pages);
+            var those = CollectionsMarshal.AsSpan(stopPages);
+            for (var most = Math.Min(Math.Min(these.Length, those.Length), stopFinished.Count); same < most && ReferenceEquals(these[same], those[same]);)
+                same++;
+        }
+        var sectionPages = sectionCounts = stopCounts is { } counted && same > 0 ? CountsAfter(counted) : Counts(pages);
         var finished = new List<PageBox>(pages.Count);
         var parts = new Dictionary<string, bool?>(StringComparer.Ordinal);
-        for (var k = 0; k < pages.Count; k++)
+        if (same > 0)
+        {
+            finished.AddRange(CollectionsMarshal.AsSpan(stopFinished!)[..same]);
+            taken = new bool[pages.Count];
+            taken.AsSpan(0, same).Fill(true);
+        }
+        for (var k = same; k < pages.Count; k++)
         {
             if (stopFinished != null && stopPages != null && k < stopPages.Count && k < stopFinished.Count && ReferenceEquals(pages[k], stopPages[k])
                 && (countsLater || Finished(pages[k], parts) is { } counts
@@ -2947,7 +2973,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         if (layout.Evaluator != null)
             layout.Evaluator.Current = finished;
-        for (var k = 0; k < finished.Count; k++)
+        for (var k = same; k < finished.Count; k++)
         {
             if (taken?[k] == true)
                 continue;
@@ -2956,7 +2982,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (p.Section is { Upright: not null, LinesFromLeft: true })
                 Mirror(p);
         }
-        for (var k = 0; k < finished.Count; k++)
+        for (var k = same; k < finished.Count; k++)
         {
             if (taken?[k] != true)
                 finished[k].Counted = (finished.Count, sectionPages.GetValueOrDefault(finished[k].SectionIndex));
@@ -2981,7 +3007,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     alike[key] = box = Story(part, on, fields, header);
                 return box;
             }
-            for (var k = 0; k < finished.Count; k++)
+            for (var k = same; k < finished.Count; k++)
             {
                 if (taken?[k] == true)
                     continue;
@@ -3020,6 +3046,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             {
                 if (!p.Blank)
                     counts[p.SectionIndex] = counts.GetValueOrDefault(p.SectionIndex) + 1;
+            }
+            return counts;
+        }
+
+        // The run before's counts, which no one needs after it, made this run's: its pages after those they share taken back, this run's put.
+        Dictionary<int, int> CountsAfter(Dictionary<int, int> counts)
+        {
+            for (var k = same; k < stopPages!.Count; k++)
+            {
+                if (!stopPages[k].Blank)
+                    counts[stopPages[k].SectionIndex]--;
+            }
+            for (var k = same; k < pages.Count; k++)
+            {
+                if (!pages[k].Blank)
+                    counts[pages[k].SectionIndex] = counts.GetValueOrDefault(pages[k].SectionIndex) + 1;
             }
             return counts;
         }
