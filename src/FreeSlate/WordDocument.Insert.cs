@@ -81,10 +81,11 @@ public sealed partial class WordDocument
 
     /// <summary>
     /// Puts blocks after a paragraph in its body, table cell or text box, or before it (see
-    /// IEditableDocument.InsertBlocks and TextEdits.InsertBlocks); a table that would end the body, cell or text box is
-    /// followed by an empty paragraph, as Word keeps one there. Returns the ids of the paragraphs they hold.
+    /// IEditableDocument.InsertBlocks and TextEdits.InsertBlocks, which marks them inserted as a tracked change); a table
+    /// that would end the body, cell or text box is followed by an empty paragraph, as Word keeps one there. Returns the
+    /// ids of the paragraphs they hold.
     /// </summary>
-    /// <exception cref="NotSupportedException">The markup holds other blocks than paragraphs and tables, or is to be tracked; nothing changes.</exception>
+    /// <exception cref="NotSupportedException">The markup holds other blocks than paragraphs and tables; nothing changes.</exception>
     /// <exception cref="ArgumentException">The markup is not well-formed XML; nothing changes.</exception>
     public IReadOnlyList<int> InsertBlocks(int paragraph, string markup, bool before = false, IReadOnlyList<NewPart>? parts = null)
     {

@@ -526,13 +526,16 @@ static class TextEdits
 
     /// <summary>
     /// Blocks put after a paragraph in its body, table cell or text box (see WordDocument.InsertBlocks): after its last
-    /// part, or before its first with <paramref name="before"/>. Returns the stretch's new text.
+    /// part, or before its first with <paramref name="before"/>; as a tracked change marked inserted as Word marks them
+    /// (see Inserted). Returns the stretch's new text.
     /// </summary>
-    /// <exception cref="NotSupportedException">The blocks are to be tracked, which is not done yet; nothing changes.</exception>
     public static string InsertBlocks(Stretch stretch, ParagraphBlock paragraph, IReadOnlyList<XElement> markup, bool before, Tracking? tracking = null)
     {
         if (tracking != null)
-            throw new NotSupportedException("Blocks are not put in as a tracked change yet.");
+        {
+            foreach (var block in markup)
+                Inserted(block, tracking);
+        }
         var parts = Parts(stretch, paragraph);
         var beside = before ? parts[0] : parts[^1];
         if (before)
@@ -540,6 +543,75 @@ static class TextEdits
         else
             beside.AddAfterSelf(markup);
         return stretch.Written([(beside, before ? [.. markup, beside] : [beside, .. markup])]);
+    }
+
+    /// <summary>
+    /// A block put in as a tracked change, marked as Word marks one (measured in Word 365 by COM: a paragraph and a table
+    /// put in with track changes on): every paragraph's mark inserted (a w:ins in its w:pPr/w:rPr) and its runs in a w:ins,
+    /// in a hyperlink, a simple field, a smart tag or a content control within them (a w:ins holds runs, not those); every
+    /// table row inserted (a w:ins in its w:trPr). What already is a tracked change stays as it is; text boxes in drawings
+    /// go in with their drawing's run.
+    /// </summary>
+    static void Inserted(XElement block, Tracking tracking)
+    {
+        var w = block.Name.Namespace;
+        static bool InTextBox(XElement e) => e.Ancestors().Any(a => a.Name.LocalName == "txbxContent");
+        foreach (var p in block.DescendantsAndSelf(w + "p").Where(p => !InTextBox(p)).ToList())
+        {
+            var mark = Property(Properties(p, "pPr"), "rPr", ParagraphOrder);
+            if (mark.Element(w + "ins") == null)
+                mark.AddFirst(tracking.Mark(w, "ins"));
+            Wrapped(p);
+        }
+        foreach (var row in block.DescendantsAndSelf(w + "tr").Where(r => !InTextBox(r)).ToList())
+        {
+            var properties = row.Element(w + "trPr") ?? Made(row, w + "trPr");
+            if (properties.ElementsBeforeSelf().FirstOrDefault(e => e.Name == w + "tblPrEx") is { } exceptions)
+            {
+                properties.Remove();
+                exceptions.AddAfterSelf(properties);
+            }
+            if (properties.Element(w + "ins") == null)
+            {
+                // Before a deletion of the row and a change of its properties, the last of CT_TrPr.
+                if (properties.Elements().FirstOrDefault(e => e.Name.LocalName is "del" or "trPrChange") is { } after)
+                    after.AddBeforeSelf(tracking.Mark(w, "ins"));
+                else
+                    properties.Add(tracking.Mark(w, "ins"));
+            }
+        }
+
+        // The runs among a container's children in a w:ins each stretch of them; containers that a w:ins does not hold
+        // have theirs wrapped within.
+        void Wrapped(XElement container)
+        {
+            List<XNode> stretch = [];
+            void Close()
+            {
+                if (stretch.Count == 0)
+                    return;
+                var ins = tracking.Mark(w, "ins");
+                stretch[0].AddBeforeSelf(ins);
+                foreach (var node in stretch)
+                    node.Remove();
+                ins.Add(stretch);
+                stretch = [];
+            }
+            foreach (var node in container.Nodes().ToList())
+            {
+                if (node is XElement { Name.LocalName: "r" } run && run.Name.Namespace == w)
+                    stretch.Add(node);
+                else
+                {
+                    Close();
+                    if (node is XElement { Name.LocalName: "hyperlink" or "fldSimple" or "smartTag" or "customXml" or "dir" or "bdo" } inner && inner.Name.Namespace == w)
+                        Wrapped(inner);
+                    else if (node is XElement { Name.LocalName: "sdt" } control && control.Element(w + "sdtContent") is { } content)
+                        Wrapped(content);
+                }
+            }
+            Close();
+        }
     }
 
     /// <summary>
