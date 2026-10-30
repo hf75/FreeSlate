@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Xml.Linq;
 
 namespace FreeSlate.Docx;
@@ -289,12 +287,10 @@ public sealed class RunFormat
         return result;
     }
 
-    static readonly Action<RunFormat, RunFormat> Overlaid = Overlays.Of<RunFormat>();
-
     /// <summary>The properties <paramref name="top"/> sets laid over this format.</summary>
     public void Overlay(RunFormat top)
     {
-        Overlaid(this, top);
+        OverlayFields(top);
         // A color replaces the one below whole, its theme color, tint and shade (docx/external/powertools/HW010-*:
         // accent1 shaded 7F over defaults of text1 tinted A6 prints 234824, not tinted too).
         if (top.Color != null || top.ThemeColor != null)
@@ -304,6 +300,242 @@ public sealed class RunFormat
         if (top.HAnsi != null && top.HAnsiTheme == null) HAnsiTheme = null;
         if (top.EastAsia != null && top.EastAsiaTheme == null) EastAsiaTheme = null;
         if (top.ComplexScript != null && top.ComplexScriptTheme == null) ComplexScriptTheme = null;
+    }
+
+    // Every public field of the format: laid over (one that can be null where the top sets it, a plain value always),
+    // compared and hashed by its value (see FormatValues). A field added to the format goes into all three.
+
+    void OverlayFields(RunFormat top)
+    {
+        Ascii = top.Ascii ?? Ascii;
+        HAnsi = top.HAnsi ?? HAnsi;
+        EastAsia = top.EastAsia ?? EastAsia;
+        ComplexScript = top.ComplexScript ?? ComplexScript;
+        AsciiTheme = top.AsciiTheme ?? AsciiTheme;
+        HAnsiTheme = top.HAnsiTheme ?? HAnsiTheme;
+        EastAsiaTheme = top.EastAsiaTheme ?? EastAsiaTheme;
+        ComplexScriptTheme = top.ComplexScriptTheme ?? ComplexScriptTheme;
+        Hint = top.Hint ?? Hint;
+        Size = top.Size ?? Size;
+        SizeComplex = top.SizeComplex ?? SizeComplex;
+        Bold = top.Bold ?? Bold;
+        BoldComplex = top.BoldComplex ?? BoldComplex;
+        Italic = top.Italic ?? Italic;
+        ItalicComplex = top.ItalicComplex ?? ItalicComplex;
+        Caps = top.Caps ?? Caps;
+        SmallCaps = top.SmallCaps ?? SmallCaps;
+        Strike = top.Strike ?? Strike;
+        Emboss = top.Emboss ?? Emboss;
+        Imprint = top.Imprint ?? Imprint;
+        Outline = top.Outline ?? Outline;
+        Shadow = top.Shadow ?? Shadow;
+        Vanish = top.Vanish ?? Vanish;
+        DoubleStrike = top.DoubleStrike ?? DoubleStrike;
+        SpecVanish = top.SpecVanish ?? SpecVanish;
+        WebHidden = top.WebHidden ?? WebHidden;
+        RightToLeft = top.RightToLeft ?? RightToLeft;
+        UseComplexScript = top.UseComplexScript ?? UseComplexScript;
+        NoProof = top.NoProof ?? NoProof;
+        Override = top.Override ?? Override;
+        Embedding = top.Embedding ?? Embedding;
+        Emphasis = top.Emphasis ?? Emphasis;
+        CombineBrackets = top.CombineBrackets ?? CombineBrackets;
+        CombineLines = top.CombineLines ?? CombineLines;
+        AcrossLine = top.AcrossLine ?? AcrossLine;
+        Revision = top.Revision ?? Revision;
+        Change = top.Change ?? Change;
+        Deleted = top.Deleted;
+        Color = top.Color ?? Color;
+        ThemeColor = top.ThemeColor ?? ThemeColor;
+        ThemeTint = top.ThemeTint ?? ThemeTint;
+        ThemeShade = top.ThemeShade ?? ThemeShade;
+        Underline = top.Underline ?? Underline;
+        UnderlineColor = top.UnderlineColor ?? UnderlineColor;
+        Border = top.Border ?? Border;
+        Highlight = top.Highlight ?? Highlight;
+        ShadingPattern = top.ShadingPattern ?? ShadingPattern;
+        ShadingColor = top.ShadingColor ?? ShadingColor;
+        ShadingFill = top.ShadingFill ?? ShadingFill;
+        VerticalAlign = top.VerticalAlign ?? VerticalAlign;
+        Position = top.Position ?? Position;
+        Spacing = top.Spacing ?? Spacing;
+        Kern = top.Kern ?? Kern;
+        Scale = top.Scale ?? Scale;
+        FitText = top.FitText ?? FitText;
+        FitTextId = top.FitTextId ?? FitTextId;
+        Language = top.Language ?? Language;
+        LanguageEastAsia = top.LanguageEastAsia ?? LanguageEastAsia;
+        LanguageBidi = top.LanguageBidi ?? LanguageBidi;
+        Ligatures = top.Ligatures ?? Ligatures;
+        NumberForm = top.NumberForm ?? NumberForm;
+        NumberSpacing = top.NumberSpacing ?? NumberSpacing;
+        StylisticSets = top.StylisticSets ?? StylisticSets;
+        ContextualAlternates = top.ContextualAlternates ?? ContextualAlternates;
+        Glow = top.Glow ?? Glow;
+        TextShadow = top.TextShadow ?? TextShadow;
+        Reflection = top.Reflection ?? Reflection;
+        TextOutline = top.TextOutline ?? TextOutline;
+        TextFill = top.TextFill ?? TextFill;
+        Props3D = top.Props3D ?? Props3D;
+        Scene3D = top.Scene3D ?? Scene3D;
+        Style = top.Style ?? Style;
+        Source = top.Source ?? Source;
+    }
+
+    /// <summary>Whether another format holds the same values in its public fields (lists by their items).</summary>
+    internal bool SameValues(RunFormat other) =>
+        FormatValues.Same(Ascii, other.Ascii)
+        && FormatValues.Same(HAnsi, other.HAnsi)
+        && FormatValues.Same(EastAsia, other.EastAsia)
+        && FormatValues.Same(ComplexScript, other.ComplexScript)
+        && FormatValues.Same(AsciiTheme, other.AsciiTheme)
+        && FormatValues.Same(HAnsiTheme, other.HAnsiTheme)
+        && FormatValues.Same(EastAsiaTheme, other.EastAsiaTheme)
+        && FormatValues.Same(ComplexScriptTheme, other.ComplexScriptTheme)
+        && FormatValues.Same(Hint, other.Hint)
+        && FormatValues.Same(Size, other.Size)
+        && FormatValues.Same(SizeComplex, other.SizeComplex)
+        && FormatValues.Same(Bold, other.Bold)
+        && FormatValues.Same(BoldComplex, other.BoldComplex)
+        && FormatValues.Same(Italic, other.Italic)
+        && FormatValues.Same(ItalicComplex, other.ItalicComplex)
+        && FormatValues.Same(Caps, other.Caps)
+        && FormatValues.Same(SmallCaps, other.SmallCaps)
+        && FormatValues.Same(Strike, other.Strike)
+        && FormatValues.Same(Emboss, other.Emboss)
+        && FormatValues.Same(Imprint, other.Imprint)
+        && FormatValues.Same(Outline, other.Outline)
+        && FormatValues.Same(Shadow, other.Shadow)
+        && FormatValues.Same(Vanish, other.Vanish)
+        && FormatValues.Same(DoubleStrike, other.DoubleStrike)
+        && FormatValues.Same(SpecVanish, other.SpecVanish)
+        && FormatValues.Same(WebHidden, other.WebHidden)
+        && FormatValues.Same(RightToLeft, other.RightToLeft)
+        && FormatValues.Same(UseComplexScript, other.UseComplexScript)
+        && FormatValues.Same(NoProof, other.NoProof)
+        && FormatValues.Same(Override, other.Override)
+        && FormatValues.Same(Embedding, other.Embedding)
+        && FormatValues.Same(Emphasis, other.Emphasis)
+        && FormatValues.Same(CombineBrackets, other.CombineBrackets)
+        && FormatValues.Same(CombineLines, other.CombineLines)
+        && FormatValues.Same(AcrossLine, other.AcrossLine)
+        && FormatValues.Same(Revision, other.Revision)
+        && FormatValues.Same(Change, other.Change)
+        && FormatValues.Same(Deleted, other.Deleted)
+        && FormatValues.Same(Color, other.Color)
+        && FormatValues.Same(ThemeColor, other.ThemeColor)
+        && FormatValues.Same(ThemeTint, other.ThemeTint)
+        && FormatValues.Same(ThemeShade, other.ThemeShade)
+        && FormatValues.Same(Underline, other.Underline)
+        && FormatValues.Same(UnderlineColor, other.UnderlineColor)
+        && FormatValues.Same(Border, other.Border)
+        && FormatValues.Same(Highlight, other.Highlight)
+        && FormatValues.Same(ShadingPattern, other.ShadingPattern)
+        && FormatValues.Same(ShadingColor, other.ShadingColor)
+        && FormatValues.Same(ShadingFill, other.ShadingFill)
+        && FormatValues.Same(VerticalAlign, other.VerticalAlign)
+        && FormatValues.Same(Position, other.Position)
+        && FormatValues.Same(Spacing, other.Spacing)
+        && FormatValues.Same(Kern, other.Kern)
+        && FormatValues.Same(Scale, other.Scale)
+        && FormatValues.Same(FitText, other.FitText)
+        && FormatValues.Same(FitTextId, other.FitTextId)
+        && FormatValues.Same(Language, other.Language)
+        && FormatValues.Same(LanguageEastAsia, other.LanguageEastAsia)
+        && FormatValues.Same(LanguageBidi, other.LanguageBidi)
+        && FormatValues.Same(Ligatures, other.Ligatures)
+        && FormatValues.Same(NumberForm, other.NumberForm)
+        && FormatValues.Same(NumberSpacing, other.NumberSpacing)
+        && FormatValues.Same(StylisticSets, other.StylisticSets)
+        && FormatValues.Same(ContextualAlternates, other.ContextualAlternates)
+        && FormatValues.Same(Glow, other.Glow)
+        && FormatValues.Same(TextShadow, other.TextShadow)
+        && FormatValues.Same(Reflection, other.Reflection)
+        && FormatValues.Same(TextOutline, other.TextOutline)
+        && FormatValues.Same(TextFill, other.TextFill)
+        && FormatValues.Same(Props3D, other.Props3D)
+        && FormatValues.Same(Scene3D, other.Scene3D)
+        && FormatValues.Same(Style, other.Style)
+        && FormatValues.Same(Source, other.Source);
+
+    /// <summary>A hash of the values of the public fields, as SameValues compares them.</summary>
+    internal int ValuesHash()
+    {
+        var hash = new HashCode();
+        hash.Add(Ascii);
+        hash.Add(HAnsi);
+        hash.Add(EastAsia);
+        hash.Add(ComplexScript);
+        hash.Add(AsciiTheme);
+        hash.Add(HAnsiTheme);
+        hash.Add(EastAsiaTheme);
+        hash.Add(ComplexScriptTheme);
+        hash.Add(Hint);
+        hash.Add(Size);
+        hash.Add(SizeComplex);
+        hash.Add(Bold);
+        hash.Add(BoldComplex);
+        hash.Add(Italic);
+        hash.Add(ItalicComplex);
+        hash.Add(Caps);
+        hash.Add(SmallCaps);
+        hash.Add(Strike);
+        hash.Add(Emboss);
+        hash.Add(Imprint);
+        hash.Add(Outline);
+        hash.Add(Shadow);
+        hash.Add(Vanish);
+        hash.Add(DoubleStrike);
+        hash.Add(SpecVanish);
+        hash.Add(WebHidden);
+        hash.Add(RightToLeft);
+        hash.Add(UseComplexScript);
+        hash.Add(NoProof);
+        hash.Add(Override);
+        hash.Add(Embedding);
+        hash.Add(Emphasis);
+        hash.Add(CombineBrackets);
+        hash.Add(CombineLines);
+        hash.Add(AcrossLine);
+        hash.Add(Revision);
+        hash.Add(Change);
+        hash.Add(Deleted);
+        hash.Add(Color);
+        hash.Add(ThemeColor);
+        hash.Add(ThemeTint);
+        hash.Add(ThemeShade);
+        hash.Add(Underline);
+        hash.Add(UnderlineColor);
+        hash.Add(Border);
+        hash.Add(Highlight);
+        hash.Add(ShadingPattern);
+        hash.Add(ShadingColor);
+        hash.Add(ShadingFill);
+        hash.Add(VerticalAlign);
+        hash.Add(Position);
+        hash.Add(Spacing);
+        hash.Add(Kern);
+        hash.Add(Scale);
+        hash.Add(FitText);
+        hash.Add(FitTextId);
+        hash.Add(Language);
+        hash.Add(LanguageEastAsia);
+        hash.Add(LanguageBidi);
+        hash.Add(Ligatures);
+        hash.Add(NumberForm);
+        hash.Add(NumberSpacing);
+        hash.Add(StylisticSets);
+        hash.Add(ContextualAlternates);
+        hash.Add(Glow);
+        hash.Add(TextShadow);
+        hash.Add(Reflection);
+        hash.Add(TextOutline);
+        hash.Add(TextFill);
+        hash.Add(Props3D);
+        hash.Add(Scene3D);
+        hash.Add(Style);
+        hash.Add(Source);
+        return hash.ToHashCode();
     }
 }
 
@@ -483,8 +715,6 @@ public sealed class ParagraphFormat
         }
     }
 
-    static readonly Action<ParagraphFormat, ParagraphFormat> Overlaid = Overlays.Of<ParagraphFormat>(nameof(Tabs), nameof(ClearedTabs));
-
     /// <summary>The properties <paramref name="top"/> sets laid over this format; tab stops accumulate.</summary>
     public void Overlay(ParagraphFormat top)
     {
@@ -509,7 +739,7 @@ public sealed class ParagraphFormat
                 frame.Attribute(Wml.W + other)?.Remove();
             frame.SetAttributeValue(attribute.Name, attribute.Value);
         }
-        Overlaid(this, top);
+        OverlayFields(top);
         if (frame != null)
             Frame = frame;
         if (tabs == null)
@@ -527,67 +757,167 @@ public sealed class ParagraphFormat
         }
         Tabs = tabs.Count > 0 ? tabs.OrderBy(t => t.Position).ToList() : null;
     }
-}
 
-/// <summary>
-/// Lays the public fields of one format that are set over those of another, as reflection does field by field (a null
-/// reference or nullable value is skipped, a plain value always laid over), compiled once for a type: reflection takes
-/// a fraction of a microsecond a field, and reading a document lays formats over one another for every run.
-/// </summary>
-static class Overlays
-{
-    public static Action<T, T> Of<T>(params string[] skipped)
+    // Every public field of the format: laid over (one that can be null where the top sets it, a plain value always),
+    // compared and hashed by its value (see FormatValues). A field added to the format goes into all three.
+
+    void OverlayFields(ParagraphFormat top)
     {
-        var (target, top) = (Expression.Parameter(typeof(T), "target"), Expression.Parameter(typeof(T), "top"));
-        var steps = new List<Expression>();
-        foreach (var field in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
-        {
-            if (Array.IndexOf(skipped, field.Name) >= 0)
-                continue;
-            var value = Expression.Field(top, field);
-            var assign = Expression.Assign(Expression.Field(target, field), value);
-            steps.Add(Nullable.GetUnderlyingType(field.FieldType) != null ? Expression.IfThen(Expression.Property(value, "HasValue"), assign)
-                : !field.FieldType.IsValueType ? Expression.IfThen(Expression.ReferenceNotEqual(value, Expression.Constant(null, field.FieldType)), assign)
-                : assign);
-        }
-        return Expression.Lambda<Action<T, T>>(steps.Count > 0 ? Expression.Block(steps) : Expression.Empty(), target, top).Compile();
+        Style = top.Style ?? Style;
+        Justification = top.Justification ?? Justification;
+        TextDirection = top.TextDirection ?? TextDirection;
+        Left = top.Left ?? Left;
+        Right = top.Right ?? Right;
+        FirstLine = top.FirstLine ?? FirstLine;
+        LeftChars = top.LeftChars ?? LeftChars;
+        RightChars = top.RightChars ?? RightChars;
+        FirstLineChars = top.FirstLineChars ?? FirstLineChars;
+        Before = top.Before ?? Before;
+        After = top.After ?? After;
+        BeforeLines = top.BeforeLines ?? BeforeLines;
+        AfterLines = top.AfterLines ?? AfterLines;
+        BeforeAuto = top.BeforeAuto ?? BeforeAuto;
+        AfterAuto = top.AfterAuto ?? AfterAuto;
+        Line = top.Line ?? Line;
+        LineRule = top.LineRule ?? LineRule;
+        ContextualSpacing = top.ContextualSpacing ?? ContextualSpacing;
+        KeepNext = top.KeepNext ?? KeepNext;
+        KeepLines = top.KeepLines ?? KeepLines;
+        PageBreakBefore = top.PageBreakBefore ?? PageBreakBefore;
+        WidowControl = top.WidowControl ?? WidowControl;
+        SuppressAutoHyphens = top.SuppressAutoHyphens ?? SuppressAutoHyphens;
+        Bidi = top.Bidi ?? Bidi;
+        MirrorIndents = top.MirrorIndents ?? MirrorIndents;
+        SnapToGrid = top.SnapToGrid ?? SnapToGrid;
+        SuppressLineNumbers = top.SuppressLineNumbers ?? SuppressLineNumbers;
+        WordWrap = top.WordWrap ?? WordWrap;
+        Kinsoku = top.Kinsoku ?? Kinsoku;
+        OverflowPunctuation = top.OverflowPunctuation ?? OverflowPunctuation;
+        TopLinePunctuation = top.TopLinePunctuation ?? TopLinePunctuation;
+        AutoSpaceDE = top.AutoSpaceDE ?? AutoSpaceDE;
+        AutoSpaceDN = top.AutoSpaceDN ?? AutoSpaceDN;
+        NumberingId = top.NumberingId ?? NumberingId;
+        NumberingLevel = top.NumberingLevel ?? NumberingLevel;
+        Borders = top.Borders ?? Borders;
+        Shading = top.Shading ?? Shading;
+        Frame = top.Frame ?? Frame;
+        DivId = top.DivId ?? DivId;
+        TextAlignment = top.TextAlignment ?? TextAlignment;
+        OutlineLevel = top.OutlineLevel ?? OutlineLevel;
+        MarkProperties = top.MarkProperties ?? MarkProperties;
+    }
+
+    /// <summary>Whether another format holds the same values in its public fields (lists by their items).</summary>
+    internal bool SameValues(ParagraphFormat other) =>
+        FormatValues.Same(Style, other.Style)
+        && FormatValues.Same(Justification, other.Justification)
+        && FormatValues.Same(TextDirection, other.TextDirection)
+        && FormatValues.Same(Left, other.Left)
+        && FormatValues.Same(Right, other.Right)
+        && FormatValues.Same(FirstLine, other.FirstLine)
+        && FormatValues.Same(LeftChars, other.LeftChars)
+        && FormatValues.Same(RightChars, other.RightChars)
+        && FormatValues.Same(FirstLineChars, other.FirstLineChars)
+        && FormatValues.Same(Before, other.Before)
+        && FormatValues.Same(After, other.After)
+        && FormatValues.Same(BeforeLines, other.BeforeLines)
+        && FormatValues.Same(AfterLines, other.AfterLines)
+        && FormatValues.Same(BeforeAuto, other.BeforeAuto)
+        && FormatValues.Same(AfterAuto, other.AfterAuto)
+        && FormatValues.Same(Line, other.Line)
+        && FormatValues.Same(LineRule, other.LineRule)
+        && FormatValues.Same(ContextualSpacing, other.ContextualSpacing)
+        && FormatValues.Same(KeepNext, other.KeepNext)
+        && FormatValues.Same(KeepLines, other.KeepLines)
+        && FormatValues.Same(PageBreakBefore, other.PageBreakBefore)
+        && FormatValues.Same(WidowControl, other.WidowControl)
+        && FormatValues.Same(SuppressAutoHyphens, other.SuppressAutoHyphens)
+        && FormatValues.Same(Bidi, other.Bidi)
+        && FormatValues.Same(MirrorIndents, other.MirrorIndents)
+        && FormatValues.Same(SnapToGrid, other.SnapToGrid)
+        && FormatValues.Same(SuppressLineNumbers, other.SuppressLineNumbers)
+        && FormatValues.Same(WordWrap, other.WordWrap)
+        && FormatValues.Same(Kinsoku, other.Kinsoku)
+        && FormatValues.Same(OverflowPunctuation, other.OverflowPunctuation)
+        && FormatValues.Same(TopLinePunctuation, other.TopLinePunctuation)
+        && FormatValues.Same(AutoSpaceDE, other.AutoSpaceDE)
+        && FormatValues.Same(AutoSpaceDN, other.AutoSpaceDN)
+        && FormatValues.SameItems(Tabs, other.Tabs)
+        && FormatValues.SameItems(ClearedTabs, other.ClearedTabs)
+        && FormatValues.Same(NumberingId, other.NumberingId)
+        && FormatValues.Same(NumberingLevel, other.NumberingLevel)
+        && FormatValues.Same(Borders, other.Borders)
+        && FormatValues.Same(Shading, other.Shading)
+        && FormatValues.Same(Frame, other.Frame)
+        && FormatValues.Same(DivId, other.DivId)
+        && FormatValues.Same(TextAlignment, other.TextAlignment)
+        && FormatValues.Same(OutlineLevel, other.OutlineLevel)
+        && FormatValues.Same(MarkProperties, other.MarkProperties);
+
+    /// <summary>A hash of the values of the public fields, as SameValues compares them.</summary>
+    internal int ValuesHash()
+    {
+        var hash = new HashCode();
+        hash.Add(Style);
+        hash.Add(Justification);
+        hash.Add(TextDirection);
+        hash.Add(Left);
+        hash.Add(Right);
+        hash.Add(FirstLine);
+        hash.Add(LeftChars);
+        hash.Add(RightChars);
+        hash.Add(FirstLineChars);
+        hash.Add(Before);
+        hash.Add(After);
+        hash.Add(BeforeLines);
+        hash.Add(AfterLines);
+        hash.Add(BeforeAuto);
+        hash.Add(AfterAuto);
+        hash.Add(Line);
+        hash.Add(LineRule);
+        hash.Add(ContextualSpacing);
+        hash.Add(KeepNext);
+        hash.Add(KeepLines);
+        hash.Add(PageBreakBefore);
+        hash.Add(WidowControl);
+        hash.Add(SuppressAutoHyphens);
+        hash.Add(Bidi);
+        hash.Add(MirrorIndents);
+        hash.Add(SnapToGrid);
+        hash.Add(SuppressLineNumbers);
+        hash.Add(WordWrap);
+        hash.Add(Kinsoku);
+        hash.Add(OverflowPunctuation);
+        hash.Add(TopLinePunctuation);
+        hash.Add(AutoSpaceDE);
+        hash.Add(AutoSpaceDN);
+        hash.Add(FormatValues.ItemsHash(Tabs));
+        hash.Add(FormatValues.ItemsHash(ClearedTabs));
+        hash.Add(NumberingId);
+        hash.Add(NumberingLevel);
+        hash.Add(Borders);
+        hash.Add(Shading);
+        hash.Add(Frame);
+        hash.Add(DivId);
+        hash.Add(TextAlignment);
+        hash.Add(OutlineLevel);
+        hash.Add(MarkProperties);
+        return hash.ToHashCode();
     }
 }
 
 /// <summary>
-/// Formats compared by the values of their public fields, as Overlays reads them, compiled once for a type: lists by
+/// How formats compare by the values of their fields (see RunFormat.SameValues, ParagraphFormat.SameValues): lists by
 /// their items, what else a format holds by reference (elements a style or a run states, arrays) as the reference.
 /// </summary>
-static class FormatValues<T> where T : class
+static class FormatValues
 {
-    public static readonly Func<T, T, bool> Equal = CompileEqual();
-    public static readonly Func<T, int> Hash = CompileHash();
+    public static bool Same<T>(T a, T b) => EqualityComparer<T>.Default.Equals(a, b);
 
-    static Func<T, T, bool> CompileEqual()
-    {
-        var (a, b) = (Expression.Parameter(typeof(T), "a"), Expression.Parameter(typeof(T), "b"));
-        Expression all = Expression.Constant(true);
-        foreach (var field in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
-        {
-            Expression equal;
-            if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(List<>))
-                equal = Expression.Call(typeof(FormatValues<T>).GetMethod(nameof(ListEqual), BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(field.FieldType.GetGenericArguments()), Expression.Field(a, field), Expression.Field(b, field));
-            else
-            {
-                var comparer = typeof(EqualityComparer<>).MakeGenericType(field.FieldType);
-                equal = Expression.Call(Expression.Property(null, comparer.GetProperty(nameof(EqualityComparer<object>.Default))!),
-                    comparer.GetMethod(nameof(EqualityComparer<object>.Equals), [field.FieldType, field.FieldType])!, Expression.Field(a, field), Expression.Field(b, field));
-            }
-            all = Expression.AndAlso(all, equal);
-        }
-        return Expression.Lambda<Func<T, T, bool>>(all, a, b).Compile();
-    }
+    public static bool SameItems<TItem>(List<TItem>? a, List<TItem>? b) => a == null ? b == null : b != null && a.SequenceEqual(b);
 
-    static bool ListEqual<TItem>(List<TItem>? a, List<TItem>? b) => a == null ? b == null : b != null && a.SequenceEqual(b);
-
-    /// <summary>A list's items hashed, as ListEqual compares them: formats of lists alike in length (tab stops) would else share a hash.</summary>
-    static int ListHash<TItem>(List<TItem>? list)
+    /// <summary>A list's items hashed, as SameItems compares them: formats of lists alike in length (tab stops) would else share a hash.</summary>
+    public static int ItemsHash<TItem>(List<TItem>? list)
     {
         if (list == null)
             return -1;
@@ -595,20 +925,5 @@ static class FormatValues<T> where T : class
         foreach (var item in list)
             hash.Add(item);
         return hash.ToHashCode();
-    }
-
-    static Func<T, int> CompileHash()
-    {
-        var a = Expression.Parameter(typeof(T), "a");
-        var hash = Expression.Variable(typeof(HashCode), "hash");
-        var steps = new List<Expression>();
-        var add = typeof(HashCode).GetMethods().Single(m => m.Name == nameof(HashCode.Add) && m.GetParameters().Length == 1);
-        foreach (var field in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
-            steps.Add(field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(List<>)
-                ? Expression.Call(hash, add.MakeGenericMethod(typeof(int)), Expression.Call(typeof(FormatValues<T>).GetMethod(nameof(ListHash), BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(field.FieldType.GetGenericArguments()), Expression.Field(a, field)))
-                : Expression.Call(hash, add.MakeGenericMethod(field.FieldType), Expression.Field(a, field)));
-        steps.Add(Expression.Call(hash, typeof(HashCode).GetMethod(nameof(HashCode.ToHashCode))!));
-        return Expression.Lambda<Func<T, int>>(Expression.Block([hash], steps), a).Compile();
     }
 }

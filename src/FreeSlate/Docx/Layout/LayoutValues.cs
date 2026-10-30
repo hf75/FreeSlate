@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -58,8 +59,7 @@ static class LayoutValues
         }
         if (!type.IsValueType && !Own(type))
             return false;
-        var (fields, properties) = members.GetOrAdd(type, t => (t.GetFields(BindingFlags.Instance | BindingFlags.Public).Where(f => !f.FieldType.IsByRefLike).ToArray(),
-            t.GetProperties(BindingFlags.Instance | BindingFlags.Public).Where(p => p.CanRead && p.GetIndexParameters().Length == 0 && !p.PropertyType.IsByRefLike).ToArray()));
+        var (fields, properties) = members.GetOrAdd(type, Members);
         foreach (var field in fields)
         {
             if (!Same(field.GetValue(a), field.GetValue(b), seen, depth + 1))
@@ -72,6 +72,16 @@ static class LayoutValues
         }
         return true;
     }
+
+    /// <summary>
+    /// The public fields and readable properties of a type of the engine's own data, which Same compares. What trimming
+    /// takes away of them no code reads, which cannot make two states lay out differently: reflection, but no code made at
+    /// run time.
+    /// </summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "The engine's own data: a member trimmed away is one no code reads.")]
+    static (FieldInfo[] Fields, PropertyInfo[] Properties) Members(Type type) =>
+        (type.GetFields(BindingFlags.Instance | BindingFlags.Public).Where(f => !f.FieldType.IsByRefLike).ToArray(),
+            type.GetProperties(BindingFlags.Instance | BindingFlags.Public).Where(p => p.CanRead && p.GetIndexParameters().Length == 0 && !p.PropertyType.IsByRefLike).ToArray());
 
     /// <summary>
     /// Whether two blocks of the same id are the same: paragraphs of the same element, formats and inlines (copies the

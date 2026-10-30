@@ -68,6 +68,7 @@ static class Model3D
             {
                 ["color"] = Color(ambient, colors), ["lux"] = Ratio(ambient.Element(Am3d + "illuminance")) ?? 0, ["enabled"] = ambient.Bool("enabled") != false,
             };
+        // Nodes added as nodes: JsonArray.Add<T> makes a value of anything by reflection, which trimming and AOT do not keep.
         var lights = new JsonArray();
         foreach (var light in model.Elements())
         {
@@ -75,14 +76,14 @@ static class Model3D
             switch (light.Name.LocalName)
             {
                 case "ptLight":
-                    lights.Add(new JsonObject
+                    lights.Add((JsonNode)new JsonObject
                     {
                         ["type"] = "point", ["color"] = Color(light, colors), ["cd"] = Ratio(light.Element(Am3d + "intensity")) ?? 0,
                         ["pos"] = Vector(light.Element(Am3d + "pos"), "x", "y", "z", [0, 0, 0]), ["enabled"] = on,
                     });
                     break;
                 case "spotLight":
-                    lights.Add(new JsonObject
+                    lights.Add((JsonNode)new JsonObject
                     {
                         ["type"] = "spot", ["color"] = Color(light, colors), ["cd"] = Ratio(light.Element(Am3d + "intensity")) ?? 0,
                         ["pos"] = Vector(light.Element(Am3d + "pos"), "x", "y", "z", [0, 0, 0]),
@@ -90,7 +91,7 @@ static class Model3D
                     });
                     break;
                 case "dirLight":
-                    lights.Add(new JsonObject
+                    lights.Add((JsonNode)new JsonObject
                     {
                         ["type"] = "dir", ["color"] = Color(light, colors), ["lux"] = Ratio(light.Element(Am3d + "illuminance")) ?? 0,
                         ["pos"] = Vector(light.Element(Am3d + "pos"), "x", "y", "z", [0, 0, 0]),

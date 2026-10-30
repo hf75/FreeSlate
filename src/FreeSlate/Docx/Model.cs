@@ -446,9 +446,9 @@ public sealed partial class ModelReader(DocumentContext context)
 
     sealed class SharedParagraphFormats : IEqualityComparer<ParagraphFormat>
     {
-        public bool Equals(ParagraphFormat? a, ParagraphFormat? b) => ReferenceEquals(a, b) || a != null && b != null && FormatValues<ParagraphFormat>.Equal(a, b);
+        public bool Equals(ParagraphFormat? a, ParagraphFormat? b) => ReferenceEquals(a, b) || a != null && b != null && a.SameValues(b);
 
-        public int GetHashCode(ParagraphFormat format) => FormatValues<ParagraphFormat>.Hash(format);
+        public int GetHashCode(ParagraphFormat format) => format.ValuesHash();
     }
 
     /// <summary>
@@ -459,18 +459,18 @@ public sealed partial class ModelReader(DocumentContext context)
     sealed class SharedFormats : IEqualityComparer<RunFormat>
     {
         public bool Equals(RunFormat? a, RunFormat? b) =>
-            ReferenceEquals(a, b) || a != null && b != null && FormatValues<RunFormat>.Equal(a, b) && (a.Origin, b.Origin) switch
+            ReferenceEquals(a, b) || a != null && b != null && a.SameValues(b) && (a.Origin, b.Origin) switch
             {
                 (null, null) => true,
-                ({ } x, { } y) => FormatValues<RunFormat>.Equal(x.Direct, y.Direct) && x.CharacterStyle == y.CharacterStyle && ReferenceEquals(x.Table, y.Table),
+                ({ } x, { } y) => x.Direct.SameValues(y.Direct) && x.CharacterStyle == y.CharacterStyle && ReferenceEquals(x.Table, y.Table),
                 _ => false,
             };
 
         // With where they were resolved from: formats of equal values resolved in many tables would else share a hash.
         public int GetHashCode(RunFormat format) => format.Origin is { } origin
-            ? HashCode.Combine(FormatValues<RunFormat>.Hash(format), FormatValues<RunFormat>.Hash(origin.Direct), origin.CharacterStyle,
+            ? HashCode.Combine(format.ValuesHash(), origin.Direct.ValuesHash(), origin.CharacterStyle,
                 origin.Table is { } table ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(table) : 0)
-            : FormatValues<RunFormat>.Hash(format);
+            : format.ValuesHash();
     }
 
     /// <summary>The last id given a block (Block.Id); a reader set to another's numbers its blocks after it.</summary>

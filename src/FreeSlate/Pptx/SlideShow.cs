@@ -25,14 +25,15 @@ public static class SlideShow
         var traces = new JsonArray();
         foreach (var trace in list?.Elements(P14 + "tracePtLst") ?? [])
         {
+            // Nodes added as nodes: JsonArray.Add<T> makes a value of anything by reflection, which trimming and AOT do not keep.
             var points = new JsonArray();
             foreach (var point in trace.Elements(P14 + "tracePt"))
             {
                 if (TimeOffset(point.Str("t")) is { } t)
-                    points.Add(new JsonArray(Math.Round(t, 1), Math.Round(Units.ToPx(point.Long("x") ?? 0), 2), Math.Round(Units.ToPx(point.Long("y") ?? 0), 2)));
+                    points.Add((JsonNode)new JsonArray(Math.Round(t, 1), Math.Round(Units.ToPx(point.Long("x") ?? 0), 2), Math.Round(Units.ToPx(point.Long("y") ?? 0), 2)));
             }
             if (points.Count > 0)
-                traces.Add(points);
+                traces.Add((JsonNode)points);
         }
         return traces.Count > 0 ? traces : null;
     }
@@ -57,10 +58,10 @@ public static class SlideShow
                 continue;
             var item = new JsonArray(kind, Math.Round(time, 1), id);
             if (kind == "seek" && TimeOffset(record.Str("seek")) is { } seek)
-                item.Add(Math.Round(seek, 1));
+                item.Add((JsonNode)Math.Round(seek, 1));
             if (kind == "trigger")
-                item.Add(record.Str("type") ?? "onClick");
-            events.Add(item);
+                item.Add((JsonNode?)(record.Str("type") ?? "onClick"));
+            events.Add((JsonNode)item);
         }
         return events.Count > 0 ? events : null;
     }
@@ -139,7 +140,7 @@ public static class SlideShow
                 var item = new JsonObject { ["t"] = build.Name.LocalName };
                 foreach (var attribute in build.Attributes())
                     item[attribute.Name.LocalName] = Value(attribute.Value);
-                list.Add(item);
+                list.Add((JsonNode)item);
             }
             json["builds"] = list;
         }
@@ -186,7 +187,7 @@ public static class SlideShow
                         var item = new JsonObject { ["tm"] = tav.Str("tm") is { } tm ? Value(tm) : null };
                         if (tav.Str("fmla") is { Length: > 0 } formula) item["fmla"] = formula;
                         item["val"] = AnimValue(tav.Element(Ns.P + "val"), slide);
-                        list.Add(item);
+                        list.Add((JsonNode)item);
                     }
                     json["tav"] = list;
                 }
@@ -291,7 +292,7 @@ public static class SlideShow
             if (cond.Element(Ns.P + "tgtEl") is { } target && Target(target, slide) is { } t) item["target"] = t;
             if (cond.Element(Ns.P + "tn") is { } tn) item["tn"] = tn.Int("val") ?? 0;
             if (cond.Element(Ns.P + "rtn") is { } rtn) item["rtn"] = rtn.Str("val");
-            result.Add(item);
+            result.Add((JsonNode)item);
         }
         return result;
     }
