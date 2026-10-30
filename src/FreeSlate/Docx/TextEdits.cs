@@ -784,6 +784,9 @@ static class TextEdits
         var t = new XElement(w + "t");
         var run = new XElement(w + "r", properties != null ? new XElement(w + "rPr", properties.Elements().Where(e => !IsRevision(e) && e.Name.LocalName != "rPrChange")) : null, t);
         SetContent(t, text);
+        // (Before something in a run that holds more before it, a tab behind a tab: the run split there.)
+        if (after is { Parent.Name.LocalName: "r" })
+            SplitBefore(after);
         if ((after?.AncestorsAndSelf(w + "r").FirstOrDefault() ?? after?.AncestorsAndSelf().FirstOrDefault(a => a.Parent == p)) is { } next)
             next.AddBeforeSelf(run);
         else
