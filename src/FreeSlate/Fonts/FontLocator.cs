@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using Microsoft.Win32.SafeHandles;
 
 namespace FreeSlate.Fonts;
 
@@ -173,7 +174,10 @@ public sealed class FontLocator
     }
 }
 
-/// <summary>Reads family name and style from the name and OS/2 tables of a TrueType/OpenType file.</summary>
+/// <summary>
+/// Reads family name and style from the name and OS/2 tables of a TrueType/OpenType file: only its directory and those
+/// tables (with fvar and STAT), as every start looks at every font of the machine, hundreds of megabytes of them.
+/// </summary>
 static class OpenTypeInfo
 {
     /// <summary>
@@ -182,48 +186,55 @@ static class OpenTypeInfo
     /// </summary>
     public static List<FontFace> ReadAll(string path, bool system)
     {
-        var data = File.ReadAllBytes(path);
-        if (data.Length > 12 && Encoding.ASCII.GetString(data, 0, 4) == "ttcf")
+        using var file = File.OpenHandle(path);
+        var head = Bytes(file, 0, 12);
+        if (head.Length == 12 && Encoding.ASCII.GetString(head, 0, 4) == "ttcf")
         {
-            var count = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(8));
+            var offsets = Bytes(file, 12, BinaryPrimitives.ReadUInt32BigEndian(head.AsSpan(8)) * 4L);
             var faces = new List<FontFace>();
-            for (var i = 0; i < count && 12 + i * 4 + 4 <= data.Length; i++)
-                faces.AddRange(Read(data, path, system, (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(12 + i * 4)), i));
+            for (var i = 0; (i + 1) * 4 <= offsets.Length; i++)
+                faces.AddRange(Read(file, path, system, BinaryPrimitives.ReadUInt32BigEndian(offsets.AsSpan(i * 4)), i));
             return faces;
         }
-        return [.. Read(data, path, system, 0, 0)];
+        return [.. Read(file, path, system, 0, 0)];
     }
 
-    static IEnumerable<FontFace> Read(byte[] data, string path, bool system, int offset, int index)
+    static IEnumerable<FontFace> Read(SafeFileHandle file, string path, bool system, long offset, int index)
     {
-        var tables = new Dictionary<string, int>();
-        var count = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(offset + 4));
-        for (var i = 0; i < count; i++)
-        {
-            var record = offset + 12 + i * 16;
-            tables[Encoding.ASCII.GetString(data, record, 4)] = (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(record + 8));
-        }
-        if (!tables.TryGetValue("name", out var name))
+        var directory = Bytes(file, offset + 12, BinaryPrimitives.ReadUInt16BigEndian(Bytes(file, offset + 4, 2)) * 16L);
+        var tables = new Dictionary<string, (long Offset, long Length)>();
+        for (var record = 0; record + 16 <= directory.Length; record += 16)
+            tables[Encoding.ASCII.GetString(directory, record, 4)] = (BinaryPrimitives.ReadUInt32BigEndian(directory.AsSpan(record + 8)), BinaryPrimitives.ReadUInt32BigEndian(directory.AsSpan(record + 12)));
+        byte[]? Table(string tag) => tables.TryGetValue(tag, out var table) ? Bytes(file, table.Offset, table.Length) : null;
+        if (Table("name") is not { } name)
             return [];
 
-        var family = NameString(data, name, 1);
+        var family = NameString(name, 1);
         if (string.IsNullOrEmpty(family))
             return [];
 
         bool bold = false, italic = false;
-        if (tables.TryGetValue("OS/2", out var os2))
+        if (Table("OS/2") is { Length: >= 64 } os2)
         {
-            var selection = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(os2 + 62));
+            var selection = BinaryPrimitives.ReadUInt16BigEndian(os2.AsSpan(62));
             italic = (selection & 0x01) != 0;
             bold = (selection & 0x20) != 0;
         }
-        var aliases = NameStrings(data, name, 1).Where(n => n.Length > 0 && !n.Equals(family, StringComparison.OrdinalIgnoreCase)).Distinct().ToList();
-        var full = new[] { NameString(data, name, 4), NameString(data, name, 6) }.OfType<string>().Where(n => n.Length > 0).Distinct().ToList();
+        var aliases = NameStrings(name, 1).Where(n => n.Length > 0 && !n.Equals(family, StringComparison.OrdinalIgnoreCase)).Distinct().ToList();
+        var full = new[] { NameString(name, 4), NameString(name, 6) }.OfType<string>().Where(n => n.Length > 0).Distinct().ToList();
         var face = new FontFace(family, bold, italic, path, system, index)
         {
-            Aliases = aliases, FullNames = full, Typographic = !string.IsNullOrEmpty(NameString(data, name, 16)),
+            Aliases = aliases, FullNames = full, Typographic = !string.IsNullOrEmpty(NameString(name, 16)),
         };
-        return [face, .. Instances(data, tables, face)];
+        return [face, .. Table("fvar") is { } fvar ? Instances(fvar, name, Table("STAT"), face) : []];
+    }
+
+    /// <summary>The bytes of the file from a place on, so many or as many as it has there.</summary>
+    static byte[] Bytes(SafeFileHandle file, long at, long count)
+    {
+        var bytes = new byte[Math.Max(0, Math.Min(RandomAccess.GetLength(file) - at, count))];
+        for (int read = 0, more; read < bytes.Length && (more = RandomAccess.Read(file, bytes.AsSpan(read), at + read)) > 0; read += more) { }
+        return bytes;
     }
 
     /// <summary>
@@ -237,32 +248,32 @@ static class OpenTypeInfo
     /// as the weight axis at 700). The browser finds an instance's file by the typographic family with the names of its
     /// values on the axes other than weight, width and slant ("Bahnschrift", "Segoe UI Variable Small").
     /// </summary>
-    static IEnumerable<FontFace> Instances(byte[] data, Dictionary<string, int> tables, FontFace face)
+    static IEnumerable<FontFace> Instances(byte[] fvar, byte[] name, byte[]? statTable, FontFace face)
     {
-        if (!tables.TryGetValue("fvar", out var fvar) || !tables.TryGetValue("name", out var name) || fvar + 16 > data.Length)
+        if (fvar.Length < 16)
             yield break;
-        int U16(int at) => at + 2 <= data.Length ? BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(at)) : 0;
-        float Fixed(int at) => at + 4 <= data.Length ? BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(at)) / 65536f : 0;
-        var (axesOffset, axisCount, axisSize, instanceCount, instanceSize) = (U16(fvar + 4), U16(fvar + 8), U16(fvar + 10), U16(fvar + 12), U16(fvar + 14));
-        if (axisSize < 20 || instanceSize < 4 + 4 * axisCount || fvar + axesOffset + axisCount * axisSize > data.Length)
+        int U16(int at) => at + 2 <= fvar.Length ? BinaryPrimitives.ReadUInt16BigEndian(fvar.AsSpan(at)) : 0;
+        float Fixed(int at) => at + 4 <= fvar.Length ? BinaryPrimitives.ReadInt32BigEndian(fvar.AsSpan(at)) / 65536f : 0;
+        var (axesOffset, axisCount, axisSize, instanceCount, instanceSize) = (U16(4), U16(8), U16(10), U16(12), U16(14));
+        if (axisSize < 20 || instanceSize < 4 + 4 * axisCount || axesOffset + axisCount * axisSize > fvar.Length)
             yield break;
         var tags = new string[axisCount];
         for (var a = 0; a < axisCount; a++)
-            tags[a] = Encoding.ASCII.GetString(data, fvar + axesOffset + a * axisSize, 4);
-        var stat = tables.TryGetValue("STAT", out var statOffset) ? Stat(data, statOffset, name) : null;
-        var typographic = NameString(data, name, 16) is { Length: > 0 } t ? t : face.Family;
+            tags[a] = Encoding.ASCII.GetString(fvar, axesOffset + a * axisSize, 4);
+        var stat = statTable != null ? Stat(statTable, name) : null;
+        var typographic = NameString(name, 16) is { Length: > 0 } t ? t : face.Family;
         var seen = new HashSet<(string, bool, bool)>();
         for (var i = 0; i < instanceCount; i++)
         {
-            var record = fvar + axesOffset + axisCount * axisSize + i * instanceSize;
-            if (record + 4 + 4 * axisCount > data.Length)
+            var record = axesOffset + axisCount * axisSize + i * instanceSize;
+            if (record + 4 + 4 * axisCount > fvar.Length)
                 yield break;
             var coordinates = new (string Axis, float Value)[axisCount];
             for (var a = 0; a < axisCount; a++)
                 coordinates[a] = (tags[a], Fixed(record + 4 + 4 * a));
             var values = stat != null
                 ? stat.SelectMany(axis => coordinates.Where(c => c.Axis == axis.Tag).Take(1).Select(c => (axis.Tag, Name: axis.Name(c.Value)))).Where(v => v.Name != null).ToList()
-                : (NameString(data, name, U16(record)) ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => (Tag: "", Name: (string?)w)).ToList();
+                : (NameString(name, U16(record)) ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => (Tag: "", Name: (string?)w)).ToList();
             var bold = values.Any(v => v.Name == "Bold");
             var italic = values.Any(v => v.Name is "Italic" or "Oblique");
             var named = values.Where(v => v.Name is not ("Regular" or "Bold" or "Italic" or "Oblique")).ToList();
@@ -286,68 +297,68 @@ static class OpenTypeInfo
     }
 
     /// <summary>The STAT table's design axes in their order with their values (formats 1 to 3; format 4 combinations are left out).</summary>
-    static List<StatAxis>? Stat(byte[] data, int stat, int name)
+    static List<StatAxis>? Stat(byte[] stat, byte[] name)
     {
-        int U16(int at) => at + 2 <= data.Length ? BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(at)) : 0;
-        int U32(int at) => at + 4 <= data.Length ? (int)BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(at)) : 0;
-        float Fixed(int at) => at + 4 <= data.Length ? BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(at)) / 65536f : 0;
-        var (axisSize, axisCount, axesOffset, valueCount, valuesOffset) = (U16(stat + 4), U16(stat + 6), U32(stat + 8), U16(stat + 12), U32(stat + 14));
-        if (axisSize < 8 || stat + axesOffset + axisCount * axisSize > data.Length)
+        int U16(int at) => at + 2 <= stat.Length ? BinaryPrimitives.ReadUInt16BigEndian(stat.AsSpan(at)) : 0;
+        int U32(int at) => at + 4 <= stat.Length ? (int)BinaryPrimitives.ReadUInt32BigEndian(stat.AsSpan(at)) : 0;
+        float Fixed(int at) => at + 4 <= stat.Length ? BinaryPrimitives.ReadInt32BigEndian(stat.AsSpan(at)) / 65536f : 0;
+        var (axisSize, axisCount, axesOffset, valueCount, valuesOffset) = (U16(4), U16(6), U32(8), U16(12), U32(14));
+        if (axisSize < 8 || axesOffset + axisCount * axisSize > stat.Length)
             return null;
         var axes = new List<StatAxis>();
         for (var a = 0; a < axisCount; a++)
         {
-            var record = stat + axesOffset + a * axisSize;
-            axes.Add(new StatAxis(Encoding.ASCII.GetString(data, record, 4), U16(record + 6), []));
+            var record = axesOffset + a * axisSize;
+            axes.Add(new StatAxis(Encoding.ASCII.GetString(stat, record, 4), U16(record + 6), []));
         }
         for (var v = 0; v < valueCount; v++)
         {
-            var value = stat + valuesOffset + U16(stat + valuesOffset + 2 * v);
+            var value = valuesOffset + U16(valuesOffset + 2 * v);
             var (format, axis, flags, nameId) = (U16(value), U16(value + 2), U16(value + 4), U16(value + 6));
             if (format is < 1 or > 3 || axis >= axes.Count)
                 continue;
             // Flag 2: the name may be left out (ELIDABLE_AXIS_VALUE_NAME), as the regular weight's.
-            var text = (flags & 2) != 0 ? null : NameString(data, name, nameId);
+            var text = (flags & 2) != 0 ? null : NameString(name, nameId);
             axes[axis].Values.Add(format == 2 ? (Fixed(value + 12), Fixed(value + 16), true, text) : (Fixed(value + 8), Fixed(value + 8), false, text));
         }
         return [.. axes.OrderBy(a => a.Ordering)];
     }
 
     /// <summary>All values of a name record, in every language.</summary>
-    static IEnumerable<string> NameStrings(byte[] data, int table, int nameId)
+    static IEnumerable<string> NameStrings(byte[] name, int nameId)
     {
-        var count = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(table + 2));
-        var storage = table + BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(table + 4));
+        var count = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(2));
+        var storage = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(4));
         for (var i = 0; i < count; i++)
         {
-            var r = table + 6 + i * 12;
-            var platform = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r));
-            var id = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 6));
-            var length = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 8));
-            var start = storage + BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 10));
-            if (id != nameId || start + length > data.Length || platform is not (0 or 3))
+            var r = 6 + i * 12;
+            var platform = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r));
+            var id = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r + 6));
+            var length = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r + 8));
+            var start = storage + BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r + 10));
+            if (id != nameId || start + length > name.Length || platform is not (0 or 3))
                 continue;
-            yield return Encoding.BigEndianUnicode.GetString(data, start, length);
+            yield return Encoding.BigEndianUnicode.GetString(name, start, length);
         }
     }
 
     /// <summary>A name record, preferring Windows/Unicode/English (US).</summary>
-    static string? NameString(byte[] data, int table, int nameId)
+    static string? NameString(byte[] name, int nameId)
     {
-        var count = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(table + 2));
-        var storage = table + BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(table + 4));
+        var count = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(2));
+        var storage = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(4));
         string? fallback = null;
         for (var i = 0; i < count; i++)
         {
-            var r = table + 6 + i * 12;
-            var platform = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r));
-            var language = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 4));
-            var id = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 6));
-            var length = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 8));
-            var start = storage + BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(r + 10));
-            if (id != nameId || start + length > data.Length)
+            var r = 6 + i * 12;
+            var platform = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r));
+            var language = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r + 4));
+            var id = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r + 6));
+            var length = BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r + 8));
+            var start = storage + BinaryPrimitives.ReadUInt16BigEndian(name.AsSpan(r + 10));
+            if (id != nameId || start + length > name.Length)
                 continue;
-            var value = platform is 0 or 3 ? Encoding.BigEndianUnicode.GetString(data, start, length) : Encoding.Latin1.GetString(data, start, length);
+            var value = platform is 0 or 3 ? Encoding.BigEndianUnicode.GetString(name, start, length) : Encoding.Latin1.GetString(name, start, length);
             if (platform == 3 && language == 0x409)
                 return value;
             fallback ??= value;
