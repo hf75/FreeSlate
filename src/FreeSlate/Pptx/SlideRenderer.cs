@@ -88,7 +88,10 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         public (XElement Scene3d, double X, double Y)? Scene { get; init; }
     }
 
-    /// <summary>The slide as a section element; <paramref name="attributes"/> and <paramref name="appendix"/> (notes) are added as given.</summary>
+    /// <summary>
+    /// The slide as a section element, its pictures' tokens written as their data URIs (see Rendering.Pictures);
+    /// <paramref name="attributes"/> and <paramref name="appendix"/> (notes) are added as given.
+    /// </summary>
     public string Render(string attributes = "", string appendix = "")
     {
         var (width, height, items) = Scene();
@@ -99,7 +102,7 @@ public sealed class SlideRenderer(SlideContext slide, SvgPaint paint)
         html.Append($"<section class=\"slide\" id=\"slide-{slide.Number}\"{attributes} style=\"width:{Units.Css(width)}px;height:{Units.Css(height)}px{scale}\">");
         HtmlScene.Write(items, html);
         html.Append(appendix).Append("</section>");
-        return html.ToString();
+        return Rendering.Pictures.Resolved(html.ToString());
     }
 
     /// <summary>

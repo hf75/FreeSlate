@@ -242,12 +242,12 @@ public sealed class PresentationContext : IDisposable
         return theme;
     }
 
-    /// <summary>An embedded image of a part as data URI, or null for missing or linked images.</summary>
+    /// <summary>An embedded image of a part as its token (see Rendering.Pictures), or null for missing or linked images.</summary>
     /// <param name="displayWidth">The width the picture is shown at, in pixels: metafile hatches are output pixels.</param>
     public string? Image(string sourcePart, string relationshipId, double? displayWidth = null) =>
         Image(sourcePart, relationshipId, displayWidth, null, out _);
 
-    /// <summary>An embedded image of a part as data URI, or null for missing or linked images.</summary>
+    /// <summary>An embedded image of a part as its token (see Rendering.Pictures), or null for missing or linked images.</summary>
     /// <param name="displayWidth">The width the picture is shown at, in pixels: metafile hatches are output pixels.</param>
     /// <param name="box">Where the picture lies on the slide's pixels, which a metafile's pattern and hatch brushes lie
     /// on (Metafiles.PixelBox).</param>
@@ -259,7 +259,7 @@ public sealed class PresentationContext : IDisposable
         // Pictures of imported content (RTF chunks) come as data URIs; metafiles among them are converted.
         if (relationshipId.StartsWith("data:", StringComparison.Ordinal))
             return relationshipId.StartsWith("data:image/x-emf", StringComparison.Ordinal) || relationshipId.StartsWith("data:image/x-wmf", StringComparison.Ordinal)
-                ? DataBytes(relationshipId) is { } embedded && IsMetafile(embedded) ? Metafiles.MetafileConverter.ToDataUri(embedded, $"mf{images.Count}_", displayWidth, Word) : null
+                ? DataBytes(relationshipId) is { } embedded && IsMetafile(embedded) ? Svg(Metafiles.MetafileConverter.ToSvg(embedded, $"mf{images.Count}_", displayWidth, Word)) : null
                 : relationshipId;
         var rel = Package.Relationship(sourcePart, relationshipId);
         if (rel is not { External: false } || !Package.Exists(rel.Target))
@@ -279,9 +279,9 @@ public sealed class PresentationContext : IDisposable
             {
                 var svg = Metafiles.MetafileConverter.ToSvg(bytes, $"mf{images.Count}_", displayWidth, Word, pixels, out placed);
                 if (placed)
-                    return images[placedKey] = Metafiles.MetafileConverter.DataUri(svg);
+                    return images[placedKey] = Svg(svg);
                 unplaced.Add(key);
-                images.TryAdd(key, Metafiles.MetafileConverter.DataUri(svg));
+                images.TryAdd(key, Svg(svg));
             }
         }
         if (!images.TryGetValue(key, out var uri))
@@ -289,10 +289,10 @@ public sealed class PresentationContext : IDisposable
             uri = type switch
             {
                 "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/webp" => Native(type, Package.ReadBytes(rel.Target)),
-                "image/svg+xml" => $"data:{type};base64,{Convert.ToBase64String(Package.ReadBytes(rel.Target))}",
+                "image/svg+xml" => Kept(type, Package.ReadBytes(rel.Target)),
                 // A metafile part may hold a raster picture (a PNG named .emf), which PowerPoint shows by its bytes.
                 _ when metafile => Package.ReadBytes(rel.Target) is var bytes && IsMetafile(bytes)
-                    ? Metafiles.MetafileConverter.ToDataUri(bytes, $"mf{images.Count}_", displayWidth, Word)
+                    ? Svg(Metafiles.MetafileConverter.ToSvg(bytes, $"mf{images.Count}_", displayWidth, Word))
                     : Converted(bytes),
                 _ => Converted(Package.ReadBytes(rel.Target)),
             };
@@ -302,7 +302,7 @@ public sealed class PresentationContext : IDisposable
     }
 
     /// <summary>
-    /// A TIFF picture cut to its source rectangle (the fractions cropped off each side) as PNG data URI, or null for
+    /// A TIFF picture cut to its source rectangle (the fractions cropped off each side) as a PNG picture, or null for
     /// other pictures: Word's PDF holds only the cropped pixels, which the rasterizer samples from their own grid (found
     /// by agent BF in Word's PDF of docx/external/libreoffice/tif-crop: 2815 by 2456 of a 1-bit TIFF's 3495 by 4958
     /// pixels, 87.8 -> 100 %).
@@ -328,7 +328,7 @@ public sealed class PresentationContext : IDisposable
                 var cut = new byte[cw * ch * 4];
                 for (var row = 0; row < ch; row++)
                     System.Buffer.BlockCopy(rgba, ((y0 + row) * width + x0) * 4, cut, row * cw * 4, cw * 4);
-                uri = Metafiles.Png.DataUri(cw, ch, cut);
+                uri = Kept("image/png", Metafiles.Png.Encode(cw, ch, cut));
             }
         }
         images[key] = uri;
@@ -343,20 +343,19 @@ public sealed class PresentationContext : IDisposable
     /// A picture under a content type browsers show, unless its bytes are a format they do not: PowerPoint names
     /// inserted .jxr pictures image/png.
     /// </summary>
-    static string? Native(string type, byte[] data) =>
-        Html.JpegXr.IsJpegXr(data) || Html.Tiff.IsTiff(data) ? Converted(data) : $"data:{type};base64,{Convert.ToBase64String(data)}";
+    string? Native(string type, byte[] data) => Html.JpegXr.IsJpegXr(data) || Html.Tiff.IsTiff(data) ? Converted(data) : Kept(type, data);
 
     /// <summary>
-    /// A picture of another content type as data URI by its bytes (catalog: picture.formats): TIFF converted to PNG
+    /// A picture of another content type by its bytes (catalog: picture.formats): TIFF converted to PNG
     /// or JPEG, JPEG XR to PNG, formats browsers show under a content type the package names otherwise; null for
     /// formats without converter.
     /// </summary>
-    static string? Converted(byte[] data)
+    string? Converted(byte[] data)
     {
         if (Html.Tiff.IsTiff(data))
-            return Html.Tiff.ToWeb(data) is var (tiffType, web) ? $"data:{tiffType};base64,{Convert.ToBase64String(web)}" : null;
+            return Html.Tiff.ToWeb(data) is var (tiffType, web) ? Kept(tiffType, web) : null;
         if (Html.JpegXr.IsJpegXr(data))
-            return Html.JpegXr.ToPng(data) is { } png ? $"data:image/png;base64,{Convert.ToBase64String(png)}" : null;
+            return Html.JpegXr.ToPng(data) is { } png ? Kept("image/png", png) : null;
         var type = data switch
         {
             [0x89, 0x50, 0x4E, 0x47, ..] => "image/png",
@@ -366,8 +365,14 @@ public sealed class PresentationContext : IDisposable
             [0x52, 0x49, 0x46, 0x46, _, _, _, _, 0x57, 0x45, 0x42, 0x50, ..] => "image/webp",
             _ => null,
         };
-        return type != null ? $"data:{type};base64,{Convert.ToBase64String(data)}" : null;
+        return type != null ? Kept(type, data) : null;
     }
+
+    /// <summary>A picture's token (see Rendering.Pictures), kept as long as the context or a scene it drew (see Rendering.PageScene.Keeps).</summary>
+    string Kept(string type, byte[] bytes) => Rendering.Pictures.Keep(this, type, bytes);
+
+    /// <summary>An SVG document as a picture, or null.</summary>
+    string? Svg(string? svg) => svg != null ? Kept("image/svg+xml", System.Text.Encoding.UTF8.GetBytes(svg)) : null;
 
     /// <summary>
     /// The size of an embedded picture in pixels at 96 dpi from its own resolution (PNG pHYs, JPEG density), as

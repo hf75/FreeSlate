@@ -14,7 +14,7 @@ public static class HtmlScene
 
     static string Px(double points) => Units.Css(points * PxPerPt);
 
-    /// <summary>The page's HTML section.</summary>
+    /// <summary>The page's HTML section, its pictures' tokens written as their data URIs (see Pictures).</summary>
     public static string Page(PageScene scene)
     {
         var html = new StringBuilder();
@@ -32,7 +32,7 @@ public static class HtmlScene
         if (scene.Sheet != null)
             html.Append("</div>");
         html.Append("</section>\n");
-        return html.ToString();
+        return Pictures.Resolved(html.ToString());
     }
 
     /// <summary>An item as HTML or SVG.</summary>

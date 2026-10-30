@@ -107,22 +107,10 @@ public static class FillReader
     /// </summary>
     public static readonly XName PatternPicture = XNamespace.Get("urn:freeslate:vml") + "picture", PatternCell = XNamespace.Get("urn:freeslate:vml") + "cell";
 
-    /// <summary>An 8 × 8 picture (a data URI) as pattern bits: its light pixels set; null for other pictures.</summary>
+    /// <summary>An 8 × 8 picture (its token, see Rendering.Pictures) as pattern bits: its light pixels set; null for other pictures.</summary>
     static byte[]? PatternBits(string? uri)
     {
-        var at = uri?.IndexOf(";base64,", StringComparison.Ordinal) ?? -1;
-        if (uri == null || at < 0)
-            return null;
-        byte[] data;
-        try
-        {
-            data = Convert.FromBase64String(uri[(at + 8)..]);
-        }
-        catch (FormatException)
-        {
-            return null;
-        }
-        if (Html.Gif.Decode(data) is not var (width, height, rgba) || width != 8 || height != 8)
+        if (Rendering.Pictures.Get(uri) is not var (_, data) || Html.Gif.Decode(data) is not var (width, height, rgba) || width != 8 || height != 8)
             return null;
         var bits = new byte[8];
         for (var y = 0; y < 8; y++)

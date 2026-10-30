@@ -1237,22 +1237,36 @@ public sealed class SvgDrawing
             var (x, y, w, h) = (Length(image.Attribute("x")?.Value, 0), Length(image.Attribute("y")?.Value, 0),
                 Length(image.Attribute("width")?.Value, 0), Length(image.Attribute("height")?.Value, 0));
             var href = image.Attribute(Xlink + "href")?.Value ?? image.Attribute("href")?.Value;
-            if (!style.Visible || href == null || !href.StartsWith("data:", StringComparison.Ordinal) || href.IndexOf(',') is not (> 0 and var comma))
+            if (!style.Visible || href == null)
                 return;
+            // A picture's token (see Rendering.Pictures), else a data URI.
             byte[] data;
-            try
+            bool svg;
+            if (href.StartsWith(Rendering.Pictures.Prefix, StringComparison.Ordinal))
             {
-                data = href.AsSpan(0, comma).EndsWith(";base64", StringComparison.Ordinal)
-                    ? Convert.FromBase64String(href[(comma + 1)..])
-                    : System.Text.Encoding.UTF8.GetBytes(Uri.UnescapeDataString(href[(comma + 1)..]));
+                if (Rendering.Pictures.Get(href) is not var (type, bytes))
+                    return;
+                (data, svg) = (bytes, type == "image/svg+xml");
             }
-            catch (FormatException)
+            else
             {
-                return;
+                if (!href.StartsWith("data:", StringComparison.Ordinal) || href.IndexOf(',') is not (> 0 and var comma))
+                    return;
+                try
+                {
+                    data = href.AsSpan(0, comma).EndsWith(";base64", StringComparison.Ordinal)
+                        ? Convert.FromBase64String(href[(comma + 1)..])
+                        : System.Text.Encoding.UTF8.GetBytes(Uri.UnescapeDataString(href[(comma + 1)..]));
+                }
+                catch (FormatException)
+                {
+                    return;
+                }
+                svg = href.AsSpan(5).StartsWith("image/svg+xml", StringComparison.Ordinal);
             }
             var aspect = image.Attribute("preserveAspectRatio")?.Value;
             canvas.Save();
-            if (href.AsSpan(5).StartsWith("image/svg+xml", StringComparison.Ordinal))
+            if (svg)
             {
                 if (Load(data) is { } drawing)
                 {

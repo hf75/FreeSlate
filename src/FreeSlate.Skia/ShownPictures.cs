@@ -33,14 +33,14 @@ static class ShownPictures
     static long bytes;
 
     /// <summary>
-    /// The raster picture of a data URI decoded for drawing it <paramref name="width"/> by <paramref name="height"/>
-    /// pixels: at the eighths of its own size that come next above that, at most its own; null for SVG pictures, other
-    /// URIs and pictures Skia does not decode (drawn as before).
+    /// The raster picture of its token or a data URI (see Rendering.Pictures) decoded for drawing it
+    /// <paramref name="width"/> by <paramref name="height"/> pixels: at the eighths of its own size that come next above
+    /// that, at most its own; null for SVG pictures, other URIs and pictures Skia does not decode (drawn as before).
     /// </summary>
     public static SKImage? Image(string uri, double width, double height)
     {
-        if (!uri.StartsWith("data:image/", StringComparison.Ordinal) || uri.StartsWith("data:image/svg+xml", StringComparison.Ordinal)
-            || !(width > 0 && height > 0) || uri.IndexOf(',') is not (> 0 and var comma))
+        if (Rendering.Pictures.Type(uri) is not { } type || !type.StartsWith("image/", StringComparison.Ordinal) || type == "image/svg+xml"
+            || !(width > 0 && height > 0))
             return null;
         lock (recent)
         {
@@ -49,15 +49,8 @@ static class ShownPictures
                 Use(picture, wanted);
                 return kept;
             }
-            byte[] data;
-            try
-            {
-                data = Convert.FromBase64String(uri[(comma + 1)..]);
-            }
-            catch (FormatException)
-            {
+            if (Rendering.Pictures.Get(uri) is not var (_, data))
                 return null;
-            }
             using var encoded = SKData.CreateCopy(data);
             using var codec = SKCodec.Create(encoded);
             if (codec == null)

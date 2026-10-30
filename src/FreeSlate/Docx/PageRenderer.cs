@@ -170,6 +170,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             items.Add(new BookmarkItem(name, x, y));
         if (defs.Length > 0)
             items.Add(new WrappedItem("<svg width=\"0\" height=\"0\" style=\"position:absolute\">", [new DefsItem(defs.ToString())], "</svg>"));
+        // (The pictures its items name live as long as the scene, see PageScene.Keeps.)
+        scene.Keeps = drawings?.Pictures;
         return scene;
     }
 

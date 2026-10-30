@@ -114,6 +114,10 @@ public static class PptxConverter
             scene.Items.AddRange(items);
             scenes.Add(scene);
         }
+        // The scenes keep their pictures (see Rendering.Pictures), which the context kept.
+        var pictures = Rendering.Pictures.Taken(context);
+        foreach (var scene in scenes)
+            scene.Keeps = pictures;
         return scenes;
     }
 

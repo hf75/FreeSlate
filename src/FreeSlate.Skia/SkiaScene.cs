@@ -1672,25 +1672,16 @@ public static class SkiaScene
         }
 
         /// <summary>
-        /// A picture of a data URI: an image in a format Skia decodes, or an SVG picture (a document's own, a metafile as
-        /// the converter writes it, see SvgDrawing); neither for other formats.
+        /// A picture of its token or a data URI (see Rendering.Pictures): an image in a format Skia decodes, or an SVG
+        /// picture (a document's own, a metafile as the converter writes it, see SvgDrawing); neither for other formats.
         /// </summary>
         static Decoded Decode(string uri, Func<SKTypeface, IEnumerable<uint>, string, SKTypeface>? typefaces)
         {
-            if (!uri.StartsWith("data:", StringComparison.Ordinal) || uri.IndexOf(',') is not (> 0 and var comma)
-                || !uri.AsSpan(0, comma).EndsWith(";base64", StringComparison.Ordinal))
+            if (Rendering.Pictures.Get(uri) is not var (type, data))
                 return default;
-            try
-            {
-                var data = Convert.FromBase64String(uri[(comma + 1)..]);
-                if (!uri.AsSpan(5).StartsWith("image/svg+xml", StringComparison.Ordinal))
-                    return new Decoded(SKImage.FromEncodedData(data), null);
-                return SvgDrawing.Load(data, typefaces) is { } drawing ? new Decoded(null, drawing) : default;
-            }
-            catch (FormatException)
-            {
-                return default;
-            }
+            if (type != "image/svg+xml")
+                return new Decoded(SKImage.FromEncodedData(data), null);
+            return SvgDrawing.Load(data, typefaces) is { } drawing ? new Decoded(null, drawing) : default;
         }
     }
 }

@@ -441,6 +441,7 @@ public sealed partial class PresentationDocument : IEditableDocument
             var (width, height, items) = new SlideRenderer(new SlideContext(context, slide.Part, index + 1), paint).Scene();
             var scene = new PageScene { Number = index + 1, Paper = "", Width = width * 72 / 96, Height = height * 72 / 96, Glyphs = context.Glyphs };
             scene.Items.AddRange(items);
+            scene.Keeps = Rendering.Pictures.Taken(context);
             slide.Scene = scene;
         }
         return slide.Scene;
@@ -570,6 +571,7 @@ public sealed partial class PresentationDocument : IEditableDocument
             // As drawn: the scene drawn to fit is the slide's.
             var scene = new PageScene { Number = index + 1, Paper = "", Width = width * 72 / 96, Height = height * 72 / 96, Glyphs = context.Glyphs };
             scene.Items.AddRange(items);
+            scene.Keeps = Rendering.Pictures.Taken(context);
             slide.Scene = scene;
             return;
         }
