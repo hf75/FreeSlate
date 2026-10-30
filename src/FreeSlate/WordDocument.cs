@@ -371,9 +371,10 @@ public sealed partial class WordDocument : IEditableDocument
         return fresh.SelectMany(Within);
     }
 
-    /// <summary>Whether a paragraph of the body, of a note or of a header or footer reads so (as all its tracked changes accepted).</summary>
+    /// <summary>Whether a paragraph of the body, of a note, of a header or footer or of a comment reads so (as all its tracked changes accepted).</summary>
     bool Reads(int paragraph, string text) =>
-        (paragraphs.TryGetValue(paragraph, out var found) || noteParagraphs.TryGetValue(paragraph, out found) || storyParagraphs.TryGetValue(paragraph, out found))
+        (paragraphs.TryGetValue(paragraph, out var found) || noteParagraphs.TryGetValue(paragraph, out found) || storyParagraphs.TryGetValue(paragraph, out found)
+            || commentParagraphs.TryGetValue(paragraph, out found))
         && ParagraphText.Of(found.Paragraph) == text;
 
     /// <summary>The change just made taken back and forgotten, as if it had not been made: a refusal of it.</summary>
@@ -759,9 +760,9 @@ public sealed partial class WordDocument : IEditableDocument
     public void Dispose() => package.Dispose();
 
     (ParagraphBlock Paragraph, Block Top) Find(int id) =>
-        Found(id) ?? throw new ArgumentException($"The document's body, notes, headers and footers have no paragraph {id}.", nameof(id));
+        Found(id) ?? throw new ArgumentException($"The document's body, notes, headers, footers and comments have no paragraph {id}.", nameof(id));
 
-    /// <summary>A paragraph of the body, of a note or of a header or footer by its id, with the block of its story it stands in, or null.</summary>
+    /// <summary>A paragraph of the body, of a note, of a header or footer or of a comment by its id, with the block of its story it stands in, or null.</summary>
     (ParagraphBlock Paragraph, Block Top)? Found(int id)
     {
         Read();
@@ -771,7 +772,10 @@ public sealed partial class WordDocument : IEditableDocument
         if (noteParagraphs.TryGetValue(id, out found))
             return found;
         KnowStories();
-        return storyParagraphs.TryGetValue(id, out found) ? found : null;
+        if (storyParagraphs.TryGetValue(id, out found))
+            return found;
+        KnowComments();
+        return commentParagraphs.TryGetValue(id, out found) ? found : null;
     }
 
     /// <summary>
@@ -791,6 +795,8 @@ public sealed partial class WordDocument : IEditableDocument
             return ChangeNote(note, edit, changes);
         if (storyOf.TryGetValue(from, out var story))
             return ChangeStory(story, edit, changes);
+        if (commentOf.TryGetValue(from, out var comment))
+            return ChangeComment(comment, edit, changes);
         var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to));
         var tracking = Author != null ? new Tracking(Author, ChangedAt ?? DateTime.Now, ChangeId()) : null;
         var text = edit(stretch, tracking);

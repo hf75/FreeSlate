@@ -71,7 +71,7 @@ public sealed partial class WordDocument
     IReadOnlyList<int> Insert(int paragraph, int offset, string markup, IReadOnlyList<NewPart>? added, Dictionary<string, byte[]?> changes)
     {
         var (p, top) = Find(paragraph);
-        var known = paragraphs.Keys.Concat(noteParagraphs.Keys).Concat(storyParagraphs.Keys).ToHashSet();
+        var known = paragraphs.Keys.Concat(noteParagraphs.Keys).Concat(storyParagraphs.Keys).Concat(commentParagraphs.Keys).ToHashSet();
         var source = PartOf(top);
         var elements = Elements(Added(markup, added, changes, source), RootOf(source));
         Strictly(source, elements);
@@ -165,9 +165,10 @@ public sealed partial class WordDocument
     /// <summary>A text escaped for an XML attribute's value.</summary>
     static string Escaped(string text) => System.Security.SecurityElement.Escape(text);
 
-    /// <summary>The part a block of the body, of a note or of a header or footer was read from, which what is put into it is related from.</summary>
+    /// <summary>The part a block of the body, of a note, of a header or footer or of a comment was read from, which what is put into it is related from.</summary>
     string PartOf(Block top) =>
-        noteOf.TryGetValue(top, out var note) ? NotePart(note.Endnote) ?? context.MainPart : storyOf.TryGetValue(top, out var story) ? story : context.MainPart;
+        noteOf.TryGetValue(top, out var note) ? NotePart(note.Endnote) ?? context.MainPart : storyOf.TryGetValue(top, out var story) ? story
+        : commentOf.ContainsKey(top) ? CommentsPart() ?? context.MainPart : context.MainPart;
 
     /// <summary>The root of a part's XML as loaded, whose namespaces markup put into it is parsed within (see Elements).</summary>
     XElement RootOf(string part) => (part == context.MainPart ? context.Document : context.Load(part)).Root!;

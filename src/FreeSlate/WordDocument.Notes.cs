@@ -152,10 +152,11 @@ public sealed partial class WordDocument
     static bool Numbered(IEnumerable<Block> blocks) =>
         blocks.Any(block => block is ParagraphBlock { Label: not null } || ModelReader.Inner(block).Any(Numbered));
 
-    /// <summary>The list a block of the body, of a note or of a header or footer stands in (the body's blocks, the note's, the story's) and its place there.</summary>
+    /// <summary>The list a block of the body, of a note, of a header or footer or of a comment stands in (the body's blocks, the note's, the story's, the comment's) and its place there.</summary>
     (List<Block> List, int Index) TopList(Block top, bool walking = false)
     {
-        var list = noteOf.TryGetValue(top, out var key) ? notesRead[key] : storyOf.TryGetValue(top, out var part) ? reader.Stories[part] : null;
+        var list = noteOf.TryGetValue(top, out var key) ? notesRead[key] : storyOf.TryGetValue(top, out var part) ? reader.Stories[part]
+            : commentOf.TryGetValue(top, out var comment) ? commentsRead[comment] : null;
         return list == null ? (blocks, IndexOf(top, walking)) : (list, list.FindIndex(b => ReferenceEquals(b, top)));
     }
 

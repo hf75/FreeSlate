@@ -881,6 +881,37 @@ public sealed partial class ModelReader(DocumentContext context)
         return comments;
     }
 
+    /// <summary>
+    /// The content of every comment of the comments part by id, in the part's order, in either view: as stories of
+    /// their own, which a change is made in (see WordDocument.ChangeComment); their lists count on from comment to
+    /// comment. The comments read anew afterwards (see Comments) are those of the part as it reads now.
+    /// </summary>
+    public Dictionary<string, List<Block>> CommentStories()
+    {
+        var stories = new Dictionary<string, List<Block>>(StringComparer.Ordinal);
+        commentElements = null;
+        if (CommentsPart is not { } part || !context.Package.Exists(part) || context.Load(part).Root is not { } root)
+            return stories;
+        numberSteps.Remove(part);
+        var (savedCounter, savedPart) = (counter, currentPart);
+        (counter, currentPart) = (new ListCounter(context.Numbering), part);
+        try
+        {
+            foreach (var comment in root.Elements(Wml.W + "comment"))
+            {
+                var blocks = new List<Block>();
+                ReadBlocks(comment, blocks);
+                JoinHidden(blocks, cell: false);
+                stories.TryAdd(comment.Attr("id") ?? "", blocks);
+            }
+            return stories;
+        }
+        finally
+        {
+            (counter, currentPart) = (savedCounter, savedPart);
+        }
+    }
+
     public Dictionary<string, List<Block>> Notes(bool endnotes)
     {
         var notes = new Dictionary<string, List<Block>>(StringComparer.Ordinal);

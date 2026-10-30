@@ -81,10 +81,12 @@ static class TextEdits
 
     /// <summary>
     /// The w:t a text inline was read from, in the stretch afresh, where it stands in the paragraph (a content control
-    /// showing its placeholder may show another control's text) and its text is the element's text; else null.
+    /// showing its placeholder may show another control's text) and its text is the element's text, with
+    /// <paramref name="cut"/> or its beginning (the rest cut off for markup put in after it, see InsertMarks); else null.
     /// </summary>
-    static XElement? TextOf(Stretch stretch, Inline inline, List<XElement> parts) =>
-        inline is TextInline text && text.Xml is { Name.LocalName: "t" } read && stretch.Find(read) is { } t && In(t, parts) && ReadText(t) == text.Text ? t : null;
+    static XElement? TextOf(Stretch stretch, Inline inline, List<XElement> parts, bool cut = false) =>
+        inline is TextInline text && text.Xml is { Name.LocalName: "t" } read && stretch.Find(read) is { } t && In(t, parts)
+        && (ReadText(t) == text.Text || cut && text.Text.StartsWith(ReadText(t), StringComparison.Ordinal)) ? t : null;
 
     /// <summary>The fields begun and not ended among some elements (begun counting one, ended minus one).</summary>
     static int OpenFields(IEnumerable<XElement> elements) =>
@@ -312,6 +314,108 @@ static class TextEdits
     /// </exception>
     public static string InsertMarkup(Stretch stretch, ParagraphBlock paragraph, int offset, IReadOnlyList<XElement> markup, Tracking? tracking = null)
     {
+        var part = Place(stretch, paragraph, offset, markup, tracking);
+        return stretch.Written([(part, [part])]);
+    }
+
+    /// <summary>
+    /// Marks put into the text at two places in reading order (a comment's range, see WordDocument.AddComment):
+    /// <paramref name="last"/> at the second, then <paramref name="first"/> at the first, as InsertMarkup puts markup in;
+    /// the places may stand in two paragraphs of the stretch. Returns the stretch's new text.
+    /// </summary>
+    public static string InsertMarks(Stretch stretch, ParagraphBlock from, int start, IReadOnlyList<XElement> first, ParagraphBlock to, int end,
+        IReadOnlyList<XElement> last)
+    {
+        // The beginning after the end: a text the end was put into reads as its part before the end (see TextOf).
+        HashSet<XElement> written = [Place(stretch, to, end, last, null), Place(stretch, from, start, first, null, cut: true)];
+        // A range reaching into a content control that holds its text alone (plain text, a combo box, a drop-down list, a
+        // date) takes it in whole, as Word puts it (measured in Word 365 by COM: a comment on characters of a control of
+        // each of those kinds begins before it and ends after it, one in rich text stays within; an end with its reference
+        // in a plain-text control Word takes for damage, found with docx/external/powertools/DA266-RunLevelRepeat-NoData).
+        Out(first, before: true);
+        Out(last, before: false);
+        return stretch.Written(Outermost(written).Select(p => (p, (IEnumerable<XElement>)[p])));
+
+        static void Out(IReadOnlyList<XElement> marks, bool before)
+        {
+            if (marks.Count == 0 || marks[0].Ancestors().TakeWhile(a => a.Name.LocalName != "p").LastOrDefault(TextAlone) is not { } control)
+                return;
+            foreach (var mark in marks)
+                mark.Remove();
+            if (before)
+                control.AddBeforeSelf(marks);
+            else
+                control.AddAfterSelf(marks);
+        }
+    }
+
+    /// <summary>
+    /// Whether an element is a content control that holds its text alone: plain text, a combo box, a drop-down list, a date
+    /// (which Word keeps comments out of, see InsertMarks).
+    /// </summary>
+    static bool TextAlone(XElement e) =>
+        e.Name.LocalName == "sdt" && e.Element(e.Name.Namespace + "sdtPr") is { } properties
+        && properties.Elements().Any(p => p.Name.Namespace == e.Name.Namespace && p.Name.LocalName is "text" or "comboBox" or "dropDownList" or "date");
+
+    /// <summary>
+    /// An answer's marks put beside those of the comment before it in its thread (see WordDocument.Reply), as Word writes a
+    /// thread: its range's beginning after that comment's beginning, its end and reference after that comment's reference
+    /// (or its end). Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The comment's marks are not in the stretch; nothing changes.</exception>
+    public static string InsertBeside(Stretch stretch, string comment, IReadOnlyList<XElement> first, IReadOnlyList<XElement> last)
+    {
+        var body = stretch.Xml.Root!.Elements().First();
+        XElement? Mark(string name) =>
+            body.Descendants().FirstOrDefault(e => e.Name.LocalName == name && e.Attributes().Any(a => a.Name.LocalName == "id" && a.Value == comment));
+        var begin = Mark("commentRangeStart") ?? throw new NotSupportedException("The comment's range does not begin in the stretch.");
+        var after = Mark("commentReference") is { } reference ? reference.Parent is { Name.LocalName: "r" } run ? run : reference
+            : Mark("commentRangeEnd") ?? throw new NotSupportedException("The comment's range does not end in the stretch.");
+        begin.AddAfterSelf(first);
+        after.AddAfterSelf(last);
+        // The children of the stretch that hold the marks written anew, or the marks with those beside them where they
+        // stand between paragraphs.
+        var written = new List<(XElement Element, IEnumerable<XElement> Written)>();
+        foreach (var (mark, added) in new[] { (begin, first), (after, last) })
+        {
+            if (mark.Parent == body)
+                written.Add((mark, [mark, .. added]));
+            else if (mark.AncestorsAndSelf().First(a => a.Parent == body) is var top && written.All(w => w.Element != top))
+                written.Add((top, [top]));
+        }
+        return stretch.Written(written);
+    }
+
+    /// <summary>
+    /// The marks of comments taken out of the stretch (see WordDocument.DeleteComment): their ranges' beginnings and ends
+    /// and their references, a reference's run with it where it holds nothing else. Returns the stretch's new text.
+    /// </summary>
+    public static string RemoveMarks(Stretch stretch, IReadOnlySet<string> comments)
+    {
+        var root = stretch.Xml.Root!.Elements().First();
+        var marks = root.Descendants().Where(e => e.Name.LocalName is "commentRangeStart" or "commentRangeEnd" or "commentReference"
+            && e.Attributes().FirstOrDefault(a => a.Name.LocalName == "id") is { } id && comments.Contains(id.Value)).ToList();
+        var tops = new HashSet<XElement>();
+        foreach (var mark in marks)
+        {
+            var top = mark.AncestorsAndSelf().First(e => e.Parent == root);
+            var gone = mark.Name.LocalName == "commentReference" && mark.Parent is { Name.LocalName: "r" } run
+                && run.Elements().All(e => e == mark || e.Name.LocalName == "rPr") ? run : mark;
+            if (gone == top)
+                tops.Add(top.Parent!);
+            else
+                tops.Add(top);
+            gone.Remove();
+        }
+        // A child of the stretch that was itself a mark goes: the stretch's own text without it.
+        return tops.Contains(root) ? Written(root) : stretch.Written(tops.Select(t => (t, (IEnumerable<XElement>)[t])));
+
+        string Written(XElement all) => string.Concat(all.Nodes().Select(n => n is XElement e ? PartText.Xml(e) : n.ToString()));
+    }
+
+    /// <summary>Markup put into a paragraph at a place (see InsertMarkup); returns the part of the paragraph it went into.</summary>
+    static XElement Place(Stretch stretch, ParagraphBlock paragraph, int offset, IReadOnlyList<XElement> markup, Tracking? tracking, bool cut = false)
+    {
         if (offset < paragraph.TextOffset || offset > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The place is not in the paragraph's text.");
         Between(paragraph, offset);
@@ -342,14 +446,14 @@ static class TextEdits
             if (s < offset)
             {
                 // Within its text: its run split at the place.
-                if (TextOf(stretch, inline, parts) is not { } t)
+                if (TextOf(stretch, inline, parts, cut) is not { } t)
                     throw new NotSupportedException($"The place is within what the document computes or keeps ({inline.GetType().Name}).");
                 var rest = Cut(t, offset - s);
                 SplitBefore(rest);
                 after = rest.Parent!;
             }
             else
-                after = Holder(stretch, inline, parts, last: false)
+                after = Holder(stretch, inline, parts, last: false, cut)
                     ?? throw new NotSupportedException($"The place is before content shown from elsewhere ({inline.GetType().Name}).");
             break;
         }
@@ -373,7 +477,7 @@ static class TextEdits
         }
         if (!parts.Contains(part))
             part = PartOf(part, parts);
-        return stretch.Written([(part, [part])]);
+        return part;
     }
 
     /// <summary>
@@ -381,9 +485,9 @@ static class TextEdits
     /// so that it begins (or ends, <paramref name="last"/>) the run; of a field the run of its beginning (of its end); one
     /// that stands in no run itself (an equation, a simple field). Null for an inline read from elsewhere.
     /// </summary>
-    static XElement? Holder(Stretch stretch, Inline inline, List<XElement> parts, bool last)
+    static XElement? Holder(Stretch stretch, Inline inline, List<XElement> parts, bool last, bool cut = false)
     {
-        var element = inline is TextInline { Xml.Name.LocalName: "t" } ? TextOf(stretch, inline, parts) : inline.Xml is { } xml ? stretch.Find(xml) : null;
+        var element = inline is TextInline { Xml.Name.LocalName: "t" } ? TextOf(stretch, inline, parts, cut) : inline.Xml is { } xml ? stretch.Find(xml) : null;
         if (element == null || !In(element, parts))
             return null;
         element = RunChild(element);
