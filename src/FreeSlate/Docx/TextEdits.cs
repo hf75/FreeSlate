@@ -892,6 +892,11 @@ static class TextEdits
             DeletedRow(row, tracking);
         foreach (var p in element.DescendantsAndSelf(w + "p").Where(p => !InTextBox(p)).ToList())
         {
+            // An equation's runs (m:r) are no w:r, and it would stay: refused, as Replace refuses one in its range (Word puts
+            // a w:del into each m:r, measured in Word 365 by COM; the equation emptied so is not left out yet, found with
+            // SessionCheck on docx/generated/equations and powertools/WC/WC023-Table-4-Row-Image-After-Delete-1-Row).
+            if (p.Descendants(Equations.MathLayout.M + "oMath").Any(m => ParagraphOf(m) == p))
+                throw new NotSupportedException("An equation is not taken away as a tracked change.");
             foreach (var run in p.Descendants(w + "r").Where(r => ParagraphOf(r) == p).ToList())
                 Deleted(run, tracking);
             if (!MarkDeleted(p))
