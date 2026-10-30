@@ -106,6 +106,12 @@ public interface IEditableDocument : IDisposable
     bool KeepsMarks { get; }
 
     /// <summary>
+    /// Whether the document makes its changes as tracked changes (in Word with an author set, see WordDocument.Author),
+    /// which deleting a selection over paragraphs treats otherwise (see Editing.EditSession).
+    /// </summary>
+    bool Tracks { get; }
+
+    /// <summary>
     /// Puts markup of the document's own kind into a paragraph at a place, as pasting or an application's Insert commands
     /// put it there: in a Word document WordprocessingML that stands among runs (runs; a picture, chart, shape or WordArt
     /// in a w:drawing; an equation; a field), its namespaces named by their usual prefixes (w, r, wp, a, pic, c, m, wps,

@@ -285,6 +285,9 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>Deleting a selection over paragraphs joins them, as PowerPoint does (see IEditableDocument.KeepsMarks).</summary>
     public bool KeepsMarks => false;
 
+    /// <summary>A slide's changes are never tracked.</summary>
+    public bool Tracks => false;
+
     /// <summary>The paragraph after or before a paragraph in reading order: in its shape's or table cell's text, as After and Before.</summary>
     public int? Next(int paragraph) => After(paragraph);
     public int? Previous(int paragraph) => Before(paragraph);

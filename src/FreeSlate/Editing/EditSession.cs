@@ -435,10 +435,10 @@ public sealed class EditSession(IEditableDocument document)
     /// in, the paragraphs and whole tables between and the text of the paragraph it ends in, the two then joined (in the
     /// first's format, an empty first going away), a space between them where it began at the first's end and both texts
     /// meet without one. Where the document keeps marks, deleting keeps a first paragraph the selection began inside
-    /// apart from the last (but where a table stands just before the last), typing over a selection that ends where a
-    /// paragraph begins keeps the mark before it, and deleting whole words tidies the spaces where they went (see
-    /// Tidied); a mark that joins paragraphs into one (hidden or deleted) counts as a paragraph's own (see Separated).
-    /// Returns where the cursor then stands.
+    /// apart from the last (but where a table stands just before the last, or changes are tracked: see tracked below),
+    /// typing over a selection that ends where a paragraph begins keeps the mark before it, and deleting whole words
+    /// tidies the spaces where they went (see Tidied); a mark that joins paragraphs into one (hidden or deleted) counts
+    /// as a paragraph's own (see Separated). Returns where the cursor then stands.
     /// </summary>
     TextPlace DeleteSelection(bool typing)
     {
@@ -450,9 +450,15 @@ public sealed class EditSession(IEditableDocument document)
         var (fromWord, toWord) = (start.Offset < first.Length && char.IsLetter(first[start.Offset]) && (start.Offset == 0 || !char.IsLetterOrDigit(first[start.Offset - 1])),
             end.Offset > 0 && char.IsLetter(final[end.Offset - 1]) && (end.Offset == final.Length || !char.IsLetterOrDigit(final[end.Offset])));
         var tidy = !typing && document.KeepsMarks;
+        // With changes tracked Word deletes the marks the selection covers, the first paragraph not staying apart (see apart
+        // below), but where it begins inside the first and ends where a paragraph begins the mark before that one stays, as
+        // typing over it keeps it (measured in Word 365 by COM, Selection.Delete and TypeBackspace: of "Erster |Absatz eins."
+        // | "Zweiter |Absatz zwei." the selection between the bars deleted leaves the first's mark deleted and the second in
+        // the first's format as a tracked change; up to the second's start, or a third's, the mark before it stays).
+        var tracked = document.Tracks && document.KeepsMarks;
         // (An empty last paragraph is not where the selection begins one: it ends at its end too, as Ctrl+A does.)
-        if (typing && document.KeepsMarks && start.Paragraph != end.Paragraph && end.Offset == 0 && document.Text(end.Paragraph).Length > 0
-            && document.Before(end.Paragraph) is { } kept)
+        if ((typing || tracked && start.Offset > 0) && document.KeepsMarks && start.Paragraph != end.Paragraph && end.Offset == 0
+            && document.Text(end.Paragraph).Length > 0 && document.Before(end.Paragraph) is { } kept)
         {
             end = new TextPlace(kept, document.Text(kept).Length);
             between = kept == start.Paragraph ? [] : between[..^1];
@@ -470,7 +476,7 @@ public sealed class EditSession(IEditableDocument document)
             return tidy && (fromWord || place.Paragraph == end.Paragraph && place.Offset == 0) && toWord ? Tidied(place) : place;
         }
         var length = document.Text(start.Paragraph).Length;
-        var apart = !typing && document.KeepsMarks && start.Offset > 0 && start.Offset < length && !(end.Offset == 0 && document.Before(end.Paragraph) == null);
+        var apart = !typing && !tracked && document.KeepsMarks && start.Offset > 0 && start.Offset < length && !(end.Offset == 0 && document.Before(end.Paragraph) == null);
         var spaced = !typing && start.Offset == length && length > 0 && (end.Offset > 0 || between.Count > 0);
         if (end.Offset > 0)
             document.Replace(end.Paragraph, 0, end.Offset, "");

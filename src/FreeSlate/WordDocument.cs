@@ -264,6 +264,9 @@ public sealed partial class WordDocument : IEditableDocument
     /// <summary>Deleting a selection over paragraphs keeps the mark of the one it begins inside, as Word does (see IEditableDocument.KeepsMarks).</summary>
     public bool KeepsMarks => true;
 
+    /// <summary>Whether changes are made as tracked changes: where an author is set (see Author).</summary>
+    public bool Tracks => Author != null;
+
     /// <summary>
     /// The paragraph after or before a paragraph in reading order: on over the tables of its body, cell or text box, their
     /// cells row by row (a table's in a cell too); a text box is a story of its own, its paragraphs not among the body's.
