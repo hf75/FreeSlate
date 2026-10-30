@@ -1803,7 +1803,8 @@ public sealed partial class ModelReader(DocumentContext context)
         strayBreaks.Clear();
         if (LoneMath(p) is { Count: > 0 } maths)
         {
-            ReadInlines(new XElement(p.Name, p.Elements().Where(e => e.Name.Namespace != Equations.MathLayout.M)), styleId, content, field);
+            // What else it holds (bookmarks, comments' ranges) read where it stands, which a change finds it by.
+            ReadInlines(p, styleId, content, field, mathless: true);
             ReadMath(new XElement(Equations.MathLayout.M + "oMathPara", maths.Select(o => new XElement(o))), styleId, content);
             // One equation alone is changed where it stands in the paragraph (see TextEdits): its inline is read from it.
             if (maths.Count == 1 && content.Count > 0 && content[^1] is MathInline lone)
@@ -2010,10 +2011,13 @@ public sealed partial class ModelReader(DocumentContext context)
         public List<Inline> Target(List<Inline> content) => Frames.FirstOrDefault(f => f.Cached != null)?.Cached ?? content;
     }
 
-    void ReadInlines(XElement container, string? paragraphStyle, List<Inline> content, FieldState field)
+    void ReadInlines(XElement container, string? paragraphStyle, List<Inline> content, FieldState field, bool mathless = false)
     {
         foreach (var e in container.Elements())
         {
+            // (Read without its equations, the container's are read apart: see ReadParagraph.)
+            if (mathless && e.Name.Namespace == Equations.MathLayout.M)
+                continue;
             if (e.Name.Namespace == Equations.MathLayout.M)
             {
                 ReadMath(e, paragraphStyle, field.Target(content));
