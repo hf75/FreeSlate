@@ -6516,14 +6516,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // Above the notes the lines take their whole height from Word 2013 on, and the paragraph's space after
                 // where they end it, as where they are placed (measured with docx/local/kcw-b-40, -50: a heading kept
                 // with three lines whose last refers to a note of two goes on with them where the note fits below them
-                // only without the 8 pt after; kcw-b-30 stays).
+                // only without the 8 pt after; kcw-b-30 stays; kcn-f, -l, -t: on a page that holds notes already, a heading
+                // goes on with lines whose extra space or space after would reach into the notes; the bench's science5k,
+                // where the heading stayed alone: a page short of Word's 5 010).
                 if (last && context.Profile.NotesNeedSpaceAfter && (notesHeight > 0.01 || notes.Count > 0))
                 {
                     var taken = counted.ToList();
                     needed = taken.Sum(l => l.Height) + (taken.Count == own.Count ? SpaceAfter(paragraph, k + 1 < blocks.Count ? blocks[k + 1] : null) : 0);
                 }
                 if (last)
-                    return !gives && section.Columns == 1 && !NotesShow(y + needed, notesHeight, notes);
+                    return !gives && section.Columns == 1 && (needed > room + 0.01 || !NotesShow(y + needed, notesHeight, notes));
                 gives |= Breaks(own, paragraph.Format, double.MaxValue);
                 y += own.Sum(l => l.Height);
                 continue;
