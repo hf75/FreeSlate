@@ -76,7 +76,7 @@
       <ScrollViewer Name="ErrorPanel" IsVisible="False">
         <SelectableTextBlock Name="ErrorText" Margin="16" TextWrapping="Wrap" FontFamily="Cascadia Mono,Consolas,monospace" />
       </ScrollViewer>
-      <NativeWebView Name="Web" IsVisible="False" Focusable="True" />
+      <Panel Name="WebPlace" IsVisible="False" />
       <ScrollViewer Name="SkiaScroll" IsVisible="False" Focusable="True" HorizontalScrollBarVisibility="Auto" Background="#7f7f7f">
         <local:ScenesView Name="ScenePages" />
       </ScrollViewer>

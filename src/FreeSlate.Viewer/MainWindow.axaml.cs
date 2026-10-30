@@ -71,24 +71,31 @@ public partial class MainWindow : Window
     /// version, which Word's renderings belong to, and whether it is a presentation (its pages slides).</summary>
     sealed record View(string Path, string Source, string? Password, bool Markup, string? Html, IReadOnlyList<PageScene>? Scenes, string Key, bool Slides = false);
 
-    public MainWindow()
+    /// <summary>
+    /// The web view, made when a document first shows in it: it starts a browser, six processes of 120 MB, which the pages
+    /// Skia draws don't need.
+    /// </summary>
+    NativeWebView Web => web ??= MakeWeb();
+    NativeWebView? web;
+
+    NativeWebView MakeWeb()
     {
-        InitializeComponent();
-        Web.EnvironmentRequested += (_, e) =>
+        var made = new NativeWebView { Focusable = true };
+        made.EnvironmentRequested += (_, e) =>
         {
             e.EnableDevTools = true;
             // WebView2 keeps its profile next to the executable unless told otherwise.
             if (e is WindowsWebView2EnvironmentRequestedEventArgs webView2 && string.IsNullOrEmpty(webView2.UserDataFolder))
                 webView2.UserDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FreeSlate", "Viewer", "WebView2");
         };
-        Web.NavigationStarted += OnNavigationStarted;
-        Web.NewWindowRequested += (_, e) =>
+        made.NavigationStarted += OnNavigationStarted;
+        made.NewWindowRequested += (_, e) =>
         {
             e.Handled = true;
             if (e.Request is { Scheme: "http" or "https" or "mailto" } uri)
                 _ = Launcher.LaunchUriAsync(uri);
         };
-        Web.NavigationCompleted += async (_, e) =>
+        made.NavigationCompleted += async (_, e) =>
         {
             if (!e.IsSuccess)
                 return;
@@ -100,7 +107,14 @@ public partial class MainWindow : Window
             position = null;
             await ApplyComparison();
         };
-        Web.WebMessageReceived += (_, e) => Dispatcher.UIThread.Post(() => OnPageMessage(e.Body));
+        made.WebMessageReceived += (_, e) => Dispatcher.UIThread.Post(() => OnPageMessage(e.Body));
+        WebPlace.Children.Add(made);
+        return made;
+    }
+
+    public MainWindow()
+    {
+        InitializeComponent();
 
         // Files dropped on the window outside the web view (the web view gets its own, see OnNavigationStarted).
         DragDrop.SetAllowDrop(this, true);
@@ -563,7 +577,7 @@ public partial class MainWindow : Window
                 locked = failed = null;
                 retries = 0;
                 scripted = false;
-                PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = Web.IsVisible = false;
+                PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = WebPlace.IsVisible = false;
                 SkiaScroll.IsVisible = true;
                 ScenePages.Scenes = scenes;
                 // The pages after the first laid out while the window waits (see IEditableDocument.LayingOut).
@@ -595,7 +609,7 @@ public partial class MainWindow : Window
             pageCount = 0;
             PasswordPanel.IsVisible = Placeholder.IsVisible = ErrorPanel.IsVisible = SkiaScroll.IsVisible = false;
             ScenePages.Scenes = [];
-            Web.IsVisible = true;
+            WebPlace.IsVisible = true;
             Web.Navigate(server.Publish(document));
             Title = $"{name} – FreeSlate Viewer";
             StatusText.Text = name;
@@ -662,7 +676,7 @@ public partial class MainWindow : Window
         locked = null;
         failed = path;
         scripted = false;
-        Web.IsVisible = SkiaScroll.IsVisible = Placeholder.IsVisible = PasswordPanel.IsVisible = false;
+        WebPlace.IsVisible = SkiaScroll.IsVisible = Placeholder.IsVisible = PasswordPanel.IsVisible = false;
         ScenePages.Scenes = [];
         PrintButton.IsEnabled = SaveButton.IsEnabled = PdfButton.IsEnabled = WordPdfButton.IsVisible = false;
         ErrorText.Text = error.ToString();
