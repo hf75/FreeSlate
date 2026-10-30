@@ -69,6 +69,24 @@ public sealed class FontLocator
 
     public bool IsInstalled(string family) => faces.Value.Any(f => f.System && f.Matches(family));
 
+    /// <summary>
+    /// The families systems draw text in whose font they lack, their own sans serif: Windows', Apple's, Android's and those
+    /// of Linux's distributions, the free ones last (see SystemDefault).
+    /// </summary>
+    static readonly string[] SystemFamilies =
+        ["Segoe UI", "Helvetica Neue", "Helvetica", "Roboto", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Ubuntu", "Cantarell", "FreeSans", "Arial"];
+
+    /// <summary>
+    /// The family that stands in for a font the machine lacks where none of those a document asks for instead is there
+    /// either (see Text.FontResolver): the system's own of the installed ones (see SystemFamilies), else the first
+    /// installed family by name that has a regular face; null where none is installed (a browser whose host brought no
+    /// fonts). No font comes with the engine for it (decision 5: first a system's own).
+    /// </summary>
+    public string? SystemDefault => systemDefault ??= SystemFamilies.FirstOrDefault(IsInstalled)
+        ?? faces.Value.Where(f => f.System && !f.Bold && !f.Italic && f.Embedded == null).Select(f => f.Family).Order(StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+
+    string? systemDefault;
+
     /// <summary>All known faces of a family: installed ones first, then embedded ones, then cloud fonts.</summary>
     public IEnumerable<FontFace> Faces(string family) =>
         faces.Value.Where(f => f.Matches(family)).OrderBy(f => f.Embedded != null ? embeddedFirst ? -1 : 1 : f.System ? 0 : 2);
@@ -107,17 +125,26 @@ public sealed class FontLocator
             yield return Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
             yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "Windows", "Fonts");
         }
-        else if (OperatingSystem.IsMacOS())
+        else if (OperatingSystem.IsMacOS() || OperatingSystem.IsMacCatalyst())
         {
             yield return "/Library/Fonts";
             yield return "/System/Library/Fonts";
             yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Fonts");
         }
+        else if (OperatingSystem.IsIOS() || OperatingSystem.IsTvOS())
+            yield return "/System/Library/Fonts";
+        else if (OperatingSystem.IsAndroid())
+        {
+            yield return "/system/fonts";
+            yield return "/product/fonts";
+        }
         else
         {
+            // Linux, and a browser's virtual file system where its host writes the fonts it brings.
             yield return "/usr/share/fonts";
             yield return "/usr/local/share/fonts";
             yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fonts");
+            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share", "fonts");
         }
     }
 

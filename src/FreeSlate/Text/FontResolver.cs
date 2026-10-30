@@ -13,8 +13,8 @@ public sealed record ResolvedFont(FontData Data, bool SyntheticBold, bool Synthe
 /// <summary>
 /// Maps a typeface and style to a font file. Missing families fall back to Calibri like in PowerPoint, whatever
 /// their panose or pitch family say (measured: serif, monospaced, script and unknown fonts all become Calibri), else
-/// to its metric twin Carlito or a common sans serif; the fallback is written into the CSS, so the browser draws
-/// with the font the layout was measured with.
+/// to its metric twin Carlito or a common sans serif, else to the system's own (FontLocator.SystemDefault); the
+/// fallback is written into the CSS, so the browser draws with the font the layout was measured with.
 /// </summary>
 public sealed class FontResolver(FontLocator locator)
 {
@@ -30,7 +30,8 @@ public sealed class FontResolver(FontLocator locator)
 
     public ResolvedFont Resolve(string family, bool bold, bool italic) =>
         Find(family, bold, italic) ?? Fallbacks.Select(f => Find(f, bold, italic)).FirstOrDefault(f => f != null)
-        ?? throw new InvalidOperationException("No usable font found (not even a fallback).");
+        ?? (locator.SystemDefault is { } system ? Find(system, bold, italic) : null)
+        ?? throw new InvalidOperationException("No font is installed (not even a system's own).");
 
     /// <summary>A typeface by its family's name or a name the family is known by (<see cref="Named"/>), or null.</summary>
     public ResolvedFont? TryResolveTypeface(string typeface, bool bold, bool italic) =>
