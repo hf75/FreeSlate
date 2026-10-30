@@ -1001,6 +1001,147 @@ static class TextEdits
     }
 
     /// <summary>
+    /// A selection from a place in a paragraph to a later one in it or in another of the same body, cell or text box copied
+    /// (see WordDocument.Copy): two marks put at its ends in the stretch, as InsertMarks puts a comment's range (runs split
+    /// there; within a content control that holds its text alone too), each paragraph from the first to the last copied, the first's content before its mark and the last's after
+    /// it cut away at every level (the properties of the paragraph and of what holds the marks staying), the changes
+    /// accepted, without bookmarks, comments' ranges and references, permissions, proofing marks, notes' references, the
+    /// paragraphs' ids and sections. The stretch is not written back: it is the copy's. Returns the paragraphs written with
+    /// the prefixes of the stretch.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// An end is within what cannot be split (a field's result, a computed text), something but paragraphs stands between,
+    /// or a paragraph copied with its mark runs into the next over a deleted or hidden mark; nothing is copied.
+    /// </exception>
+    public static List<string> Copy(Stretch stretch, ParagraphBlock first, int offset, ParagraphBlock last, int lastOffset)
+    {
+        var w = Parts(stretch, first)[0].Name.Namespace;
+        var (start, end) = (new XElement(w + "bookmarkStart", new XAttribute(w + "id", "-7"), new XAttribute(w + "name", "_FreeSlateCopy")),
+            new XElement(w + "bookmarkEnd", new XAttribute(w + "id", "-7")));
+        // (Placed as InsertMarks places them, a range within a control that holds its text alone staying within it.)
+        Place(stretch, last, lastOffset, [end], null);
+        Place(stretch, first, offset, [start], null, cut: true);
+        var (p, q) = (ParagraphOf(start), ParagraphOf(end));
+        if (p.Parent != q.Parent || p != q && !p.ElementsAfterSelf().Contains(q))
+            throw new NotSupportedException("The selection's ends are not of one body, cell or text box.");
+        List<XElement> paragraphs = p == q ? [p] : [p, .. p.ElementsAfterSelf().TakeWhile(e => e != q), q];
+        if (paragraphs.FirstOrDefault(e => e.Name != w + "p") is { } other)
+            throw new NotSupportedException($"A w:{other.Name.LocalName} stands between the selection's paragraphs.");
+        if (paragraphs.SkipLast(1).Any(e => MarkDeleted(e) || MarkHidden(e)))
+            throw new NotSupportedException("A paragraph copied with its mark runs into the next (its mark deleted or hidden).");
+        Cut(start, before: true);
+        Cut(end, before: false);
+        // A content control that shows what is bound to it, its placeholder or text it computes (a date, a list's item, a
+        // gallery's) shows other text where it goes; a field the selection holds a part of alone reads otherwise: the text alone.
+        if (paragraphs.SelectMany(e => e.Descendants(w + "sdtPr")).Any(c => c.Elements().Any(e => e.Name.LocalName is "dataBinding" or "showingPlcHdr" or "date"
+                or "comboBox" or "dropDownList" or "docPartObj" or "docPartList" or "citation" or "bibliography" or "equation" or "picture" or "checkbox")))
+            throw new NotSupportedException("The selection holds a content control showing a bound value, its placeholder or what it computes.");
+        var depth = 0;
+        foreach (var e in paragraphs.SelectMany(p => p.Descendants()).Where(e => e.Name.LocalName is "fldChar" or "instrText" or "delInstrText"))
+        {
+            var type = e.Attribute(w + "fldCharType")?.Value;
+            if (type == "begin")
+                depth++;
+            else if (type == "end")
+                depth--;
+            if (depth < 0 || depth == 0 && type != "end")
+                throw new NotSupportedException("The selection holds a part of a field alone.");
+        }
+        if (depth != 0)
+            throw new NotSupportedException("The selection holds a part of a field alone.");
+        foreach (var e in paragraphs)
+            Accepted(e);
+        return [.. paragraphs.Select(PartText.Xml)];
+
+        // What stands before (after) a mark in its paragraph taken away, the mark too: at every level from it up, the
+        // properties staying (w:pPr, w:sdtPr …).
+        static void Cut(XElement mark, bool before)
+        {
+            for (var node = mark; node.Parent is { } parent && node.Name.LocalName != "p"; node = parent)
+            {
+                foreach (var sibling in (before ? node.ElementsBeforeSelf() : node.ElementsAfterSelf()).Where(e => !e.Name.LocalName.EndsWith("Pr", StringComparison.Ordinal)).ToList())
+                    sibling.Remove();
+            }
+            mark.Remove();
+        }
+    }
+
+    /// <summary>
+    /// A paragraph copied as it reads with its tracked changes accepted (see Copy): deletions gone, insertions unwrapped,
+    /// changes of properties and the marks of revisions dropped; ranges (bookmarks, comments', permissions, moves), proofing
+    /// marks and the runs of comments' and notes' references taken away, as are its ids (w14:paraId, w14:textId), its
+    /// section and what holds nothing any more (a hyperlink, smart tag or custom markup left empty); content controls give
+    /// their content alone.
+    /// </summary>
+    static void Accepted(XElement paragraph)
+    {
+        var w = paragraph.Name.Namespace;
+        foreach (var e in paragraph.Descendants().ToList())
+        {
+            if (e.Parent == null && e != paragraph)
+                continue;
+            var name = e.Name.LocalName;
+            var marks = e.Parent?.Name.LocalName is "rPr" or "trPr" or "pPr" or "numPr";
+            if (name is "rPrChange" or "pPrChange" or "sectPrChange" or "tblPrChange" or "trPrChange" or "tcPrChange" or "tblGridChange" or "numberingChange" or "proofErr"
+                || name is "bookmarkStart" or "bookmarkEnd" or "commentRangeStart" or "commentRangeEnd" or "permStart" or "permEnd"
+                || name.EndsWith("RangeStart", StringComparison.Ordinal) || name.EndsWith("RangeEnd", StringComparison.Ordinal)
+                || name is "del" or "moveFrom" or "ins" or "moveTo" && marks)
+                e.Remove();
+            else if (name is "del" or "moveFrom")
+                e.Remove();
+            else if (name is "ins" or "moveTo")
+                e.ReplaceWith(e.Nodes());
+            else if (name == "r" && e.Elements().Any(c => c.Name.LocalName is "commentReference" or "footnoteReference" or "endnoteReference"))
+                e.Remove();
+        }
+        paragraph.Element(w + "pPr")?.Element(w + "sectPr")?.Remove();
+        foreach (var id in paragraph.Attributes().Where(a => a.Name.Namespace == W14 && a.Name.LocalName is "paraId" or "textId").ToList())
+            id.Remove();
+        foreach (var control in paragraph.Descendants(w + "sdt").Reverse().ToList())
+            control.ReplaceWith(control.Element(w + "sdtContent")?.Nodes());
+        foreach (var holder in paragraph.Descendants().Where(e => e.Name.LocalName is "hyperlink" or "smartTag" or "customXml" or "dir" or "bdo").Reverse().ToList())
+        {
+            if (!holder.Elements().Any(c => !c.Name.LocalName.EndsWith("Pr", StringComparison.Ordinal)))
+                holder.Remove();
+        }
+    }
+
+    /// <summary>
+    /// A paragraph given the properties of another (its w:pPr, without a section), as a pasted paragraph's mark brings
+    /// them to the paragraph it ends (measured in Word 365 by COM, Range.FormattedText: "one.|Beta two.|Gam" pasted into
+    /// "Target| paragraph here." leaves "Targetone." in the first paragraph's style and alignment). The section it ends
+    /// stays with it; as a tracked change the properties it had are kept in a w:pPrChange (see Format). Returns the
+    /// stretch's new text.
+    /// </summary>
+    public static string Properties(Stretch stretch, ParagraphBlock paragraph, XElement? given, Tracking? tracking = null)
+    {
+        var parts = Parts(stretch, paragraph);
+        var p = parts[^1];
+        var w = p.Name.Namespace;
+        var properties = Properties(p, "pPr");
+        var section = properties.Element(w + "sectPr");
+        var had = properties.Elements().Where(e => e.Name.LocalName is not ("sectPr" or "pPrChange")).Select(e => new XElement(e)).ToList();
+        properties.RemoveNodes();
+        properties.Add(given?.Elements().Where(e => e.Name.LocalName is not ("sectPr" or "pPrChange")).Select(e => new XElement(e)));
+        if (section != null)
+        {
+            if (properties.Elements().FirstOrDefault(e => e.Name.LocalName == "pPrChange") is { } change)
+                change.AddBeforeSelf(section);
+            else
+                properties.Add(section);
+        }
+        if (tracking != null)
+        {
+            var change = tracking.Mark(w, "pPrChange");
+            change.Add(new XElement(w + "pPr", had.Where(e => e.Name.LocalName != "rPr")));
+            properties.Add(change);
+        }
+        if (!properties.HasElements)
+            properties.Remove();
+        return stretch.Written([(p, [p])]);
+    }
+
+    /// <summary>
     /// A paragraph joined with the paragraph after it, as Delete at its end joins them (measured in Word 365 by COM,
     /// the paragraph's properties alike for Delete, Backspace and Range.Delete): the first keeps its properties (its
     /// style, alignment, spacing, indents, list), the second's content goes after its own, and it takes the second's

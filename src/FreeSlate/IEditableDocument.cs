@@ -130,6 +130,20 @@ public interface IEditableDocument : IDisposable
     /// </summary>
     (int Paragraph, int Offset)? RemoveAcross(int first, int offset, int last, int lastOffset, bool typing);
 
+    /// <summary>
+    /// The selection from a place to a later one in the document's own markup, as copying it keeps it for pasting with its
+    /// formatting (see Paste): in a Word document each paragraph it reaches into as a w:p with its properties and what of
+    /// its content the selection holds, the last one without its mark (see WordDocument.Copy). Null where the document keeps
+    /// only the selection's text (slides; in a Word document a selection over a table, in a note, header or comment).
+    /// </summary>
+    IReadOnlyList<string>? Copy(int first, int offset, int last, int lastOffset);
+
+    /// <summary>
+    /// Pastes what Copy gave at a place, as the application pastes it with its formatting (see WordDocument.Paste);
+    /// returns where the cursor then stands, after it.
+    /// </summary>
+    (int Paragraph, int Offset) Paste(int paragraph, int offset, IReadOnlyList<string> copied);
+
     /// <summary>Gives a stretch of a paragraph's text character formatting, and a paragraph paragraph formatting.</summary>
     void Format(int paragraph, int offset, int length, TextFormatting format);
     void Format(int paragraph, ParagraphFormatting format);

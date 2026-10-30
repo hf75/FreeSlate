@@ -4,6 +4,13 @@ namespace FreeSlate.Editing;
 public readonly record struct TextPlace(int Paragraph, int Offset);
 
 /// <summary>
+/// A selection copied (see EditSession.Copy): its text, as the system's clipboard takes it, and where the document keeps
+/// more, its paragraphs in the document's own markup for pasting them with their formatting into it (see
+/// IEditableDocument.Copy), the document they are of (<paramref name="From"/>: another takes the text).
+/// </summary>
+public sealed record Fragment(string Text, IReadOnlyList<string>? Markup, IEditableDocument? From = null);
+
+/// <summary>
 /// An editor's work on a document without its surface: the cursor and the selection as places in its text, and what an
 /// editor's keys do there, as a word processor's do. Typing replaces the selection; Backspace and Delete take the
 /// selection or the character before or after the cursor away, at a paragraph's edge joining it with the one beside it;
@@ -54,6 +61,60 @@ public sealed class EditSession(IEditableDocument document)
 
     /// <summary>Whether the document differs from how it was saved or opened.</summary>
     public bool Changed => saved != done.Count;
+
+    /// <summary>
+    /// The selection copied: its text (see Selected) and, where the document keeps it, its markup for pasting it with its
+    /// formatting (see IEditableDocument.Copy); empty where nothing is selected.
+    /// </summary>
+    public Fragment Copy()
+    {
+        if (!Selecting)
+            return new Fragment("", null);
+        var (start, end, _) = Ordered();
+        return new Fragment(Selected, document.Copy(start.Paragraph, start.Offset, end.Paragraph, end.Offset), document);
+    }
+
+    /// <summary>
+    /// Pastes what was copied at the cursor in place of the selection, a handling of its own: its markup with its
+    /// formatting where it has some of this document's and the document takes it there (see IEditableDocument.Paste),
+    /// else its text (see Paste(string)).
+    /// </summary>
+    public void Paste(Fragment fragment)
+    {
+        if (fragment.Markup is { } markup && ReferenceEquals(fragment.From, document))
+        {
+            try
+            {
+                Act(false, () =>
+                {
+                    var at = DeleteSelection(typing: true);
+                    var before = document.Text(at.Paragraph);
+                    var (paragraph, offset) = document.Paste(at.Paragraph, at.Offset, markup);
+                    // The paragraphs it went into read with its text there (objects aside), as text pasted must (see
+                    // IEditableDocument.Replace): else it went into what the document computes (a field's result).
+                    static string Plain(string text) => text.Replace("\uFFFC", "", StringComparison.Ordinal);
+                    var lines = fragment.Text.Split("\r\n");
+                    var reads = lines.Length == 1 ? Plain(document.Text(paragraph)) == Plain(before[..at.Offset] + lines[0] + before[at.Offset..])
+                        : Plain(document.Text(paragraph)) == Plain(lines[^1] + before[at.Offset..]);
+                    // Of more, the paragraphs before the cursor's back to the one the first went into.
+                    for (int? p = paragraph, k = lines.Length - 2; reads && k >= 0; k--)
+                    {
+                        p = document.Before(p!.Value);
+                        reads = p != null && Plain(document.Text(p.Value)) == Plain(k == 0 ? before[..at.Offset] + lines[0] : lines[k.Value]);
+                    }
+                    if (!reads)
+                        throw new NotSupportedException("The pasted would not read so: it went into what the document computes.");
+                    return Same(new TextPlace(paragraph, offset));
+                });
+                return;
+            }
+            catch (NotSupportedException)
+            {
+                // Taken back (see Act): the text goes in instead.
+            }
+        }
+        Paste(fragment.Text);
+    }
 
     public bool CanUndo => done.Count > 0;
     public bool CanRedo => undone.Count > 0;
