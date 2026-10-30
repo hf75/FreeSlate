@@ -1688,6 +1688,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
 
         /// <summary>The checkpoint at another place of its block (see Changed).</summary>
         internal Checkpoint At(int section, int block) => new(Page, section, block, Id, State, Fields, Table);
+
+        /// <summary>The checkpoint knowing of the pages what another run's fields knew (see Lay).</summary>
+        internal Checkpoint Knowing(FieldEvaluator.Snapshot? known) => Fields == null || known == null ? this
+            : new(Page, Section, Block, Id, State, Fields with { Pages = known.Pages, BookmarkPages = known.BookmarkPages, ParagraphPages = known.ParagraphPages }, Table);
     }
 
     /// <summary>
@@ -1872,9 +1876,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             var differing = was.Count == now.Count && was.Zip(now).All(p => ReferenceEquals(p.First, p.Second)) ? [] : was.Concat(now);
             var fields = layout.Evaluator?.For(blocks, differing) ?? new FieldEvaluator(context, blocks);
             var refielding = from == refields?.At;
-            if (from.Fields != null)
-                fields.Restore(refielding && layout.Evaluator is { } latest
-                    ? latest.Take(null) with { Guessed = from.Fields.Guessed, NewlyEmptied = from.Fields.NewlyEmptied } : from.Fields);
+            // A run laying fields out again knows what the last layout's pages tell (and so do the checkpoints it keeps, see
+            // below).
+            var knowing = refielding && from.Fields != null && layout.Evaluator is { } latest
+                ? latest.Take(null) with { Guessed = from.Fields.Guessed, NewlyEmptied = from.Fields.NewlyEmptied } : from.Fields;
+            if (knowing != null)
+                fields.Restore(knowing);
             var before = layout.Evaluator;
             layout.Evaluator = fields;
             throughToEnd |= before != null && !fields.ReadsAs(before);
@@ -1911,10 +1918,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // from there to meet them, but those up to where a layout paused before after it: the pages after that one
                 // are not laid out with the blocks yet, a run meeting the pages before them would leave them so. Where it
                 // stopped at or before where a layout paused before, that one stays paused.
+                // The checkpoints kept after a run that laid fields out again know what it knew: the pages before them show
+                // the fields as it laid them out, which a run from one of them compares the fields with (found with
+                // powertools/RP/RP052-Deleted-Para-Mark: a heading taken away and put back, the table of contents before
+                // the second run kept the error the run that laid it out again after the first had shown).
                 var stop = run.stoppedAt;
-                checkpoints = [.. checkpoints!.TakeWhile(c => c != from), .. run.checkpoints!,
-                    .. run.pausedHere ? after.Where(c => Position(c).CompareTo(Position(stop!)) > 0 && (held == null || Position(c).CompareTo(Position(held)) > 0))
-                        : stop != null ? after.SkipWhile(c => c != stop) : []];
+                var keptAfter = run.pausedHere ? after.Where(c => Position(c).CompareTo(Position(stop!)) > 0 && (held == null || Position(c).CompareTo(Position(held)) > 0))
+                    : stop != null ? after.SkipWhile(c => c != stop) : [];
+                checkpoints = [.. checkpoints!.TakeWhile(c => c != from), .. run.checkpoints!, .. refielding ? keptAfter.Select(c => c.Knowing(knowing)) : keptAfter];
                 paused = run.pausedHere ? stop : stop != null && held != null && Position(stop).CompareTo(Position(held)) <= 0 ? held : null;
                 // A run that went on to the end laid out the pages as they now read; one that met the pages before did
                 // so with the changed notes laid out (see SameFlow).
