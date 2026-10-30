@@ -478,7 +478,7 @@ sealed class ScenesView : Control
         {
             var control = (e.KeyModifiers & KeyModifiers.Control) != 0;
             var shift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
-            // Copying, cutting and pasting go through the clipboard as text.
+            // Copying, cutting and pasting go through the clipboard as text, the copy kept with its formatting beside it.
             if (control && !shift && e.Key is Key.C or Key.X or Key.V && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
             {
                 e.Handled = true;
@@ -488,7 +488,8 @@ sealed class ScenesView : Control
                 {
                     try
                     {
-                        _ = clipboard.SetTextAsync(session.Selected);
+                        copied = session.Copy();
+                        _ = clipboard.SetTextAsync(copied.Text);
                     }
                     catch (NotSupportedException refused)
                     {
@@ -809,11 +810,20 @@ sealed class ScenesView : Control
         });
     }
 
-    /// <summary>Pastes the clipboard's text at the cursor in place of the selection (Ctrl+V).</summary>
+    /// <summary>What was copied last with its formatting (see EditSession.Copy), pasted so while the clipboard still holds its text.</summary>
+    Fragment? copied;
+
+    /// <summary>Pastes the clipboard's text at the cursor in place of the selection (Ctrl+V), with its formatting where it was copied here.</summary>
     async void Paste(IClipboard clipboard)
     {
         if (await clipboard.TryGetTextAsync() is { Length: > 0 } text && Session is { } session)
-            Edit(() => session.Paste(text));
+            Edit(() =>
+            {
+                if (copied is { } fragment && fragment.Text == text)
+                    session.Paste(fragment);
+                else
+                    session.Paste(text);
+            });
     }
 
     protected override void OnTextInput(TextInputEventArgs e)
