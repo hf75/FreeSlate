@@ -378,6 +378,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     {
         input = (blocks, lastSection, footnotes, endnotes, endnoteSeparator);
         sectionEnds = Ends(blocks);
+        firstLaid = null;
         // The pages the last run returned, and those it took as the step before returned them (see PaginateRun); and where
         // a run of a growing layout pauses, the pages after it as the run before laid them out and returned them, of this
         // layout or of the layout before.
@@ -527,12 +528,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         layout.Evaluator ??= new FieldEvaluator(context, blocks);
         foreach (var step in Run())
             yield return step;
+        firstLaid = firstRun && checkpoints is { Count: > 0 } ? (laid!, checkpoints, result, settings, resultTaken) : null;
         firstRun = false;
         for (var pass = 0; pass < 2 && layout.Evaluator.Update(result); pass++)
         {
             foreach (var step in Run())
                 yield return step;
         }
+        firstLaid = null;
         layout.Evaluator.Update(result);
         // Footnotes numbered anew on every page (w:numRestart eachPage) take their numbers from the pages they land on;
         // the pages are laid out again with them until they stay (measured with docx/local/fnpages-b).
@@ -1743,26 +1746,54 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// With <paramref name="pages"/>, the run pauses at the first checkpoint so many pages after the one it began on where
     /// it has not met the pages before by then: the pages from there on stay as they were laid out before the change,
     /// until Continue lays them out (see Paused); where a layout paused before, the run begins where it paused at the
-    /// latest.
+    /// latest, but at a change past that place that pages laid out before give a checkpoint for, which it lays out so
+    /// many pages, the layout staying paused where it was.
     /// </summary>
     public Relaid Relayout(List<Block> blocks, int pages = int.MaxValue)
     {
         var (given, lastSection, footnotes, endnotes, endnoteSeparator) = input ?? throw new InvalidOperationException("Relayout needs a pagination.");
         // A growing layout in its first run, none of whose pages so far needs another run, goes on as a layout that paused
         // there (see Paginate); else it is paginated anew.
+        var fieldsAgain = false;
         if (steps != null)
         {
             steps.Dispose();
             steps = null;
-            if (!firstRun || paused == null || checkpoints is not { Count: > 0 })
+            // A change while the runs after the first lay the fields out again (see Paginating) takes up what the first run
+            // laid out, its fields of the body that read the pages to be laid out again from there (see refields), as after
+            // any change (found with scratchpad b4/kp on science5k: a key on page 4000 while the table of contents was laid
+            // out again showed 8.8 s later, the document paginated anew from its first page).
+            if (!firstRun && firstLaid is var (firstPages, firstPoints, finished, ended, taken) && layout.Evaluator is { } evaluator
+                && FieldPages(evaluator, finished) is var (firstPage, lastPage)
+                && (firstPoints.LastOrDefault(c => c.Page < firstPage) ?? (firstPoints is [{ Section: 0, Block: 0, Row: -1 } start, ..] ? start : null)) is { } fieldsAt)
+            {
+                (laid, checkpoints, finishedPages, settings, paused) = (firstPages, firstPoints, finished, ended, null);
+                NumberLines(finished, taken);
+                refields = (fieldsAt, firstPoints.LastOrDefault(c => c.Page <= lastPage) ?? fieldsAt);
+                fieldsAgain = true;
+            }
+            else if (!firstRun || paused == null || checkpoints is not { Count: > 0 })
                 return Anew(blocks, pages);
+            firstLaid = null;
             settledRun = true;
         }
         var (from, after, head, tail, ends, held) = settledRun && laid != null && checkpoints is { Count: > 0 } ? Changed(given, blocks) : (null, [], 0, 0, sectionEnds, null);
-        // The pages after where the layout paused are not laid out with the blocks it was given yet.
+        // (The fields laid out again once already, as Paginate lays them out twice at most.)
+        fieldPasses = fieldsAgain ? 1 : 0;
+        // The pages after where the layout paused are not laid out with the blocks it was given yet: the run goes on from
+        // there. A change past that place is laid out at once from the checkpoint before it all the same, so many pages
+        // (those laid out before gave it), the layout staying paused where it was, which lays them out again as it comes
+        // there: the page typed on shows what was typed (found with scratchpad b4/kp on science5k, a key on page 80 while
+        // the pages of its table of contents were laid out again: page 80 stayed as it was until that run reached it).
         if (from != null && held != null && Position(held).CompareTo(Position(from)) < 0)
-            from = held;
-        fieldPasses = 0;
+        {
+            if (pages == int.MaxValue)
+                return Lay(blocks, held, after, head, tail, ends, pages, held);
+            var ahead = Lay(blocks, from, after, head, tail, ends, pages, held);
+            if (ahead.From > 0)
+                paused = held;
+            return ahead;
+        }
         return Lay(blocks, from, after, head, tail, ends, pages, held);
     }
 
@@ -1809,6 +1840,19 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// layout is in its first run and none of its pages so far needs another (see Relayout).
     /// </summary>
     IEnumerator<List<PageBox>>? steps;
+
+    /// <summary>
+    /// Where the layout a run lays out again for stays paused after it where it does not go past it (see Lay's held): the
+    /// pages after are not laid out with the blocks yet, and their counts are not final.
+    /// </summary>
+    Checkpoint? pausedBeyond;
+
+    /// <summary>
+    /// What the first run of a growing layout laid out where Relayout would have taken it up (see firstRun): its pages, its
+    /// checkpoints, its pages as returned, the settings it ended with and the lines its pages took; kept while the runs
+    /// after it lay the fields out again, for a change then (see Relayout); null otherwise.
+    /// </summary>
+    (List<PageBox> Laid, List<Checkpoint> Checkpoints, List<PageBox> Finished, TextSettings Settings, bool[]? Taken)? firstLaid;
     int growth = int.MaxValue;
     bool firstRun;
 
@@ -1893,7 +1937,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // The run stops only after the last block that differs, and not where the pages after it may read
                 // otherwise (see throughToEnd) or headers look back over the pages before theirs (STYLEREF).
                 stops = throughToEnd || StoriesLookBack() || before == null ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
-                pauseAt = limit == int.MaxValue ? null : from.Page + limit,
+                pauseAt = limit == int.MaxValue ? null : from.Page + limit, pausedBeyond = held,
             };
             run.Take(from.State, CollectionsMarshal.AsSpan(laid)[..Math.Min(from.Page - 1, laid!.Count)]);
             var pages = run.PaginateOnce(blocks, lastSection, footnotes, endnotes, endnoteSeparator, from);
@@ -2303,7 +2347,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             or nameof(input) or nameof(laid) or nameof(settledRun) or nameof(lookBack) or nameof(reads) or nameof(stops) or nameof(stopPages)
             or nameof(stopSettings) or nameof(stoppedAt) or nameof(stopFinished) or nameof(taken) or nameof(knownEnds) or nameof(finishedPages)
             or nameof(sectionEnds) or nameof(paused) or nameof(pauseAt) or nameof(pausedHere) or nameof(refields)
-            or nameof(fieldPasses) or nameof(steps) or nameof(growth) or nameof(firstRun) or nameof(renoted) or nameof(changingNotes)
+            or nameof(fieldPasses) or nameof(steps) or nameof(growth) or nameof(firstRun) or nameof(firstLaid) or nameof(pausedBeyond) or nameof(renoted) or nameof(changingNotes)
             or nameof(waitingNotes) or nameof(throughToEnd) or nameof(restoried) or nameof(refinish) or nameof(refinished)))
         .ToArray();
 
@@ -2876,15 +2920,18 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // run laying edited blocks out again or going on where a growing layout paused takes the pages it shares with the
         // run before as that one returned them, where they are finished by themselves and the counts (see Finished) and
         // show no counts or those they were finished with, and where the run paused: the pages after it are not laid out
-        // yet, the counts not final (see Relayout, Paginate).
+        // yet, the counts not final (see Relayout, Paginate); so where it stopped before the place the layout it lays out
+        // again for stays paused (see pausedBeyond: found with scratchpad b4/kp on real10k, a key on page 80 while it grew,
+        // which finished all its 7 000 pages anew for their footers' page count, 230 ms).
         // NUMPAGES counts the blank pages, SECTIONPAGES does not (measured with docx/local/hf-parity).
+        var countsLater = pausedHere || stoppedAt != null && pausedBeyond != null && Position(stoppedAt).CompareTo(Position(pausedBeyond)) <= 0;
         var sectionPages = Counts(pages);
         var finished = new List<PageBox>(pages.Count);
         var parts = new Dictionary<string, bool?>(StringComparer.Ordinal);
         for (var k = 0; k < pages.Count; k++)
         {
             if (stopFinished != null && stopPages != null && k < stopPages.Count && k < stopFinished.Count && ReferenceEquals(pages[k], stopPages[k])
-                && (pausedHere || Finished(pages[k], parts) is { } counts
+                && (countsLater || Finished(pages[k], parts) is { } counts
                     && (!counts || stopFinished[k].Counted == (pages.Count, sectionPages.GetValueOrDefault(pages[k].SectionIndex)))))
             {
                 if (!Refinishes(pages[k]))

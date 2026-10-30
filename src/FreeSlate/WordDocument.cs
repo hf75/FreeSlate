@@ -845,6 +845,28 @@ public sealed partial class WordDocument : IEditableDocument
     /// </summary>
     bool drawLater;
 
+    /// <summary>
+    /// The page whose lines show a place of a paragraph (see IEditableDocument.PageOf): the first that lays out its text up
+    /// to the place, else the last that shows the paragraph; its lines of the body, of tables, headers, footers and notes.
+    /// </summary>
+    public int? PageOf(int paragraph, int offset)
+    {
+        Scenes();
+        int? last = null;
+        for (var k = 0; k < shown.Count; k++)
+        {
+            foreach (var placed in shown[k].Lines)
+            {
+                if (placed.Line.Paragraph?.Id != paragraph || placed.Line.Sources is not { Count: > 0 } sources)
+                    continue;
+                if (sources[^1] >= offset)
+                    return k;
+                last = k;
+            }
+        }
+        return last;
+    }
+
     /// <summary>The page the layout puts a bookmark on (0-based), of those laid out so far; null where none has it.</summary>
     public int? PageOf(string bookmark)
     {

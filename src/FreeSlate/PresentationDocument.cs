@@ -239,6 +239,8 @@ public sealed partial class PresentationDocument : IEditableDocument
 
     public (int Start, int End)? Placeholder(int paragraph, int offset, int length) => null;
 
+    public int? PageOf(int paragraph, int offset) => paragraphs.TryGetValue(paragraph, out var at) ? slides.IndexOf(at.Slide) : null;
+
     public int Separate(int paragraph, int offset) => throw new NotSupportedException("A slide's paragraphs are each one of their own.");
 
     /// <summary>

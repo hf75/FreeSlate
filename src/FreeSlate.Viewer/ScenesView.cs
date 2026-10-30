@@ -757,20 +757,40 @@ sealed class ScenesView : Control
     }
 
     /// <summary>
-    /// Where a page shows a place: the character at its offset on the page nearest to <paramref name="near"/> that shows it,
-    /// else the character before it (a place within a field's result); null where no page shows its paragraph.
+    /// Where a page shows a place: the character at its offset, on the page <paramref name="near"/>, on the one the
+    /// document lays it out on (see IEditableDocument.PageOf) or on those around them, else the character before it there
+    /// (a place within a field's result); null where none of them shows its paragraph so (a page left as it was laid out
+    /// before a change, until the layout comes there: see LayOutLater). Those pages alone are drawn to look at them, as
+    /// the document draws its pages when they are wanted (looking through all the pages of science5k took 12 s).
     /// </summary>
     (int Page, int At, bool End)? Locate(TextPlace place, int near)
     {
-        for (var step = 0; step < scenes.Count; step++)
+        if (near >= 0 && near < scenes.Count && pictures.Places(Page(near)).Exact(place.Paragraph, place.Offset) is { } here)
+            return Placed(near, here, false);
+        var pages = new List<int>();
+        void Look(int page)
         {
-            foreach (var page in step == 0 ? [near] : new[] { near + step, near - step })
-            {
-                if (page >= 0 && page < scenes.Count && pictures.Places(Page(page)).Exact(place.Paragraph, place.Offset) is { } spot)
-                    return Placed(page, spot, false);
-            }
+            if (page >= 0 && page < scenes.Count && !pages.Contains(page))
+                pages.Add(page);
         }
-        for (var page = 0; page < scenes.Count; page++)
+        Look(near);
+        if (Session?.Document.PageOf(place.Paragraph, place.Offset) is { } laid)
+        {
+            Look(laid);
+            Look(laid + 1);
+            Look(laid - 1);
+        }
+        for (var step = 1; step <= 2; step++)
+        {
+            Look(near + step);
+            Look(near - step);
+        }
+        foreach (var page in pages)
+        {
+            if (pictures.Places(Page(page)).Exact(place.Paragraph, place.Offset) is { } spot)
+                return Placed(page, spot, false);
+        }
+        foreach (var page in pages)
         {
             if (pictures.Places(Page(page)).Find(place.Paragraph, place.Offset) is var (spot, after))
                 return Placed(page, spot, after);

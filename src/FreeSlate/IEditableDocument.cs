@@ -25,6 +25,13 @@ public interface IEditableDocument : IDisposable
     PageScene Scene(int page);
 
     /// <summary>
+    /// The page or slide (its index) that shows a place of a paragraph's text as the pages are laid out now, found without
+    /// drawing them, else null (a paragraph of a text box, of a page not laid out yet). A page left as it was laid out
+    /// before a change, which the layout has not come to yet (see LayingOut), shows the paragraph as it read then.
+    /// </summary>
+    int? PageOf(int paragraph, int offset);
+
+    /// <summary>
     /// Whether pages after those a change laid out stand as they did before it: a long document is laid out again bit by
     /// bit after a change (see LayOut), as an editor does while it waits for input.
     /// </summary>
