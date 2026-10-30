@@ -471,6 +471,69 @@ public sealed partial class WordDocument : IEditableDocument
     }
 
     /// <summary>
+    /// The places in a paragraph's text where the paragraphs the reader joined into it meet (see ParagraphBlock.Parts:
+    /// those whose marks are hidden or deleted run into the next), in order: where the text of each after the first
+    /// begins; none for a paragraph of its own.
+    /// </summary>
+    public IReadOnlyList<int> Seams(int paragraph)
+    {
+        var p = Find(paragraph).Paragraph;
+        if (p.Parts is not { Count: > 1 } parts)
+            return [];
+        var seams = new List<int>();
+        var (at, part) = (p.TextOffset, 0);
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            // The text of a later part begins here (those before it without text of their own meeting at the same place).
+            if (length > 0 && inline.Xml?.AncestorsAndSelf().FirstOrDefault(parts.Contains) is { } within
+                && Enumerable.Range(0, parts.Count).First(k => parts[k] == within) is var k && k > part)
+            {
+                for (; part < k; part++)
+                    seams.Add(at);
+            }
+            at += length;
+        }
+        return seams;
+    }
+
+    /// <summary>
+    /// A paragraph the reader joined from several brought apart where two of them meet (see Seams): the mark of the one
+    /// before the place a paragraph's own again, neither hidden nor deleted (see TextEdits.Separate), as Word makes it
+    /// where a selection over it is deleted or typed over (see EditSession.Separated); returns the id of the paragraph
+    /// after it, the first keeping the paragraph's id.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// The document tracks its changes (Word then deletes the mark as a tracked change), or the mark is not hidden or
+    /// deleted of its own (a style hides it, a tracked move took it); nothing changes.
+    /// </exception>
+    public int Separate(int paragraph, int offset)
+    {
+        if (Author != null)
+            throw new NotSupportedException("With changes tracked Word deletes the mark between them as a tracked change.");
+        var (p, top) = Find(paragraph);
+        var part = Seams(paragraph) is var seams && Enumerable.Range(0, seams.Count).FirstOrDefault(k => seams[k] == offset, -1) is var found and >= 0
+            ? found : throw new ArgumentOutOfRangeException(nameof(offset), "The paragraphs the paragraph was read from do not meet there.");
+        var text = markup ? null : ParagraphText.Of(p);
+        var (first, second) = (-1, -1);
+        var where = Change(top, top, (stretch, tracking) =>
+        {
+            first = stretch.Find(First(p)) is { } element ? stretch.Text.Start(element) - stretch.Head : -1;
+            var (edited, at) = TextEdits.Separate(stretch, p, part);
+            second = at;
+            return edited;
+        }, () => ReferenceEquals(top, p) && IndexOf(top) is var i ? [.. blocks.Take(i + 1), new ModelReader.NewBlock(), .. blocks.Skip(i + 1)] : null);
+        // The first stands where the paragraph began, keeping its id; the second (with those after it it still runs into)
+        // where the next part began.
+        var after = Fresh().FirstOrDefault(q => (q.Parts ?? [q.Element]).Any(e => where(e) == second))?.Id;
+        var at = offset - p.TextOffset;
+        if (Fresh().FirstOrDefault(q => first >= 0 && where(First(q)) == first)?.Id != paragraph || after is not { } next
+            || text != null && !(Reads(paragraph, text[..at]) && Reads(next, text[at..])))
+            throw Refused("The paragraphs would not come apart so.");
+        return next;
+    }
+
+    /// <summary>
     /// Gives a stretch of a paragraph's text character formatting (see TextFormatting): its runs split where it begins
     /// and ends, those within it formatted.
     /// </summary>

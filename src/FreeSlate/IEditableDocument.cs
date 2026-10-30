@@ -81,6 +81,23 @@ public interface IEditableDocument : IDisposable
     int Join(int paragraph, bool backward = false);
 
     /// <summary>
+    /// The places in a paragraph's text where paragraphs the document reads as one meet (in Word those whose marks are
+    /// hidden or deleted run into the next, see Docx.ParagraphBlock.Parts), in order; none for a paragraph of its own.
+    /// </summary>
+    IReadOnlyList<int> Seams(int paragraph);
+
+    /// <summary>
+    /// A paragraph the document reads from several brought apart where two of them meet (see Seams), the mark between
+    /// them a paragraph's own again (neither hidden nor deleted), as Word makes it where a selection over it is deleted or
+    /// typed over; returns the id of the paragraph after it, the first keeping the paragraph's id.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// The document tracks its changes, or does not bring them apart so (a style hides the mark, a tracked move took it);
+    /// nothing changes.
+    /// </exception>
+    int Separate(int paragraph, int offset);
+
+    /// <summary>
     /// How deleting a selection over paragraphs treats their marks, as the application does (measured in Word 365 and
     /// PowerPoint 365 by COM, WordBasic.EditClear and TextRange.Delete): in Word (true) the paragraph the selection begins
     /// inside keeps its mark, it and the paragraph it ends in staying apart, and typing over a selection that ends where a

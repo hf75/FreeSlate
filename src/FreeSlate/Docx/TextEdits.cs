@@ -775,6 +775,32 @@ static class TextEdits
     }
 
     /// <summary>
+    /// A paragraph the reader joined from several brought apart where its part <paramref name="part"/> runs into the next:
+    /// that part's mark a paragraph's own again, neither hidden nor deleted (its w:vanish and w:specVanish, or its w:del,
+    /// taken away), as Word makes it where a selection over it is deleted (see EditSession.Separated). Returns the
+    /// stretch's new text and where the next part begins in it.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The mark is not hidden or deleted of its own (a style hides it, a tracked move took it).</exception>
+    public static (string Text, int Second) Separate(Stretch stretch, ParagraphBlock paragraph, int part)
+    {
+        var parts = Parts(stretch, paragraph);
+        if (part < 0 || part + 1 >= parts.Count)
+            throw new ArgumentOutOfRangeException(nameof(part), "The paragraph was not read from so many paragraphs.");
+        var (p, next) = (parts[part], parts[part + 1]);
+        var w = p.Name.Namespace;
+        var mark = p.Element(w + "pPr")?.Element(w + "rPr");
+        if (mark?.Element(w + "moveFrom") != null)
+            throw new NotSupportedException("The paragraph's mark was moved away (a tracked move).");
+        var made = mark?.Elements().Where(e => e.Name.LocalName is "del" or "vanish" or "specVanish").ToList() ?? [];
+        if (made.Count == 0)
+            throw new NotSupportedException("The paragraph's mark is not hidden or deleted of its own (a style hides it).");
+        var length = PartText.Xml(p).Length;
+        foreach (var e in made)
+            e.Remove();
+        return (stretch.Written([(p, [p])]), stretch.Text.Start(next) - stretch.Head + PartText.Xml(p).Length - length);
+    }
+
+    /// <summary>
     /// A paragraph taken away with all its content (all the paragraphs it was read from, where the reader joined
     /// several), the section it ends merging with the next one; as a tracked change its runs and its marks are deleted
     /// (see Deleted), what the author inserted going away outright.

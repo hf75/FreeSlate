@@ -437,13 +437,15 @@ public sealed class EditSession(IEditableDocument document)
     /// meet without one. Where the document keeps marks, deleting keeps a first paragraph the selection began inside
     /// apart from the last (but where a table stands just before the last), typing over a selection that ends where a
     /// paragraph begins keeps the mark before it, and deleting whole words tidies the spaces where they went (see
-    /// Tidied). Returns where the cursor then stands.
+    /// Tidied); a mark that joins paragraphs into one (hidden or deleted) counts as a paragraph's own (see Separated).
+    /// Returns where the cursor then stands.
     /// </summary>
     TextPlace DeleteSelection(bool typing)
     {
         if (!Selecting)
             return Caret;
         var (start, end, between) = Ordered();
+        (start, end, between) = Separated(start, end, between);
         var (first, final) = (document.Text(start.Paragraph), document.Text(end.Paragraph));
         var (fromWord, toWord) = (start.Offset < first.Length && char.IsLetter(first[start.Offset]) && (start.Offset == 0 || !char.IsLetterOrDigit(first[start.Offset - 1])),
             end.Offset > 0 && char.IsLetter(final[end.Offset - 1]) && (end.Offset == final.Length || !char.IsLetterOrDigit(final[end.Offset])));
@@ -532,6 +534,47 @@ public sealed class EditSession(IEditableDocument document)
         {
         }
         return at;
+    }
+
+    /// <summary>
+    /// A selection over a place where paragraphs the document reads as one meet (in Word a mark hidden or deleted between
+    /// them, see IEditableDocument.Seams), those paragraphs brought apart there (see IEditableDocument.Separate): Word
+    /// deletes and types over such a mark as over a paragraph's own (measured in Word 365 by COM, hidden text not shown and
+    /// the final view, without tracking: of "Erster T|eil eins." with a hidden mark before "Zweiter T|eil zwei.", right
+    /// aligned, the selection between the bars deleted leaves "Erster T" apart with its mark shown and "eil zwei." right
+    /// aligned, typed over "Erster TXXeil zwei." in the first's format, as of two paragraphs of their own; so over a
+    /// deleted mark, from a paragraph before into the second, from the first into one after, over two such paragraphs;
+    /// from the place they meet or up to it the mark stays as it is). The places within the selection's first and last
+    /// paragraph count, those between go whole. Where the document does not bring them apart (it tracks its changes: Word
+    /// deletes the mark as a tracked change) the selection stays as it was.
+    /// </summary>
+    (TextPlace Start, TextPlace End, List<int> Between) Separated(TextPlace start, TextPlace end, List<int> between)
+    {
+        try
+        {
+            // In the first paragraph at the first place after the selection's beginning (and before its end, where it
+            // ends there too): the rest a paragraph between, or the one it ends in.
+            if (document.Seams(start.Paragraph).FirstOrDefault(s => s > start.Offset, -1) is var seam and > 0
+                && (start.Paragraph != end.Paragraph || seam < end.Offset))
+            {
+                var rest = document.Separate(start.Paragraph, seam);
+                if (start.Paragraph == end.Paragraph)
+                    end = new TextPlace(rest, end.Offset - seam);
+                else
+                    between = [rest, .. between];
+            }
+            // In the last at each place before the selection's end, what stands before it a paragraph between.
+            while (end.Paragraph != start.Paragraph && document.Seams(end.Paragraph).FirstOrDefault(s => s > 0 && s < end.Offset, -1) is var last and > 0)
+            {
+                var rest = document.Separate(end.Paragraph, last);
+                between = [.. between, end.Paragraph];
+                end = new TextPlace(rest, end.Offset - last);
+            }
+        }
+        catch (NotSupportedException)
+        {
+        }
+        return (start, end, between);
     }
 
     /// <summary>The selection's paragraphs with the stretch of each it covers, or the cursor's paragraph where nothing is selected.</summary>

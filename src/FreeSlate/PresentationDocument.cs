@@ -234,6 +234,11 @@ public sealed partial class PresentationDocument : IEditableDocument
         return stays;
     }
 
+    /// <summary>A slide's paragraph is one of its own: it has no seams (see IEditableDocument.Seams).</summary>
+    public IReadOnlyList<int> Seams(int paragraph) => [];
+
+    public int Separate(int paragraph, int offset) => throw new NotSupportedException("A slide's paragraphs are each one of their own.");
+
     /// <summary>
     /// Gives so many characters of a paragraph's text from a place character formatting (see TextFormatting), as
     /// PowerPoint's buttons do; a stretch that reaches the paragraph's end formats its mark too, which an empty
