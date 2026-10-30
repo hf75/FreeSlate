@@ -2218,6 +2218,7 @@ static class TextEdits
         var parts = Parts(stretch, paragraph);
         var end = offset + length;
         var runs = new List<(XElement Run, Inline Inline)>();
+        var touched = new HashSet<XElement>();
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
         {
@@ -2228,6 +2229,12 @@ static class TextEdits
             if (IsField(inline) && stretch.Find(inline.Xml) is { } begin && In(begin, parts) && FieldRuns(begin, PartOf(begin, parts)) is { } field)
             {
                 runs.AddRange(field.Select(run => (run, (Inline)inline)));
+                continue;
+            }
+            if (inline is MathInline && stretch.Find(inline.Xml) is { } equation && In(equation, parts))
+            {
+                MathStyled(equation, format);
+                touched.Add(PartOf(equation, parts));
                 continue;
             }
             var text = inline is TextInline { Xml.Name.LocalName: "t" } t ? t : null;
@@ -2251,7 +2258,51 @@ static class TextEdits
         }
         foreach (var (run, inline) in runs.DistinctBy(r => r.Run))
             Format(run, format, tracking, styled?.Invoke(inline));
-        return stretch.Written(parts.Where(p => runs.Any(r => r.Run.Ancestors().Contains(p))).Select(p => (p, (IEnumerable<XElement>)[p])));
+        return stretch.Written(parts.Where(p => touched.Contains(p) || runs.Any(r => r.Run.Ancestors().Contains(p))).Select(p => (p, (IEnumerable<XElement>)[p])));
+    }
+
+    /// <summary>
+    /// Bold and italic set on an equation: the math style of its runs (m:sty: italic where it has none), which keeps a run's w:rPr as it is and
+    /// which Word records as no tracked change (measured in Word 365 by COM, scratchpad b9/keys2.vbs: of "Text x+y more", all of it
+    /// made bold leaves x+y m:sty bi); runs of normal text (m:nor) take none.
+    /// </summary>
+    static void MathStyled(XElement equation, TextFormatting format)
+    {
+        if (format.Bold == null && format.Italic == null)
+            return;
+        var m = equation.Name.Namespace;
+        foreach (var run in equation.DescendantsAndSelf(m + "r"))
+        {
+            var properties = run.Element(m + "rPr");
+            if (properties?.Element(m + "nor") != null)
+                continue;
+            var style = properties?.Element(m + "sty");
+            var had = (string?)style?.Attribute(m + "val") ?? "i";
+            var (bold, italic) = (format.Bold ?? had is "b" or "bi", format.Italic ?? had is "i" or "bi");
+            var now = bold ? italic ? "bi" : "b" : italic ? "i" : "p";
+            if (now == had)
+                continue;
+            if (now == "i")
+            {
+                style!.Remove();
+                if (properties is { HasElements: false })
+                    properties.Remove();
+                continue;
+            }
+            if (properties == null)
+                run.AddFirst(properties = new XElement(m + "rPr"));
+            if (style != null)
+                style.SetAttributeValue(m + "val", now);
+            else
+            {
+                // (After what comes before it in m:rPr, m:lit and m:scr.)
+                var made = new XElement(m + "sty", new XAttribute(m + "val", now));
+                if (properties.Elements().LastOrDefault(e => e.Name.LocalName is "lit" or "scr") is { } before)
+                    before.AddAfterSelf(made);
+                else
+                    properties.AddFirst(made);
+            }
+        }
     }
 
     /// <summary>A w:t cut in two at a place in its text (as the reader reads it); returns the second half, after it in its run.</summary>
