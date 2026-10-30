@@ -711,8 +711,12 @@ public sealed partial class ModelReader
             var blocks = new List<Block>();
             ParagraphBlock? pending = null;
             ReadBlocks(bodyElement!, elements, blocks, ref pending);
+            // Paragraphs whose mark is hidden take in the next one (see JoinHidden), as reading the body joins them; the
+            // last one still waits for one after the children read.
+            if (pending == null)
+                JoinHidden(blocks, cell: false);
             if (pending != null || openFields.Count > 0 || strayBreaks.Count > 0 || blockBookmarks.Count > 0 || rereadAnswers is { Count: > 0 }
-                || blocks.OfType<ParagraphBlock>().Any(p => p.MarkFormat.Vanish == true))
+                || blocks is [.., ParagraphBlock { MarkFormat.Vanish: true, EndsSection: null }])
                 return null;
             return (blocks, rereadSteps, new Dictionary<XElement, (int Steps, bool Fresh)>(rereadPoints, ReferenceEqualityComparer.Instance));
         }

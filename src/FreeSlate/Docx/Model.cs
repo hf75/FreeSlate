@@ -1403,10 +1403,12 @@ public sealed partial class ModelReader(DocumentContext context)
     {
         if (container == bodyElement && sectionOf.TryGetValue(e, out var section))
             currentSection = section;
-        // Where reading stood before each child of the body, for reading some of them anew (see Reread).
+        // Where reading stood before each child of the body, for reading some of them anew (see Reread): not
+        // afresh after a paragraph whose mark is hidden, which takes in the next (see JoinHidden).
         if (container == bodyElement && e.Parent == bodyElement)
         {
-            var fresh = pending == null && openFields.Count == 0 && strayBreaks.Count == 0 && blockBookmarks.Count == 0;
+            var fresh = pending == null && openFields.Count == 0 && strayBreaks.Count == 0 && blockBookmarks.Count == 0
+                && blocks is not [.., ParagraphBlock { MarkFormat.Vanish: true, EndsSection: null }];
             if (rereadSteps != null)
                 rereadPoints[e] = (rereadSteps.Count, fresh);
             else
