@@ -794,6 +794,13 @@ static class TextEdits
         return ParagraphOf(run);
     }
 
+    /// <summary>Whether an element is a note's reference or own mark.</summary>
+    static bool IsNoteMark(XElement e) => e.Name.LocalName is "footnoteReference" or "endnoteReference" or "footnoteRef" or "endnoteRef";
+
+    /// <summary>Whether a run shows what the format of text beside it goes by: anything but a note's reference, not deleted.</summary>
+    static bool Shows(XElement run) => run.Elements().Any(e => e.Name.LocalName != "rPr" && !IsNoteMark(e))
+        && !run.Ancestors().Any(a => a.Name.LocalName is "del" or "moveFrom");
+
     /// <summary>The paragraphs not within another of them.</summary>
     static IEnumerable<XElement> Outermost(HashSet<XElement> paragraphs) => paragraphs.Where(p => !p.Ancestors().Any(paragraphs.Contains));
 
@@ -924,11 +931,41 @@ static class TextEdits
                 second.Add(node);
             }
         }
+        FirstHalfsMark(p, second);
         if (tracking != null)
             Marked(p, "ins", tracking);
         // In the stretch, so that it is written with the prefixes of its scope.
         p.AddAfterSelf(second);
         return (stretch.Written([(p, [p, second])]), stretch.Text.Start(p) - stretch.Head + PartText.Xml(p).Length);
+    }
+
+    /// <summary>
+    /// The mark of a paragraph's first half, a new one, in the format of the text before it, where none stands there of the
+    /// text after it; the second half keeps the mark the paragraph had (measured in Word 365 by COM, scratchpad b9/markfmt.vbs:
+    /// Enter in italic text under a mark of 24 pt leaves the first half's mark italic, at the paragraph's start the new empty
+    /// paragraph's too, and the second's of 24 pt). After a link's end, before its beginning, none (as Outside). Hidden stays
+    /// out, which would run the halves into one.
+    /// </summary>
+    static void FirstHalfsMark(XElement p, XElement second)
+    {
+        var w = p.Name.Namespace;
+        var run = p.Descendants(w + "r").Where(r => ParagraphOf(r) == p).LastOrDefault(Shows)
+            ?? second.Descendants(w + "r").Where(r => r.Ancestors(w + "p").FirstOrDefault() == second).FirstOrDefault(Shows);
+        if (run == null)
+            return;
+        var format = run.Parent is { Name.LocalName: "hyperlink" } ? null : run.Element(w + "rPr");
+        var given = format?.Elements().Where(e => !IsRevision(e) && e.Name.LocalName is not ("rPrChange" or "vanish" or "specVanish" or "webHidden")).ToList() ?? [];
+        var mark = p.Element(w + "pPr")?.Element(w + "rPr");
+        if (mark == null && given.Count == 0)
+            return;
+        mark ??= Property(Properties(p, "pPr"), "rPr", ParagraphOrder);
+        foreach (var had in mark.Elements().Where(e => !IsRevision(e)).ToList())
+            had.Remove();
+        mark.Add(given.Select(e => new XElement(e)));
+        if (!mark.HasElements)
+            mark.Remove();
+        if (p.Element(w + "pPr") is { HasElements: false } empty)
+            empty.Remove();
     }
 
     /// <summary>
