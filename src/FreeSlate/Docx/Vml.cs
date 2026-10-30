@@ -1119,7 +1119,7 @@ public static class Vml
             var link = Linked(shape);
             wsp.Add(link is { Seq: > 0 } follower
                 ? new XElement(Drawings.Wps + "linkedTxbx", new XAttribute("id", follower.Id), new XAttribute("seq", follower.Seq))
-                : new XElement(Drawings.Wps + "txbx", link is { } head ? new XAttribute("id", head.Id) : null, new XElement(content)));
+                : new XElement(Drawings.Wps + "txbx", link is { } head ? new XAttribute("id", head.Id) : null, Drawings.CopyOf(content)));
             var inset = ((string?)shape.Element(V + "textbox")!.Attribute("inset") ?? "").Split(',');
             double Inset(int i, double fallback) => i < inset.Length && Length(inset[i].Trim()) is { } v ? v : fallback;
             var anchor = Style((string?)shape.Attribute("style")).GetValueOrDefault("v-text-anchor") switch { "middle" => "ctr", "bottom" => "b", _ => "t" };

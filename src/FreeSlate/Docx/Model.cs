@@ -1903,7 +1903,7 @@ public sealed partial class ModelReader(DocumentContext context)
             var (savedParagraph, savedRun) = (tableParagraph, tableRun);
             (tableParagraph, tableRun) = (null, null);
             var blocks = new List<Block>();
-            ReadBlocks(box, blocks);
+            ReadBlocks(Drawings.Source(box), blocks);
             JoinHidden(blocks, cell: false);
             (tableParagraph, tableRun) = (savedParagraph, savedRun);
             result.Add((shape, blocks));
@@ -1918,7 +1918,7 @@ public sealed partial class ModelReader(DocumentContext context)
         var (savedParagraph, savedRun) = (tableParagraph, tableRun);
         (tableParagraph, tableRun) = (null, null);
         var blocks = new List<Block>();
-        ReadBlocks(content, blocks);
+        ReadBlocks(Drawings.Source(content), blocks);
         JoinHidden(blocks, cell: false);
         (tableParagraph, tableRun) = (savedParagraph, savedRun);
         return blocks;

@@ -258,6 +258,20 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
     /// <summary>The fonts the drawings' text uses.</summary>
     public IEnumerable<string> UsedFonts => presentation?.UsedFonts ?? [];
 
+    /// <summary>Marks a text box's content in a drawing made of a VML shape as a copy of the content in the shape.</summary>
+    sealed record Copied(XElement Content);
+
+    /// <summary>A copy of a VML text box's content for the drawing made of its shape.</summary>
+    public static XElement CopyOf(XElement content)
+    {
+        var copy = new XElement(content);
+        copy.AddAnnotation(new Copied(content));
+        return copy;
+    }
+
+    /// <summary>What a text box's text is read from: where it stands in its part, which a change finds again (see TextEdits).</summary>
+    public static XElement Source(XElement content) => content.Annotation<Copied>()?.Content ?? content;
+
     /// <summary>The text box content element of a drawing's shape (wps:txbx/w:txbxContent), or null.</summary>
     /// <summary>
     /// Whether an 8 × 8 picture is one of Word's 48 patterns, its white bits a preset's (measured with Word's own
