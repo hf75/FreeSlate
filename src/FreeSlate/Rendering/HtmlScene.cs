@@ -35,7 +35,7 @@ public static class HtmlScene
         return Pictures.Resolved(html.ToString());
     }
 
-    /// <summary>An item as HTML or SVG.</summary>
+    /// <summary>An item as HTML or SVG, its pictures named by their tokens (see Pictures.Resolved).</summary>
     public static string Markup(SceneItem item)
     {
         var html = new StringBuilder();
@@ -43,7 +43,7 @@ public static class HtmlScene
         return html.ToString();
     }
 
-    /// <summary>Items as HTML or SVG.</summary>
+    /// <summary>Items as HTML or SVG, their pictures named by their tokens (see Pictures.Resolved).</summary>
     public static string Markup(IEnumerable<SceneItem> items)
     {
         var html = new StringBuilder();

@@ -288,8 +288,8 @@ public sealed class PresentationContext : IDisposable
         {
             uri = type switch
             {
-                "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/webp" => Native(type, Package.ReadBytes(rel.Target)),
-                "image/svg+xml" => Kept(type, Package.ReadBytes(rel.Target)),
+                "image/png" or "image/jpeg" or "image/gif" or "image/bmp" or "image/webp" => Native(type, rel.Target),
+                "image/svg+xml" => Kept(type, rel.Target, Package.ReadBytes(rel.Target)),
                 // A metafile part may hold a raster picture (a PNG named .emf), which PowerPoint shows by its bytes.
                 _ when metafile => Package.ReadBytes(rel.Target) is var bytes && IsMetafile(bytes)
                     ? Svg(Metafiles.MetafileConverter.ToSvg(bytes, $"mf{images.Count}_", displayWidth, Word))
@@ -343,7 +343,8 @@ public sealed class PresentationContext : IDisposable
     /// A picture under a content type browsers show, unless its bytes are a format they do not: PowerPoint names
     /// inserted .jxr pictures image/png.
     /// </summary>
-    string? Native(string type, byte[] data) => Html.JpegXr.IsJpegXr(data) || Html.Tiff.IsTiff(data) ? Converted(data) : Kept(type, data);
+    string? Native(string type, string part) =>
+        Package.ReadBytes(part) is var data && (Html.JpegXr.IsJpegXr(data) || Html.Tiff.IsTiff(data)) ? Converted(data) : Kept(type, part, data);
 
     /// <summary>
     /// A picture of another content type by its bytes (catalog: picture.formats): TIFF converted to PNG
@@ -370,6 +371,13 @@ public sealed class PresentationContext : IDisposable
 
     /// <summary>A picture's token (see Rendering.Pictures), kept as long as the context or a scene it drew (see Rendering.PageScene.Keeps).</summary>
     string Kept(string type, byte[] bytes) => Rendering.Pictures.Keep(this, type, bytes);
+
+    /// <summary>
+    /// A part's picture as it stands in the package: its bytes read when asked where the package reads its parts so (see
+    /// Opc.OpcPackage.Reader), else the bytes kept.
+    /// </summary>
+    string Kept(string type, string part, byte[] bytes) =>
+        Package.Reader(part) is { } read ? Rendering.Pictures.Keep(this, type, read) : Kept(type, bytes);
 
     /// <summary>An SVG document as a picture, or null.</summary>
     string? Svg(string? svg) => svg != null ? Kept("image/svg+xml", System.Text.Encoding.UTF8.GetBytes(svg)) : null;

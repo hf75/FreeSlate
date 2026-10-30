@@ -6,16 +6,35 @@ namespace FreeSlate.Rendering;
 
 /// <summary>
 /// Pictures by a short token of their own (fsimg:n) in place of a data URI in each string that names them (in .NET a
-/// data URI takes 2.7 times its picture's bytes): their media type and their bytes, kept once, as long as what they were
-/// kept for is (see Keep: the package they come from) or what took them over (see Taken: scenes that outlive it). HTML
-/// gets the data URI a token stands for (see Resolved), drawing gets the bytes (see Get).
+/// data URI takes 2.7 times its picture's bytes): their media type and their bytes, kept once or read when asked (from
+/// the bytes a package was opened from, see Opc.OpcPackage.Reader), as long as what they were kept for is (see Keep) or
+/// what took them over (see Taken: scenes that outlive it). HTML gets the data URI a token stands for (see Resolved),
+/// drawing gets the bytes (see Get).
 /// </summary>
 public static class Pictures
 {
     /// <summary>What a token begins with.</summary>
     public const string Prefix = "fsimg:";
 
-    sealed record Picture(string Type, byte[] Bytes);
+    sealed class Picture(string type, byte[]? bytes, Func<byte[]>? read)
+    {
+        public string Type => type;
+
+        /// <summary>The picture's bytes: those kept, else read now; null where reading fails.</summary>
+        public byte[]? Bytes()
+        {
+            if (bytes != null)
+                return bytes;
+            try
+            {
+                return read!();
+            }
+            catch (Exception e) when (e is IOException or InvalidDataException or KeyNotFoundException or ObjectDisposedException)
+            {
+                return null;
+            }
+        }
+    }
 
     /// <summary>The pictures by their numbers, as long as they are kept.</summary>
     static readonly Dictionary<long, WeakReference<Picture>> pictures = [];
@@ -26,9 +45,13 @@ public static class Pictures
     static long made;
 
     /// <summary>A token for a picture of a media type with its bytes, kept as long as <paramref name="owner"/> is.</summary>
-    public static string Keep(object owner, string type, byte[] bytes)
+    public static string Keep(object owner, string type, byte[] bytes) => Add(owner, new Picture(type, bytes, null));
+
+    /// <summary>A token for a picture of a media type whose bytes <paramref name="read"/> reads when asked, from any thread.</summary>
+    public static string Keep(object owner, string type, Func<byte[]> read) => Add(owner, new Picture(type, null, read));
+
+    static string Add(object owner, Picture picture)
     {
-        var picture = new Picture(type, bytes);
         lock (pictures)
         {
             var number = ++made;
@@ -70,7 +93,7 @@ public static class Pictures
         if (uri == null)
             return null;
         if (Of(uri) is { } picture)
-            return (picture.Type, picture.Bytes);
+            return picture.Bytes() is { } bytes ? (picture.Type, bytes) : null;
         if (!uri.StartsWith("data:", StringComparison.Ordinal) || uri.IndexOf(',') is not (> 0 and var comma)
             || !uri.AsSpan(0, comma).EndsWith(";base64", StringComparison.Ordinal))
             return null;
@@ -91,7 +114,7 @@ public static class Pictures
 
     /// <summary>The data URI a token stands for; any other URI as it is.</summary>
     public static string DataUri(string uri) =>
-        Of(uri) is { } picture ? $"data:{picture.Type};base64,{Convert.ToBase64String(picture.Bytes)}" : uri;
+        Of(uri) is { } picture && picture.Bytes() is { } bytes ? $"data:{picture.Type};base64,{Convert.ToBase64String(bytes)}" : uri;
 
     /// <summary>HTML or SVG with each href="fsimg:n" written as the data URI it stands for (see DataUri).</summary>
     public static string Resolved(string html)

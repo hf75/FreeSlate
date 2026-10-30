@@ -77,14 +77,15 @@ public sealed class OpcPackage : IDisposable
     /// </summary>
     /// <exception cref="PasswordException">The file needs a password, or the password is wrong.</exception>
     public static OpcPackage Open(byte[] bytes, string? password = null) =>
-        bytes is [0xD0, 0xCF, _, _, _, _, _, _, ..] ? Decrypted(bytes, password) : new OpcPackage(new MemoryStream(bytes, writable: false));
+        bytes is [0xD0, 0xCF, _, _, _, _, _, _, ..] ? Decrypted(bytes, password) : new OpcPackage(new MemoryStream(bytes, writable: false)) { origin = bytes };
 
     static OpcPackage Decrypted(byte[] bytes, string? password)
     {
         var file = new CompoundFile(bytes);
         if (!OfficeCrypto.IsEncrypted(file))
             throw new InvalidDataException("The file is a compound file without an encrypted package (a binary .ppt?).");
-        return new OpcPackage(new MemoryStream(OfficeCrypto.Decrypt(file, password)));
+        var decrypted = OfficeCrypto.Decrypt(file, password);
+        return new OpcPackage(new MemoryStream(decrypted, writable: false)) { origin = decrypted };
     }
 
     public bool Exists(string partName) => replaced.ContainsKey(partName) || entries.ContainsKey(partName) && !removed.Contains(partName);
@@ -323,4 +324,44 @@ public sealed class OpcPackage : IDisposable
     }
 
     public void Dispose() => zip.Dispose();
+
+    /// <summary>The bytes the package was opened from (see Open), which a reader of its own reads too (see Reader); null for a file or a stream.</summary>
+    byte[]? origin;
+
+    /// <summary>The package as opened, read apart from it (see Reader).</summary>
+    Apart? apart;
+
+    /// <summary>
+    /// A part's bytes as the package had them when it was opened, read by a reader of its own (an archive of its own over
+    /// the bytes the package was opened from): it reads while the package does, on another thread too, and once the
+    /// package is closed. Null for a package opened from a file or a stream, and for a part it did not have as opened or
+    /// gave other bytes since (see Replace, Remove).
+    /// </summary>
+    public Func<byte[]>? Reader(string partName)
+    {
+        if (origin == null || replaced.ContainsKey(partName) || removed.Contains(partName) || !entries.TryGetValue(partName, out var entry))
+            return null;
+        var reading = apart ??= new Apart(origin);
+        var name = entry.FullName;
+        return () => reading.Read(name);
+    }
+
+    /// <summary>An archive of its own over the bytes a package was opened from, which reads one part at a time (see Reader).</summary>
+    sealed class Apart(byte[] bytes)
+    {
+        readonly Lock gate = new();
+        ZipArchive? zip;
+
+        public byte[] Read(string name)
+        {
+            lock (gate)
+            {
+                zip ??= new ZipArchive(new MemoryStream(bytes, writable: false), ZipArchiveMode.Read);
+                using var stream = (zip.GetEntry(name) ?? throw new KeyNotFoundException($"The package has no part {name}.")).Open();
+                using var buffer = new MemoryStream();
+                stream.CopyTo(buffer);
+                return buffer.ToArray();
+            }
+        }
+    }
 }
