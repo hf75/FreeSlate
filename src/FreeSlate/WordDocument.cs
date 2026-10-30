@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -822,7 +823,9 @@ public sealed partial class WordDocument : IEditableDocument
         if (paginator == null || layout == null || renderer == null)
         {
             layout = new ParagraphLayout(context, new RunStyles(context));
-            ReadNotes();
+            if (!notesFresh || NotesChanged())
+                ReadNotes();
+            notesFresh = false;
             var (footnotes, endnotes, separator, continuation) = notesLaid;
             notesPending = false;
             notesChanged.Clear();
@@ -883,25 +886,56 @@ public sealed partial class WordDocument : IEditableDocument
 
     /// <summary>
     /// Lays out about so many more of the pages the last change left as they were (see LayingOut), and draws those that
-    /// come out otherwise; whether more are left. Scenes gives the pages as they then stand.
+    /// come out otherwise, or as many as about the time of a slice gives time for; whether more are left. Scenes gives the
+    /// pages as they then stand.
     /// </summary>
-    public bool LayOut(int pages = PagesAtOnce)
+    public bool LayOut(int pages = 0)
+    {
+        if (pages > 0)
+            return Step(pages);
+        var clock = Stopwatch.GetTimestamp();
+        while (Step(1) && Stopwatch.GetElapsedTime(clock).TotalMilliseconds < SliceTime)
+        {
+        }
+        return LayingOut;
+    }
+
+    /// <summary>How long in ms LayOut goes on at a time, for input to come between.</summary>
+    const double SliceTime = 10;
+
+    /// <summary>The next step of the layout (see LayOut): so many pages, or a slice of what comes before them; whether more are left.</summary>
+    bool Step(int pages)
     {
         // A long body is read bit by bit first, then laid out from its first page (see reading).
         if (reading)
         {
-            var many = pages == int.MaxValue ? int.MaxValue : childrenAtOnce;
+            // (A few at a time, within LayOut's time: children differ a lot in what they take.)
+            var many = pages == int.MaxValue ? int.MaxValue : 16;
             if (context.Loading)
             {
                 if (!context.LoadBody(many))
-                    blocks = reader.BeginBody();
+                    blocks = reader.BeginBody(bitByBit: true);
             }
-            else if (!reader.ReadBody(many))
+            else if (reader.BodyRead)
                 Done();
+            else
+                reader.ReadBody(many);
             return LayingOut;
         }
         if (early)
         {
+            // The notes first, bit by bit, then the pages from the first (see notesAhead).
+            if (!notesKnown)
+            {
+                if (readAhead != null)
+                {
+                    ReadNotes();
+                    notesFresh = true;
+                }
+                else
+                    NotesAhead();
+                return LayingOut;
+            }
             Leave();
             Scenes();
             return LayingOut;
@@ -1516,7 +1550,7 @@ public sealed partial class WordDocument : IEditableDocument
     /// </summary>
     bool reading;
 
-    /// <summary>How many children of a long body LayOut reads at once, and the first pages are laid out from while it reads.</summary>
+    /// <summary>How many children of a long body the first pages are laid out from while it reads.</summary>
     static int childrenAtOnce = 1000;
 
     /// <summary>
@@ -1549,6 +1583,9 @@ public sealed partial class WordDocument : IEditableDocument
     /// <summary>The first pages laid out while the body was read given up: the next Scenes lays the body out from its first page.</summary>
     void Leave()
     {
+        // (Notes read ahead for pages that do not come so are read anew when they are wanted.)
+        notesAhead?.Dispose();
+        (notesAhead, readAhead) = (null, null);
         if (!early)
             return;
         early = false;
@@ -1599,6 +1636,8 @@ public sealed partial class WordDocument : IEditableDocument
         var (last, before) = (reader?.LastId ?? 0, reader);
         wholeReads++;
         notesKnown = false;
+        notesFresh = false;
+        Leave();
         // The main part's bytes kept by the package, so that the context reads its XML from them: unpacked once.
         if (package.FirstRelationship("/", "officeDocument")?.Target is { } main && package.Exists(main))
             package.ReadBytes(main, keep: true);

@@ -612,47 +612,84 @@ public sealed partial class ModelReader(DocumentContext context)
     /// Begins to read the body in portions, as Body reads it whole: the list its blocks go into, which ReadBody fills,
     /// complete once it is done (the paragraphs whose marks are hidden joined, see JoinHidden). With
     /// <paramref name="children"/> only so many of its first children (for its first pages), those after the last
-    /// section break among them in the section the next break ends.
+    /// section break among them in the section the next break ends. <paramref name="bitByBit"/> leaves the sections of
+    /// its children to ReadBody too (see Sectioning).
     /// </summary>
-    public List<Block> BeginBody(int children = int.MaxValue)
+    public List<Block> BeginBody(int children = int.MaxValue, bool bitByBit = false)
     {
         var body = context.Document.Root.Child("body");
         var blocks = new List<Block>();
         counter = new ListCounter(context.Numbering);
         currentPart = context.MainPart;
         bodyReading = null;
+        sections?.Dispose();
+        sections = null;
         if (body != null)
         {
-            // Each section's properties stand at its end.
             bodyElement = body;
-            var pending = new List<XElement>();
-            var index = 0;
-            XElement? before = null;
-            childBefore.Clear();
-            foreach (var e in body.Elements().Take(children))
-            {
-                childBefore[e] = before;
-                before = e;
-                pending.Add(e);
-                if (e.Name == Wml.W + "p" && e.Child("pPr").Child("sectPr") is { } properties)
-                {
-                    foreach (var p in pending)
-                        sectionOf[p] = (properties, index);
-                    pending.Clear();
-                    index++;
-                }
-            }
-            // Where the body is still being read (see DocumentContext.Loading), the section ahead of its children so far.
-            var last = (children < int.MaxValue ? body.Elements().Skip(children) : []).Select(e => e.Name == Wml.W + "p" ? e.Child("pPr").Child("sectPr") : null)
-                .FirstOrDefault(properties => properties != null) ?? body.Child("sectPr") ?? context.SectionAhead();
-            foreach (var p in pending)
-                sectionOf[p] = (last, index);
-            currentSection = sectionOf.Count > 0 ? sectionOf[body.Elements().First()] : (body.Child("sectPr"), 0);
-            BodyChildren = childBefore.Count;
-            bodyReading = (body, blocks, JoinedFields(SplitTables(body.Elements().Take(children))).GetEnumerator(), null);
+            sections = Sections(body, blocks, children, bitByBit).GetEnumerator();
+            if (!bitByBit)
+                ReadBody(int.MaxValue, sectionsOnly: true);
         }
         return blocks;
     }
+
+    /// <summary>
+    /// The section of each child of the body (each section's properties stand at its end), bit by bit which fields end in it
+    /// (see Unclosed: a walk over all of it when a first field comes, 90 ms in science5k), then the body ready to be read, a
+    /// step for each child: as many steps as ReadBody is given while it goes on.
+    /// </summary>
+    IEnumerable<bool> Sections(XElement body, List<Block> blocks, int children, bool bitByBit)
+    {
+        var pending = new List<XElement>();
+        var index = 0;
+        XElement? before = null;
+        childBefore.Clear();
+        foreach (var e in body.Elements().Take(children))
+        {
+            childBefore[e] = before;
+            before = e;
+            pending.Add(e);
+            if (e.Name == Wml.W + "p" && e.Child("pPr").Child("sectPr") is { } properties)
+            {
+                foreach (var p in pending)
+                {
+                    sectionOf[p] = (properties, index);
+                    yield return true;
+                }
+                pending.Clear();
+                index++;
+            }
+            yield return true;
+        }
+        // Where the body is still being read (see DocumentContext.Loading), the section ahead of its children so far.
+        var last = (children < int.MaxValue ? body.Elements().Skip(children) : []).Select(e => e.Name == Wml.W + "p" ? e.Child("pPr").Child("sectPr") : null)
+            .FirstOrDefault(properties => properties != null) ?? body.Child("sectPr") ?? context.SectionAhead();
+        foreach (var p in pending)
+        {
+            sectionOf[p] = (last, index);
+            yield return true;
+        }
+        if (bitByBit)
+        {
+            var open = new Stack<XElement>();
+            foreach (var e in body.Elements())
+            {
+                FieldsIn(e, open);
+                yield return true;
+            }
+            unclosed[body] = new HashSet<XElement>(open, ReferenceEqualityComparer.Instance);
+        }
+        currentSection = sectionOf.Count > 0 ? sectionOf[body.Elements().First()] : (body.Child("sectPr"), 0);
+        BodyChildren = childBefore.Count;
+        bodyReading = (body, blocks, JoinedFields(SplitTables(body.Elements().Take(children))).GetEnumerator(), null);
+    }
+
+    /// <summary>The sections being found (see Sections), null where the body is ready to be read or read.</summary>
+    IEnumerator<bool>? sections;
+
+    /// <summary>Whether all of the body is read (see BeginBody).</summary>
+    public bool BodyRead => sections == null && bodyReading == null;
 
     /// <summary>
     /// The body being read in portions (see BeginBody): its element, its blocks so far, the children left to read (as
@@ -664,9 +701,24 @@ public sealed partial class ModelReader(DocumentContext context)
     public int BodyChildren { get; private set; }
 
     /// <summary>Reads so many more children of the body (see BeginBody); whether any are left.</summary>
-    public bool ReadBody(int children)
+    public bool ReadBody(int children) => ReadBody(children, sectionsOnly: false);
+
+    bool ReadBody(int children, bool sectionsOnly)
     {
-        if (bodyReading is not var (body, blocks, rest, pending))
+        if (sections is { } finding)
+        {
+            for (var k = 0; k < children; k++)
+            {
+                if (!finding.MoveNext())
+                {
+                    finding.Dispose();
+                    sections = null;
+                    break;
+                }
+            }
+            return true;
+        }
+        if (sectionsOnly || bodyReading is not var (body, blocks, rest, pending))
             return false;
         for (var k = 0; k < children; k++)
         {
@@ -931,9 +983,21 @@ public sealed partial class ModelReader(DocumentContext context)
     public Dictionary<string, List<Block>> Notes(bool endnotes)
     {
         var notes = new Dictionary<string, List<Block>>(StringComparer.Ordinal);
+        foreach (var _ in NotesBitByBit(endnotes, notes))
+        {
+        }
+        return notes;
+    }
+
+    /// <summary>
+    /// The notes read into a dictionary a step at a time, a long document's before its pages are laid out from the first (see
+    /// WordDocument.NotesAhead), as many as there are; the reader stands as it stood between two steps.
+    /// </summary>
+    public IEnumerable<bool> NotesBitByBit(bool endnotes, Dictionary<string, List<Block>> notes)
+    {
         var part = context.Package.FirstRelationship(context.MainPart, endnotes ? "endnotes" : "footnotes")?.Target;
         if (part == null || !context.Package.Exists(part) || context.Load(part).Root is not { } root)
-            return notes;
+            yield break;
         // Read anew after a change (see NotesMoved): their steps as this reading asks them.
         numberSteps.Remove(part);
         var (savedCounter, savedPart) = (counter, currentPart);
@@ -981,6 +1045,11 @@ public sealed partial class ModelReader(DocumentContext context)
                     .Elements(Wml.W + (endnotes ? "endnote" : "footnote")).Any(e => e.Attr("id") == id) != true)
                 continue;
             notes[type == "normal" ? id : type] = blocks;
+            var (ownCounter, ownPart) = (counter, currentPart);
+            (counter, currentPart, noteMark) = (savedCounter, savedPart, null);
+            yield return true;
+            (savedCounter, savedPart) = (counter, currentPart);
+            (counter, currentPart) = (ownCounter, ownPart);
         }
         // A notes part without separators has Word's own (docx/external/libreoffice/extras-ooxmlexport/tdf152203: notes
         // of type normal alone, a 144 pt line above them on every page).
@@ -999,7 +1068,6 @@ public sealed partial class ModelReader(DocumentContext context)
         }
         noteMark = null;
         (counter, currentPart) = (savedCounter, savedPart);
-        return notes;
     }
 
     /// <summary>
@@ -1725,31 +1793,31 @@ public sealed partial class ModelReader(DocumentContext context)
             return false;
         if (!unclosed.TryGetValue(story, out var open))
         {
-            open = new HashSet<XElement>(ReferenceEqualityComparer.Instance);
             var stack = new Stack<XElement>();
-            void Walk(XElement element)
-            {
-                foreach (var child in element.Elements())
-                {
-                    if (child.Name == w + "txbxContent")
-                        continue;
-                    if (child.Name == w + "fldChar")
-                    {
-                        if ((string?)child.Attribute(w + "fldCharType") == "begin")
-                            stack.Push(child);
-                        else if ((string?)child.Attribute(w + "fldCharType") == "end" && stack.Count > 0)
-                            stack.Pop();
-                        continue;
-                    }
-                    Walk(child);
-                }
-            }
-            Walk(story);
-            foreach (var left in stack)
-                open.Add(left);
-            unclosed[story] = open;
+            FieldsIn(story, stack);
+            unclosed[story] = open = new HashSet<XElement>(stack, ReferenceEqualityComparer.Instance);
         }
         return open.Contains(begin);
+    }
+
+    /// <summary>The field begin characters in an element, not those of text boxes, put on a stack, each end character taking one away (see Unclosed).</summary>
+    static void FieldsIn(XElement element, Stack<XElement> stack)
+    {
+        var w = Wml.W;
+        foreach (var child in element.Elements())
+        {
+            if (child.Name == w + "txbxContent")
+                continue;
+            if (child.Name == w + "fldChar")
+            {
+                if ((string?)child.Attribute(w + "fldCharType") == "begin")
+                    stack.Push(child);
+                else if ((string?)child.Attribute(w + "fldCharType") == "end" && stack.Count > 0)
+                    stack.Pop();
+                continue;
+            }
+            FieldsIn(child, stack);
+        }
     }
 
     ParagraphBlock Paragraph(XElement p, bool number = true)

@@ -470,7 +470,7 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>Slides are drawn whole after each change: none are left as they were (see IEditableDocument.LayingOut).</summary>
     public bool LayingOut => false;
 
-    public bool LayOut(int pages = 4) => false;
+    public bool LayOut(int pages = 0) => false;
 
     /// <summary>Writes the presentation as PPTX (see OpcPackage.Save).</summary>
     public void Save(Stream output) => package.Save(output);

@@ -172,8 +172,9 @@ change records) were measured in Word and PowerPoint through COM, as the renderi
 A Word document of thousands of pages opens with its first pages at once and grows from there:
 
 - The main part's body is read in portions (`Docx/BodyStream`), the model of the first children before the rest.
-- `Layout/Paginator` lays out the first pages and the rest in slices (`WordDocument.LayOut`, while `LayingOut`), as an
-  editor does while it waits for input, leaving checkpoints: the paginator's state where pages begin. After a change it
+- `Layout/Paginator` lays out the first pages and the rest in slices of about 10 ms (`WordDocument.LayOut`, while
+  `LayingOut`), as an editor does while it waits for input, leaving checkpoints: the paginator's state where pages begin.
+  What comes before the pages takes such slices too: the XML, the sections, the blocks, the notes. After a change it
   lays out again from the last checkpoint before it (`Paginator.Relayout`) and stops where a page begins as it began
   before (`SameFlow`); where a change moves everything after it on, it lays out a few pages and leaves the rest to the
   slices. Fields that read the pages (a table of contents) are laid out again once their pages are known.

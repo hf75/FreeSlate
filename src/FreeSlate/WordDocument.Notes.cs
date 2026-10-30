@@ -51,6 +51,38 @@ public sealed partial class WordDocument
     bool notesPending;
     readonly HashSet<NoteKey> notesChanged = [];
 
+    /// <summary>
+    /// The notes being read bit by bit before a long document's pages are laid out from the first (see Step), which their
+    /// pages want first; what they read as, once read (see ReadNotes); and whether those read so wait for the layout, which
+    /// reads them otherwise (see Scenes).
+    /// </summary>
+    IEnumerator<bool>? notesAhead;
+    (Dictionary<string, List<Block>> Footnotes, Dictionary<string, List<Block>> Endnotes)? readAhead;
+    bool notesFresh;
+
+    /// <summary>The notes read on for the time of a slice (see notesAhead).</summary>
+    void NotesAhead()
+    {
+        IEnumerable<bool> Reading()
+        {
+            var (footnotes, endnotes) = (new Dictionary<string, List<Block>>(StringComparer.Ordinal), new Dictionary<string, List<Block>>(StringComparer.Ordinal));
+            foreach (var note in reader.NotesBitByBit(false, footnotes))
+                yield return note;
+            foreach (var note in reader.NotesBitByBit(true, endnotes))
+                yield return note;
+            readAhead = (footnotes, endnotes);
+        }
+        notesAhead ??= Reading().GetEnumerator();
+        var clock = System.Diagnostics.Stopwatch.GetTimestamp();
+        while (notesAhead.MoveNext())
+        {
+            if (System.Diagnostics.Stopwatch.GetElapsedTime(clock).TotalMilliseconds >= SliceTime)
+                return;
+        }
+        notesAhead.Dispose();
+        notesAhead = null;
+    }
+
     /// <summary>The notes read where they are not known or read otherwise now (see NotesChanged).</summary>
     void KnowNotes()
     {
@@ -65,8 +97,8 @@ public sealed partial class WordDocument
     /// </summary>
     void ReadNotes()
     {
-        var footnotes = reader.Notes(endnotes: false);
-        var endnoteParts = reader.Notes(endnotes: true);
+        var (footnotes, endnoteParts) = readAhead ?? (reader.Notes(endnotes: false), reader.Notes(endnotes: true));
+        readAhead = null;
         var (wasRead, wasXml) = (notesRead, notesXml);
         (notesRead, notesXml) = ([], []);
         foreach (var (endnote, notes) in new[] { (false, footnotes), (true, endnoteParts) })

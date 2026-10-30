@@ -37,8 +37,11 @@ public interface IEditableDocument : IDisposable
     /// </summary>
     bool LayingOut { get; }
 
-    /// <summary>Lays out about so many more of the pages a change left as they were (see LayingOut); whether more are left.</summary>
-    bool LayOut(int pages = 4);
+    /// <summary>
+    /// Lays out about so many more of the pages a change left as they were (see LayingOut), or as many as about 10 ms give
+    /// time for, for input to come between; whether more are left.
+    /// </summary>
+    bool LayOut(int pages = 0);
 
     /// <summary>
     /// Whether the document changes a paragraph of that id: in a Word document those of its body, of its footnotes and
