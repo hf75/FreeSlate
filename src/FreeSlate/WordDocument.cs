@@ -374,21 +374,27 @@ public sealed partial class WordDocument : IEditableDocument
     /// The range holds what cannot be changed so (see TextEdits), or the paragraph would not read so afterwards (the place
     /// is in what the document computes, such as a table of contents, or keeps, such as an object); nothing changes.
     /// </exception>
-    public void Replace(int paragraph, int offset, int length, string text)
+    public void Replace(int paragraph, int offset, int length, string text) => Replace(paragraph, offset, length, text, onward: false);
+
+    public void TakePart(int paragraph, int offset, int length) => Replace(paragraph, offset, length, "", onward: true);
+
+    void Replace(int paragraph, int offset, int length, string text, bool onward)
     {
         var (p, top) = Find(paragraph);
         // Text put into a content control's placeholder takes its place, characters taken away there leave it, and a range
-        // reaching into it from outside leaves it (see TextEdits.Placeholder).
-        var shown = TextEdits.Placeholder(p, offset, length);
+        // reaching into it from outside leaves it (see TextEdits.Placeholder); a range holding it whole takes it along (see TextEdits.Held).
+        var shown = TextEdits.Placeholder(p, offset, length, onward);
         if (shown is var (_, _, last) && text.Length == 0 && offset + length <= last)
             return;
         if (shown is var (control, _, _))
             ShownAlike(control);
+        foreach (var held in TextEdits.Held(p, offset, length, onward))
+            ShownAlike(held);
         var expected = markup ? null : ParagraphText.Of(p) is var now && offset - p.TextOffset is var at and >= 0 && at + length <= now.Length
             ? shown is var (_, start, end) ? now.Remove(start - p.TextOffset, end - start).Insert(start - p.TextOffset, text)
-                : now.Remove(at, length).Insert(at, TextEdits.Kept(p, offset, length)).Insert(at, text)
+                : now.Remove(at, length).Insert(at, TextEdits.Kept(p, offset, length, onward)).Insert(at, text)
             : null;
-        Change(top, top, (stretch, tracking) => TextEdits.Replace(stretch, p, offset, length, text, tracking));
+        Change(top, top, (stretch, tracking) => TextEdits.Replace(stretch, p, offset, length, text, tracking, onward));
         if (expected != null && !Reads(paragraph, expected))
             throw Refused("The paragraph would not read so: the place is in what the document computes or keeps.");
     }

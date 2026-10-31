@@ -492,7 +492,7 @@ static class TextEdits
     /// where the place is, with the format of the run before it; within text the document computes (a date, a field's
     /// result) it goes nowhere. Returns the stretch's new text.
     /// </summary>
-    public static string Replace(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking? tracking = null)
+    public static string Replace(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking? tracking = null, bool onward = false)
     {
         if (offset < paragraph.TextOffset || length < 0 || offset + length > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The range is not in the paragraph's text.");
@@ -501,14 +501,15 @@ static class TextEdits
         Between(paragraph, offset);
         Between(paragraph, offset + length);
         // Typing into what a content control shows as its placeholder replaces it, deleting there leaves it (see Placeholder).
-        if (Placeholder(paragraph, offset, length) is var (control, _, last))
+        if (Placeholder(paragraph, offset, length, onward) is var (control, _, last))
         {
             if (offset + length > last)
                 throw new NotSupportedException("The range reaches out of a content control's placeholder.");
             return text.Length == 0 ? stretch.Written([]) : ReplacePlaceholder(stretch, control, text, tracking);
         }
+        var held = Held(paragraph, offset, length, onward).Select(c => stretch.Find(c) ?? throw new NotSupportedException("The content control is not where it was read.")).ToList();
         if (tracking != null)
-            return ReplaceTracked(stretch, paragraph, offset, length, text, tracking);
+            return ReplaceTracked(stretch, paragraph, offset, length, text, tracking, held);
         var parts = Parts(stretch, paragraph);
         var end = offset + length;
         var changed = new Dictionary<XElement, string>();
@@ -660,6 +661,11 @@ static class TextEdits
         }
         if (target == null && text.Length > 0 && beside == null)
             paragraphs.Add(NewRun(parts, before, after, text));
+        foreach (var sdt in held)
+        {
+            paragraphs.Add(ParagraphOf(sdt));
+            Gone(sdt, parts);
+        }
         return stretch.Written(Outermost(paragraphs).Select(p => (p, (IEnumerable<XElement>)[p])));
     }
 
@@ -671,17 +677,47 @@ static class TextEdits
     /// its third character, at its start or its end, or over its characters from the third on, leaves "City: X", the X
     /// in the control; a character of it deleted, or a selection in it, leaves it as it was; X typed over the space before
     /// it and its first three characters leaves "City:X" and the placeholder). A range goes into it where it begins in it
-    /// (from its start on), an insertion where it stands after its first character up to its end, or at its start where
-    /// no text before it goes on there (see Continued). Null where the range goes into none.
+    /// (from its start on, not from there past its end: see Held), an insertion where it stands after its first character up to
+    /// its end, or at its start where no text before it goes on there (see Continued). Null where the range goes into none.
     /// </summary>
-    internal static (XElement Control, int Start, int End)? Placeholder(ParagraphBlock paragraph, int offset, int length)
+    internal static (XElement Control, int Start, int End)? Placeholder(ParagraphBlock paragraph, int offset, int length, bool onward = false)
     {
         foreach (var (control, s, e) in Placeholders(paragraph))
         {
-            if (length > 0 ? s <= offset && offset < e : s < offset && offset <= e || offset == s && !Continued(paragraph, s))
+            if (length > 0 ? s <= offset && offset < e && !(offset == s && (onward || offset + length > e)) : s < offset && offset <= e || offset == s && !Continued(paragraph, s))
                 return (control, s, e);
         }
         return null;
+    }
+
+    /// <summary>
+    /// The content controls showing placeholders that a range of a paragraph's text holds whole, which go with it: from before their
+    /// beginning to their end or past it, from their beginning past their end; from their beginning to their end too where the selection
+    /// goes on in other paragraphs (<paramref name="onward"/>). Measured in Word 365 by COM, scratchpad b9/ph: of "Aa ", a control and " bb cc", X typed
+    /// over "a ", the control and " b" leaves "AXb cc" and no control, a selection from a control alone in its paragraph into
+    /// the next likewise; with changes tracked the control stays emptied between the marks of its deletion (see ControlDeleted).
+    /// Our places have one where Word has two, before a control and in it, at each of its edges: taken as before and behind it here. Not locked
+    /// ones, nor a control around the paragraph.
+    /// </summary>
+    internal static List<XElement> Held(ParagraphBlock paragraph, int offset, int length, bool onward)
+    {
+        if (length == 0 || paragraph.Placeholder != null)
+            return [];
+        var end = offset + length;
+        return [.. Placeholders(paragraph).Where(p => p.Start >= offset && (p.End < end || p.End == end && (onward || p.Start > offset))
+            && p.Control.Element(p.Control.Name.Namespace + "sdtPr")?.Element(p.Control.Name.Namespace + "lock") == null).Select(p => p.Control)];
+    }
+
+    /// <summary>A content control showing its placeholder taken away as a tracked change, as Word leaves it (see Held): empty, between the marks of its deletion.</summary>
+    static void ControlDeleted(XElement sdt, Tracking tracking)
+    {
+        var w = sdt.Name.Namespace;
+        XElement End(XElement start) => new(w + "customXmlDelRangeEnd", new XAttribute(w + "id", start.Attribute(w + "id")!.Value));
+        var (first, second) = (tracking.Mark(w, "customXmlDelRangeStart"), tracking.Mark(w, "customXmlDelRangeStart"));
+        sdt.Element(w + "sdtPr")?.Element(w + "showingPlcHdr")?.Remove();
+        sdt.AddBeforeSelf(first);
+        sdt.AddAfterSelf(End(second));
+        sdt.Element(w + "sdtContent")?.ReplaceNodes(End(first), second);
     }
 
     /// <summary>
@@ -728,14 +764,15 @@ static class TextEdits
         Placeholders(paragraph).FirstOrDefault(p => Math.Max(p.Start, offset) < Math.Min(p.End, offset + length)) is { Control: not null } reached
             ? (reached.Start, reached.End) : null;
 
-    /// <summary>The text of the placeholders a range of a paragraph's text reaches into from outside, which replacing the range leaves (see Replace).</summary>
-    internal static string Kept(ParagraphBlock paragraph, int offset, int length)
+    /// <summary>The text of the placeholders a range of a paragraph's text reaches into from outside, which replacing the range leaves (see Replace), not those it holds whole (see Held).</summary>
+    internal static string Kept(ParagraphBlock paragraph, int offset, int length, bool onward = false)
     {
         var text = ParagraphText.Of(paragraph);
         var kept = new System.Text.StringBuilder();
-        foreach (var (_, s, e) in Placeholders(paragraph))
+        var held = Held(paragraph, offset, length, onward);
+        foreach (var (control, s, e) in Placeholders(paragraph))
         {
-            if (Math.Max(s, offset) < Math.Min(e, offset + length))
+            if (Math.Max(s, offset) < Math.Min(e, offset + length) && !held.Contains(control))
                 kept.Append(text, Math.Max(s, offset) - paragraph.TextOffset, Math.Min(e, offset + length) - Math.Max(s, offset));
         }
         return kept.ToString();
@@ -1628,6 +1665,9 @@ static class TextEdits
             DeletedRow(row, tracking);
         foreach (var p in element.DescendantsAndSelf(w + "p").Where(p => !InTextBox(p)).ToList())
         {
+            // A content control showing its placeholder goes as a range holding it takes it (see Held).
+            foreach (var sdt in p.Descendants(w + "sdt").Where(c => ParagraphOf(c) == p && c.Element(w + "sdtPr")?.Element(w + "showingPlcHdr") != null).ToList())
+                ControlDeleted(sdt, tracking);
             // An equation's runs (m:r) are no w:r, and it would stay: refused, as Replace refuses one in its range (Word puts
             // a w:del into each m:r, measured in Word 365 by COM; the equation emptied so is not left out yet, found with
             // SessionCheck on docx/generated/equations and powertools/WC/WC023-Table-4-Row-Image-After-Delete-1-Row).
@@ -2558,7 +2598,7 @@ static class TextEdits
     /// (each run of it in a w:del, its w:t as w:delText; what the author inserted goes away outright), the new text
     /// inserted after it in a w:ins, in the format of the text before it, or into the author's insertion it continues.
     /// </summary>
-    static string ReplaceTracked(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking tracking)
+    static string ReplaceTracked(Stretch stretch, ParagraphBlock paragraph, int offset, int length, string text, Tracking tracking, List<XElement> held)
     {
         var parts = Parts(stretch, paragraph);
         var end = offset + length;
@@ -2708,6 +2748,11 @@ static class TextEdits
         }
         foreach (var run in deleted)
             Deleted(run, tracking);
+        foreach (var sdt in held)
+        {
+            touched.Add(PartOf(sdt, parts));
+            ControlDeleted(sdt, tracking);
+        }
         return stretch.Written(parts.Where(touched.Contains).Select(p => (p, (IEnumerable<XElement>)[p])));
     }
 

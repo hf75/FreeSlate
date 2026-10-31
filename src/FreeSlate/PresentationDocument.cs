@@ -188,6 +188,8 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// over them does (see SlideEdits).
     /// </summary>
     /// <exception cref="NotSupportedException">The paragraph cannot be changed in its XML (see SlideEdits).</exception>
+    public void TakePart(int paragraph, int offset, int length) => Replace(paragraph, offset, length, "");
+
     public void Replace(int paragraph, int offset, int length, string text) =>
         Change(paragraph, false, (p, _, body) =>
         {

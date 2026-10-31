@@ -77,6 +77,12 @@ public interface IEditableDocument : IDisposable
     void Replace(int paragraph, int offset, int length, string text);
 
     /// <summary>
+    /// Takes away the part of a paragraph's text that a selection going on in other paragraphs holds: a placeholder of a content
+    /// control it holds up to its edge goes too (see WordDocument.Replace).
+    /// </summary>
+    void TakePart(int paragraph, int offset, int length);
+
+    /// <summary>
     /// The text a field shows where the character at a place of a paragraph's text is one, else null: Word's smart cut goes by
     /// what it shows (see EditSession.Tidied).
     /// </summary>

@@ -522,7 +522,7 @@ public sealed class EditSession(IEditableDocument document)
         var apart = !typing && !tracked && document.KeepsMarks && start.Offset > 0 && start.Offset < length && !(end.Offset == 0 && document.Before(end.Paragraph) == null);
         var spaced = !typing && start.Offset == length && length > 0 && (end.Offset > 0 || between.Count > 0);
         if (end.Offset > 0)
-            document.Replace(end.Paragraph, 0, end.Offset, "");
+            document.TakePart(end.Paragraph, 0, end.Offset);
         // What stands between them, whole tables too (the document refuses where the ends are not of one body or cell).
         if (between.Count > 0)
             document.RemoveBetween(start.Paragraph, end.Paragraph);
@@ -542,7 +542,7 @@ public sealed class EditSession(IEditableDocument document)
         else
         {
             if (length > start.Offset)
-                document.Replace(start.Paragraph, start.Offset, length - start.Offset, "");
+                document.TakePart(start.Paragraph, start.Offset, length - start.Offset);
             if (apart)
             {
                 if (tidy && fromWord && toWord && document.After(start.Paragraph) is { } following)
