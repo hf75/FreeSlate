@@ -63,6 +63,18 @@ public sealed partial class WordDocument
         }
     }
 
+    public bool OfOneList(int first, int last)
+    {
+        try
+        {
+            return Apart(first, last) is { FirstCell: null, LastCell: null };
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>A selection from a paragraph into a table after it taken away (see RemoveAcross).</summary>
     (int, int) Into(int first, int offset, int last, int lastOffset, bool typing)
     {

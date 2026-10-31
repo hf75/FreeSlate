@@ -177,7 +177,7 @@ public sealed class EditSession(IEditableDocument document)
     void Put(string text, bool typing)
     {
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
-        Act(typing && lines.Length == 1 && !Selecting, () =>
+        ActKeepingPlaces(typing && lines.Length == 1 && !Selecting, () =>
         {
             // Typed into what a content control shows as its placeholder (the cursor in it, or a selection within it), the
             // text takes its whole place; over a selection reaching into one from outside, the selection's text around it
@@ -195,12 +195,27 @@ public sealed class EditSession(IEditableDocument document)
                 else if (to > from && (document.Tracks || document.KeepsMarks && !document.Seams(Caret.Paragraph).Any(s => s > from && s < to)))
                     shown = (from, to);
             }
-            var at = shown is var (begin, _) ? Caret with { Offset = begin } : DeleteSelection(typing: true);
+            var (firstPut, standIn, markStays) = (false, default(TextPlace?), false);
+            TextPlace at;
+            if (shown is var (begin, _))
+                at = Caret with { Offset = begin };
+            else
+            {
+                (firstPut, standIn, markStays) = OverParagraphs(lines[0], lines.Length > 1);
+                at = DeleteSelection(typing: true);
+            }
             for (var k = 0; k < lines.Length; k++)
             {
                 if (k > 0)
-                    at = new TextPlace(document.Split(at.Paragraph, at.Offset), 0);
-                if (lines[k].Length > 0)
+                {
+                    at = new TextPlace(k == 1 && markStays && document.Next(at.Paragraph) is { } next ? next : document.Split(at.Paragraph, at.Offset), 0);
+                    if (standIn is { } stood)
+                    {
+                        document.Replace(stood.Paragraph, stood.Offset, 1, "");
+                        standIn = null;
+                    }
+                }
+                if (lines[k].Length > 0 && (k > 0 || !firstPut))
                 {
                     var (offset, length) = k == 0 && shown is var (s, e) ? (s, e - s) : (at.Offset, 0);
                     document.Replace(at.Paragraph, offset, length, lines[k]);
@@ -211,6 +226,49 @@ public sealed class EditSession(IEditableDocument document)
             }
             return (at, at);
         });
+    }
+
+    /// <summary>
+    /// Before a selection is typed over, without changes tracked: across paragraphs the text takes the format of the first character
+    /// selected as over a selection in one paragraph (measured in Word 365 by COM, scratchpad b9/mp: of a bold paragraph's whole text
+    /// and part of a plain one's, X bold; at a format's boundary in a paragraph that of the text after it), so it goes in its place first, the
+    /// selection then the rest; for a line break alone a stand-in, whose format the first half's mark takes (see TextEdits.Split), over
+    /// a selection in one paragraph too. Where the
+    /// selection ends where a paragraph begins, the mark before that stays (see DeleteSelection), which is the line break then: Word
+    /// leaves no paragraph more (of whole paragraphs selected, one empty one; so with changes tracked too). Not where it begins at
+    /// its paragraph's end: Word goes by the text selected after the mark then, which this does not. Returns whether the text
+    /// stands, the stand-in's place and whether the mark stays.
+    /// </summary>
+    (bool Put, TextPlace? StandIn, bool MarkStays) OverParagraphs(string first, bool more)
+    {
+        if (!Selecting || !document.KeepsMarks)
+            return default;
+        var (from, to, _) = Ordered();
+        if (from.Paragraph == to.Paragraph)
+        {
+            // (Over one, the text goes in its place in one change, see Put.)
+            if (first.Length > 0 || !more || document.Tracks || to.Offset == from.Offset || !document.PlainText(from.Paragraph, from.Offset) || !document.PlainText(to.Paragraph, to.Offset - 1)
+                || document.Placeholder(from.Paragraph, from.Offset, to.Offset - from.Offset) != null || document.Seams(from.Paragraph).Any(s => s > from.Offset && s < to.Offset))
+                return default;
+            document.Replace(from.Paragraph, from.Offset, to.Offset - from.Offset, "x");
+            Caret = Anchor = new TextPlace(from.Paragraph, from.Offset + 1);
+            return (false, from, false);
+        }
+        // (Out of or into a table the rows reached into go whole, the first paragraph with them: see RemoveAcross.)
+        if (!document.OfOneList(from.Paragraph, to.Paragraph))
+            return default;
+        var markStays = first.Length == 0 && more && to.Offset == 0 && document.Text(to.Paragraph).Length > 0;
+        var head = document.Text(from.Paragraph);
+        // (Only where that character is text of the paragraph's own: in a control or a field the text would stay in it and the
+        // rest of the selection take it along or go round it; a placeholder the selection reaches into stays until text is put there.)
+        if (document.Tracks || markStays || from.Offset >= head.Length || !document.PlainText(from.Paragraph, from.Offset)
+            || document.Placeholder(from.Paragraph, from.Offset, head.Length - from.Offset) != null
+            || document.OverFields(from.Paragraph, from.Offset + 1, to.Paragraph, to.Offset) is var (begins, at, _, _) && (begins, at) != (from.Paragraph, from.Offset + 1))
+            return (false, null, markStays);
+        var put = first.Length > 0 ? first : "x";
+        document.Replace(from.Paragraph, from.Offset, After(head, from.Offset), put);
+        (Anchor, Caret) = (new TextPlace(from.Paragraph, from.Offset + put.Length), to);
+        return (first.Length > 0, first.Length > 0 ? null : from, false);
     }
 
     /// <summary>Splits the paragraph at the cursor in place of the selection (Enter).</summary>
@@ -429,6 +487,21 @@ public sealed class EditSession(IEditableDocument document)
     /// step where it changed something (typing added to the last step where it goes on from it); where the document
     /// refuses a change, the changes made so far are undone and the refusal goes on to the caller.
     /// </summary>
+    /// <summary>As Act, for a change that moves the selection on its way: a refusal leaves it where it was.</summary>
+    void ActKeepingPlaces(bool typing, Func<(TextPlace Caret, TextPlace Anchor)> change)
+    {
+        var (caret, anchor) = (Caret, Anchor);
+        try
+        {
+            Act(typing, change);
+        }
+        catch
+        {
+            (Caret, Anchor) = (caret, anchor);
+            throw;
+        }
+    }
+
     void Act(bool typing, Func<(TextPlace Caret, TextPlace Anchor)> change)
     {
         if (!document.Contains(Caret.Paragraph) || !document.Contains(Anchor.Paragraph))

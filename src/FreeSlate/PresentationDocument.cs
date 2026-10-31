@@ -329,6 +329,10 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>A slide's paragraphs are walked within one shape's or table cell's text (see Next): no selection reaches over two (see IEditableDocument.RemoveAcross).</summary>
     public (int Paragraph, int Offset)? RemoveAcross(int first, int offset, int last, int lastOffset, bool typing) => null;
 
+    public bool OfOneList(int first, int last) => true;
+
+    public bool PlainText(int paragraph, int offset) => true;
+
     /// <summary>A slide's text is copied as text alone (see IEditableDocument.Copy).</summary>
     public IReadOnlyList<string>? Copy(int first, int offset, int last, int lastOffset) => null;
 

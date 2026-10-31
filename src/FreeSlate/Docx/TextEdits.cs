@@ -168,6 +168,21 @@ static class TextEdits
         return offset;
     }
 
+    /// <summary>Whether the character at a place of a paragraph's text is text of the paragraph's own: in no content control, link or field, not something else a run holds.</summary>
+    public static bool PlainText(ParagraphBlock paragraph, int offset)
+    {
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var end = at + ParagraphText.Length(inline);
+            if (at <= offset && offset < end)
+                return inline is TextInline { Xml: { Name.LocalName: "t" } text } && !Shown(paragraph, i => i.Xml).Any(f => f.Start <= offset && offset < f.End)
+                    && text.Ancestors().TakeWhile(a => a.Name.LocalName != "p").All(a => a.Name.LocalName is "r" or "ins" or "moveTo" or "smartTag" or "customXml" or "bdo" or "dir");
+            at = end;
+        }
+        return false;
+    }
+
     /// <summary>The text saved as the result of a field that shows as the character at a place of a paragraph's text (a field the layout computes, see FieldInline), null where none does.</summary>
     public static string? FieldAt(ParagraphBlock paragraph, int offset)
     {

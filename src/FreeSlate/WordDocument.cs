@@ -498,6 +498,8 @@ public sealed partial class WordDocument : IEditableDocument
 
     public int Standing(int paragraph, int offset) => TextEdits.Standing(Find(paragraph).Paragraph, offset);
 
+    public bool PlainText(int paragraph, int offset) => TextEdits.PlainText(Find(paragraph).Paragraph, offset);
+
     /// <summary>
     /// A selection from a place to a later one, brought out over the links and fields it holds one end of (measured in Word 365 by
     /// COM, scratchpad b9/partial.vbs, keys2.vbs: Word's selection goes so as soon as it is made: from before a link or a

@@ -206,6 +206,12 @@ public interface IEditableDocument : IDisposable
     /// </summary>
     (int Paragraph, int Offset)? RemoveAcross(int first, int offset, int last, int lastOffset, bool typing);
 
+    /// <summary>Whether the character at a place of a paragraph's text is text of the paragraph's own: in no content control, link or field, not something else a run holds.</summary>
+    bool PlainText(int paragraph, int offset);
+
+    /// <summary>Whether two paragraphs are of one body, table cell, text box or shape, which taking a selection from the first to the second leaves the first of (see RemoveAcross).</summary>
+    bool OfOneList(int first, int last);
+
     /// <summary>
     /// The selection from a place to a later one in the document's own markup, as copying it keeps it for pasting with its
     /// formatting (see Paste): in a Word document each paragraph it reaches into as a w:p with its properties and what of
