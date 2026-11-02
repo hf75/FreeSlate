@@ -243,6 +243,9 @@ public sealed partial class WordDocument : IEditableDocument
     /// </summary>
     public bool Contains(int paragraph) => Found(paragraph) != null;
 
+    /// <summary>The first paragraph of the body, of the first cell where a table begins it (see IEditableDocument.Beginning).</summary>
+    public int? Beginning => Blocks.Select(b => b is ParagraphBlock paragraph ? paragraph.Id : Within(b).Cast<int?>().FirstOrDefault()).FirstOrDefault(id => id != null);
+
     /// <summary>The word a place stands inside, as Word's formatting buttons take it (see Editing.Words).</summary>
     public (int Offset, int Length)? WordAt(int paragraph, int offset)
     {

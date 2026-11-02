@@ -54,6 +54,13 @@ public interface IEditableDocument : IDisposable
     string Text(int paragraph);
 
     /// <summary>
+    /// The paragraph the text begins with, where a cursor starts: in a Word document the first of its body, of the first
+    /// cell where a table begins it, not of a header; on slides the first of the first shape or table cell with text; null
+    /// where none is.
+    /// </summary>
+    int? Beginning { get; }
+
+    /// <summary>
     /// The paragraph just before or after a paragraph in its body, table cell, text box or shape, or null where none is
     /// (at its edge, or where a table stands between).
     /// </summary>

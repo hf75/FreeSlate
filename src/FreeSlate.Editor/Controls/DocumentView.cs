@@ -117,14 +117,23 @@ public sealed class DocumentView : Control
     /// <summary>The document came to hold something, or nothing any more.</summary>
     public event Action? IsEmptyChanged;
 
-    /// <summary>Shows the session's document, the cursor at its beginning.</summary>
+    /// <summary>Shows the session's document from its top, the cursor at the beginning of its text; the page's first place may be a header's.</summary>
     public void Open(EditSession editing)
     {
         session = editing;
         scenes = editing.Document.Scenes();
         Arrange();
-        (caret, anchor) = ((0, 0), (0, 0));
-        Moved();
+        if (scroller != null)
+            scroller.Offset = default;
+        (caret, anchor, lineEnd) = ((0, 0), (0, 0), false);
+        if (editing.Document.Beginning is { } first && Locate(new TextPlace(first, 0), 0) != null)
+        {
+            editing.Place(new TextPlace(first, 0));
+            Show(editing.Caret, editing.Anchor);
+        }
+        else
+            Moved();
+        CheckEmpty();
         LayOutLater();
     }
 
@@ -518,7 +527,7 @@ public sealed class DocumentView : Control
     /// Makes an edit through the session: the pages after it drawn (those it left as they were from their recordings), the cursor and the
     /// selection where the session has them. What the document refuses changes nothing.
     /// </summary>
-    void Edit(Action change)
+    public void Edit(Action change)
     {
         if (session is not { } editing)
             return;
@@ -540,9 +549,8 @@ public sealed class DocumentView : Control
     {
         if (session is not { } editing)
             return;
-        var document = editing.Document;
-        var place = editing.Caret.Paragraph;
-        var empty = scenes.Count == 1 && document.Text(place).Length == 0 && document.Next(place) == null && document.Previous(place) == null;
+        // One page with one place on it, the mark of the cursor's paragraph, which holds nothing, not even an object (one in its text).
+        var empty = scenes.Count == 1 && pictures.Spots(Page(0)).Count <= 1 && editing.Document.Text(editing.Caret.Paragraph).Length == 0;
         if (empty != IsEmpty)
         {
             IsEmpty = empty;
@@ -601,6 +609,7 @@ public sealed class DocumentView : Control
         Update(document.Scenes());
         if (shown != null && (caret is not var (now, _) || now >= scenes.Count || !ReferenceEquals(scenes[now], shown)))
             Show(editing.Caret, editing.Anchor);
+        CheckEmpty();
     }
 
     /// <summary>A page's scene drawn: the document draws its pages when they are wanted (see IEditableDocument.Scene).</summary>

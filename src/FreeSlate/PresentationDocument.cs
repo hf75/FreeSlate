@@ -159,6 +159,9 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>Whether a paragraph of that id is one of the slides' shapes or tables, which the presentation changes.</summary>
     public bool Contains(int paragraph) => paragraphs.ContainsKey(paragraph);
 
+    /// <summary>The first paragraph of the first shape or table cell with text (see IEditableDocument.Beginning).</summary>
+    public int? Beginning => slides.SelectMany(s => s.Bodies).SelectMany(b => b.Paragraphs).Cast<int?>().FirstOrDefault();
+
     /// <summary>The word a place stands inside, as PowerPoint's formatting buttons take it, hyphens joining words (see Editing.Words).</summary>
     public (int Offset, int Length)? WordAt(int paragraph, int offset) => Editing.Words.Around(Text(paragraph), offset, hyphens: true);
 
