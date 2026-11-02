@@ -36,6 +36,7 @@ public sealed class EditorWindow : Window
             s.WorkingArea.Contains(new PixelPoint(last.X + (int)(last.Width * s.Scaling / 2), last.Y + (int)(10 * s.Scaling))));
         if (screen != null)
         {
+            place = last!;
             WindowStartupLocation = WindowStartupLocation.Manual;
             Position = new PixelPoint(last!.X, last.Y);
             Width = Math.Max(last.Width, MinWidth);
@@ -64,7 +65,8 @@ public sealed class EditorWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
-        Settings.Current.Window = place;
+        if (place.Width > 0)
+            Settings.Current.Window = place;
         Settings.Current.Save();
     }
 }
