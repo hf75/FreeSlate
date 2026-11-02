@@ -215,6 +215,9 @@ It uses no ready-made Avalonia theme, so that nothing is there that was not desi
   root, not its children (`TopLevel.GetTopLevel` finds no window from there), so `CaptionBar` watches the window itself and
   shows the buttons' tips by itself (`CaptionTip`), and `CaptionButton` gives a screen reader its tip as its name, as Avalonia
   names frame buttons in English.
+  While the pointer is away from the bar, the window's buttons fade away and come back when it returns. Over the part of the
+  bar that drags the window the pointer's moves are the platform's and reach no control, so on Windows `CaptionBar` reads them
+  in the window's messages (`Win32Properties.AddWndProcHookCallback`); on other platforms the buttons stay for now.
 - **`CaptionGlyph`** draws the buttons' symbols for the screen's pixels: whole device pixels wide and on them at any scaling.
 - **Text** is set in Inter, which the theme names (the default font differs from platform to platform), and smoothed without
   colour fringes and without hinting, the same on every screen (set on each root of a visual tree, as `TextOptions` are no

@@ -156,7 +156,7 @@
                            TextTrimming="CharacterEllipsis"
                            Margin="138,0"
                            IsHitTestVisible="False" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <StackPanel x:Name="PART_Buttons" Orientation="Horizontal" HorizontalAlignment="Right">
                   <c:CaptionButton x:Name="PART_MinimizeButton"
                                    Symbol="Minimize"
                                    Tip="{DynamicResource CaptionMinimize}" />
@@ -185,6 +185,23 @@
     <Style Selector="^:maximized /template/ c|CaptionButton#PART_MaximizeButton">
       <Setter Property="Symbol" Value="Restore" />
       <Setter Property="Tip" Value="{DynamicResource CaptionRestore}" />
+    </Style>
+
+    <!-- The window's buttons rest while the pointer is away from the bar: they come at once and go slowly. -->
+    <Style Selector="^ /template/ StackPanel#PART_Buttons">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^ /template/ c|CaptionBar:resting StackPanel#PART_Buttons">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.8" Easing="SineEaseInOut" />
+        </Transitions>
+      </Setter>
+      <Setter Property="Opacity" Value="0" />
     </Style>
 
     <!-- A window that is not the active one steps back. -->
