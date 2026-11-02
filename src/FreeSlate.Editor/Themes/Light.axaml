@@ -12,17 +12,17 @@
   <SolidColorBrush x:Key="InkFaint" Color="#6F6D67" />
   <SolidColorBrush x:Key="InkGhost" Color="#A9A7A0" />
 
-  <!-- What lies over the surface under the pointer. -->
-  <SolidColorBrush x:Key="Wash" Color="#0F23221F" />
-  <SolidColorBrush x:Key="WashDeep" Color="#1C23221F" />
-
-  <!-- Closing the window. -->
-  <SolidColorBrush x:Key="Danger" Color="#C4372C" />
-  <SolidColorBrush x:Key="DangerDeep" Color="#A82E25" />
-  <SolidColorBrush x:Key="OnDanger" Color="#FFFFFF" />
-
-  <!-- The keyboard's place. -->
-  <SolidColorBrush x:Key="Focus" Color="#3F5F7F" />
+  <!--
+    The accent, the app's only colour: a signal in the sense of Dieter Rams, colour only where it tells something. It marks what the
+    pointer or the keyboard stands on: the lighter one for the everyday, the darker one for what has consequences, such as closing
+    the window.
+  -->
+  <SolidColorBrush x:Key="Accent" Color="#F4B42A" />
+  <SolidColorBrush x:Key="AccentPressed" Color="#E5A41C" />
+  <SolidColorBrush x:Key="OnAccent" Color="#33260A" />
+  <SolidColorBrush x:Key="AccentSevere" Color="#C8441A" />
+  <SolidColorBrush x:Key="AccentSeverePressed" Color="#AD3A16" />
+  <SolidColorBrush x:Key="OnAccentSevere" Color="#FFF8F2" />
 
   <!-- A tip beside the pointer. -->
   <SolidColorBrush x:Key="TipSurface" Color="#2C2B28" />

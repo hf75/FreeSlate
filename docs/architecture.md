@@ -203,6 +203,8 @@ It uses no ready-made Avalonia theme, so that nothing is there that was not desi
 - **Themes** are dictionaries of colours (`Themes/Light.axaml`) under a theme variant in `App.axaml`; `Themes/Controls.axaml`
   has one `ControlTheme` per control in use and reads the colours as dynamic resources, so a change of
   `RequestedThemeVariant` shows at once. Another theme is a copy of `Light.axaml` with other values.
+  The theme has one colour family, the accent, as a signal only: it marks what the pointer or the keyboard stands on, `Accent`
+  for the everyday, the darker `AccentSevere` for what has consequences, such as closing the window. Everything else is neutral.
 - **Languages** are dictionaries of texts (`Localization/`), read as dynamic resources too; `UiLanguages.Show` swaps the
   dictionary, English stays underneath for texts a language does not have yet. No reflection, no satellite assemblies:
   this works ahead-of-time compiled, in the browser too.
