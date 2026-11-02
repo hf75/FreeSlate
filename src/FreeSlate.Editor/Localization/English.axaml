@@ -1,0 +1,10 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:Class="FreeSlate.Editor.Localization.English">
+  <x:String x:Key="CaptionMinimize">Minimize</x:String>
+  <x:String x:Key="CaptionMaximize">Maximize</x:String>
+  <x:String x:Key="CaptionRestore">Restore Down</x:String>
+  <x:String x:Key="CaptionClose">Close</x:String>
+  <x:String x:Key="EmptyLine">A clean slate.</x:String>
+  <x:String x:Key="LanguageChoice">Language</x:String>
+</ResourceDictionary>

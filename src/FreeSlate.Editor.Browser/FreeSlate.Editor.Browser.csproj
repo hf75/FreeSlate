@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-browser</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Published ahead of time, the browser's speed then is the desktop's. Needs the workload wasm-tools. -->
+    <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\FreeSlate.Editor\Assets\FreeSlate.ico" Link="wwwroot\favicon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Browser" Version="12.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreeSlate.Editor\FreeSlate.Editor.csproj" />
+  </ItemGroup>
+
+</Project>

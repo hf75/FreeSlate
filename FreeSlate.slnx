@@ -1,4 +1,9 @@
 <Solution>
+  <Project Path="src/FreeSlate.Editor.Browser/FreeSlate.Editor.Browser.csproj">
+    <Build Project="false" />
+  </Project>
+  <Project Path="src/FreeSlate.Editor.Desktop/FreeSlate.Editor.Desktop.csproj" />
+  <Project Path="src/FreeSlate.Editor/FreeSlate.Editor.csproj" />
   <Project Path="src/FreeSlate.Presenter/FreeSlate.Presenter.csproj" />
   <Project Path="src/FreeSlate.Skia/FreeSlate.Skia.csproj" />
   <Project Path="src/FreeSlate.Viewer/FreeSlate.Viewer.csproj" />

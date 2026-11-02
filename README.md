@@ -326,6 +326,21 @@ installed, *Word daneben* puts Word's own pages beside FreeSlate's, *Word überb
 a slider between the two, and *Unterschiede* shows where the two differ: Word prints the document to PDF through COM,
 as the fidelity tool renders its references, and Windows rasterizes the pages.
 
+### The editor
+
+```sh
+dotnet run --project src/FreeSlate.Editor.Desktop
+```
+
+The editor is what all this is for: a word processor thought anew, without menus or ribbons. For now it is the empty
+app: its own window frame (the window keeps the platform's behaviour, Windows' snap layouts for instance), one light
+theme, German and English. `--language en` overrides the language for one run; otherwise it follows the system until
+the user chooses. Its themes and languages are resource dictionaries (`Themes/`, `Localization/`), a new one is a copy
+with other values. Published, the editor is ahead-of-time compiled: `dotnet publish src/FreeSlate.Editor.Desktop -c
+Release -r win-x64` gives a native program, `dotnet publish src/FreeSlate.Editor.Browser -c Release` a page (it needs
+the workload `wasm-tools`; the solution leaves the browser's project out of its build for that reason). So far it has
+run on Windows and in Chromium.
+
 ## How it works
 
 FreeSlate reads the package (ZIP, encryption, markup compatibility), resolves the inheritance of every shape through
@@ -359,11 +374,13 @@ More in [docs/fidelity.md](docs/fidelity.md).
 
 | Path | Content |
 |---|---|
-| `FreeSlate.slnx` | the solution: engine, Skia backend, presenter and viewer |
+| `FreeSlate.slnx` | the solution: engine, Skia backend, presenter, viewer and editor |
 | `src/FreeSlate/` | the rendering engine |
 | `src/FreeSlate.Skia/` | the Skia backend: pages and slides drawn from their scenes, PNG and PDF |
 | `src/FreeSlate.Presenter/` | the presenter app (Avalonia) |
 | `src/FreeSlate.Viewer/` | the viewer app for Word documents and presentations (Avalonia) |
+| `src/FreeSlate.Editor/` | the editor: its window frame, themes, languages and own controls (Avalonia, no document yet) |
+| `src/FreeSlate.Editor.Desktop/`, `src/FreeSlate.Editor.Browser/` | the editor's starts on the desktop and in the browser |
 | `tools/Fidelity/` | builds the test decks through PowerPoint, renders references, measures fidelity |
 | `tools/SpecTools/` | downloads the specifications, builds the format catalog, checks the feature catalog |
 | `tools/SmartArtDecks/` | scripts that build SmartArt probe decks through PowerPoint |

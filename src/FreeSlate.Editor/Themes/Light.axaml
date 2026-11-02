@@ -1,0 +1,30 @@
+<!-- The light theme: every colour the editor shows. Another theme is a copy of this file with other values. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- The surface everything lies on. -->
+  <SolidColorBrush x:Key="Canvas" Color="#F8F7F4" />
+  <SolidColorBrush x:Key="Hairline" Color="#E4E2DC" />
+
+  <!-- Text and symbols, from most to least present. -->
+  <SolidColorBrush x:Key="Ink" Color="#23221F" />
+  <SolidColorBrush x:Key="InkSoft" Color="#4B4A46" />
+  <SolidColorBrush x:Key="InkFaint" Color="#6F6D67" />
+  <SolidColorBrush x:Key="InkGhost" Color="#A9A7A0" />
+
+  <!-- What lies over the surface under the pointer. -->
+  <SolidColorBrush x:Key="Wash" Color="#0F23221F" />
+  <SolidColorBrush x:Key="WashDeep" Color="#1C23221F" />
+
+  <!-- Closing the window. -->
+  <SolidColorBrush x:Key="Danger" Color="#C4372C" />
+  <SolidColorBrush x:Key="DangerDeep" Color="#A82E25" />
+  <SolidColorBrush x:Key="OnDanger" Color="#FFFFFF" />
+
+  <!-- The keyboard's place. -->
+  <SolidColorBrush x:Key="Focus" Color="#3F5F7F" />
+
+  <!-- A tip beside the pointer. -->
+  <SolidColorBrush x:Key="TipSurface" Color="#2C2B28" />
+  <SolidColorBrush x:Key="TipInk" Color="#F8F7F4" />
+</ResourceDictionary>

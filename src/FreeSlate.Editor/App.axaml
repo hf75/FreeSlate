@@ -1,0 +1,17 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FreeSlate.Editor.App"
+             Name="FreeSlate"
+             RequestedThemeVariant="Light">
+  <Application.Resources>
+    <ResourceDictionary>
+      <!-- A theme is a dictionary of colours under its variant; the controls read them as dynamic resources. -->
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceInclude x:Key="Light" Source="/Themes/Light.axaml" />
+      </ResourceDictionary.ThemeDictionaries>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/Themes/Controls.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

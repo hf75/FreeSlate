@@ -192,6 +192,32 @@ A Word document of thousands of pages opens with its first pages at once and gro
   constant time (`Docx/Siblings`), formats are shared between the paragraphs and runs that have them alike, laid out
   paragraphs are kept for the next layout.
 
+## The editor (`src/FreeSlate.Editor/`)
+
+The editor is a word processor of its own on top of the engine, the same on every platform: `FreeSlate.Editor` holds the
+interface, `FreeSlate.Editor.Desktop` and `FreeSlate.Editor.Browser` only start it (in the browser `Settings.Read` and `Write`
+go to the page's storage). It does not read documents yet.
+
+It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
+
+- **Themes** are dictionaries of colours (`Themes/Light.axaml`) under a theme variant in `App.axaml`; `Themes/Controls.axaml`
+  has one `ControlTheme` per control in use and reads the colours as dynamic resources, so a change of
+  `RequestedThemeVariant` shows at once. Another theme is a copy of `Light.axaml` with other values.
+- **Languages** are dictionaries of texts (`Localization/`), read as dynamic resources too; `UiLanguages.Show` swaps the
+  dictionary, English stays underneath for texts a language does not have yet. No reflection, no satellite assemblies:
+  this works ahead-of-time compiled, in the browser too.
+- **The window's frame** is the theme of Avalonia's `WindowDrawnDecorations`. On Windows the platform keeps the border, the
+  shadow and the rounded corners; the app draws the title bar over a window that is one surface. The parts' names and
+  `WindowDecorationProperties.ElementRole` connect the buttons to the window, which also gives Windows' snap layouts over
+  the maximize button. The frame's layers are neighbours of the window under the common root, not its children
+  (`TopLevel.GetTopLevel` finds no window from there), so `CaptionBar` watches the window itself and shows the buttons'
+  tips by itself (`CaptionTip`), and `CaptionButton` gives a screen reader its tip as its name, as Avalonia names frame
+  buttons in English.
+- **`CaptionGlyph`** draws the buttons' symbols for the screen's pixels: whole device pixels wide and on them at any scaling.
+- **Text** is set in Inter, which the theme names (the default font differs from platform to platform), and smoothed without
+  colour fringes and without hinting, the same on every screen (set on each root of a visual tree, as `TextOptions` are no
+  styled properties).
+
 ## Catalogs (`catalog/`)
 
 Two catalogs drive and document the work:

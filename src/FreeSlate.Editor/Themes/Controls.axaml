@@ -1,0 +1,256 @@
+<!--
+  How the controls look, whatever the theme: all colours are dynamic resources of the theme's dictionary. Text is smoothed without
+  colour fringes and keeps the shapes of its font, on every screen alike; each root of a visual tree says so.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:FreeSlate.Editor.Controls">
+
+  <!-- Named here, as the default font differs from platform to platform (a monospaced one in the browser). -->
+  <FontFamily x:Key="UiFont">fonts:Inter#Inter</FontFamily>
+
+  <ControlTheme x:Key="{x:Type Window}" TargetType="Window">
+    <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
+    <Setter Property="Background" Value="{DynamicResource Canvas}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel TextOptions.TextRenderingMode="Antialias" TextOptions.TextHintingMode="None">
+          <Border Background="{TemplateBinding Background}" IsHitTestVisible="False" />
+          <!-- Takes the client area's clicks; above it the title bar's layer gets them. -->
+          <Panel Background="Transparent" Margin="{TemplateBinding WindowDecorationMargin}" />
+          <VisualLayerManager Name="PART_VisualLayerManager">
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Margin="{TemplateBinding WindowDecorationMargin}" />
+          </VisualLayerManager>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- The page in a browser. -->
+  <ControlTheme x:Key="{x:Type EmbeddableControlRoot}" TargetType="EmbeddableControlRoot">
+    <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
+    <Setter Property="Background" Value="{DynamicResource Canvas}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" TextOptions.TextRenderingMode="Antialias" TextOptions.TextHintingMode="None">
+          <VisualLayerManager Name="PART_VisualLayerManager">
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </VisualLayerManager>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type c:CaptionButton}" TargetType="c:CaptionButton">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource InkSoft}" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="(WindowDecorationProperties.ElementRole)" Value="DecorationsElement" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}">
+          <c:CaptionGlyph Symbol="{TemplateBinding Symbol}"
+                          Width="10"
+                          Height="10"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource Wash}" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{DynamicResource WashDeep}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Foreground" Value="{DynamicResource InkGhost}" />
+    </Style>
+    <Style Selector="^.close:pointerover">
+      <Setter Property="Background" Value="{DynamicResource Danger}" />
+      <Setter Property="Foreground" Value="{DynamicResource OnDanger}" />
+    </Style>
+    <Style Selector="^.close:pressed">
+      <Setter Property="Background" Value="{DynamicResource DangerDeep}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type c:CaptionTip}" TargetType="c:CaptionTip">
+    <Setter Property="Background" Value="{DynamicResource TipSurface}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource TipInk}" />
+    <Setter Property="TextElement.FontSize" Value="12" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+    <Style Selector="^.shown">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </ControlTheme>
+
+  <!--
+    The window's frame where the app draws it. Windows keeps its own border, shadow and corners; the app draws the title bar with
+    its buttons. Their parts' names and roles connect them to the window: Windows shows its snap layouts over the maximize button.
+  -->
+  <ControlTheme x:Key="{x:Type WindowDrawnDecorations}" TargetType="WindowDrawnDecorations">
+    <Setter Property="DefaultTitleBarHeight" Value="40" />
+    <Setter Property="DefaultFrameThickness" Value="1" />
+    <Setter Property="DefaultShadowThickness" Value="8" />
+    <Setter Property="Template">
+      <WindowDrawnDecorationsTemplate>
+        <WindowDrawnDecorationsContent>
+
+          <WindowDrawnDecorationsContent.Underlay>
+            <Panel x:Name="PART_UnderlayWrapper">
+              <Border x:Name="PART_WindowBorder"
+                      BorderThickness="{TemplateBinding FrameThickness}"
+                      BorderBrush="{DynamicResource Hairline}"
+                      IsHitTestVisible="False" />
+              <Panel x:Name="PART_TitleBar"
+                     VerticalAlignment="Top"
+                     Height="{TemplateBinding TitleBarHeight}"
+                     Background="Transparent"
+                     IsVisible="{TemplateBinding HasTitleBar}"
+                     WindowDecorationProperties.ElementRole="TitleBar" />
+            </Panel>
+          </WindowDrawnDecorationsContent.Underlay>
+
+          <WindowDrawnDecorationsContent.Overlay>
+            <Panel x:Name="PART_OverlayWrapper"
+                   TextElement.FontFamily="{DynamicResource UiFont}"
+                   TextOptions.TextRenderingMode="Antialias"
+                   TextOptions.TextHintingMode="None">
+              <c:CaptionBar x:Name="PART_CaptionBar"
+                            VerticalAlignment="Top"
+                            Height="{TemplateBinding TitleBarHeight}"
+                            IsVisible="{TemplateBinding HasTitleBar}">
+                <TextBlock x:Name="PART_Title"
+                           Text="{TemplateBinding Title}"
+                           Foreground="{DynamicResource InkFaint}"
+                           FontSize="12"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="138,0"
+                           IsHitTestVisible="False" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                  <c:CaptionButton x:Name="PART_MinimizeButton"
+                                   Symbol="Minimize"
+                                   Tip="{DynamicResource CaptionMinimize}"
+                                   WindowDecorationProperties.ElementRole="MinimizeButton" />
+                  <c:CaptionButton x:Name="PART_MaximizeButton"
+                                   WindowDecorationProperties.ElementRole="MaximizeButton" />
+                  <c:CaptionButton x:Name="PART_CloseButton"
+                                   Classes="close"
+                                   Symbol="Close"
+                                   Tip="{DynamicResource CaptionClose}"
+                                   WindowDecorationProperties.ElementRole="CloseButton" />
+                </StackPanel>
+                <c:CaptionTip />
+              </c:CaptionBar>
+            </Panel>
+          </WindowDrawnDecorationsContent.Overlay>
+
+        </WindowDrawnDecorationsContent>
+      </WindowDrawnDecorationsTemplate>
+    </Setter>
+
+    <Style Selector="^ /template/ c|CaptionButton#PART_MaximizeButton">
+      <Setter Property="Symbol" Value="Maximize" />
+      <Setter Property="Tip" Value="{DynamicResource CaptionMaximize}" />
+    </Style>
+    <Style Selector="^:maximized /template/ c|CaptionButton#PART_MaximizeButton">
+      <Setter Property="Symbol" Value="Restore" />
+      <Setter Property="Tip" Value="{DynamicResource CaptionRestore}" />
+    </Style>
+
+    <!-- A window that is not the active one steps back. -->
+    <Style Selector="^ /template/ c|CaptionBar:inactive TextBlock#PART_Title">
+      <Setter Property="Foreground" Value="{DynamicResource InkGhost}" />
+    </Style>
+    <Style Selector="^ /template/ c|CaptionBar:inactive c|CaptionButton:not(:pointerover)">
+      <Setter Property="Foreground" Value="{DynamicResource InkGhost}" />
+    </Style>
+
+    <!-- Where the platform leaves the frame to the app (Linux, for instance): a border and a shadow. -->
+    <Style Selector="^:has-shadow /template/ Panel#PART_UnderlayWrapper">
+      <Setter Property="Margin" Value="{TemplateBinding ShadowThickness}" />
+    </Style>
+    <Style Selector="^:has-shadow /template/ Border#PART_WindowBorder">
+      <Setter Property="BoxShadow" Value="0 2 12 0 #40000000" />
+    </Style>
+    <Style Selector="^:has-shadow /template/ Panel#PART_OverlayWrapper">
+      <Setter Property="Margin" Value="{TemplateBinding ShadowThickness}" />
+    </Style>
+    <Style Selector="^:has-border /template/ Panel#PART_TitleBar">
+      <Setter Property="Margin" Value="1,1,1,0" />
+    </Style>
+    <Style Selector="^:has-border /template/ c|CaptionBar#PART_CaptionBar">
+      <Setter Property="Margin" Value="1,1,1,0" />
+    </Style>
+
+    <Style Selector="^:not(:has-minimize) /template/ c|CaptionButton#PART_MinimizeButton">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:not(:has-maximize) /template/ c|CaptionButton#PART_MaximizeButton">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </ControlTheme>
+
+  <!-- A choice among few, written out: the chosen one stands out from the others. -->
+  <ControlTheme x:Key="{x:Type RadioButton}" TargetType="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource InkFaint}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="Transparent"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="{TemplateBinding CornerRadius}"
+                          Padding="{TemplateBinding Padding}"
+                          Content="{TemplateBinding Content}" />
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    </Style>
+    <Style Selector="^:checked">
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource Focus}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

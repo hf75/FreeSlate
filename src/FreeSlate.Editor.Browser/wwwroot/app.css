@@ -1,0 +1,12 @@
+/* The page is the editor's surface from its first moment on: the colour of the canvas while the runtime loads. */
+html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #F8F7F4;
+}
+
+#out {
+    width: 100vw;
+    height: 100vh;
+}
