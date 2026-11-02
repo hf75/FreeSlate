@@ -196,7 +196,9 @@ A Word document of thousands of pages opens with its first pages at once and gro
 
 The editor is a word processor of its own on top of the engine, the same on every platform: `FreeSlate.Editor` holds the
 interface, `FreeSlate.Editor.Desktop` and `FreeSlate.Editor.Browser` only start it (in the browser `Settings.Read` and `Write`
-go to the page's storage). It does not read documents yet.
+go to the page's storage, and the engine gets the app's Inter as its only font). It opens on a new document
+(`WordDocument.New`) in `DocumentView`, which draws the sheets from their scenes with Skia and sends keys, typed text and an
+input method's text to an `EditSession`. It neither opens nor saves files yet.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

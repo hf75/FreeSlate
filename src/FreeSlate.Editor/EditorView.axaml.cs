@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using FreeSlate.Editing;
 using FreeSlate.Editor.Localization;
 
 namespace FreeSlate.Editor;
@@ -16,9 +17,17 @@ public sealed partial class EditorView : Panel
             choice.IsCheckedChanged += (_, _) =>
             {
                 if (choice.IsChecked == true)
+                {
                     UiLanguages.Choose(language);
+                    Sheets.Focus();
+                }
             };
             Languages.Children.Add(choice);
         }
+
+        Sheets.IsEmptyChanged += () => Classes.Set("written", !Sheets.IsEmpty);
+        // Before the first frame, so that the sheet comes with the window; and the keys go to it from the start.
+        Sheets.Open(new EditSession(WordDocument.New("Georgia")));
+        Loaded += (_, _) => Sheets.Focus();
     }
 }

@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Browser" Version="12.1.2" />
+    <!-- The engine's HarfBuzz (14.2), statically linked into the page's WebAssembly; Avalonia's own is 8.3. -->
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.1.301" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,12 +1,31 @@
 <Panel xmlns="https://github.com/avaloniaui"
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       xmlns:c="using:FreeSlate.Editor.Controls"
        x:Class="FreeSlate.Editor.EditorView">
 
-  <!-- The empty editor: a line a little above the middle. -->
-  <Grid RowDefinitions="4*,Auto,5*">
+  <Panel.Styles>
+    <Style Selector=":is(Control).whileEmpty">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector=":is(Panel).written > :is(Control).whileEmpty">
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+  </Panel.Styles>
+
+  <ScrollViewer>
+    <c:DocumentView x:Name="Sheets" />
+  </ScrollViewer>
+
+  <!-- While nothing is written yet: a line a little above the middle, and the choice of language. -->
+  <Grid Classes="whileEmpty" RowDefinitions="4*,Auto,5*" IsHitTestVisible="False">
     <TextBlock Grid.Row="1"
                Text="{DynamicResource EmptyLine}"
-               Foreground="{DynamicResource InkSoft}"
+               Foreground="{DynamicResource InkGhost}"
                FontSize="28"
                FontWeight="Light"
                LetterSpacing="-0.6"
@@ -16,6 +35,7 @@
   </Grid>
 
   <StackPanel x:Name="Languages"
+              Classes="whileEmpty"
               Orientation="Horizontal"
               Spacing="4"
               HorizontalAlignment="Center"

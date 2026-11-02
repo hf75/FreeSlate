@@ -6,6 +6,10 @@
   <SolidColorBrush x:Key="Canvas" Color="#F8F7F4" />
   <SolidColorBrush x:Key="Hairline" Color="#E4E2DC" />
 
+  <!-- A sheet of the document on it. -->
+  <SolidColorBrush x:Key="Sheet" Color="#FFFFFF" />
+  <BoxShadows x:Key="SheetShadow">0 1 2 0 #14000000, 0 8 28 0 #10000000</BoxShadows>
+
   <!-- Text and symbols, from most to least present. -->
   <SolidColorBrush x:Key="Ink" Color="#23221F" />
   <SolidColorBrush x:Key="InkSoft" Color="#4B4A46" />
@@ -23,6 +27,7 @@
   <SolidColorBrush x:Key="AccentSevere" Color="#D47210" />
   <SolidColorBrush x:Key="AccentSeverePressed" Color="#B8620D" />
   <SolidColorBrush x:Key="OnAccentSevere" Color="#FFF8F2" />
+  <SolidColorBrush x:Key="Selection" Color="#66F4B42A" />
 
   <!-- A tip beside the pointer. -->
   <SolidColorBrush x:Key="TipSurface" Color="#2C2B28" />

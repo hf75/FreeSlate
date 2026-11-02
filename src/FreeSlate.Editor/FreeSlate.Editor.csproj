@@ -15,6 +15,12 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreeSlate\FreeSlate.csproj" />
+    <ProjectReference Include="..\FreeSlate.Skia\FreeSlate.Skia.csproj" />
   </ItemGroup>
 
 </Project>

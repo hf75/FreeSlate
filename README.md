@@ -332,9 +332,9 @@ as the fidelity tool renders its references, and Windows rasterizes the pages.
 dotnet run --project src/FreeSlate.Editor.Desktop
 ```
 
-The editor is what all this is for: a word processor thought anew, without menus or ribbons. For now it is the empty
-app: its own window frame (the window keeps the platform's behaviour, Windows' snap layouts for instance), one light
-theme, German and English. The window's buttons fade away while the pointer is elsewhere; one of them, or F11, goes to
+The editor is what all this is for: a word processor thought anew, without menus or ribbons. For now it opens on an
+empty sheet to type on at once, and nothing is saved yet. It has its own window frame (the window keeps the platform's
+behaviour, Windows' snap layouts for instance), one light theme, German and English. The window's buttons fade away while the pointer is elsewhere; one of them, or F11, goes to
 full screen, where the top edge of the screen brings the buttons back and F11 or Escape leave. `--language en` overrides
 the language for one run; otherwise it follows the system until the user chooses. Its themes and languages are resource dictionaries (`Themes/`, `Localization/`), a new one is a copy
 with other values. Published, the editor is ahead-of-time compiled: `dotnet publish src/FreeSlate.Editor.Desktop -c
