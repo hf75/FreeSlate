@@ -42,6 +42,13 @@ public sealed class CaptionButton : Button
         Bar?.PointerOff();
     }
 
+    /// <summary>Taken here, or the move goes on to Windows, which then shows a tip of its own over a window button.</summary>
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        e.Handled = true;
+    }
+
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
