@@ -220,6 +220,8 @@ It uses no ready-made Avalonia theme, so that nothing is there that was not desi
   While the pointer is away from the bar, the window's buttons fade away and come back when it returns. Over the part of the
   bar that drags the window the pointer's moves are the platform's and reach no control, so on Windows `CaptionBar` reads them
   in the window's messages (`Win32Properties.AddWndProcHookCallback`); on other platforms the buttons stay for now.
+  Full screen is the frame's own: a part of the theme that shows when the pointer touches the screen's top edge, and goes below
+  the bar. `EditorWindow` adds F11 and Escape and goes back to a maximized window if it came from one.
 - **`CaptionGlyph`** draws the buttons' symbols for the screen's pixels: whole device pixels wide and on them at any scaling.
 - **Text** is set in Inter, which the theme names (the default font differs from platform to platform), and smoothed without
   colour fringes and without hinting, the same on every screen (set on each root of a visual tree, as `TextOptions` are no

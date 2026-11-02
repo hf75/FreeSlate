@@ -13,6 +13,8 @@ public enum CaptionSymbol
     Maximize,
     Restore,
     Close,
+    FullScreen,
+    ExitFullScreen,
 }
 
 /// <summary>
@@ -88,6 +90,29 @@ public sealed class CaptionGlyph : Control
                 var far = (size - half) * pixel;
                 context.DrawLine(pen, new Point(near, near), new Point(far, far));
                 context.DrawLine(pen, new Point(far, near), new Point(near, far));
+                break;
+            case CaptionSymbol.FullScreen:
+            case CaptionSymbol.ExitFullScreen:
+                // Four corners: at the square's corners and open inward to go to full screen, around its middle and open outward to leave it.
+                var inward = symbol == CaptionSymbol.ExitFullScreen;
+                var arm = Math.Max(2, (int)Math.Round(size * 0.3));
+                var round = Math.Round(scale);
+                var corners = new StreamGeometry();
+                using (var line = corners.Open())
+                    foreach (var (right, down) in new[] { (false, false), (true, false), (true, true), (false, true) })
+                    {
+                        var x = (right ? size - half : half) + (inward ? (right ? -arm : arm) : 0);
+                        var y = (down ? size - half : half) + (inward ? (down ? -arm : arm) : 0);
+                        var toX = right == inward ? 1 : -1;
+                        var toY = down == inward ? 1 : -1;
+                        line.BeginFigure(new Point((x + toX * arm) * pixel, y * pixel), false);
+                        line.LineTo(new Point((x + toX * round) * pixel, y * pixel));
+                        line.ArcTo(new Point(x * pixel, (y + toY * round) * pixel), new Size(corner, corner), 0, false,
+                            toX * toY > 0 ? SweepDirection.CounterClockwise : SweepDirection.Clockwise);
+                        line.LineTo(new Point(x * pixel, (y + toY * arm) * pixel));
+                        line.EndFigure(false);
+                    }
+                context.DrawGeometry(null, pen, corners);
                 break;
         }
     }

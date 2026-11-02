@@ -154,9 +154,12 @@
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"
-                           Margin="138,0"
+                           Margin="184,0"
                            IsHitTestVisible="False" />
                 <StackPanel x:Name="PART_Buttons" Orientation="Horizontal" HorizontalAlignment="Right">
+                  <c:CaptionButton x:Name="PART_FullScreenButton"
+                                   Symbol="FullScreen"
+                                   Tip="{DynamicResource CaptionFullScreen}" />
                   <c:CaptionButton x:Name="PART_MinimizeButton"
                                    Symbol="Minimize"
                                    Tip="{DynamicResource CaptionMinimize}" />
@@ -173,6 +176,36 @@
               </c:CaptionBar>
             </Panel>
           </WindowDrawnDecorationsContent.Overlay>
+
+          <!-- In full screen the frame shows this when the pointer touches the screen's top edge, and takes it away below the bar. -->
+          <WindowDrawnDecorationsContent.FullscreenPopover>
+            <c:CaptionBar VerticalAlignment="Top"
+                          Height="{TemplateBinding DefaultTitleBarHeight}"
+                          Background="{DynamicResource Canvas}"
+                          TextElement.FontFamily="{DynamicResource UiFont}"
+                          TextOptions.TextRenderingMode="Antialias"
+                          TextOptions.TextHintingMode="None">
+              <Border BorderBrush="{DynamicResource Hairline}" BorderThickness="0,0,0,1" IsHitTestVisible="False" />
+              <TextBlock Text="{TemplateBinding Title}"
+                         Foreground="{DynamicResource InkFaint}"
+                         FontSize="12"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis"
+                         Margin="92,0"
+                         IsHitTestVisible="False" />
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <c:CaptionButton x:Name="PART_PopoverFullScreenButton"
+                                 Symbol="ExitFullScreen"
+                                 Tip="{DynamicResource CaptionExitFullScreen}" />
+                <c:CaptionButton x:Name="PART_PopoverCloseButton"
+                                 Classes="close"
+                                 Symbol="Close"
+                                 Tip="{DynamicResource CaptionClose}" />
+              </StackPanel>
+              <c:CaptionTip />
+            </c:CaptionBar>
+          </WindowDrawnDecorationsContent.FullscreenPopover>
 
         </WindowDrawnDecorationsContent>
       </WindowDrawnDecorationsTemplate>
@@ -233,6 +266,12 @@
       <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector="^:not(:has-maximize) /template/ c|CaptionButton#PART_MaximizeButton">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:not(:has-fullscreen) /template/ c|CaptionButton#PART_FullScreenButton">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:not(:has-fullscreen) /template/ c|CaptionButton#PART_PopoverFullScreenButton">
       <Setter Property="IsVisible" Value="False" />
     </Style>
   </ControlTheme>

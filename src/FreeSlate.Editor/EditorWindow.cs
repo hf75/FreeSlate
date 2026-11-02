@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Threading;
 
@@ -14,6 +15,7 @@ public sealed class EditorWindow : Window
     const double StartWidth = 1180, StartHeight = 760;
 
     WindowPlace place = new();
+    bool maximizedBeforeFullScreen;
 
     public EditorWindow()
     {
@@ -58,9 +60,36 @@ public sealed class EditorWindow : Window
     {
         if (WindowState == WindowState.Normal)
             place = new WindowPlace { X = Position.X, Y = Position.Y, Width = ClientSize.Width, Height = ClientSize.Height };
-        if (WindowState != WindowState.Minimized)
+        if (WindowState is WindowState.Normal or WindowState.Maximized)
             place.Maximized = WindowState == WindowState.Maximized;
     });
+
+    /// <summary>F11 goes to full screen and back, Escape only back.</summary>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled)
+            return;
+        var fullScreen = WindowState == WindowState.FullScreen;
+        if (e.Key == Key.F11 || (fullScreen && e.Key == Key.Escape))
+        {
+            WindowState = fullScreen ? WindowState.Normal : WindowState.FullScreen;
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Full screen ends where it began; the frame's button only knows the way back to the normal window.</summary>
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != WindowStateProperty)
+            return;
+        var (before, now) = change.GetOldAndNewValue<WindowState>();
+        if (now == WindowState.FullScreen)
+            maximizedBeforeFullScreen = before == WindowState.Maximized;
+        else if (before == WindowState.FullScreen && now == WindowState.Normal && maximizedBeforeFullScreen)
+            WindowState = WindowState.Maximized;
+    }
 
     protected override void OnClosed(EventArgs e)
     {
