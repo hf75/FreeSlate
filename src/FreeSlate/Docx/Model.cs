@@ -1010,7 +1010,13 @@ public sealed partial class ModelReader(DocumentContext context)
             noteMark = type == "normal" && NoteNumbers.Marks.TryGetValue((endnotes, id), out var mark) ? mark : "";
             noteId = id;
             var blocks = new List<Block>();
+            // A note nothing in the body refers to (one of a version kept beside the text, see SectionPlan; Word drops such a
+            // note) counts in no list of the others.
+            var counting = counter;
+            if (type == "normal" && !NoteNumbers.Marks.ContainsKey((endnotes, id)))
+                counter = new ListCounter(context.Numbering);
             ReadBlocks(note, blocks);
+            counter = counting;
             JoinHidden(blocks, cell: false);
             // A note without paragraphs takes the room of an empty one (measured with docx/local/fnempty-*: the
             // separator of an empty note stands where a note of one line puts it, 0, 8 and 20 pt of space after

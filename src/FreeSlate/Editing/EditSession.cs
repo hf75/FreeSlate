@@ -447,6 +447,13 @@ public sealed class EditSession(IEditableDocument document)
         return (Caret, Anchor);
     });
 
+    /// <summary>
+    /// A change the document offers beyond the handlings above (a Word document's versions of a section, its comments) as a
+    /// handling of its own, one step to undo and do again: <paramref name="change"/> makes it and tells where the cursor then
+    /// stands; where it tells none, the cursor stays. A refusal leaves the document as it was (see the class).
+    /// </summary>
+    public void Handle(Func<TextPlace?> change) => Act(false, () => change() is { } caret ? (caret, caret) : (Caret, Anchor));
+
     /// <summary>Undoes the last step done, the cursor and the selection back where they were before it; false where there is none.</summary>
     public bool Undo()
     {

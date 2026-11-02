@@ -166,18 +166,39 @@ public sealed class OpcPackage : IDisposable
     /// bytes as they were read or as Replace gave them, the parts it added at the end. Entries it did not change are
     /// copied as they are stored, not unpacked and packed again (a document of large photos saves in the time it takes
     /// to write it: 6.9 s before for 349 MB of JPEG photos); new bytes are deflated. A password-protected package is
-    /// written without its password.
+    /// written without its password. With <paramref name="instead"/> a copy of it that has those parts so (null: without
+    /// them), the package itself staying as it is.
     /// </summary>
-    public void Save(Stream output)
+    public void Save(Stream output, IReadOnlyDictionary<string, byte[]?>? instead = null)
     {
+        var (gone, given) = (removed, replaced);
+        if (instead != null)
+        {
+            gone = new HashSet<string>(removed, StringComparer.OrdinalIgnoreCase);
+            given = new Dictionary<string, byte[]>(replaced, StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, bytes) in instead)
+            {
+                if (bytes != null)
+                {
+                    given[name] = bytes;
+                    gone.Remove(name);
+                }
+                else
+                {
+                    given.Remove(name);
+                    if (entries.ContainsKey(name))
+                        gone.Add(name);
+                }
+            }
+        }
         var records = ZipStore.Records(source);
         var entryList = zip.Entries;
-        var added = replaced.Keys.Count(name => !entries.ContainsKey(name));
+        var added = given.Keys.Count(name => !entries.ContainsKey(name));
         if (records == null || records.Count != entryList.Count || records.Count + added >= 0xFFFF
-            || source.Length + replaced.Values.Sum(b => (long)b.Length) + 0x1000000 >= uint.MaxValue
+            || source.Length + given.Values.Sum(b => (long)b.Length) + 0x1000000 >= uint.MaxValue
             || records.Zip(entryList).Any(pair => pair.First.Name.All(b => b < 0x80) && Encoding.ASCII.GetString(pair.First.Name) != pair.Second.FullName))
         {
-            Repack(output);
+            Repack(output, gone, given);
             return;
         }
         var writer = new ZipStore.Writer(output);
@@ -187,9 +208,9 @@ public sealed class OpcPackage : IDisposable
             var (entry, record) = (entryList[k], records[k]);
             var name = PartName(entry);
             written.Add(name);
-            if (removed.Contains(name))
+            if (gone.Contains(name))
                 continue;
-            if (replaced.TryGetValue(name, out var bytes))
+            if (given.TryGetValue(name, out var bytes))
                 writer.Add(record.Name, record.Flags, record.Time, record.Date, bytes);
             else if (record.Method is 0 or 8)
                 writer.Copy(source, record);
@@ -203,7 +224,7 @@ public sealed class OpcPackage : IDisposable
             }
         }
         var (time, date) = ZipStore.DosTime(DateTime.Now);
-        foreach (var (name, bytes) in replaced)
+        foreach (var (name, bytes) in given)
         {
             if (written.Contains(name))
                 continue;
@@ -214,7 +235,7 @@ public sealed class OpcPackage : IDisposable
     }
 
     /// <summary>Save through ZipArchive, every entry unpacked and deflated again: for packages ZipStore does not copy (ZIP64).</summary>
-    void Repack(Stream output)
+    void Repack(Stream output, HashSet<string> gone, Dictionary<string, byte[]> given)
     {
         using var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
         var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -222,10 +243,10 @@ public sealed class OpcPackage : IDisposable
         {
             var name = PartName(entry);
             written.Add(name);
-            if (removed.Contains(name))
+            if (gone.Contains(name))
                 continue;
             using var target = Created(archive, entry.FullName, entry.LastWriteTime);
-            if (replaced.TryGetValue(name, out var bytes))
+            if (given.TryGetValue(name, out var bytes))
                 target.Write(bytes);
             else
             {
@@ -233,7 +254,7 @@ public sealed class OpcPackage : IDisposable
                 source.CopyTo(target);
             }
         }
-        foreach (var (name, bytes) in replaced)
+        foreach (var (name, bytes) in given)
         {
             if (written.Contains(name))
                 continue;

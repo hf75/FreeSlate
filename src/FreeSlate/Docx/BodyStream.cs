@@ -187,22 +187,31 @@ sealed class BodyStream : IDisposable
             return null;
         // The prefixes WordprocessingML has in the part (Strict's too), from the root's declarations.
         var declarations = root.Attributes().Where(a => a.IsNamespaceDeclaration).ToList();
-        var found = -1;
-        foreach (var declaration in declarations.Where(d => d.Value is "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-                     or "http://purl.oclc.org/ooxml/wordprocessingml/main"))
+        int found;
+        while (true)
         {
-            var tag = declaration.Name.Namespace == XNamespace.None ? "<sectPr" : $"<{declaration.Name.LocalName}:sectPr";
-            for (var at = text.Text.IndexOf(tag, from, StringComparison.Ordinal); at >= 0; at = text.Text.IndexOf(tag, at + 1, StringComparison.Ordinal))
+            found = -1;
+            foreach (var declaration in declarations.Where(d => d.Value is "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                         or "http://purl.oclc.org/ooxml/wordprocessingml/main"))
             {
-                if (at + tag.Length < text.Text.Length && text.Text[at + tag.Length] is ' ' or '\t' or '\r' or '\n' or '/' or '>')
+                var tag = declaration.Name.Namespace == XNamespace.None ? "<sectPr" : $"<{declaration.Name.LocalName}:sectPr";
+                for (var at = text.Text.IndexOf(tag, from, StringComparison.Ordinal); at >= 0; at = text.Text.IndexOf(tag, at + 1, StringComparison.Ordinal))
                 {
-                    found = found < 0 ? at : Math.Min(found, at);
-                    break;
+                    if (at + tag.Length < text.Text.Length && text.Text[at + tag.Length] is ' ' or '\t' or '\r' or '\n' or '/' or '>')
+                    {
+                        found = found < 0 ? at : Math.Min(found, at);
+                        break;
+                    }
                 }
             }
+            if (found < 0)
+                return null;
+            // A section break in a version kept beside the text (see SectionPlan) is none.
+            var plan = SectionPlan.Next(text.Text, from, found);
+            if (plan < 0)
+                break;
+            from = text.End(plan);
         }
-        if (found < 0)
-            return null;
         try
         {
             var wrapped = XElement.Parse($"<x {string.Join(" ", declarations)}>{text.Text[found..text.End(found)]}</x>");

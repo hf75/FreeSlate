@@ -227,7 +227,7 @@ public sealed partial class WordDocument
         {
             var kind = endnote ? "endnote" : "footnote";
             // (A reference left to the note, which Word does not make, keeps it.)
-            var notes = gone.Where(n => n.Endnote == endnote && (tracked || !System.Text.RegularExpressions.Regex.IsMatch(body, $@"<[^<>]*{kind}Reference\b[^<>]*\bid=""{n.Id}"""))).Select(n => n.Id).ToHashSet();
+            var notes = gone.Where(n => n.Endnote == endnote && (tracked || !System.Text.RegularExpressions.Regex.IsMatch(body, $@"<[^<>]*{kind}Reference\b[^<>]*\bid=[""']{n.Id}[""']"))).Select(n => n.Id).ToHashSet();
             if (notes.Count == 0 || NotePart(endnote) is not { } part || all.ContainsKey(part))
                 continue;
             var read = new PartText(package.ReadBytes(part));

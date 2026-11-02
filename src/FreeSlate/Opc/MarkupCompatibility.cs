@@ -50,6 +50,16 @@ public static class MarkupCompatibility
     /// <summary>Attributes the engine adds to fallback content about the alternative it replaces.</summary>
     public static readonly XNamespace Annotation = "urn:freeslate:annotation";
 
+    /// <summary>The namespace of a Word document's plans for its sections (see Docx.SectionPlan): an alternative no one else can choose.</summary>
+    public const string PlanUri = "urn:freeslate:plan";
+    public static readonly XNamespace Plan = PlanUri;
+
+    /// <summary>What an element is marked with (an annotation) when a plan that stood in it was resolved away.</summary>
+    public sealed class PlanHeld
+    {
+        public static readonly PlanHeld Mark = new();
+    }
+
     /// <summary>
     /// Resolves the document's alternatives; with <paramref name="chartEx"/> an Office 2016 chart's Choice wins over its
     /// fallback picture, as Word and PowerPoint draw such charts themselves (measured with openxml-sdk's Of16-01 to
@@ -73,6 +83,8 @@ public static class MarkupCompatibility
         {
             if (alternate.Parent == null)
                 continue;   // inside an alternative that was already removed
+            if (alternate.Elements(Mc + "Choice").Elements(Plan + "plan").Any())
+                alternate.Parent.AddAnnotation(PlanHeld.Mark);
             if (ChartStyle(alternate) is { } style)
             {
                 alternate.ReplaceWith(style);

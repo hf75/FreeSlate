@@ -157,12 +157,20 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   shapes and WordArt, equations, fields), blocks next to a paragraph (paragraphs, tables, sections) and footnotes, with
   the parts they bring (a picture, a chart and its workbook, the notes). Each version keeps the other parts as it has
   them, so that undoing a picture takes its part away again with the drawing.
+- `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
+  `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
+  can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
+  `mc:Fallback`, a version's blocks as CDATA. Word shows none of it and writes none of it back when it saves, what only the
+  versions refer to going with them; so a version shares the document's ids and no version ever reaches what renumbers
+  them. Putting a version in place moves text within the main part, one change to undo. A copy without plans
+  (`SaveWithoutPlans`) leaves out the versions and what only they refer to, for a file that goes to others.
 - `PresentationDocument` makes its changes in the XML of the slides (`Pptx/SlideEdits` for text, `Pptx/SlideShapes` for
   shapes, `Pptx/SlideList` for the list of slides and the parts around it), reads the slide again and draws it anew;
   text that shrinks to fit its shape, and shapes that grow to their text, are fitted anew as PowerPoint fits them.
 - `Editing/EditSession` is an editor's work without its surface, over either kind of document: the cursor and the
   selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, markup, blocks and notes put in, each
-  handling one step to undo.
+  handling one step to undo; what else a document offers (a Word document's versions of a section, its comments) goes
+  through `Handle` as a handling of its own.
 
 The rules of each change (where new text goes, which paragraph keeps its properties and its mark, what a tracked
 change records) were measured in Word and PowerPoint through COM, as the rendering rules were.

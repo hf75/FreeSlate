@@ -101,10 +101,12 @@ public sealed partial class WordDocument
                 byParaId.TryAdd(paraId, id);
         }
         var anchors = Anchors();
+        // Those of versions kept beside the text are not comments of the document as it reads (see ParkedComments).
+        var parked = ParkedComments();
         var comments = new List<WordComment>();
         foreach (var element in elements)
         {
-            if (element.Attr("id") is not { } id)
+            if (element.Attr("id") is not { } id || parked.Contains(id) && !anchors.ContainsKey((id, true)) && !anchors.ContainsKey((id, false)))
                 continue;
             var (parent, done) = ParaId(element) is { } own && extended.TryGetValue(own, out var x) ? x : (null, false);
             var date = DateTime.TryParse(element.Attr("date"), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at)
@@ -223,25 +225,8 @@ public sealed partial class WordDocument
             foreach (var c in all)
                 more |= c.Parent != null && gone.Contains(c.Parent) && gone.Add(c.Id);
         }
-        var part = CommentsPart()!;
-        var text = new PartText(package.ReadBytes(part));
-        var root = context.Load(part).Root!;
-        var paraIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var cuts = new List<(int Start, int End, string Text)>();
-        foreach (var element in root.Elements(Wml.W + "comment").Where(e => e.Attr("id") is { } id && gone.Contains(id)))
-        {
-            foreach (var p in element.Elements(Wml.W + "p"))
-            {
-                if ((string?)p.Attribute(W14 + "paraId") is { } paraId)
-                    paraIds.Add(paraId);
-            }
-            var at = text.Start(element);
-            cuts.Add((at, text.End(at), ""));
-        }
-        var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase) { [part] = text.Spliced(cuts.OrderBy(c => c.Start)) };
-        Unlisted("commentsExtended", W15 + "commentEx", W15 + "paraId", paraIds, changes);
-        var durable = Unlisted("commentsIds", W16Cid + "commentId", W16Cid + "paraId", paraIds, changes, W16Cid + "durableId");
-        Unlisted("commentsExtensible", W16Cex + "commentExtensible", W16Cex + "durableId", durable, changes);
+        var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
+        CommentsTaken(gone, changes);
         // The body's blocks from the first that holds a mark of them to the last; a mark between blocks before its block.
         // Marks the body has where no range is known (in a shape's text box) are not taken away alone.
         var marks = body?.Descendants().Count(e => e.Name.LocalName is "commentRangeStart" or "commentRangeEnd" && e.Attr("id") is { } id && gone.Contains(id)) ?? 0;
@@ -257,6 +242,30 @@ public sealed partial class WordDocument
             var (first, last) = (Math.Max(0, indices.Min() - 1), indices.Max());
             Change(blocks[first], blocks[last], (stretch, _) => TextEdits.RemoveMarks(stretch, gone), changes: changes);
         }
+    }
+
+    /// <summary>Comments out of their part, what commentsExtended, commentsIds and commentsExtensible know of them too, among the changes.</summary>
+    void CommentsTaken(IReadOnlySet<string> gone, Dictionary<string, byte[]?> changes)
+    {
+        var part = CommentsPart()!;
+        var text = new PartText(package.ReadBytes(part));
+        var root = context.Load(part).Root!;
+        var paraIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var cuts = new List<(int Start, int End, string Text)>();
+        foreach (var element in root.Elements(Wml.W + "comment").Where(e => e.Attr("id") is { } id && gone.Contains(id)))
+        {
+            foreach (var p in element.Elements(Wml.W + "p"))
+            {
+                if ((string?)p.Attribute(W14 + "paraId") is { } paraId)
+                    paraIds.Add(paraId);
+            }
+            var at = text.Start(element);
+            cuts.Add((at, text.End(at), ""));
+        }
+        changes[part] = text.Spliced(cuts.OrderBy(c => c.Start));
+        Unlisted("commentsExtended", W15 + "commentEx", W15 + "paraId", paraIds, changes);
+        var durable = Unlisted("commentsIds", W16Cid + "commentId", W16Cid + "paraId", paraIds, changes, W16Cid + "durableId");
+        Unlisted("commentsExtensible", W16Cex + "commentExtensible", W16Cex + "durableId", durable, changes);
     }
 
     /// <summary>Marks a comment resolved (Word's Resolve) or not: w15:done of its entry in commentsExtended, made where it has none.</summary>

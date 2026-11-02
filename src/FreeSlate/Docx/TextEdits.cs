@@ -70,7 +70,7 @@ sealed class Stretch
 /// things (a field's result, a list number, a content control's bound text) and what it shows from elsewhere (a
 /// placeholder) cannot be changed so: that throws NotSupportedException, and nothing is changed.
 /// </summary>
-static class TextEdits
+static partial class TextEdits
 {
     static readonly XNamespace W14 = "http://schemas.microsoft.com/office/word/2010/wordml";
 
@@ -92,7 +92,7 @@ static class TextEdits
         && (ReadText(t) == text.Text || cut && text.Text.StartsWith(ReadText(t), StringComparison.Ordinal)) ? t : null;
 
     /// <summary>The fields begun and not ended among some elements (begun counting one, ended minus one).</summary>
-    static int OpenFields(IEnumerable<XElement> elements) =>
+    internal static int OpenFields(IEnumerable<XElement> elements) =>
         elements.Where(e => e.Name.LocalName == "fldChar").Sum(c => c.Attribute(c.Name.Namespace + "fldCharType")?.Value switch { "begin" => 1, "end" => -1, _ => 0 });
 
     /// <summary>Sets a w:t's text, kept as it is (xml:space preserve) where spaces begin or end it or tabs are in it.</summary>
@@ -282,13 +282,23 @@ static class TextEdits
     public static HashSet<(bool Endnote, string Id)> Referred(Stretch stretch, string text)
     {
         var referred = new HashSet<(bool, string)>();
-        foreach (var e in stretch.Parsed(text).Descendants().Where(e => e.Name.LocalName is "footnoteReference" or "endnoteReference"))
+        var parsed = stretch.Parsed(text);
+        foreach (var e in parsed.Descendants().Where(e => e.Name.LocalName is "footnoteReference" or "endnoteReference"))
         {
             if (e.Attribute(e.Name.Namespace + "id") is { } id && !e.Ancestors().Any(a => a.Name.LocalName is "del" or "moveFrom"))
                 referred.Add((e.Name.LocalName == "endnoteReference", id.Value));
         }
+        // Those of versions kept beside the text, as text (see SectionPlan).
+        foreach (var version in parsed.Descendants(MarkupCompatibility.Plan + "version"))
+        {
+            foreach (System.Text.RegularExpressions.Match m in ParkedNotes().Matches(version.Value))
+                referred.Add((m.Groups[1].Value == "end", m.Groups[2].Value));
+        }
         return referred;
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"<[^<>]*(foot|end)noteReference\b[^<>]*\bid=[""']([^""']*)[""']")]
+    private static partial System.Text.RegularExpressions.Regex ParkedNotes();
 
     /// <summary>
     /// A note deleted as a tracked change, as a tracked deletion of its reference leaves it (measured in Word 365 by COM,
@@ -468,7 +478,7 @@ static class TextEdits
     /// The elements a paragraph was read from, in the stretch afresh and in their order: its own, or the paragraphs the
     /// reader joined into it (see ParagraphBlock.Parts), which follow one another in one body, cell or text box.
     /// </summary>
-    static List<XElement> Parts(Stretch stretch, ParagraphBlock paragraph) =>
+    internal static List<XElement> Parts(Stretch stretch, ParagraphBlock paragraph) =>
         [.. (paragraph.Parts ?? [paragraph.Element]).Select(e => stretch.Find(e) ?? throw new NotSupportedException("The paragraph is not where it was read."))];
 
     /// <summary>Whether an element stands in a paragraph's parts (in their content, or in a text box there).</summary>
@@ -1486,6 +1496,18 @@ static class TextEdits
                 node.Remove();
                 second.Add(node);
             }
+            // Before all of its text, what the paragraph keeps for its section goes on with the text (see SectionPlan).
+            if (atStart)
+            {
+                foreach (var plan in SectionPlan.In([p]).AsEnumerable().Reverse())
+                {
+                    plan.Remove();
+                    if (second.Element(w + "pPr") is { } properties)
+                        properties.AddAfterSelf(plan);
+                    else
+                        second.AddFirst(plan);
+                }
+            }
         }
         FirstHalfsMark(p, second);
         if (tracking != null)
@@ -1882,6 +1904,9 @@ static class TextEdits
             throw new NotSupportedException($"A w:{other.Name.LocalName} stands between the selection's paragraphs.");
         if (paragraphs.SkipLast(1).Any(e => MarkDeleted(e) || MarkHidden(e)))
             throw new NotSupportedException("A paragraph copied with its mark runs into the next (its mark deleted or hidden).");
+        // What a paragraph keeps for its section stays with it (see SectionPlan).
+        foreach (var plan in SectionPlan.In(paragraphs))
+            plan.Remove();
         Cut(start, before: true);
         Cut(end, before: false);
         // A content control that shows what is bound to it, its placeholder or text it computes (a date, a list's item, a

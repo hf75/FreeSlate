@@ -182,6 +182,23 @@ deletes again goes away outright); `WordDocument.Open(path, markup: true)` reads
 shows all markup. The pages it lays out (`Scenes`) know where each character stands
 (`PlacesItem`), which `FreeSlate.Skia.TextPlaces` turns into hit tests, cursors and selections.
 
+A section (a heading and what follows it up to the next heading of its level or above) can keep other versions of its
+text and notes for planning it. They stay in the file, in an extension of the format's own kind (markup compatibility,
+ISO/IEC 29500-3) that Word neither shows nor keeps: Word drops them when it saves the file, and everything only they
+refer to with them.
+
+```csharp
+var heading = document.HeadingOf(first.Id)!.Value;
+var draft = document.AddVersion(heading, "Second draft", previousName: "First draft");   // goes on from the text in place
+document.AddPlanningNote(heading, "This section still needs an example.", "Reviewer");
+var older = document.Versions(heading).First(v => !v.Current);
+document.ShowVersion(heading, older.Id);                  // one change: the other text in place, this one kept beside it
+using (var view = document.OpenVersion(heading, draft))   // a look at it without putting it in place
+    view.Scenes();
+document.MoveSection(heading);                            // with what it keeps, here to the end of the body
+document.SaveWithoutPlans("report-to-send.docx");         // a copy without versions and notes, or anything only they use
+```
+
 ### Editing and saving presentations
 
 ```csharp
