@@ -6,9 +6,20 @@ using Avalonia.VisualTree;
 
 namespace FreeSlate.Editor.Controls;
 
-/// <summary>A button of the window's title bar. What it does comes from the window, by the name of its part in the frame's template.</summary>
+/// <summary>What a window button does itself, as far as the frame does not connect it by the name of its part.</summary>
+public enum CaptionJob
+{
+    None,
+    ToggleFullScreen,
+    Close,
+}
+
+/// <summary>A button of the window's title bar. What it does comes from the window, by the name of its part in the frame's template, or from its job.</summary>
 public sealed class CaptionButton : Button
 {
+    public static readonly StyledProperty<CaptionJob> JobProperty =
+        AvaloniaProperty.Register<CaptionButton, CaptionJob>(nameof(Job));
+
     public static readonly StyledProperty<CaptionSymbol> SymbolProperty =
         AvaloniaProperty.Register<CaptionButton, CaptionSymbol>(nameof(Symbol));
 
@@ -17,6 +28,12 @@ public sealed class CaptionButton : Button
 
     public static readonly StyledProperty<bool> ShowsTipProperty =
         AvaloniaProperty.Register<CaptionButton, bool>(nameof(ShowsTip), true);
+
+    public CaptionJob Job
+    {
+        get => GetValue(JobProperty);
+        set => SetValue(JobProperty, value);
+    }
 
     public CaptionSymbol Symbol
     {
@@ -56,6 +73,15 @@ public sealed class CaptionButton : Button
     {
         base.OnPointerPressed(e);
         Bar?.Pressed();
+    }
+
+    protected override void OnClick()
+    {
+        base.OnClick();
+        if (Job == CaptionJob.ToggleFullScreen)
+            (Bar?.Window as EditorWindow)?.ToggleFullScreen();
+        else if (Job == CaptionJob.Close)
+            Bar?.Window?.Close();
     }
 
     protected override AutomationPeer OnCreateAutomationPeer() => new Peer(this);

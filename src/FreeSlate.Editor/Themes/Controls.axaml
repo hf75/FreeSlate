@@ -9,6 +9,8 @@
   <!-- Named here, as the default font differs from platform to platform (a monospaced one in the browser). -->
   <FontFamily x:Key="UiFont">fonts:Inter#Inter</FontFamily>
 
+  <x:Double x:Key="TitleBarHeight">40</x:Double>
+
   <ControlTheme x:Key="{x:Type Window}" TargetType="Window">
     <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
     <Setter Property="Background" Value="{DynamicResource Canvas}" />
@@ -26,9 +28,71 @@
                               ContentTemplate="{TemplateBinding ContentTemplate}"
                               Margin="{TemplateBinding WindowDecorationMargin}" />
           </VisualLayerManager>
+          <!-- In full screen the frame is gone: this takes its place, from the screen's top edge on. -->
+          <c:CaptionBar Name="PART_FullScreenBar"
+                        ForFullScreen="True"
+                        IsVisible="False"
+                        VerticalAlignment="Top"
+                        Height="{StaticResource TitleBarHeight}"
+                        Background="{DynamicResource Canvas}">
+            <Border BorderBrush="{DynamicResource Hairline}" BorderThickness="0,0,0,1" IsHitTestVisible="False" />
+            <TextBlock Text="{TemplateBinding Title}"
+                       Foreground="{DynamicResource InkFaint}"
+                       FontSize="12"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Margin="92,0"
+                       IsHitTestVisible="False" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <c:CaptionButton Job="ToggleFullScreen"
+                               Symbol="ExitFullScreen"
+                               Tip="{DynamicResource CaptionExitFullScreen}" />
+              <c:CaptionButton Job="Close"
+                               Classes="close"
+                               Symbol="Close"
+                               Tip="{DynamicResource CaptionClose}" />
+            </StackPanel>
+            <c:CaptionTip />
+          </c:CaptionBar>
         </Panel>
       </ControlTemplate>
     </Setter>
+
+    <!-- It comes at once and goes slowly, like the buttons of the title bar. -->
+    <Style Selector="^ /template/ c|CaptionBar#PART_FullScreenBar">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^ /template/ c|CaptionBar#PART_FullScreenBar:resting">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.8" Easing="SineEaseInOut" />
+        </Transitions>
+      </Setter>
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <!-- On the way to full screen and back the content steps out, and comes back in its new place. -->
+    <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="SineEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^.changing /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.1" />
+        </Transitions>
+      </Setter>
+      <Setter Property="Opacity" Value="0" />
+    </Style>
   </ControlTheme>
 
   <!-- The page in a browser. -->
@@ -116,7 +180,7 @@
     layouts: over anything the hit test calls a window button, Windows shows a tip of its own beside ours.
   -->
   <ControlTheme x:Key="{x:Type WindowDrawnDecorations}" TargetType="WindowDrawnDecorations">
-    <Setter Property="DefaultTitleBarHeight" Value="40" />
+    <Setter Property="DefaultTitleBarHeight" Value="{StaticResource TitleBarHeight}" />
     <Setter Property="DefaultFrameThickness" Value="1" />
     <Setter Property="DefaultShadowThickness" Value="8" />
     <Setter Property="Template">
@@ -157,7 +221,8 @@
                            Margin="184,0"
                            IsHitTestVisible="False" />
                 <StackPanel x:Name="PART_Buttons" Orientation="Horizontal" HorizontalAlignment="Right">
-                  <c:CaptionButton x:Name="PART_FullScreenButton"
+                  <c:CaptionButton x:Name="FullScreenButton"
+                                   Job="ToggleFullScreen"
                                    Symbol="FullScreen"
                                    Tip="{DynamicResource CaptionFullScreen}" />
                   <c:CaptionButton x:Name="PART_MinimizeButton"
@@ -176,36 +241,6 @@
               </c:CaptionBar>
             </Panel>
           </WindowDrawnDecorationsContent.Overlay>
-
-          <!-- In full screen the frame shows this when the pointer touches the screen's top edge, and takes it away below the bar. -->
-          <WindowDrawnDecorationsContent.FullscreenPopover>
-            <c:CaptionBar VerticalAlignment="Top"
-                          Height="{TemplateBinding DefaultTitleBarHeight}"
-                          Background="{DynamicResource Canvas}"
-                          TextElement.FontFamily="{DynamicResource UiFont}"
-                          TextOptions.TextRenderingMode="Antialias"
-                          TextOptions.TextHintingMode="None">
-              <Border BorderBrush="{DynamicResource Hairline}" BorderThickness="0,0,0,1" IsHitTestVisible="False" />
-              <TextBlock Text="{TemplateBinding Title}"
-                         Foreground="{DynamicResource InkFaint}"
-                         FontSize="12"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis"
-                         Margin="92,0"
-                         IsHitTestVisible="False" />
-              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <c:CaptionButton x:Name="PART_PopoverFullScreenButton"
-                                 Symbol="ExitFullScreen"
-                                 Tip="{DynamicResource CaptionExitFullScreen}" />
-                <c:CaptionButton x:Name="PART_PopoverCloseButton"
-                                 Classes="close"
-                                 Symbol="Close"
-                                 Tip="{DynamicResource CaptionClose}" />
-              </StackPanel>
-              <c:CaptionTip />
-            </c:CaptionBar>
-          </WindowDrawnDecorationsContent.FullscreenPopover>
 
         </WindowDrawnDecorationsContent>
       </WindowDrawnDecorationsTemplate>
@@ -268,10 +303,7 @@
     <Style Selector="^:not(:has-maximize) /template/ c|CaptionButton#PART_MaximizeButton">
       <Setter Property="IsVisible" Value="False" />
     </Style>
-    <Style Selector="^:not(:has-fullscreen) /template/ c|CaptionButton#PART_FullScreenButton">
-      <Setter Property="IsVisible" Value="False" />
-    </Style>
-    <Style Selector="^:not(:has-fullscreen) /template/ c|CaptionButton#PART_PopoverFullScreenButton">
+    <Style Selector="^:not(:has-fullscreen) /template/ c|CaptionButton#FullScreenButton">
       <Setter Property="IsVisible" Value="False" />
     </Style>
   </ControlTheme>

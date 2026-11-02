@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 
@@ -9,7 +11,8 @@ namespace FreeSlate.Editor.Controls;
 /// <summary>
 /// The title bar's content. It has the pseudo class :inactive while its window is not the active one, and it shows the tips of its
 /// buttons: tool tips need a window among their ancestors, which the layers of a frame do not have. It also has the pseudo class
-/// :resting while the pointer has been away from the bar for a while: the window's buttons then fade away (see the theme).
+/// :resting while the pointer has been away from the bar for a while: the window's buttons then fade away (see the theme). There
+/// is a second one for full screen, where the window has no frame (ForFullScreen).
 /// </summary>
 public sealed class CaptionBar : Panel
 {
@@ -21,17 +24,33 @@ public sealed class CaptionBar : Panel
 
     const uint WM_NCMOUSEMOVE = 0xA0, WM_MOUSEMOVE = 0x200;
 
+    public static readonly StyledProperty<bool> ForFullScreenProperty =
+        AvaloniaProperty.Register<CaptionBar, bool>(nameof(ForFullScreen));
+
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(TipDelay) };
     readonly DispatcherTimer buttonsTimer = new() { Interval = TimeSpan.FromMilliseconds(ButtonsStay) };
     Window? window;
     CaptionButton? under, tipOf;
     long tipWentAt = long.MinValue / 2, pointerSeenAt;
+    double pointerY = double.MaxValue;
 
     public CaptionBar()
     {
         timer.Tick += (_, _) => ShowTip();
         buttonsTimer.Tick += (_, _) => LetButtonsRest();
     }
+
+    /// <summary>
+    /// The bar of full screen: it lies in the window, over the content, is there only in full screen and rests as a whole. Once it has
+    /// faded, only the screen's top edge brings it back: over the document's top lines the pointer has other business.
+    /// </summary>
+    public bool ForFullScreen
+    {
+        get => GetValue(ForFullScreenProperty);
+        set => SetValue(ForFullScreenProperty, value);
+    }
+
+    public Window? Window => window;
 
     CaptionTip? Tip => Children.OfType<CaptionTip>().FirstOrDefault();
 
@@ -102,8 +121,14 @@ public sealed class CaptionBar : Panel
             window.Activated += Activated;
             window.Deactivated += Deactivated;
             PseudoClasses.Set(":inactive", !window.IsActive);
+            if (ForFullScreen)
+            {
+                window.PropertyChanged += WindowChanged;
+                window.AddHandler(PointerMovedEvent, FollowPointerInFullScreen, RoutingStrategies.Tunnel, true);
+                FullScreenChanged();
+            }
             // Only where the pointer can be followed over the bar; so far on Windows.
-            if (OperatingSystem.IsWindows())
+            else if (OperatingSystem.IsWindows())
             {
                 Win32Properties.AddWndProcHookCallback(window, FollowPointer);
                 PointerOnBar();
@@ -120,6 +145,8 @@ public sealed class CaptionBar : Panel
         {
             window.Activated -= Activated;
             window.Deactivated -= Deactivated;
+            window.PropertyChanged -= WindowChanged;
+            window.RemoveHandler(PointerMovedEvent, FollowPointerInFullScreen);
             Win32Properties.RemoveWndProcHookCallback(window, FollowPointer);
             window = null;
         }
@@ -146,6 +173,35 @@ public sealed class CaptionBar : Panel
                 PointerOnBar();
         }
         return IntPtr.Zero;
+    }
+
+    void WindowChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Window.WindowStateProperty)
+            FullScreenChanged();
+    }
+
+    /// <summary>It comes with full screen and goes after the usual while, which shows where it is.</summary>
+    void FullScreenChanged()
+    {
+        IsVisible = window?.WindowState == WindowState.FullScreen;
+        pointerY = double.MaxValue;
+        if (IsVisible)
+            PointerOnBar();
+        else
+        {
+            buttonsTimer.Stop();
+            PointerOff();
+        }
+    }
+
+    void FollowPointerInFullScreen(object? sender, PointerEventArgs e)
+    {
+        if (!IsVisible)
+            return;
+        pointerY = e.GetPosition(window).Y;
+        if (pointerY <= 1 || (pointerY < Bounds.Height && !Classes.Contains(":resting")))
+            PointerOnBar();
     }
 
     void PointerOnBar()
@@ -175,6 +231,7 @@ public sealed class CaptionBar : Panel
 
     /// <summary>A pointer that rests sends no messages, and one that leaves over the window's edge none either: so it is asked for at the end.</summary>
     bool PointerRestsOnBar() =>
+        ForFullScreen ? pointerY < Bounds.Height :
         window?.TryGetPlatformHandle() is { } handle
         && GetCursorPos(out var at)
         && WindowFromPoint(at) == handle.Handle
