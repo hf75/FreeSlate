@@ -207,12 +207,14 @@ It uses no ready-made Avalonia theme, so that nothing is there that was not desi
   dictionary, English stays underneath for texts a language does not have yet. No reflection, no satellite assemblies:
   this works ahead-of-time compiled, in the browser too.
 - **The window's frame** is the theme of Avalonia's `WindowDrawnDecorations`. On Windows the platform keeps the border, the
-  shadow and the rounded corners; the app draws the title bar over a window that is one surface. The parts' names and
-  `WindowDecorationProperties.ElementRole` connect the buttons to the window, which also gives Windows' snap layouts over
-  the maximize button. The frame's layers are neighbours of the window under the common root, not its children
-  (`TopLevel.GetTopLevel` finds no window from there), so `CaptionBar` watches the window itself and shows the buttons'
-  tips by itself (`CaptionTip`), and `CaptionButton` gives a screen reader its tip as its name, as Avalonia names frame
-  buttons in English.
+  shadow and the rounded corners; the app draws the title bar over a window that is one surface. The parts' names connect
+  the buttons to the window. Only the maximize button also tells Windows what it is (`WindowDecorationProperties.ElementRole`),
+  for the snap layouts: over anything the hit test calls a window button, Windows shows a tip of its own, whatever the app
+  does with the mouse's messages. The other buttons therefore count as client area, and the maximize button shows no tip of
+  its own on Windows, as the snap layouts open just then. The frame's layers are neighbours of the window under the common
+  root, not its children (`TopLevel.GetTopLevel` finds no window from there), so `CaptionBar` watches the window itself and
+  shows the buttons' tips by itself (`CaptionTip`), and `CaptionButton` gives a screen reader its tip as its name, as Avalonia
+  names frame buttons in English.
 - **`CaptionGlyph`** draws the buttons' symbols for the screen's pixels: whole device pixels wide and on them at any scaling.
 - **Text** is set in Inter, which the theme names (the default font differs from platform to platform), and smoothed without
   colour fringes and without hinting, the same on every screen (set on each root of a visual tree, as `TextOptions` are no

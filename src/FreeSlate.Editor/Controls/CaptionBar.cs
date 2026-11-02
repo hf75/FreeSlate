@@ -25,6 +25,8 @@ public sealed class CaptionBar : Panel
 
     public void PointerOn(CaptionButton button)
     {
+        if (!button.ShowsTip)
+            return;
         under = button;
         if (Environment.TickCount64 - tipWentAt < TipFollows)
             ShowTip();

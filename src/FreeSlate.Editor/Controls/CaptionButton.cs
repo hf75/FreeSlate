@@ -15,6 +15,9 @@ public sealed class CaptionButton : Button
     public static readonly StyledProperty<string?> TipProperty =
         AvaloniaProperty.Register<CaptionButton, string?>(nameof(Tip));
 
+    public static readonly StyledProperty<bool> ShowsTipProperty =
+        AvaloniaProperty.Register<CaptionButton, bool>(nameof(ShowsTip), true);
+
     public CaptionSymbol Symbol
     {
         get => GetValue(SymbolProperty);
@@ -26,6 +29,13 @@ public sealed class CaptionButton : Button
     {
         get => GetValue(TipProperty);
         set => SetValue(TipProperty, value);
+    }
+
+    /// <summary>Whether the tip shows beneath the button, or only a screen reader gets it.</summary>
+    public bool ShowsTip
+    {
+        get => GetValue(ShowsTipProperty);
+        set => SetValue(ShowsTipProperty, value);
     }
 
     CaptionBar? Bar => this.FindAncestorOfType<CaptionBar>();
@@ -40,13 +50,6 @@ public sealed class CaptionButton : Button
     {
         base.OnPointerExited(e);
         Bar?.PointerOff();
-    }
-
-    /// <summary>Taken here, or the move goes on to Windows, which then shows a tip of its own over a window button.</summary>
-    protected override void OnPointerMoved(PointerEventArgs e)
-    {
-        base.OnPointerMoved(e);
-        e.Handled = true;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
