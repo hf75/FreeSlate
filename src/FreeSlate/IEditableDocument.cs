@@ -256,10 +256,18 @@ public interface IEditableDocument : IDisposable
     /// <summary>
     /// Puts the floating drawing whose character stands at a place of a paragraph's text where its box's top left stands at a point of a
     /// page (points from its top left), one change, as Word puts one dragged there: by offsets from what it stands from, or aligned
-    /// across in its column; its anchor going to the paragraph there. Returns where its character then stands. Slides have none
+    /// there; its anchor going to the paragraph there. Returns where its character then stands. Slides have none
     /// (NotSupportedException).
     /// </summary>
-    (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null);
+    (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null, string? alignDown = null);
+
+    /// <summary>
+    /// Gives the drawing whose character stands at a place of a paragraph's text a size, in points, one change, as Word sizes one by a
+    /// handle: floating, with its box's top left at a point of a page where that is given, its anchor staying. Returns where its
+    /// character then stands. Slides have none (NotSupportedException).
+    /// </summary>
+    (int Paragraph, int Offset) SizeDrawing(int paragraph, int offset, double width, double height, (int Page, double X, double Y)? at = null,
+        string? alignAcross = null, string? alignDown = null);
 
     /// <summary>
     /// The text area of a page as laid out, in points from its top left: its columns across and its margins down, what a drawing dragged

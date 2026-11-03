@@ -69,12 +69,68 @@ public sealed partial class WordDocument
     /// <summary>
     /// Puts the floating drawing whose character stands at a place of a paragraph's text where its box's top left stands at a point of
     /// a page, in points from the page's top left, one change, as Word puts one dragged there: across and down by offsets from what it
-    /// stands from (an alignment across given instead, from the column); its anchor goes to the beginning of the paragraph of the body
-    /// whose line stands at the box's top, where that is another (one in a table keeps its anchor). Where the layout holds it (between
-    /// the margins, on the page), it stands as near as that lets it. Returns where its character then stands.
+    /// stands from (an alignment given instead, from what it stands from, across from the column where that is neither the margin nor
+    /// the column); its anchor goes to the beginning of the paragraph of the body whose line stands at the box's top, where that is
+    /// another (one in a table keeps its anchor). Where the layout holds it (between the margins, on the page), it stands as near as
+    /// that lets it. Returns where its character then stands.
     /// </summary>
     /// <exception cref="NotSupportedException">No floating drawing stands at the place; nothing changes.</exception>
-    public (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null)
+    public (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null, string? alignDown = null)
+    {
+        var start = version;
+        try
+        {
+            var place = Placed(paragraph, offset, page, x, y, alignAcross, alignDown, anchorMoves: true);
+            Combine(version - start);
+            return place;
+        }
+        catch
+        {
+            Back(start);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gives the drawing whose character stands at a place of a paragraph's text a size, in points, one change, as Word sizes one by a
+    /// handle: floating, with its box's top left at a point of a page where it is given (the side it is sized from moving, the other
+    /// staying, see PlaceDrawing), its anchor staying where it is. Returns where its character then stands.
+    /// </summary>
+    /// <exception cref="NotSupportedException">No drawing stands at the place; nothing changes.</exception>
+    public (int Paragraph, int Offset) SizeDrawing(int paragraph, int offset, double width, double height, (int Page, double X, double Y)? at = null,
+        string? alignAcross = null, string? alignDown = null)
+    {
+        var start = version;
+        try
+        {
+            Format(paragraph, offset, new DrawingFormatting { Width = width, Height = height });
+            var place = (paragraph, offset);
+            if (at is var (page, x, y) && DrawingOf(paragraph, offset) is { Wrap: not "inline" })
+                place = Placed(paragraph, offset, page, x, y, alignAcross, alignDown, anchorMoves: false);
+            Combine(version - start);
+            return place;
+        }
+        catch
+        {
+            Back(start);
+            throw;
+        }
+    }
+
+    /// <summary>The changes since a version taken back and forgotten (see Refused).</summary>
+    void Back(int start)
+    {
+        if (version <= start)
+            return;
+        Go(start);
+        versions.RemoveRange(start + 1, versions.Count - start - 1);
+    }
+
+    /// <summary>
+    /// A floating drawing put where its box's top left is to stand (see PlaceDrawing), a change or a few; where <paramref name="anchorMoves"/>,
+    /// its anchor to the paragraph there, unless its box's top stays within what its paragraph and it take of the page.
+    /// </summary>
+    (int Paragraph, int Offset) Placed(int paragraph, int offset, int page, double x, double y, string? alignAcross, string? alignDown, bool anchorMoves)
     {
         var (p, top) = Find(paragraph);
         if (DrawingAt(p, offset) is not { Name.LocalName: "anchor" })
@@ -82,60 +138,67 @@ public sealed partial class WordDocument
         Scenes();
         if (page < 0 || page >= shown.Count)
             throw new ArgumentOutOfRangeException(nameof(page), "The document has no such page laid out.");
-        var start = version;
         var place = (Paragraph: paragraph, Offset: offset);
-        try
+        // Its anchor to the paragraph of the body at its top, where that is another; while its top stays within its own paragraph and
+        // itself (which pushes the paragraph's text away where it is wide), the anchor stays.
+        if (anchorMoves && paragraphs.ContainsKey(paragraph) && ReferenceEquals(p, top) && !Within(page, paragraph, offset, y)
+            && ParagraphAt(page, x, y) is { } at && at != paragraph)
         {
-            if (paragraphs.ContainsKey(paragraph) && ReferenceEquals(p, top) && ParagraphAt(page, x, y) is { } at && at != paragraph)
+            try
             {
-                try
-                {
-                    place = MoveDrawing(paragraph, offset, at, Find(at).Paragraph.TextOffset);
-                }
-                catch (NotSupportedException)
-                {
-                    // It stays anchored where it was.
-                }
+                place = MoveDrawing(paragraph, offset, at, Find(at).Paragraph.TextOffset);
             }
-            // Offsets from what it stands from: from where it is by as much as it moves, else from where that begins; measured as laid out
-            // and once more where the layout put it elsewhere (a paragraph's top lies above its space before).
-            Scenes();
-            var now = DrawingOf(place.Paragraph, place.Offset)!;
-            var stood = place == (paragraph, offset) ? PlacedAt(place.Paragraph, place.Offset) : null;
-            var (across, down) = (alignAcross != null ? "column" : now.HorizontalFrom ?? "column", now.VerticalFrom ?? "paragraph");
-            var format = new DrawingFormatting
+            catch (NotSupportedException)
             {
-                HorizontalFrom = across,
-                HorizontalAlign = alignAcross,
-                HorizontalOffset = alignAcross != null ? null
-                    : now.HorizontalOffset is { } h && stood is var (_, was) ? h + x - was.X : x - AcrossFrom(across, shown[page], x),
-                VerticalFrom = down,
-                VerticalOffset = now.VerticalOffset is { } v && stood is var (_, had) ? v + y - had.Y : y - DownFrom(down, shown[page], place.Paragraph),
+                // It stays anchored where it was.
+            }
+        }
+        // Offsets from what it stands from: from where it is by as much as it moves, else from where that begins; measured as laid out
+        // and once more where the layout put it elsewhere (a paragraph's top lies above its space before).
+        Scenes();
+        var now = DrawingOf(place.Paragraph, place.Offset)!;
+        var stood = place == (paragraph, offset) ? PlacedAt(place.Paragraph, place.Offset) : null;
+        var across = alignAcross != null && now.HorizontalFrom is not ("margin" or "column") ? "column" : now.HorizontalFrom ?? "column";
+        var down = now.VerticalFrom ?? "paragraph";
+        var format = new DrawingFormatting
+        {
+            HorizontalFrom = across,
+            HorizontalAlign = alignAcross,
+            HorizontalOffset = alignAcross != null ? null
+                : now.HorizontalOffset is { } h && stood is var (_, was) ? h + x - was.X : x - AcrossFrom(across, shown[page], x),
+            VerticalFrom = down,
+            VerticalAlign = alignDown,
+            VerticalOffset = alignDown != null ? null
+                : now.VerticalOffset is { } v && stood is var (_, had) ? v + y - had.Y : y - DownFrom(down, shown[page], place.Paragraph),
+        };
+        for (var pass = 0; pass < 2; pass++)
+        {
+            Format(place.Paragraph, place.Offset, format);
+            if (PlacedAt(place.Paragraph, place.Offset) is not var (on, drawn) || on != page
+                || Math.Abs(drawn.X - x) < 0.01 && Math.Abs(drawn.Y - y) < 0.01 || pass == 1)
+                break;
+            format = format with
+            {
+                HorizontalOffset = format.HorizontalOffset + x - drawn.X,
+                VerticalOffset = format.VerticalOffset + y - drawn.Y,
             };
-            for (var pass = 0; pass < 2; pass++)
-            {
-                Format(place.Paragraph, place.Offset, format);
-                if (PlacedAt(place.Paragraph, place.Offset) is not var (on, drawn) || on != page
-                    || Math.Abs(drawn.X - x) < 0.01 && Math.Abs(drawn.Y - y) < 0.01 || pass == 1)
-                    break;
-                format = format with
-                {
-                    HorizontalOffset = format.HorizontalOffset + x - drawn.X,
-                    VerticalOffset = format.VerticalOffset + y - drawn.Y,
-                };
-            }
         }
-        catch
-        {
-            if (version > start)
-            {
-                Go(start);
-                versions.RemoveRange(start + 1, versions.Count - start - 1);
-            }
-            throw;
-        }
-        Combine(version - start);
         return place;
+    }
+
+    /// <summary>
+    /// Whether a height of a page lies within what a paragraph takes of the page with the floating drawing at a place of its text: from
+    /// the higher of its first line there and the drawing (whose text the drawing may push below it) to its last line's bottom.
+    /// </summary>
+    bool Within(int page, int paragraph, int offset, double y)
+    {
+        var lines = shown[page].Lines.Where(l => l.Line.Paragraph?.Id == paragraph).ToList();
+        if (lines.Count == 0)
+            return false;
+        var (top, bottom) = (lines.Min(l => l.Top), lines.Max(l => l.Top + l.Line.Height));
+        if (PlacedAt(paragraph, offset) is var (on, drawn) && on == page)
+            top = Math.Min(top, drawn.Y);
+        return y >= top - 0.01 && y <= bottom + 0.01;
     }
 
     /// <summary>

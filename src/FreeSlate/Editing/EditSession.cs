@@ -370,6 +370,19 @@ public sealed class EditSession(IEditableDocument document)
         return true;
     }
 
+    /// <summary>
+    /// Gives the drawing the selection holds alone a size (points), a handling of its own; floating, with its box's top left at a point
+    /// of a page (see PlaceDrawing), so that the side it is sized from moves and the other stays, and an alignment kept where it is
+    /// given. It stays selected. False where the selection holds none.
+    /// </summary>
+    public bool SizeDrawing(double width, double height, (int Page, double X, double Y)? at = null, string? alignAcross = null, string? alignDown = null)
+    {
+        if (SelectedDrawing() is not var (paragraph, offset))
+            return false;
+        Act(false, () => Around(document.SizeDrawing(paragraph, offset, width, height, at, alignAcross, alignDown)));
+        return true;
+    }
+
     /// <summary>A drawing's character selected as a whole, as a click selects it: the cursor after it, the anchor before.</summary>
     static (TextPlace Caret, TextPlace Anchor) Around((int Paragraph, int Offset) drawing) =>
         (new TextPlace(drawing.Paragraph, drawing.Offset + 1), new TextPlace(drawing.Paragraph, drawing.Offset));

@@ -173,8 +173,10 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   click on the drawing selects it and the cursor goes round it. `MoveDrawing` moves a drawing to another place of the text
   (in a run of its own with its run's formatting), `PlaceDrawing` puts a floating one where its box's top left is to stand
   on a page, as Word does when it is dragged there: by offsets from what it stands from (measured as laid out, and once
-  more where the layout put it elsewhere), its anchor going to the paragraph of the body under its top; `TextArea` gives a
-  page's columns and margins for lining up with.
+  more where the layout put it elsewhere), its anchor going to the paragraph of the body under its top (not while that top
+  stays within its own paragraph, whose text a wide drawing pushes below it); `SizeDrawing` sizes one as Word does by a
+  handle, the side it is sized from moving and its anchor staying; `TextArea` gives a page's columns and margins for lining
+  up with.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
@@ -253,7 +255,10 @@ again (`EditSession.TakeBack`). A picture is dragged with the main button (`Docu
 goes with the pointer and a bar shows where it would go in the text; floating it follows the pointer over the pages, the text
 going round it as it goes (a step taken back and made anew as it goes on, kept where it is let go, Escape takes it back), its
 anchor's paragraph marked in the margin. Near a column's edges and middle and the margins it lines up with them, a line along
-each (Alt held, not); at a column's edge or middle of a page of one column it stays aligned there.
+each (Alt held, not); at a column's edge or middle of a page of one column it stays aligned there. The handles at the corners and
+the middles of the sides of the picture selected size it the same way, as a step that goes on: a corner keeps its proportions, a
+side stretches it, the opposite side stays and an alignment there too, a side it moves lines up with the columns' edges and the
+margins.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

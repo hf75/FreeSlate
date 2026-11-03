@@ -735,9 +735,9 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
-        // Over a drawing the pointer shows that it can be moved.
+        // Over a drawing the pointer shows that it can be moved, over a handle of the one selected that it can be sized.
         if (!selecting)
-            Cursor = DrawingAt(e.GetPosition(this)) != null ? Grab : Text;
+            Cursor = CursorAt(e.GetPosition(this));
         if (selecting && PlaceAt(e.GetPosition(this)) is var (page, at, end))
         {
             (caret, lineEnd) = ((page, at), end);
@@ -775,7 +775,13 @@ public sealed partial class DocumentView : Control
     public bool Press(Point point, IPointer pointer, KeyModifiers modifiers, bool dragging = true)
     {
         Focus();
-        // A drawing pressed is selected as a whole, and may be dragged from there.
+        // A handle of the drawing selected sizes it; a drawing pressed is selected as a whole, and may be dragged from there.
+        if ((modifiers & KeyModifiers.Shift) == 0 && HandleAt(point) is { } handle)
+        {
+            if (dragging)
+                BeginDrag(point, pointer, handle);
+            return true;
+        }
         if ((modifiers & KeyModifiers.Shift) == 0 && SelectDrawingAt(point))
         {
             if (dragging)
@@ -796,11 +802,11 @@ public sealed partial class DocumentView : Control
         return true;
     }
 
-    /// <summary>Whether a point of the view is on the selection (a drawing selected as a whole: on its box).</summary>
+    /// <summary>Whether a point of the view is on the selection (a drawing selected as a whole: on its box, not on a handle).</summary>
     public bool OnSelection(Point point)
     {
         if (SelectedDrawing() is var (drawnPage, drawnAt))
-            return BoxOf(drawnPage, drawnAt) is { } box && box.Contains(point);
+            return BoxOf(drawnPage, drawnAt) is { } box && box.Contains(point) && HandleAt(point) == null;
         foreach (var (page, from, count) in Selected())
         {
             if (page >= rows.Count)

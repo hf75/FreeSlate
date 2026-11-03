@@ -292,8 +292,12 @@ public sealed partial class PresentationDocument : IEditableDocument
         throw new NotSupportedException("Slides have no drawings in their text.");
 
     /// <summary>Slides have no drawings in their text (see IEditableDocument.PlaceDrawing).</summary>
-    public (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null) =>
+    public (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null, string? alignDown = null) =>
         throw new NotSupportedException("Slides have no drawings in their text.");
+
+    /// <summary>Slides have no drawings in their text (see IEditableDocument.SizeDrawing).</summary>
+    public (int Paragraph, int Offset) SizeDrawing(int paragraph, int offset, double width, double height, (int Page, double X, double Y)? at = null,
+        string? alignAcross = null, string? alignDown = null) => throw new NotSupportedException("Slides have no drawings in their text.");
 
     /// <summary>Slides have no text area of pages (see IEditableDocument.TextArea).</summary>
     public (IReadOnlyList<(double Left, double Right)> Columns, double Top, double Bottom)? TextArea(int page) => null;
