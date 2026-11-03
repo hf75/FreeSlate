@@ -2513,6 +2513,12 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         /// <summary>Whether the area is a text frame's (w:framePr).</summary>
         public bool Frame { get; init; }
 
+        /// <summary>
+        /// Whether the area is a floating drawing's that reaches into a line only where it reaches the line's text (see Room and
+        /// LayoutProfile.DrawingsReachText).
+        /// </summary>
+        public bool ReachesText { get; init; }
+
         /// <summary>Whether the area is a drop cap's (w:framePr w:dropCap drop), whose room moves the first line beside it (LineRoom.DropCap).</summary>
         public bool DropCap { get; init; }
 
@@ -2574,10 +2580,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 DistanceRight = dr,
                 Source = element,
                 OtherSide = otherSide,
+                ReachesText = context.Profile.DrawingsReachText,
             };
         }
         return new Exclusion(drawing.X - el - dl, drawing.Y - et - dt, drawing.X + drawing.Width + er + dr, drawing.Y + drawing.Height + eb + db,
-            box.TopAndBottom, side) { Source = element, OtherSide = otherSide, DistanceLeft = el + dl, DistanceRight = er + dr };
+            box.TopAndBottom, side) { Source = element, OtherSide = otherSide, DistanceLeft = el + dl, DistanceRight = er + dr, ReachesText = context.Profile.DrawingsReachText };
     }
 
     /// <summary>Whether blocks of the text's flow stand before the one at <paramref name="index"/>: all but frames, also
@@ -2673,8 +2680,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // Objects beside the column leave it alone, also those kept free above and below (measured with
             // docx/external/libreoffice/extras-layout/fdo43573-2-min: an image wrapped top and bottom in the left column
             // of a page, the right column's text beside it); an empty frame at its edge does not
-            // (extras-ooxmlexport/fdo78904).
-            if (top >= e.Bottom - 0.01 || top + height <= e.Top + 0.01 || e.Right < columnLeft - 0.01 || e.Left > columnLeft + columnWidth + 0.01)
+            // (extras-ooxmlexport/fdo78904). From Word 2013 on a drawing reaches into a line where it reaches its text, from
+            // the line's top to the bottom of its text: not into what more than single spacing adds below the text (measured
+            // with docx/local/wbd-*: Calibri 11 pt spaced 1.08, 1.15 and 1.5 times, a picture wrapped square whose top
+            // reaches 1, 2 and 6 pt up into a line leaves it whole, 2, 3 and 9 pt not; into a line spaced once already 0.5
+            // pt; its bottom 0.5 pt down into a line's top at every spacing; npe-15-*: a rectangle wrapped top and bottom
+            // 0.9 and 5 pt above its paragraph, within what the empty line before it, spaced 1.5 times, has below its text,
+            // leaves that line above it); before, the whole line counts (npe-14-*: that line goes below the rectangle; fmw-a,
+            // fmw-f; LibreOffice's extras-layout/fdo43573-2-min).
+            var reach = e.ReachesText ? Math.Min(height, slot.TextBottom) : height;
+            if (top >= e.Bottom - 0.01 || top + reach <= e.Top + 0.01 || e.Right < columnLeft - 0.01 || e.Left > columnLeft + columnWidth + 0.01)
                 continue;
             nextBottom = Math.Min(nextBottom, e.Polygon != null ? slot.Offset + slot.Height : e.Bottom - paragraphTop);
             var (l, r) = (e.Left - columnLeft, e.Right - columnLeft);

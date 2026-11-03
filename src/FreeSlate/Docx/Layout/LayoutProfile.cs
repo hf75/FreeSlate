@@ -191,6 +191,12 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool TallLinesClearObjects { get; } = mode >= 15;
 
     /// <summary>
+    /// Whether a floating drawing reaches into a line only where it reaches the line's text, not into what more than single
+    /// spacing adds below it: from Word 2013 on (see Paginator.Room).
+    /// </summary>
+    public bool DrawingsReachText { get; } = mode >= 15;
+
+    /// <summary>
     /// Whether the paragraph mark goes to a line of its own after an object in a field that is wider than the line:
     /// before Word 2013.
     /// </summary>

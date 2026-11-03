@@ -2558,7 +2558,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         if (scope.CellInside is { } inside)
             x = Math.Max(inside.Left, Math.Min(x, inside.Right - w));
         return new Paginator.Exclusion(x - before - distance.Left, top - effect.Top - distance.Top,
-            x + w + after + distance.Right, top + h + effect.Bottom + distance.Bottom, box.TopAndBottom, box.Side);
+            x + w + after + distance.Right, top + h + effect.Bottom + distance.Bottom, box.TopAndBottom, box.Side) { ReachesText = context.Profile.DrawingsReachText };
     }
 
     /// <summary>A cell's blocks laid out in its text width: lines with tops from the content's top, and the height.</summary>
