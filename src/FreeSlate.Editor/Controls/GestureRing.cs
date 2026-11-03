@@ -30,14 +30,14 @@ public sealed class GestureRing : Control
     /// <summary>How far the pointer goes before the ring shows to choose blindly, and before a press on the selection selects anew; how far a blind stroke turns aside for a second level.</summary>
     const double BlindDistance = 15, SelectDistance = 4, Turn = 12;
 
-    /// <summary>The middle of the ring, where letting go does nothing (its radius), how far a sign keeps from its field's edges, and from the window.</summary>
-    const double Hub = 36, Pad = 6, Clearance = 14;
+    /// <summary>The middle of the ring, where letting go does nothing (its radius, the least of the inner circle), and how far a sign keeps from its field's edges and rims.</summary>
+    const double Hub = 36, Pad = 6;
 
-    /// <summary>The farthest a sign stands from the centre to keep clear of a wide window; beyond, it stands over the window on a spot of the ring's surface.</summary>
-    const double MostMiddle = 104;
+    /// <summary>The widest the inner circle grows around a window; a wider window runs on through the band of fields, a sign over it on a spot of the ring's surface.</summary>
+    const double MostInner = 64;
 
-    /// <summary>The gap around the field the pointer is in, which shows it, and how much of the page the ring's glass lets through.</summary>
-    const double Gap = 3, Glass = 0.84;
+    /// <summary>The gap around the field the pointer is in, which shows it; how much the glass of the band of fields covers, and of the inner circle.</summary>
+    const double Gap = 3, Glass = 0.94, InnerGlass = 0.5;
 
     /// <summary>
     /// A field's sign, its ink in pixels: no taller than SignHeight, no wider than SignWidth, and of about the area of a square of
@@ -60,8 +60,11 @@ public sealed class GestureRing : Control
         public bool IsEmpty => Act == null && Under == null;
     }
 
-    /// <summary>A ring as it shows: its fields, its centre, the field of the ring before it that holds it, and where its signs stand and how far it reaches (radii).</summary>
-    sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent, double Middle, double Outer);
+    /// <summary>
+    /// A ring as it shows: its fields, its centre, the field of the ring before it that holds it, and its radii: the inner circle (the
+    /// middle, where letting go does nothing, or around the window onto the text), where its signs stand, and how far it reaches.
+    /// </summary>
+    sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent, double Inner, double Middle, double Outer);
 
     enum Mode { None, Waiting, Blind, Held, Clicking, Holding, KeysWaiting, Keys }
 
@@ -222,7 +225,7 @@ public sealed class GestureRing : Control
     static Vector Way(double angle) => new(Math.Cos(angle), Math.Sin(angle));
 
     /// <summary>The field of the ring now in the direction of a point from its centre, or null in its middle and on an empty field.</summary>
-    int? Pointed(Point point) => Current is { } level ? Field(level.Slots, point - level.Centre, Hub - 1) : null;
+    int? Pointed(Point point) => Current is { } level ? Field(level.Slots, point - level.Centre, level.Inner - 1) : null;
 
     /// <summary>The field of a ring in a direction, beyond a distance, or null (an empty field counts as none).</summary>
     static int? Field(IReadOnlyList<Slot> slots, Vector direction, double beyond)
@@ -355,7 +358,7 @@ public sealed class GestureRing : Control
         e.Handled = true;
         var point = e.GetPosition(this);
         var distance = Far(point, level.Centre);
-        if (distance < Hub && levels.Count > 1)
+        if (distance < level.Inner && levels.Count > 1)
         {
             Back();
             return;
@@ -385,7 +388,7 @@ public sealed class GestureRing : Control
         slot.Act?.Invoke();
         if (blindly is { } point)
         {
-            confirmed = (Name(slot), point, Environment.TickCount64);
+            confirmed = (NameOf(slot), point, Environment.TickCount64);
             frames.Start();
             InvalidateVisual();
         }
@@ -479,7 +482,7 @@ public sealed class GestureRing : Control
     }
 
     /// <summary>A field's name in the language of the interface.</summary>
-    string Name(Slot slot) => this.TryFindResource(slot.NameKey, out var text) && text is string name ? name : slot.NameKey;
+    string NameOf(Slot slot) => this.TryFindResource(slot.NameKey, out var text) && text is string name ? name : slot.NameKey;
 
     /// <summary>A colour of the theme: they lie under its variant.</summary>
     IBrush? Brush(string key) => this.TryFindResource(key, ActualThemeVariant, out var brush) ? brush as IBrush : null;
@@ -494,7 +497,7 @@ public sealed class GestureRing : Control
     {
         if (signs.TryGetValue(slot, out var known))
             return known;
-        var typeface = new Typeface(Inter, slot.Slanted ? FontStyle.Italic : FontStyle.Normal, FontWeight.Bold);
+        var typeface = new Typeface(Inter, slot.Slanted ? FontStyle.Italic : FontStyle.Normal, FontWeight.Light);
         var text = new FormattedText(slot.Sign, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 100, Brushes.Black);
         var outline = text.BuildGeometry(default) ?? new StreamGeometry();
         var ink = outline.Bounds;
@@ -512,56 +515,44 @@ public sealed class GestureRing : Control
     }
 
     /// <summary>
-    /// A ring laid out for its signs: they stand on one circle (Middle), as near the middle as lets each keep Pad from its field's edges,
-    /// from the middle and from the window onto the text (up to MostMiddle), and the ring reaches Pad beyond the farthest of them; wholly
-    /// in view.
+    /// A ring laid out for its signs: a band of fields around an inner circle, each sign in the middle of its field. Where the ring is
+    /// about the text in the window, it stands centred on the window and its inner circle goes around it (up to MostInner); else the
+    /// inner circle is the middle where letting go does nothing. The band is as wide as lets the widest sign keep Pad from its field's
+    /// edges and rims. Wholly in view.
     /// </summary>
     Level Measure(IReadOnlyList<Slot> slots, Point point, Slot? parent)
     {
-        var window = Window?.Invoke(start);
-        var centre = point;
-        Level Lay()
+        var window = Window?.Invoke(start)?.Inflate(new Thickness(5, 3));
+        var about = window is { } open && open.Inflate(8).Contains(point);
+        // The inner circle around the window, from a centre: through its farthest corner.
+        double Around(Point centre, Rect frame) => Math.Clamp(new[] { frame.TopLeft, frame.TopRight, frame.BottomLeft, frame.BottomRight }.Max(c => Far(c, centre)) + 4, Hub, MostInner);
+        var centre = about ? window!.Value.Center : point;
+        var inner = about ? Around(centre, window!.Value) : Hub;
+        // A sign reaches along its field's middle, and towards an edge of its field (a line through the centre at Half on either side
+        // of the middle) as far as its half extents along that edge's normal; standing at Middle, it is Middle·sin(Half) from the edge.
+        var (middle, along) = (inner, 0.0);
+        for (var k = 0; k < 8 && k < slots.Count; k++)
         {
-            var (middle, outward) = (Hub + Pad, 0.0);
-            for (var k = 0; k < 8 && k < slots.Count; k++)
-            {
-                if (slots[k].IsEmpty)
-                    continue;
-                var (w, h) = (SignSize(slots[k]).Width, SignSize(slots[k]).Height);
-                var angle = Angle(k);
-                // A field's edges are lines through the centre at Half on either side of its middle angle: the sign's centre stands
-                // Middle·sin(Half) from each, and the sign reaches towards an edge as far as its half extents along that edge's normal.
-                var least = Hub + Pad;
-                foreach (var edge in new[] { angle - Half, angle + Half })
-                {
-                    var reach = w / 2 * Math.Abs(Math.Sin(edge)) + h / 2 * Math.Abs(Math.Cos(edge));
-                    least = Math.Max(least, (reach + Pad) / Math.Sin(Half));
-                }
-                var along = w / 2 * Math.Abs(Math.Cos(angle)) + h / 2 * Math.Abs(Math.Sin(angle));
-                least = Math.Max(least, Hub + Pad + along);
-                // Clear of the window, as far as it may go.
-                if (window is { } open)
-                {
-                    var clear = open.Inflate(Clearance);
-                    while (least < MostMiddle && clear.Intersects(new Rect(centre + Way(angle) * least - new Vector(w / 2, h / 2), new Size(w, h))))
-                        least += 1;
-                }
-                middle = Math.Max(middle, least);
-                outward = Math.Max(outward, along);
-            }
-            var outer = middle + outward + Pad + 2;
-            return new Level(slots, centre, parent, middle, outer);
+            if (slots[k].IsEmpty)
+                continue;
+            var (w, h) = (SignSize(slots[k]).Width, SignSize(slots[k]).Height);
+            var angle = Angle(k);
+            along = Math.Max(along, w / 2 * Math.Abs(Math.Cos(angle)) + h / 2 * Math.Abs(Math.Sin(angle)));
+            foreach (var edge in new[] { angle - Half, angle + Half })
+                middle = Math.Max(middle, (w / 2 * Math.Abs(Math.Sin(edge)) + h / 2 * Math.Abs(Math.Cos(edge)) + Pad) / Math.Sin(Half));
         }
-        var level = Lay();
-        // Wholly in view, where the gesture began near an edge; laid out again around the centre it then has.
-        var margin = level.Outer + 8;
-        var placed = new Point(Math.Clamp(point.X, margin, Math.Max(margin, Bounds.Width - margin)), Math.Clamp(point.Y, margin, Math.Max(margin, Bounds.Height - margin)));
-        if (placed != point)
+        middle = Math.Max(middle, inner + Pad + along);
+        // The signs in the middle of the band.
+        var outer = Math.Max(middle + along + Pad, 2 * middle - inner);
+        // Wholly in view, where the gesture began near an edge: its inner circle then goes around the window from where it stands.
+        var margin = outer + 8;
+        var placed = new Point(Math.Clamp(centre.X, margin, Math.Max(margin, Bounds.Width - margin)), Math.Clamp(centre.Y, margin, Math.Max(margin, Bounds.Height - margin)));
+        if (placed != centre && about)
         {
-            centre = placed;
-            level = Lay();
+            var grown = Around(placed, window!.Value) - inner;
+            (inner, middle, outer) = (inner + grown, middle + grown, outer + grown);
         }
-        return level;
+        return new Level(slots, placed, parent, inner, middle, outer);
     }
 
     public override void Render(DrawingContext context)
@@ -599,6 +590,7 @@ public sealed class GestureRing : Control
         var (line, ink, faint, accent, onAccent) = (Brush("Hairline"), Brush("Ink"), Brush("InkFaint"), Brush("Accent"), Brush("OnAccent"));
         // Glass of the canvas's tint, so that it shows as a thing of its own on the white page, with a rim a little darker.
         var surface = Brush("Canvas") is ISolidColorBrush { Color: var tint } ? new SolidColorBrush(tint, Glass) : null;
+        var clearer = Brush("Canvas") is ISolidColorBrush { Color: var light } ? new SolidColorBrush(light, InnerGlass) : null;
         var hairline = new Pen(line, 1);
         var rim = new Pen(Brush("InkGhost") is ISolidColorBrush { Color: var ghost } ? new SolidColorBrush(ghost, 0.45) : line, 1);
         // The window onto the text: the text's line under the ring shows through it, as it reads now (with the preview).
@@ -613,18 +605,23 @@ public sealed class GestureRing : Control
                     : everywhere;
                 using (context.PushGeometryClip(clip))
                 {
-                    // The disc, of glass, raised over the page.
-                    context.DrawRectangle(surface, rim, new RoundedRect(new Rect(c.X - level.Outer, c.Y - level.Outer, 2 * level.Outer, 2 * level.Outer), level.Outer),
-                        new BoxShadows(new BoxShadow { OffsetY = 10, Blur = 28, Color = Color.FromArgb(0x1E, 0, 0, 0) },
-                            [new BoxShadow { OffsetY = 2, Blur = 6, Color = Color.FromArgb(0x12, 0, 0, 0) }]));
-                    // The edges between the fields.
+                    // The disc, of glass, raised over the page: the band of fields nearly whole, so that the signs read clearly; the inner
+                    // circle clearer, so that the text around the window shows.
+                    var inside = new GeometryGroup { FillRule = FillRule.EvenOdd, Children = new GeometryCollection { everywhere, new EllipseGeometry(new Rect(c.X - level.Inner, c.Y - level.Inner, 2 * level.Inner, 2 * level.Inner)) } };
+                    using (context.PushGeometryClip(inside))
+                        context.DrawRectangle(surface, rim, new RoundedRect(new Rect(c.X - level.Outer, c.Y - level.Outer, 2 * level.Outer, 2 * level.Outer), level.Outer),
+                            new BoxShadows(new BoxShadow { OffsetY = 10, Blur = 28, Color = Color.FromArgb(0x1E, 0, 0, 0) },
+                                [new BoxShadow { OffsetY = 2, Blur = 6, Color = Color.FromArgb(0x12, 0, 0, 0) }]));
+                    context.DrawEllipse(clearer, null, c, level.Inner, level.Inner);
+                    // The band of fields: its inner rim, and the edges between the fields.
+                    context.DrawEllipse(null, hairline, c, level.Inner, level.Inner);
                     for (var k = 0; k < 8; k++)
                     {
                         var edge = Angle(k) + Half;
-                        context.DrawLine(hairline, c + Way(edge) * (Hub - 4), c + Way(edge) * (level.Outer - 6));
+                        context.DrawLine(hairline, c + Way(edge) * level.Inner, c + Way(edge) * (level.Outer - 6));
                     }
                     if (chosen is { } pointed)
-                        context.DrawGeometry(accent, null, Sector(c, Hub - 6 + Gap, level.Outer - Gap, Angle(pointed), Gap));
+                        context.DrawGeometry(accent, null, Sector(c, level.Inner + Gap, level.Outer - Gap, Angle(pointed), Gap));
                 }
                 if (window is { } frame)
                     context.DrawRectangle(null, new Pen(chosen != null ? accent : line, chosen != null ? 1.5 : 1), new RoundedRect(frame, Math.Min(7, frame.Height / 2)));
@@ -659,7 +656,7 @@ public sealed class GestureRing : Control
         if (chosen is { } named)
         {
             var way = Way(Angle(named));
-            var label = Layout(Name(level.Slots[named]), Brush("TipInk"));
+            var label = Layout(NameOf(level.Slots[named]), Brush("TipInk"));
             var (w, h) = (label.WidthIncludingTrailingWhitespace + 16, label.Height + 8);
             var reach = w / 2 * Math.Abs(way.X) + h / 2 * Math.Abs(way.Y);
             var middle = c + way * (level.Outer + 8 + reach);
