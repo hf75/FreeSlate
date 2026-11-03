@@ -1280,6 +1280,42 @@ public sealed partial class DocumentView : Control
     }
 
     /// <summary>The pictures copied data holds put in at the cursor: picture files (copied from a folder), else a picture itself (a screenshot).</summary>
+    /// <summary>The cursor at the place a point of the view hits (see PlaceAt), the selection gone; false where there is no text.</summary>
+    public bool PlaceCursorAt(Point point)
+    {
+        if (PlaceAt(point) is not var (page, at, end))
+            return false;
+        (caret, anchor, lineEnd) = ((page, at), (page, at), end);
+        Moved();
+        InvalidateVisual();
+        return true;
+    }
+
+    /// <summary>Pictures chosen from files (the platform's picker, several at once) go in at the cursor, one after the other.</summary>
+    public async Task PickPictures()
+    {
+        if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage)
+            return;
+        string Text(string key, string fallback) => this.TryFindResource(key, out var text) && text is string s ? s : fallback;
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = Text("InsertPictureFile", "Picture"),
+            AllowMultiple = true,
+            FileTypeFilter = [new FilePickerFileType(Text("PictureFiles", "Pictures")) { Patterns = [.. PictureFiles.Select(e => "*" + e)] }],
+        });
+        if (PictureFilesOf(files) is { Count: > 0 } pictures)
+            InsertPictures(await Read(pictures));
+        Focus();
+    }
+
+    /// <summary>The pictures the clipboard holds go in at the cursor (files of pictures, else a picture itself); its text not.</summary>
+    public async Task PasteClipboardPictures()
+    {
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard && await clipboard.TryGetDataAsync() is { } data)
+            await PastePictures(data);
+        Focus();
+    }
+
     async Task PastePictures(IAsyncDataTransfer data)
     {
         if (PictureFilesOf(await data.TryGetFilesAsync()) is { Count: > 0 } files)

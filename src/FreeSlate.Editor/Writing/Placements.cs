@@ -42,6 +42,10 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>The icon of what is done with the picture itself (its caption, its description, its size): a picture, a hill and the sun in a frame.</summary>
     public static readonly string PictureIcon = Drawn(Frame(0, 1, 20, 14), "M3.2,12.6 L8,7.4 L11.1,10.6 L13.5,8.3 L16.8,12.6 Z", Circle(14.6, 5.4, 1.7));
 
+    /// <summary>The icon of what the clipboard holds: a clipboard, its clip at the top, a picture on it.</summary>
+    public static readonly string ClipboardIcon = Drawn(Frame(3, 1.6, 14, 14.4), Block(7, 0, 6, 3.2),
+        "M5.6,13.6 L9,9.6 L11.2,12 L12.6,10.6 L14.4,13.6 Z");
+
     /// <summary>The icon of a caption: a picture with two lines below it.</summary>
     public static readonly string CaptionIcon = Drawn(Frame(3, 0, 14, 9.8), Bar(3, 12.2, 14), Bar(6, 14.8, 8));
 

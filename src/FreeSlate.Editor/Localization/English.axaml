@@ -43,6 +43,9 @@
   <x:String x:Key="PictureNaturalSize">Original size</x:String>
   <x:String x:Key="DescriptionPlaceholder">What does the picture show? For those who cannot see it.</x:String>
   <x:String x:Key="PictureDecorative">Decorative only</x:String>
+  <x:String x:Key="InsertPictureFile">Picture from a file</x:String>
+  <x:String x:Key="InsertPictureClipboard">Picture from the clipboard</x:String>
+  <x:String x:Key="PictureFiles">Pictures</x:String>
   <x:String x:Key="PlaceTop">Top center</x:String>
   <x:String x:Key="PlaceTopRight">Top right</x:String>
   <x:String x:Key="PlaceRight">Middle right</x:String>

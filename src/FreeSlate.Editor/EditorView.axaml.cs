@@ -96,7 +96,8 @@ public sealed partial class EditorView : Panel
     /// last, up left, taking the meaning away; on a picture, where it stands among the text (see Placement): in the line up, beside the
     /// text right and left, on its own down, in front of the text and behind it between them, a place on the page down right (a ring of
     /// the eight ways, top, top right …), and up left the picture itself (a ring: its description, the size it took when it was put in,
-    /// removing it). And its ways to the sheets. Space held on a selection brings it for the keyboard.
+    /// removing it); at a spot with nothing to act on, what goes in there, the cursor there: a picture from a file up, one from the
+    /// clipboard down. And its ways to the sheets. Space held on a selection brings it for the keyboard.
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
@@ -161,7 +162,19 @@ public sealed partial class EditorView : Panel
             Placed(Placement.Left),
             new("PictureMore", "", Under: itself, Icon: Placement.PictureIcon),
         ];
-        ring.Choose = () => Sheets.DrawingSelected ? picture : null;
+        // At a spot with nothing to act on (no picture, selection or word there): what goes in there, the cursor there.
+        IReadOnlyList<Controls.GestureRing.Slot> insert =
+        [
+            new("InsertPictureFile", "", () => _ = Sheets.PickPictures(), Icon: Placement.PictureIcon),
+            new("InsertPictureClipboard", "", () => _ = Sheets.PasteClipboardPictures(), Icon: Placement.ClipboardIcon),
+        ];
+        var inserting = false;
+        ring.Choose = () =>
+        {
+            var empty = inserting;
+            inserting = false;
+            return empty ? insert : Sheets.DrawingSelected ? picture : null;
+        };
         ring.Preview = slot =>
         {
             var change = slot != null && previews.TryGetValue(slot, out var given) ? given : null;
@@ -182,8 +195,14 @@ public sealed partial class EditorView : Panel
         ring.Selection = () => Sheets.TranslatePoint(default, ring) is { } shift
             ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList()
             : [];
-        // A picture under the pointer first: it lies over the text, or is the text's.
-        ring.Target = point => Sheets.SelectDrawingAt(OnSheets(point)) || Sheets.OnSelection(OnSheets(point)) || Sheets.SelectWordAt(OnSheets(point));
+        // A picture under the pointer first: it lies over the text, or is the text's; where nothing is, what goes in there.
+        ring.Target = point =>
+        {
+            var at = OnSheets(point);
+            if (Sheets.SelectDrawingAt(at) || Sheets.OnSelection(at) || Sheets.SelectWordAt(at))
+                return true;
+            return inserting = Sheets.PlaceCursorAt(at);
+        };
         ring.OnSelection = point => Sheets.OnSelection(OnSheets(point));
         ring.Press = (point, by, dragging) => Sheets.Press(OnSheets(point), by, KeyModifiers.None, dragging);
         ring.Attach(Sheets);
