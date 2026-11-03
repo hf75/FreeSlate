@@ -214,14 +214,16 @@ drawn over the pages, which do not move for it. The engine gets the app's Inter 
 A paragraph's level lies on one axis from title to margin note (`Levels`, Word's own styles where it has them): `LevelLever`
 is the grip beside the paragraph the pointer is at, dragged sideways a level per 64 pixels with the page showing it at once, one
 step to undo; Tab and Shift+Tab move the selection's paragraphs a level, Enter in an empty point moves it out. Meanings are
-given with `GestureRing`, a marking menu of eight fixed fields: the right button held on the selection or a word, moved blindly
-or into a field; a short click opens it to be clicked; the left button held on the selection, or Space held, bring it too. A
-field may hold a ring of its own (a second level, for what is to come: inserting WordArt, tables), which opens where the pointer
-leaves the field, on a click, by a turn of a blind stroke, or by Enter. The ring shows signs only, light, set by their ink and
-each in the middle of its field: a band of fields around an inner circle, which goes around the window where the ring is about
-the text, the band's glass nearly whole and the inner circle's clear; the name of the field pointed at stands beside it. Where the text it acts on lies under it, a window is cut into it,
-and the text there reads as the field pointed at would make it: a preview, a step of its own that letting go keeps and
-anything else takes back, the selection hidden meanwhile (`GestureRing.Preview`, `DocumentView.SelectionHidden`). In full screen
+given with `GestureRing`, a marking menu whose fields share the circle in an order that stays (six: the five meanings, then
+taking one away): the right button held on the selection or a word, moved blindly or into a field; a short click opens it to be
+clicked; the left button held on the selection, or Space held, bring it too. A field may hold a ring of its own (a second level,
+for what is to come: inserting WordArt, tables), which opens where the pointer leaves the field, on a click, by a turn of a blind
+stroke, or by Enter. The ring is always of one size and shows signs only, light, set by their ink, each in the middle of its
+field with room all around and no lines between the fields: a band around an inner circle, the band's glass nearly whole and the
+inner circle's clear; the field pointed at shows as a rounded part of the band, its name beside the ring. Where the text it acts
+on lies under it, the ring stands centred on it and a window is cut into it; pointing at the window chooses nothing, and the
+text there reads as the field pointed at would make it: a preview, a step of its own that letting go keeps and anything else
+takes back, the selection hidden meanwhile (`GestureRing.Preview`, `DocumentView.SelectionHidden`). In full screen
 the line above the sheets lies under the window's buttons and comes and goes with them (`CaptionBar.Changed`).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:

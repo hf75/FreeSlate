@@ -89,9 +89,8 @@ public sealed partial class EditorView : Panel
     Avalonia.Point? pointer;
 
     /// <summary>
-    /// The gesture ring's fields (their places fixed: the hand learns them) and its ways to the sheets: the meanings up, up right, right,
-    /// down and down left, taking the meaning away left, down right and up left empty (room for a field that holds a ring of its own).
-    /// Space held on a selection brings it for the keyboard.
+    /// The gesture ring's fields, sharing the circle from the top clockwise in an order that stays (the hand learns it): the meanings, and
+    /// last, up left, taking the meaning away; and its ways to the sheets. Space held on a selection brings it for the keyboard.
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
@@ -124,17 +123,14 @@ public sealed partial class EditorView : Panel
             styles[slot] = style;
             return slot;
         }
-        Controls.GestureRing.Slot empty = new("", "");
         ring.Slots =
         [
             Meaning("Important", "!"),
             Meaning("Emphasized", "i", slanted: true),
             Meaning("Term", "Aa"),
-            empty,
             Meaning("Quotation", "“"),
             Meaning("OpenQuestion", "?"),
             Styled(new("RingRemove", "×", () => Give("")), ""),
-            empty,
         ];
         ring.Preview = slot =>
         {
