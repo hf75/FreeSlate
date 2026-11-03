@@ -675,23 +675,51 @@ public sealed class DocumentView : Control
         return new Rect(Left(row) + left * factor, (row.Top + top) * factor, (corners.Max(c => c.X) - left) * factor, (corners.Max(c => c.Y) - top) * factor);
     }
 
-    /// <summary>The drawing a point of the view is on (see TextPlaces.Box): its page and its place among the page's characters.</summary>
+    /// <summary>
+    /// The drawing a point of the view is on: its page and the place of its character among the page's (a floating one's anchor). One in
+    /// front of the text first, then one in the line, then one behind the text where no character is over the point.
+    /// </summary>
     (int Page, int At)? DrawingAt(Point point)
     {
         foreach (var row in rows)
         {
             if (point.Y < row.Top * factor || point.Y > (row.Top + row.Size.Height) * factor)
                 continue;
-            var spots = pictures.Spots(Page(row.Index));
+            var scene = Page(row.Index);
+            var places = pictures.Places(scene);
+            var spots = pictures.Spots(scene);
+            var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
+            int? Anchor((int Block, int Offset)? floating) =>
+                floating is var (block, offset) && places.Exact(block, offset) is { } spot ? pictures.Index(scene, spot) : null;
+            if (Anchor(places.FloatingAt(local, behind: false)) is { } front)
+                return (row.Index, front);
             for (var i = 0; i < spots.Count; i++)
             {
-                if (BoxOf(row.Index, i) is { } box && box.Contains(point))
+                if (places.InlineBox(spots[i]) is { } corners && local.X >= corners.Min(c => c.X) && local.X <= corners.Max(c => c.X)
+                    && local.Y >= corners.Min(c => c.Y) && local.Y <= corners.Max(c => c.Y))
                     return (row.Index, i);
             }
-            return null;
+            return !places.Over(local) && Anchor(places.FloatingAt(local, behind: true)) is { } behind ? (row.Index, behind) : null;
         }
         return null;
     }
+
+    /// <summary>Whether a point of the view is on a drawing (see DrawingAt).</summary>
+    public bool OnDrawing(Point point) => DrawingAt(point) != null;
+
+    /// <summary>Selects the drawing a point of the view is on as a whole (see DrawingAt); false where it is on none.</summary>
+    public bool SelectDrawingAt(Point point)
+    {
+        if (DrawingAt(point) is not var (page, at))
+            return false;
+        (anchor, caret, lineEnd) = ((page, at), (page, at + 1), false);
+        Moved();
+        InvalidateVisual();
+        return true;
+    }
+
+    /// <summary>Whether the selection is a drawing selected as a whole.</summary>
+    public bool DrawingSelected => SelectedDrawing() != null;
 
     void Preedit(string? text)
     {
@@ -740,13 +768,8 @@ public sealed class DocumentView : Control
     {
         Focus();
         // A drawing pressed is selected as a whole.
-        if ((modifiers & KeyModifiers.Shift) == 0 && DrawingAt(point) is var (drawnPage, drawnAt))
-        {
-            (anchor, caret, lineEnd) = ((drawnPage, drawnAt), (drawnPage, drawnAt + 1), false);
-            Moved();
-            InvalidateVisual();
+        if ((modifiers & KeyModifiers.Shift) == 0 && SelectDrawingAt(point))
             return true;
-        }
         if (PlaceAt(point) is not var (page, at, end))
             return false;
         (caret, lineEnd) = ((page, at), end);
@@ -761,9 +784,11 @@ public sealed class DocumentView : Control
         return true;
     }
 
-    /// <summary>Whether a point of the view is on the selection.</summary>
+    /// <summary>Whether a point of the view is on the selection (a drawing selected as a whole: on its box).</summary>
     public bool OnSelection(Point point)
     {
+        if (SelectedDrawing() is var (drawnPage, drawnAt))
+            return BoxOf(drawnPage, drawnAt) is { } box && box.Contains(point);
         foreach (var (page, from, count) in Selected())
         {
             if (page >= rows.Count)
@@ -780,10 +805,12 @@ public sealed class DocumentView : Control
 
     /// <summary>
     /// The parts of the selection on the sheets in view, one for each line (or run of a line) in the order of the text, as rectangles of
-    /// the view's coordinates; none without a selection.
+    /// the view's coordinates; a drawing selected as a whole its box; none without a selection.
     /// </summary>
     public List<Rect> SelectionAreas()
     {
+        if (SelectedDrawing() is var (drawnPage, drawnAt))
+            return BoxOf(drawnPage, drawnAt) is { } box ? [box] : [];
         var parts = new List<Rect>();
         var view = Viewed();
         foreach (var (page, from, count) in Selected())

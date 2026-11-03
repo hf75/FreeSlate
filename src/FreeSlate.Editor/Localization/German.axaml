@@ -28,4 +28,20 @@
   <x:String x:Key="LevelSubpoint">Unterpunkt</x:String>
   <x:String x:Key="LevelMarginNote">Randnotiz</x:String>
   <x:String x:Key="RingRemove">Entfernen</x:String>
+  <x:String x:Key="PictureInline">In der Zeile</x:String>
+  <x:String x:Key="PictureFront">Vor dem Text</x:String>
+  <x:String x:Key="PictureRight">Rechts, Text daneben</x:String>
+  <x:String x:Key="PicturePlaces">Platz auf der Seite</x:String>
+  <x:String x:Key="PictureOwn">Mittig, Text darüber und darunter</x:String>
+  <x:String x:Key="PictureBehind">Hinter dem Text</x:String>
+  <x:String x:Key="PictureLeft">Links, Text daneben</x:String>
+  <x:String x:Key="PictureRemove">Bild entfernen</x:String>
+  <x:String x:Key="PlaceTop">Oben Mitte</x:String>
+  <x:String x:Key="PlaceTopRight">Oben rechts</x:String>
+  <x:String x:Key="PlaceRight">Mitte rechts</x:String>
+  <x:String x:Key="PlaceBottomRight">Unten rechts</x:String>
+  <x:String x:Key="PlaceBottom">Unten Mitte</x:String>
+  <x:String x:Key="PlaceBottomLeft">Unten links</x:String>
+  <x:String x:Key="PlaceLeft">Mitte links</x:String>
+  <x:String x:Key="PlaceTopLeft">Oben links</x:String>
 </ResourceDictionary>

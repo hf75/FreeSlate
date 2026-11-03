@@ -328,6 +328,29 @@ public sealed class EditSession(IEditableDocument document)
         return true;
     }
 
+    /// <summary>How the drawing the selection holds alone (its one character a drawing's) stands among the text (see DrawingFormatting); null otherwise.</summary>
+    public DrawingFormatting? Drawing => SelectedDrawing() is var (paragraph, offset) ? document.DrawingOf(paragraph, offset) : null;
+
+    /// <summary>
+    /// Gives the drawing the selection holds alone how it stands among the text (see IEditableDocument.Format with DrawingFormatting), a
+    /// handling of its own; it stays selected. Without such a selection nothing happens.
+    /// </summary>
+    public void Format(DrawingFormatting format)
+    {
+        if (SelectedDrawing() is not var (paragraph, offset))
+            return;
+        Act(false, () =>
+        {
+            document.Format(paragraph, offset, format);
+            return (Caret, Anchor);
+        });
+    }
+
+    /// <summary>The place of the drawing the selection holds alone: one character of one paragraph, a drawing's.</summary>
+    (int Paragraph, int Offset)? SelectedDrawing() =>
+        Caret.Paragraph == Anchor.Paragraph && Math.Abs(Caret.Offset - Anchor.Offset) == 1 && Math.Min(Caret.Offset, Anchor.Offset) is var at
+        && document.DrawingOf(Caret.Paragraph, at) != null ? (Caret.Paragraph, at) : null;
+
     /// <summary>The content type and file extension of a picture Word keeps as it is, by its first bytes; null for others.</summary>
     static (string Type, string Extension)? PictureType(byte[] bytes) => bytes switch
     {
@@ -531,6 +554,18 @@ public sealed class EditSession(IEditableDocument document)
         done.RemoveAt(done.Count - 1);
         undone.Add(step);
         (Caret, Anchor, placed, Pending) = (step.CaretBefore, step.AnchorBefore, true, null);
+        return true;
+    }
+
+    /// <summary>
+    /// Undoes the last step done as though it had never been made (a preview of a change, which an editor shows and takes back): the
+    /// cursor and the selection back where they were before it, and nothing to do again, as when it was made; false where there is none.
+    /// </summary>
+    public bool TakeBack()
+    {
+        if (!Undo())
+            return false;
+        undone.Clear();
         return true;
     }
 

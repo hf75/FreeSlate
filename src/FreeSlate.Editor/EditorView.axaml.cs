@@ -90,39 +90,46 @@ public sealed partial class EditorView : Panel
 
     /// <summary>
     /// The gesture ring's fields, sharing the circle from the top clockwise in an order that stays (the hand learns it): the meanings, and
-    /// last, up left, taking the meaning away; and its ways to the sheets. Space held on a selection brings it for the keyboard.
+    /// last, up left, taking the meaning away; on a picture, where it stands among the text (see Placement): in the line up, beside the
+    /// text right and left, on its own down, in front of the text and behind it between them, a place on the page down right (a ring of
+    /// the eight ways, top, top right …), and up left, removing it. And its ways to the sheets. Space held on a selection brings it for the
+    /// keyboard.
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
-        // The style a field pointed at gave the selection for a preview, as a step of its own; null where none did.
-        string? previewed = null;
+        // The change a field pointed at made for a preview, as a step of its own; null where none did.
+        Action? previewed = null;
         void Undo()
         {
             if (previewed != null)
-                Sheets.Edit(() => editing.Undo());
+                Sheets.Edit(() => editing.TakeBack());
             previewed = null;
             Sheets.SelectionHidden = false;
         }
         // A field does what its preview showed: that preview stays, the step it is; another one is taken back first.
-        void Give(string style)
+        void Give(Action change)
         {
-            if (previewed == style)
+            if (previewed == change)
             {
                 previewed = null;
                 Sheets.SelectionHidden = false;
                 return;
             }
             Undo();
-            Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
+            Sheets.Edit(change);
         }
-        var styles = new Dictionary<Controls.GestureRing.Slot, string>();
-        Controls.GestureRing.Slot Meaning(string style, string sign, bool slanted = false) =>
-            Styled(new(Meanings.Of(style)!.NameKey, sign, () => Give(style), Slanted: slanted), style);
-        Controls.GestureRing.Slot Styled(Controls.GestureRing.Slot slot, string style)
+        // The fields that show what they do while they are pointed at, and their changes.
+        var previews = new Dictionary<Controls.GestureRing.Slot, Action>();
+        Controls.GestureRing.Slot Field(string nameKey, string sign, Action change, bool slanted = false, string? icon = null)
         {
-            styles[slot] = style;
+            var slot = new Controls.GestureRing.Slot(nameKey, sign, () => Give(change), Slanted: slanted, Icon: icon);
+            previews[slot] = change;
             return slot;
         }
+        Controls.GestureRing.Slot Meaning(string style, string sign, bool slanted = false) =>
+            Field(Meanings.Of(style)!.NameKey, sign, () => editing.Format(new TextFormatting { Style = style }), slanted);
+        Controls.GestureRing.Slot Placed(Placement placement) =>
+            Field(placement.NameKey, "", () => editing.Format(placement.Format), icon: placement.Icon);
         ring.Slots =
         [
             Meaning("Important", "!"),
@@ -130,26 +137,42 @@ public sealed partial class EditorView : Panel
             Meaning("Term", "Aa"),
             Meaning("Quotation", "“"),
             Meaning("OpenQuestion", "?"),
-            Styled(new("RingRemove", "×", () => Give("")), ""),
+            Field("RingRemove", "×", () => editing.Format(new TextFormatting { Style = "" })),
         ];
+        IReadOnlyList<Controls.GestureRing.Slot> picture =
+        [
+            Placed(Placement.Inline),
+            Placed(Placement.Front),
+            Placed(Placement.Right),
+            new("PicturePlaces", "", Under: [.. Placement.Places.Select(Placed)], Icon: Placement.PlacesIcon),
+            Placed(Placement.Own),
+            Placed(Placement.Behind),
+            Placed(Placement.Left),
+            new("PictureRemove", "×", () => Sheets.Edit(() => editing.Delete())),
+        ];
+        ring.Choose = () => Sheets.DrawingSelected ? picture : null;
         ring.Preview = slot =>
         {
-            var style = slot != null && styles.TryGetValue(slot, out var given) ? given : null;
-            if (style == previewed)
+            var change = slot != null && previews.TryGetValue(slot, out var given) ? given : null;
+            if (change == previewed)
                 return;
             Undo();
-            if (style == null)
+            if (change == null)
                 return;
-            // The text as it would read, without the selection over it.
-            Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
-            previewed = style;
+            // The text as it would read, without the selection over it; a change refused, or one that changes nothing, is no step.
+            var before = editing.Document.Changes;
+            Sheets.Edit(change);
+            if (editing.Document.Changes == before)
+                return;
+            previewed = change;
             Sheets.SelectionHidden = true;
         };
         Avalonia.Point OnSheets(Avalonia.Point point) => ring.TranslatePoint(point, Sheets) ?? point;
         ring.Selection = () => Sheets.TranslatePoint(default, ring) is { } shift
             ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList()
             : [];
-        ring.Target = point => Sheets.OnSelection(OnSheets(point)) || Sheets.SelectWordAt(OnSheets(point));
+        // A picture under the pointer first: it lies over the text, or is the text's.
+        ring.Target = point => Sheets.SelectDrawingAt(OnSheets(point)) || Sheets.OnSelection(OnSheets(point)) || Sheets.SelectWordAt(OnSheets(point));
         ring.OnSelection = point => Sheets.OnSelection(OnSheets(point));
         ring.Press = (point, by, dragging) => Sheets.Press(OnSheets(point), by, KeyModifiers.None, dragging);
         ring.Attach(Sheets);

@@ -163,6 +163,14 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   shapes and WordArt, equations, fields), blocks next to a paragraph (paragraphs, tables, sections) and footnotes, with
   the parts they bring (a picture, a chart and its workbook, the notes). Each version keeps the other parts as it has
   them, so that undoing a picture takes its part away again with the drawing.
+- `WordDocument` changes how a drawing stands among the text as Word's Layout Options and its Position gallery do
+  (`WordDocument.Drawings.cs`, `DrawingOf` and `Format` with a `DrawingFormatting`): in the line or floating, the text
+  round it (square, top and bottom, behind, in front), its place across and down (aligned or at an offset, from the page,
+  the margin, the column or the paragraph), its size. A drawing made floating with no place given stays where it stood,
+  from its column and its paragraph, as the pages laid out show it; one floating keeps its place where none is given. A
+  floating drawing's anchor is a character of its paragraph's text that no line shows: its place stands before the
+  character after it, of no width, and the drawing's box among the places of its page (`PlacesItem.Floating`), so that a
+  click on the drawing selects it and the cursor goes round it.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
@@ -219,8 +227,8 @@ step to undo; Tab and Shift+Tab move the selection's paragraphs a level, Enter i
 given with `GestureRing`, a marking menu whose fields share the circle in an order that stays (six: the five meanings, then
 taking one away): the right button held on the selection or a word, moved blindly or into a field; a short click opens it to be
 clicked; the left button held on the selection, or Space held, bring it too. A field may hold a ring of its own (a second level,
-for what is to come: inserting WordArt, tables), which opens where the pointer leaves the field, on a click, by a turn of a blind
-stroke, or by Enter. The ring is always of one size and shows signs only, light, set by their ink, each in the middle of its
+a picture's places on the page, later inserting tables and more), which opens where the pointer leaves the field, on a click, by
+a turn of a blind stroke, or by Enter. The ring is always of one size and shows signs only, light, set by their ink, each in the middle of its
 field with room all around and no lines between the fields: a band around an inner circle, the band's glass nearly whole and the
 middle clear; the field pointed at shows as a rounded part of the band, its name beside the ring. It lies over everything; brought
 on the text, it stands centred on the selection's part there, as far as the point it was brought at stays in its middle. The
@@ -232,7 +240,12 @@ Pictures go in as Word puts them in from a file (`EditSession.InsertPicture`): i
 text of their column; dropped on the sheets (a bar shows where they would go), or pasted where the clipboard holds no text (picture
 files copied from a folder, else a picture itself), kinds Word does not keep as PNG. A click on a drawing selects it as a whole and
 frames it instead of tinting it; the frame is the drawing's own box, which the renderer gives among the line's places
-(`PlacesItem.Boxes`, `TextPlaces.Box`).
+(`PlacesItem.Boxes`, `TextPlaces.Box`); one in front of the text is hit first, one behind it only where no text lies over it. On a
+picture the ring has the picture's fields (`GestureRing.Choose`, `Writing/Placements`): in the line up, beside the text right and
+left, on its own between the text down, in front of the text and behind it between them, a place on the page down right (a
+ring of the eight places round the margins, each in its direction), and removing it up left, where the meanings' ring takes a
+meaning away. Their signs are icons, the picture a frame among lines of text. A preview the ring takes back leaves nothing to do
+again (`EditSession.TakeBack`).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

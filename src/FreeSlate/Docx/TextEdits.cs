@@ -882,6 +882,32 @@ static partial class TextEdits
     }
 
     /// <summary>
+    /// The drawing at a place of a paragraph's text given another wp:inline or wp:anchor in place of its own (see WordDocument.Format with
+    /// DrawingFormatting), its w:drawing and its run as they were. Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">No drawing stands at the place, or it is not where it was read; nothing changes.</exception>
+    public static string Redraw(Stretch stretch, ParagraphBlock paragraph, int offset, XElement drawn)
+    {
+        var parts = Parts(stretch, paragraph);
+        var at = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (at == offset && length > 0)
+            {
+                if (inline is not (DrawingInline or AnchorInline) || stretch.Find(inline.Xml) is not { } drawing || !In(drawing, parts)
+                    || drawing.Elements().FirstOrDefault(e => e.Name.LocalName is "inline" or "anchor") is not { } own)
+                    break;
+                own.ReplaceWith(new XElement(drawn));
+                var part = PartOf(drawing, parts);
+                return stretch.Written([(part, [part])]);
+            }
+            at += length;
+        }
+        throw new NotSupportedException("No drawing stands at that place as it was read.");
+    }
+
+    /// <summary>
     /// Marks put into the text at two places in reading order (a comment's range, see WordDocument.AddComment):
     /// <paramref name="last"/> at the second, then <paramref name="first"/> at the first, as InsertMarkup puts markup in;
     /// the places may stand in two paragraphs of the stretch. Returns the stretch's new text.

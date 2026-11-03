@@ -7,11 +7,20 @@ namespace FreeSlate.Skia;
 /// The places of a page's text where its scene draws them (see PlacesItem; SkiaScene.Draw gathers them): which place a
 /// point hits, where the cursor of a place stands, and what a selection between two places covers, in the units the page
 /// was drawn in (CSS pixels from its top left). A place is a paragraph's id (Block.Id; a slide paragraph's in its
-/// PresentationDocument) and an offset in its text (Docx.ParagraphText, Pptx.SlideText).
+/// PresentationDocument) and an offset in its text (Docx.ParagraphText, Pptx.SlideText). The places of floating drawings
+/// (PlacesItem.Floating) are not lines: they only tell which drawing a point is on and where its box is (see FloatingAt, Box).
 /// </summary>
-public sealed class TextPlaces(IReadOnlyList<(SKMatrix ToPage, PlacesItem Line)> lines)
+public sealed class TextPlaces
 {
     const float PxPerPt = 96f / 72;
+
+    readonly IReadOnlyList<(SKMatrix ToPage, PlacesItem Line)> lines, floating;
+
+    public TextPlaces(IReadOnlyList<(SKMatrix ToPage, PlacesItem Line)> places)
+    {
+        lines = [.. places.Where(p => !p.Line.Floating)];
+        floating = [.. places.Where(p => p.Line.Floating)];
+    }
 
     /// <summary>Where a place stands among the page's places: its line (in drawing order) and its index there.</summary>
     public readonly record struct Spot(int Line, int Index);
@@ -64,11 +73,50 @@ public sealed class TextPlaces(IReadOnlyList<(SKMatrix ToPage, PlacesItem Line)>
     /// </summary>
     public SKPoint[]? Box(Spot spot)
     {
+        if (InlineBox(spot) is { } inline)
+            return inline;
+        var line = lines[spot.Line].Line;
+        var (block, offset) = (line.Block, line.Offsets[spot.Index]);
+        return floating.FirstOrDefault(f => f.Line.Block == block && f.Line.Offsets[0] == offset) is var (toPage, drawing) && drawing != null ? Corners(toPage, drawing.Boxes[0]) : null;
+    }
+
+    /// <summary>The box of the drawing in the line a spot's character is, as Box gives it; null for other characters, a floating drawing's anchor too.</summary>
+    public SKPoint[]? InlineBox(Spot spot)
+    {
         var (toPage, line) = lines[spot.Line];
-        if (!line.Boxes.TryGetValue(spot.Index, out var box))
-            return null;
-        var (left, top, right, bottom) = box;
-        return [OnPage(toPage, left, top), OnPage(toPage, right, top), OnPage(toPage, right, bottom), OnPage(toPage, left, bottom)];
+        return line.Boxes.TryGetValue(spot.Index, out var box) ? Corners(toPage, box) : null;
+    }
+
+    static SKPoint[] Corners(SKMatrix toPage, (double Left, double Top, double Right, double Bottom) box) =>
+        [OnPage(toPage, box.Left, box.Top), OnPage(toPage, box.Right, box.Top), OnPage(toPage, box.Right, box.Bottom), OnPage(toPage, box.Left, box.Bottom)];
+
+    /// <summary>
+    /// The floating drawing a point of the page is on, the topmost of those behind the text or of the others (<paramref name="behind"/>):
+    /// its anchor's place; null where it is on none.
+    /// </summary>
+    public (int Block, int Offset)? FloatingAt(SKPoint point, bool behind)
+    {
+        for (var k = floating.Count - 1; k >= 0; k--)
+        {
+            var (toPage, drawing) = floating[k];
+            if (drawing.Behind != behind)
+                continue;
+            var corners = Corners(toPage, drawing.Boxes[0]);
+            if (point.X >= corners.Min(c => c.X) && point.X <= corners.Max(c => c.X) && point.Y >= corners.Min(c => c.Y) && point.Y <= corners.Max(c => c.Y))
+                return (drawing.Block, drawing.Offsets[0]);
+        }
+        return null;
+    }
+
+    /// <summary>Whether a point of the page is over a character of a line (within its width and its line's height).</summary>
+    public bool Over(SKPoint point)
+    {
+        if (HitSpot(point) is not { } spot)
+            return false;
+        var (toPage, line) = lines[spot.Line];
+        var (left, right) = (Math.Min(line.Starts[spot.Index], line.Ends[spot.Index]), Math.Max(line.Starts[spot.Index], line.Ends[spot.Index]));
+        var (a, b) = (OnPage(toPage, left, line.Top), OnPage(toPage, right, line.Bottom));
+        return point.X >= Math.Min(a.X, b.X) && point.X <= Math.Max(a.X, b.X) && point.Y >= Math.Min(a.Y, b.Y) && point.Y <= Math.Max(a.Y, b.Y);
     }
 
     /// <summary>The character a point of the page is over (see Hit), and whether it hits after it.</summary>

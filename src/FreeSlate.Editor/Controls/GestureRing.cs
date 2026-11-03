@@ -14,6 +14,7 @@ namespace FreeSlate.Editor.Controls;
 /// signs only, with room all around them, and the name of the field pointed at stands beside the ring. It lies over everything, of
 /// glass, its middle clear: the text it acts on stands there as far as it can (see Measure), framed exactly around all of it, under
 /// the ring where the ring lies over it, and reads as the field pointed at would make it (Preview).
+/// What it acts on may have fields of its own (see Choose), a picture its places among the text.
 /// The right button held on the selection, or on a word where there is none, brings it after a moment of rest; moved into a field and
 /// let go there, it does what the field does, let go in the middle nothing; moved on out of a field that holds a ring, that ring comes
 /// where the pointer is. Moved on at once beyond a few pixels, it does what the direction does without a ring (a turn and a second
@@ -55,8 +56,11 @@ public sealed class GestureRing : Control
     /// <summary>How long a ring takes to come, and how long the name of a field chosen blindly stays, in milliseconds.</summary>
     const double Appear = 120, Confirmation = 900;
 
-    /// <summary>A field of the ring: its name's key among the texts (its name where there is none), its sign, and what it does or the ring it holds.</summary>
-    public sealed record Slot(string NameKey, string Sign, Action? Act = null, IReadOnlyList<Slot>? Under = null, bool Slanted = false);
+    /// <summary>
+    /// A field of the ring: its name's key among the texts (its name where there is none), its sign, and what it does or the ring it
+    /// holds. A sign is a few letters, or an icon: path data, drawn as it is given, centred.
+    /// </summary>
+    public sealed record Slot(string NameKey, string Sign, Action? Act = null, IReadOnlyList<Slot>? Under = null, bool Slanted = false, string? Icon = null);
 
     /// <summary>A ring as it shows: its fields, its centre, and the field of the ring before it that holds it.</summary>
     sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent);
@@ -69,6 +73,8 @@ public sealed class GestureRing : Control
     readonly List<Level> levels = [];
     readonly List<Point> stroke = [];
     readonly Dictionary<Slot, Geometry> signs = [];
+    /// <summary>The fields of the first ring of the gesture going (see Choose).</summary>
+    IReadOnlyList<Slot> first = [];
     Mode mode;
     Point start, at;
     IPointer? pointer;
@@ -93,6 +99,12 @@ public sealed class GestureRing : Control
 
     /// <summary>The fields of the first ring, from the top clockwise; they share the circle evenly.</summary>
     public IReadOnlyList<Slot> Slots { get; set; } = [];
+
+    /// <summary>
+    /// The fields of the first ring for what the gesture acts on where they are others than Slots (a picture's, say), asked as it
+    /// begins, once Target has chosen what it acts on; null keeps Slots.
+    /// </summary>
+    public Func<IReadOnlyList<Slot>?>? Choose { get; set; }
 
     /// <summary>
     /// Makes the text at a point of the ring's (the editor's) coordinates the one a field acts on: the selection where the point is on it,
@@ -144,6 +156,7 @@ public sealed class GestureRing : Control
     void Begin(Mode now, Point point, IPointer? by, double wait)
     {
         (mode, start, at, pointer, chosen) = (now, point, point, by, null);
+        first = Choose?.Invoke() ?? Slots;
         stroke.Clear();
         stroke.Add(point);
         rest.Interval = TimeSpan.FromMilliseconds(wait);
@@ -164,7 +177,7 @@ public sealed class GestureRing : Control
     {
         (mode, confirmed) = (now, null);
         levels.Clear();
-        levels.Add(Measure(Slots, point, null, onText: true));
+        levels.Add(Measure(first, point, null, onText: true));
         since = Environment.TickCount64;
         IsHitTestVisible = mode == Mode.Clicking;
         Aim(mode == Mode.Keys ? null : Pointed(at));
@@ -341,9 +354,9 @@ public sealed class GestureRing : Control
                 (corner, aside) = (point, off);
         }
         var turned = aside > Turn && Far(corner, start) > BlindDistance && Far(end, corner) > BlindDistance;
-        if (Field(Slots, (turned ? corner : end) - start, BlindDistance) is not { } first)
+        if (Field(first, (turned ? corner : end) - start, BlindDistance) is not { } way)
             return null;
-        var slot = Slots[first];
+        var slot = first[way];
         if (slot.Under == null)
             return turned ? null : slot;
         return turned && Field(slot.Under, end - corner, BlindDistance) is { } second ? slot.Under[second] : null;
@@ -491,12 +504,21 @@ public sealed class GestureRing : Control
 
     /// <summary>
     /// A sign's outline, its ink centred on the origin and scaled to the size of the others (see SignHeight): a sign is set by the ink it
-    /// shows, not by the box its font gives it, in which an exclamation mark stands tall and a quotation mark small and high.
+    /// shows, not by the box its font gives it, in which an exclamation mark stands tall and a quotation mark small and high. An icon
+    /// stands as it is drawn, as large as it fits.
     /// </summary>
     Geometry SignOf(Slot slot)
     {
         if (signs.TryGetValue(slot, out var known))
             return known;
+        if (slot.Icon is { } icon)
+        {
+            var drawn = Geometry.Parse(icon);
+            var box = drawn.Bounds;
+            var fit = box.Width <= 0 || box.Height <= 0 ? 0 : Math.Min(1, Math.Min(SignHeight / box.Height, SignWidth / box.Width));
+            drawn.Transform = new MatrixTransform(Matrix.CreateTranslation(-box.Center.X, -box.Center.Y) * Matrix.CreateScale(fit, fit));
+            return signs[slot] = drawn;
+        }
         var typeface = new Typeface(Inter, slot.Slanted ? FontStyle.Italic : FontStyle.Normal, FontWeight.Light);
         var text = new FormattedText(slot.Sign, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 100, Brushes.Black);
         var outline = text.BuildGeometry(default) ?? new StreamGeometry();

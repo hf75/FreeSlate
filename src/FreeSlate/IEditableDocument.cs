@@ -238,6 +238,15 @@ public interface IEditableDocument : IDisposable
     void Format(int paragraph, ParagraphFormatting format);
 
     /// <summary>
+    /// How the drawing whose character stands at a place of a paragraph's text stands among the text (see DrawingFormatting), every
+    /// property given that it has; null where no drawing stands there (on slides always).
+    /// </summary>
+    DrawingFormatting? DrawingOf(int paragraph, int offset);
+
+    /// <summary>Gives the drawing at a place of a paragraph's text how it stands among the text (see DrawingFormatting); slides have none (NotSupportedException).</summary>
+    void Format(int paragraph, int offset, DrawingFormatting format);
+
+    /// <summary>
     /// The stretches of a paragraph's text that have a character style (TextFormatting.Style), in order, neighbouring runs of
     /// one style as one stretch: what the text means where its styles say so. Slides have none.
     /// </summary>

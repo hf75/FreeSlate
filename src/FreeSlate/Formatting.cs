@@ -121,3 +121,40 @@ public sealed record SectionFormatting
     public int? PageNumberStart { get; init; }
     public string? PageNumberFormat { get; init; }
 }
+
+/// <summary>
+/// How a drawing stands among the text of a Word document (catalog: drawing.inline, drawing.anchor), as Word's Layout Options and its
+/// Position gallery give it: each property given is set in its wp:inline or wp:anchor, the others stay as they are; lengths in points.
+/// </summary>
+public sealed record DrawingFormatting
+{
+    /// <summary>Its size (wp:extent, the picture's a:ext with it); given one alone, the other keeps the proportions.</summary>
+    public double? Width { get; init; }
+    public double? Height { get; init; }
+
+    /// <summary>
+    /// How it stands among the text: "inline" (in the line, one of its characters: wp:inline), and floating (wp:anchor) "square" (the
+    /// text beside it, see Side), "topAndBottom" (the text above and below it, none beside), "behind" and "front" (the text over it or
+    /// under it, not going round it). A drawing made floating stays where it stood, the text then going round it.
+    /// </summary>
+    public string? Wrap { get; init; }
+
+    /// <summary>Where the text goes beside a drawing it wraps square round (wp:wrapSquare wrapText): bothSides, left, right or largest.</summary>
+    public string? Side { get; init; }
+
+    /// <summary>
+    /// Where a floating drawing stands across (wp:positionH): from what (relativeFrom: margin, page, column, character, leftMargin,
+    /// rightMargin, insideMargin, outsideMargin), and either aligned there (left, center, right, inside, outside) or at an offset from it.
+    /// </summary>
+    public string? HorizontalFrom { get; init; }
+    public string? HorizontalAlign { get; init; }
+    public double? HorizontalOffset { get; init; }
+
+    /// <summary>
+    /// Where it stands down (wp:positionV): from what (margin, page, paragraph, line, topMargin, bottomMargin, insideMargin,
+    /// outsideMargin), and either aligned there (top, center, bottom, inside, outside) or at an offset from it.
+    /// </summary>
+    public string? VerticalFrom { get; init; }
+    public string? VerticalAlign { get; init; }
+    public double? VerticalOffset { get; init; }
+}

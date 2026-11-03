@@ -159,6 +159,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (page.Border is { Front: true } border)
             Fills(border, canvas.Items);
         canvas.Items.AddRange(selection);
+        canvas.Items.AddRange(FloatingPlaces(page, drawn));
         if (drawings != null)
         {
             foreach (var drawing in front.Concat(drawn.Where(d => !d.Behind).OrderBy(d => d.Order)))
@@ -173,6 +174,35 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         // (The pictures its items name live as long as the scene, see PageScene.Keeps.)
         scene.Keeps = drawings?.Pictures;
         return scene;
+    }
+
+    /// <summary>
+    /// The places of the page's floating drawings whose anchors stand in paragraphs on the page (see PlacesItem.Floating): the anchor's
+    /// character over the drawing's box, in the order they are drawn, behind the text first.
+    /// </summary>
+    static IEnumerable<PlacesItem> FloatingPlaces(PageBox page, List<PlacedDrawing> drawn)
+    {
+        var anchors = new Dictionary<XElement, (int Paragraph, int Offset)>(ReferenceEqualityComparer.Instance);
+        foreach (var paragraph in page.Lines.Select(l => l.Line.Paragraph).OfType<ParagraphBlock>().Distinct())
+        {
+            var at = paragraph.TextOffset;
+            foreach (var inline in paragraph.Content)
+            {
+                if (inline is AnchorInline anchor)
+                    anchors.TryAdd(anchor.Anchor, (paragraph.Id, at));
+                at += ParagraphText.Length(inline);
+            }
+        }
+        foreach (var drawing in drawn.Where(d => d.Behind).OrderBy(d => d.Order).Concat(drawn.Where(d => !d.Behind).OrderBy(d => d.Order)))
+        {
+            if (anchors.TryGetValue(drawing.Drawing, out var place))
+                yield return new PlacesItem(place.Paragraph, drawing.Y, drawing.Y + drawing.Height, [place.Offset], [drawing.X], [drawing.X + drawing.Width])
+                {
+                    Floating = true,
+                    Behind = drawing.Behind,
+                    Boxes = new Dictionary<int, (double, double, double, double)> { [0] = (drawing.X, drawing.Y, drawing.X + drawing.Width, drawing.Y + drawing.Height) },
+                };
+        }
     }
 
     /// <summary>
@@ -1109,7 +1139,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 boxes[last] = (x, y, x + width, y + height);
         }
 
-        /// <summary>The line's places from its top; its paragraph's last line ends with the mark, after the last character or at the line's start.</summary>
+        /// <summary>
+        /// The line's places from its top; its paragraph's last line ends with the mark, after the last character or at the line's start.
+        /// The character of a floating drawing's anchor, which no line shows, stands before the character after it, of no width, so that
+        /// it can be selected and the drawing with it (see PlacesItem.Floating).
+        /// </summary>
         public PlacesItem Item(Line line, double top, double left)
         {
             if (line.Last)
@@ -1120,7 +1154,37 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 ends.Add(at);
                 formats.Add(formats.Count > 0 ? formats[^1] : (byte)0);
             }
+            Anchors(line.Paragraph!);
             return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends]) { Formats = [.. formats], Boxes = boxes };
+        }
+
+        /// <summary>The characters of the paragraph's anchors whose characters after them the line has, each before that one (see Item).</summary>
+        void Anchors(ParagraphBlock paragraph)
+        {
+            List<int>? anchors = null;
+            var offset = paragraph.TextOffset;
+            foreach (var inline in paragraph.Content)
+            {
+                if (inline is AnchorInline)
+                    (anchors ??= []).Add(offset);
+                offset += ParagraphText.Length(inline);
+            }
+            // The last first: an anchor right before another goes before it.
+            for (var k = (anchors?.Count ?? 0) - 1; k >= 0; k--)
+            {
+                var index = offsets.IndexOf(anchors![k] + 1);
+                if (index < 0)
+                    continue;
+                foreach (var shifted in boxes.Keys.Where(key => key >= index).OrderDescending().ToList())
+                {
+                    boxes[shifted + 1] = boxes[shifted];
+                    boxes.Remove(shifted);
+                }
+                offsets.Insert(index, anchors[k]);
+                starts.Insert(index, starts[index]);
+                ends.Insert(index, starts[index]);
+                formats.Insert(index, formats[index]);
+            }
         }
     }
 

@@ -356,6 +356,14 @@ public sealed record PlacesItem(int Block, double Top, double Bottom, int[] Offs
     /// </summary>
     public IReadOnlyDictionary<int, (double Left, double Top, double Right, double Bottom)> Boxes { get; init; } =
         new Dictionary<int, (double, double, double, double)>();
+
+    /// <summary>
+    /// Whether these are the places of a floating drawing rather than a line's: its one place, the offset of its anchor's character
+    /// in its paragraph, over its box (in Boxes too), which a click on the drawing hits; behind the text (<see cref="Behind"/>) or not.
+    /// </summary>
+    public bool Floating { get; init; }
+
+    public bool Behind { get; init; }
 }
 
 /// <summary>

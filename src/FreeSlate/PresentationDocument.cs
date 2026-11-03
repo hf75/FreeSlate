@@ -281,6 +281,12 @@ public sealed partial class PresentationDocument : IEditableDocument
             return ([p], body);
         });
 
+    /// <summary>Slides have no drawings in their text (see IEditableDocument.DrawingOf).</summary>
+    public DrawingFormatting? DrawingOf(int paragraph, int offset) => null;
+
+    /// <summary>Slides have no drawings in their text (see IEditableDocument.Format with DrawingFormatting).</summary>
+    public void Format(int paragraph, int offset, DrawingFormatting format) => throw new NotSupportedException("Slides have no drawings in their text.");
+
     /// <summary>Slides have no character styles (see IEditableDocument.CharacterStyles).</summary>
     public IReadOnlyList<(int Offset, int Length, string Style)> CharacterStyles(int paragraph) => [];
 
