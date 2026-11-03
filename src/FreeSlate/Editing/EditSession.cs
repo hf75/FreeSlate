@@ -542,10 +542,21 @@ public sealed class EditSession(IEditableDocument document)
             saved = -1;   // the saved state was undone, and now another goes on from there
         undone.Clear();
         if (typing && !placed && done.Count > 0 && done[^1] is { Typing: true } last && last.CaretAfter == caretBefore && done.Count != saved)
-            done[^1] = last with { Changes = last.Changes + changes, CaretAfter = after.Caret, AnchorAfter = after.Anchor };
+            done[^1] = last with { Changes = Combined(last.Changes + changes), CaretAfter = after.Caret, AnchorAfter = after.Anchor };
         else
-            done.Add(new Step(changes, caretBefore, anchorBefore, after.Caret, after.Anchor, typing));
+            done.Add(new Step(Combined(changes), caretBefore, anchorBefore, after.Caret, after.Anchor, typing));
         placed = !typing;
+    }
+
+    /// <summary>
+    /// A step's changes, which it undoes and does again together, taken as one by the document (see IEditableDocument.Combine), so that it
+    /// keeps no version between them: how many it counts for them then.
+    /// </summary>
+    int Combined(int changes)
+    {
+        var before = document.Changes;
+        document.Combine(changes);
+        return changes - (before - document.Changes);
     }
 
     /// <summary>

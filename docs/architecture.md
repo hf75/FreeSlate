@@ -145,14 +145,17 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
 
 - `IEditableDocument` is a document whose text an editor changes paragraph by paragraph: paragraphs go by the ids the
   places of its scenes name, a place is an offset in a paragraph's text (`Docx/ParagraphText`, `Pptx/SlideText`).
-  Each change is a version that `Undo` goes back from and `Redo` forward to; a change the document cannot make leaves
-  it as it was and throws `NotSupportedException`.
-- `WordDocument` makes a change in the XML of the blocks it touches: that stretch of the main part's text is parsed
-  afresh, changed (`Docx/TextEdits`; as tracked changes through `Docx/Tracking` where an author is set), made ready as
-  the part was when it was loaded and read anew in place of those blocks (`ModelReader.Reread`, `Docx/Reread.cs`). The
-  reader records the numbers each story asked for (`Docx/Numbers`), so that the lists after a change are numbered anew
-  without reading their paragraphs again. Saving writes the changed stretches back into the bytes the part was read
-  from (`Opc/PartText`), every other byte of the package as it was. Versions share the blocks they have alike.
+  Each change is a version that `Undo` goes back from and `Redo` forward to, and `Combine` takes the last few as one (an
+  editor's step, words typed one after the other); a change the document cannot make leaves it as it was and throws
+  `NotSupportedException`.
+- `WordDocument` makes a change in the XML of the blocks it touches: their text is parsed afresh, changed
+  (`Docx/TextEdits`; as tracked changes through `Docx/Tracking` where an author is set), made ready as the part was when
+  it was loaded and read anew in place of those blocks (`ModelReader.Reread`, `Docx/Reread.cs`). The reader records the
+  numbers each story asked for (`Docx/Numbers`), so that the lists after a change are numbered anew without reading
+  their paragraphs again. Saving writes the changed stretches back into the bytes the part was read from
+  (`Opc/PartText`), every other byte of the package as it was. Versions share the blocks they have alike, and the text:
+  a stretch changed since the part was read keeps the texts it was read from in runs, a change the text of its own
+  blocks alone (`Island`, `Piece`), so that typing on in a long stretch costs as much as the paragraph, not the stretch.
 - `WordDocument` also takes markup of its own kind (`WordDocument.Insert.cs`): runs among the text (pictures, charts,
   shapes and WordArt, equations, fields), blocks next to a paragraph (paragraphs, tables, sections) and footnotes, with
   the parts they bring (a picture, a chart and its workbook, the notes). Each version keeps the other parts as it has
@@ -169,8 +172,8 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   text that shrinks to fit its shape, and shapes that grow to their text, are fitted anew as PowerPoint fits them.
 - `Editing/EditSession` is an editor's work without its surface, over either kind of document: the cursor and the
   selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, markup, blocks and notes put in, each
-  handling one step to undo; what else a document offers (a Word document's versions of a section, its comments) goes
-  through `Handle` as a handling of its own.
+  handling one step to undo, whose changes the document keeps as one version (typing on adds to it); what else a
+  document offers (a Word document's versions of a section, its comments) goes through `Handle` as a handling of its own.
 
 The rules of each change (where new text goes, which paragraph keeps its properties and its mark, what a tracked
 change records) were measured in Word and PowerPoint through COM, as the rendering rules were.

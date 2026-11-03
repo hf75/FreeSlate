@@ -64,9 +64,13 @@ public sealed partial class WordDocument : IEditableDocument
     /// <summary>The stretches of the body changed since it was read whole, in order (see Island); the versions share what they have alike.</summary>
     ImmutableList<Island> islands = [];
 
-    /// <summary>The stretches of the body read anew since (see Piece), in order, and the piece each child of the body read anew was read from.</summary>
+    /// <summary>
+    /// The stretches of the body read anew since (see Piece), in order; the piece each child of the body read anew was read from, and
+    /// the slice of it (see Slice).
+    /// </summary>
     readonly List<Piece> pieces = [];
     readonly Dictionary<XElement, Piece> pieceOf = new(ReferenceEqualityComparer.Instance);
+    readonly Dictionary<XElement, Slice> sliceOf = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>The versions of the document, one for each change (see Version), and the one it reads as now.</summary>
     readonly List<Version> versions = [];
@@ -104,9 +108,45 @@ public sealed partial class WordDocument : IEditableDocument
     /// <summary>The budget of 3D text the document's pages are drawn with, from the first (see DocumentContext.Text3DBudget).</summary>
     double budget;
 
-    /// <summary>A stretch of the main part's text as read whole (Start to End) and the text that stands there now.</summary>
-    sealed record Island(int Start, int End, string Text)
+    /// <summary>
+    /// A stretch of the main part's text as read whole (Start to End) and the text that stands there now, so many characters (Length):
+    /// runs of the texts it was read from, one after the other (see Run). A change in it takes the place of the runs it changed (see
+    /// Piece), so that a version keeps the text it changed and shares the rest with the others, not the whole stretch again.
+    /// </summary>
+    sealed record Island(int Start, int End, ImmutableList<Run> Runs, int Length)
     {
+        public Island(int start, int end, string text) : this(start, end, [new Run(text, 0, text.Length)], text.Length)
+        {
+        }
+
+        /// <summary>The text that stands there now, put together: as long as the stretch, for reading it, not for keeping.</summary>
+        public string Text
+        {
+            get
+            {
+                if (Runs.Count == 1 && Runs[0] is { From: 0 } only && only.Length == only.Source.Length)
+                    return only.Source;
+                var text = new StringBuilder(Length);
+                foreach (var run in Runs)
+                    text.Append(run.Source, run.From, run.Length);
+                return text.ToString();
+            }
+        }
+
+        /// <summary>Whether it reads as <paramref name="text"/> from <paramref name="start"/> to <paramref name="end"/>.</summary>
+        public bool Reads(string text, int start, int end)
+        {
+            if (Length != end - start)
+                return false;
+            foreach (var run in Runs)
+            {
+                if (!text.AsSpan(start, run.Length).SequenceEqual(run.Source.AsSpan(run.From, run.Length)))
+                    return false;
+                start += run.Length;
+            }
+            return true;
+        }
+
         /// <summary>The first of the islands (in order) a test holds for that holds for all after it too; their count where it holds for none.</summary>
         public static int First(ImmutableList<Island> islands, Func<Island, bool> holds)
         {
@@ -150,18 +190,62 @@ public sealed partial class WordDocument : IEditableDocument
         }
     }
 
+    /// <summary>A run of a text: so many characters of <paramref name="Source"/> from <paramref name="From"/> on, kept without copying them.</summary>
+    readonly record struct Run(string Source, int From, int Length);
+
     /// <summary>
-    /// A stretch of the main part's text as read whole (Start to End) that the body read anew from Text: the children of
-    /// the body read from it, one after the other, whose line info is where they stand in Read, the text within the start
-    /// and end tags around it.
+    /// A stretch of the main part's text as read whole (Start to End) that the body read anew since: its text in slices, each read at
+    /// once (see Slice), and the same text as runs, one for each slice (see Island), so many characters in all (Length). A change of
+    /// some of its children reads those anew and takes the place of their slices, the others staying as they were read (see Reach).
     /// </summary>
-    sealed class Piece(int start, int end, string text, PartText read, IReadOnlyList<XElement> children)
+    sealed class Piece(int start, int end, ImmutableList<Slice> slices, ImmutableList<Run> runs, int length)
     {
         public int Start { get; } = start;
         public int End { get; } = end;
-        public string Text { get; } = text;
-        public PartText Read { get; } = read;
-        public IReadOnlyList<XElement> Children { get; } = children;
+        public ImmutableList<Slice> Slices { get; set; } = slices;
+        public ImmutableList<Run> Runs { get; set; } = runs;
+        public int Length { get; set; } = length;
+    }
+
+    /// <summary>
+    /// A slice of a piece read at once: the text of <paramref name="Read"/> from <paramref name="From"/> to <paramref name="To"/>, within
+    /// the tags around the body (see head), and the children of the body read from it, in order, whose line info is where they stand in Read.
+    /// </summary>
+    sealed record Slice(PartText Read, int From, int To, IReadOnlyList<XElement> Children);
+
+    /// <summary>
+    /// Where a change of children of the body stands (see ReachOf): the stretch of the main part's text as read whole it takes the place
+    /// of (Start to End: the pieces its first and last children were read from, else these children's own), the children it reads anew
+    /// (Old) and the stretch of their text it is made in (Stretch). Where the first was read from a piece (First), the piece's slices
+    /// before its own (the one at FirstSlice) stay, with the part of that slice before it (Before, its run BeforeRun), so many characters
+    /// in all (LengthBefore); likewise after the last (Last, LastSlice, After, AfterRun, LengthAfter).
+    /// </summary>
+    sealed record Reach(int Start, int End, List<XElement> Old, Stretch Stretch, Piece? First, int FirstSlice, Slice? Before, Run BeforeRun,
+        int LengthBefore, Piece? Last, int LastSlice, Slice? After, Run AfterRun, int LengthAfter)
+    {
+        /// <summary>Whether the change stands within one piece, which it then changes in place.</summary>
+        public bool InOnePiece => First != null && ReferenceEquals(First, Last);
+
+        /// <summary>The slices of the stretch after the change: those that stay, with the change's own (<paramref name="made"/>) in place of the others.</summary>
+        public ImmutableList<Slice> Slices(Slice made) =>
+            Joined(First?.Slices, Last?.Slices, [.. Before != null ? [Before] : Array.Empty<Slice>(), made, .. After != null ? [After] : Array.Empty<Slice>()]);
+
+        /// <summary>The runs of the stretch's text after the change, one for each of its slices (see Slices).</summary>
+        public ImmutableList<Run> Runs(Run made) =>
+            Joined(First?.Runs, Last?.Runs, [.. Before != null ? [BeforeRun] : Array.Empty<Run>(), made, .. After != null ? [AfterRun] : Array.Empty<Run>()]);
+
+        ImmutableList<T> Joined<T>(ImmutableList<T>? first, ImmutableList<T>? last, T[] middle)
+        {
+            if (InOnePiece)
+                return first!.RemoveRange(FirstSlice, LastSlice - FirstSlice + 1).InsertRange(FirstSlice, middle);
+            var list = ImmutableList.CreateBuilder<T>();
+            if (first != null)
+                list.AddRange(first.Take(FirstSlice));
+            list.AddRange(middle);
+            if (last != null)
+                list.AddRange(last.Skip(LastSlice + 1));
+            return list.ToImmutable();
+        }
     }
 
     /// <summary>
@@ -809,6 +893,15 @@ public sealed partial class WordDocument : IEditableDocument
         return true;
     }
 
+    /// <summary>Takes the last changes as one (see IEditableDocument.Combine): the versions between them go.</summary>
+    public void Combine(int count)
+    {
+        if (count < 2 || count > version)
+            return;
+        versions.RemoveRange(version - count + 1, count - 1);
+        version -= count - 1;
+    }
+
     /// <summary>
     /// How many pages after the one a change begins on are laid out with it before the rest is left as it was, to be laid
     /// out by LayOut (see LayingOut).
@@ -1152,16 +1245,20 @@ public sealed partial class WordDocument : IEditableDocument
             return ChangeStory(story, edit, changes);
         if (commentOf.TryGetValue(from, out var comment))
             return ChangeComment(comment, edit, changes);
-        var (start, end, old, stretch) = StretchOf(IndexOf(from), IndexOf(to), lastSection);
+        var reach = ReachOf(IndexOf(from), IndexOf(to), lastSection);
+        var (start, end, stretch) = (reach.Start, reach.End, reach.Stretch);
         var tracking = Tracked(() => ChangeId());
         var text = edit(stretch, tracking);
         if (tracking != null)
             changeId = tracking.NextId;
-        // The stretches changed before but those within this one, which takes their place where its text differs.
+        // The stretches changed before but those within this one, which takes their place where its text differs: the change's text
+        // between what stays of the pieces it reaches into.
+        var runs = reach.Runs(new Run(text, 0, text.Length));
+        var island = new Island(start, end, runs, reach.LengthBefore + text.Length + reach.LengthAfter);
         var (first, after) = (Island.First(islands, i => i.End > start), Island.First(islands, i => i.Start >= end));
         var changed = islands.RemoveRange(first, after - first);
-        if (text != wholeText.Text[start..end])
-            changed = changed.Insert(first, new Island(start, end, text));
+        if (!island.Reads(wholeText.Text, start, end))
+            changed = changed.Insert(first, island);
         changes = NotesGone(stretch, text, changed, tracking != null, changes);
         // The other parts the change gives new bytes before the body is read anew: it reads what they hold (notes, the
         // targets of relationships).
@@ -1171,7 +1268,7 @@ public sealed partial class WordDocument : IEditableDocument
         Func<XElement, int> where;
         try
         {
-            where = Apply(start, end, text, old, null, changed, like?.Invoke());
+            where = Apply(start, end, text, reach.Old, null, changed, like?.Invoke(), reach, runs);
         }
         catch
         {
@@ -1221,7 +1318,9 @@ public sealed partial class WordDocument : IEditableDocument
             var at = start;
             foreach (var island in to.Islands.Where(i => i.Start >= start && i.End <= end))
             {
-                text.Append(wholeText.Text, at, island.Start - at).Append(island.Text);
+                text.Append(wholeText.Text, at, island.Start - at);
+                foreach (var run in island.Runs)
+                    text.Append(run.Source, run.From, run.Length);
                 at = island.End;
             }
             text.Append(wholeText.Text, at, end - at);
@@ -1239,9 +1338,12 @@ public sealed partial class WordDocument : IEditableDocument
     /// was when loaded and read anew (ModelReader.Reread), the blocks read anew taking the ids of <paramref name="like"/>
     /// where given (another version of the body), else of the blocks they stand for; where the reader cannot read it so,
     /// the document is read again whole (the main part's bytes with the stretches changed put in), the versions' stretches
-    /// changed taken over (see Rebase). Returns where an element read from the text stands in it, or -1.
+    /// changed taken over (see Rebase). With <paramref name="reach"/> the text is that of the change's children alone, between what
+    /// stays of the pieces it reaches into (whose runs with the text's own are <paramref name="runs"/>, see Reach), which stays as it
+    /// was read. Returns where an element read from the text stands in it, or -1.
     /// </summary>
-    Func<XElement, int> Apply(int start, int end, string text, List<XElement> old, XElement? before, ImmutableList<Island> changed, IReadOnlyList<Block>? like)
+    Func<XElement, int> Apply(int start, int end, string text, List<XElement> old, XElement? before, ImmutableList<Island> changed, IReadOnlyList<Block>? like,
+        Reach? reach = null, ImmutableList<Run>? runs = null)
     {
         var was = blocks;
         var read = new PartText(head + text + tail);
@@ -1249,20 +1351,47 @@ public sealed partial class WordDocument : IEditableDocument
         var children = xml.Root?.Elements().FirstOrDefault() is { } parent ? context.Prepare(parent) : [];
         if (head.Length > 0 && reader.Reread(blocks, old, before, children, like) is { } result)
         {
-            var piece = new Piece(start, end, text, read, children);
-            pieces.RemoveAll(p => p.Start >= start && p.End <= end);
-            pieces.Insert(pieces.FindIndex(p => p.Start >= end) is var k and >= 0 ? k : pieces.Count, piece);
+            var slice = new Slice(read, head.Length, head.Length + text.Length, children);
+            Piece piece;
+            if (reach is { InOnePiece: true })
+            {
+                // In place: the piece's other slices stay, and so do their children's places.
+                piece = reach.First!;
+                (piece.Slices, piece.Runs, piece.Length) = (reach.Slices(slice), runs!, reach.LengthBefore + text.Length + reach.LengthAfter);
+            }
+            else
+            {
+                piece = reach != null
+                    ? new Piece(start, end, reach.Slices(slice), runs!, reach.LengthBefore + text.Length + reach.LengthAfter)
+                    : new Piece(start, end, [slice], [new Run(text, 0, text.Length)], text.Length);
+                pieces.RemoveAll(p => p.Start >= start && p.End <= end);
+                pieces.Insert(pieces.FindIndex(p => p.Start >= end) is var k and >= 0 ? k : pieces.Count, piece);
+                foreach (var kept in piece.Slices)
+                {
+                    foreach (var child in kept.Children)
+                        pieceOf[child] = piece;
+                }
+            }
             foreach (var e in old)
+            {
                 pieceOf.Remove(e);
+                sliceOf.Remove(e);
+            }
             foreach (var child in children)
-                pieceOf[child] = piece;
+                (pieceOf[child], sliceOf[child]) = (piece, slice);
+            // The children of the slices cut around the change go with what stays of them.
+            foreach (var cut in new[] { reach?.Before, reach?.After })
+            {
+                foreach (var child in cut?.Children ?? [])
+                    sliceOf[child] = cut!;
+            }
             (blocks, islands) = (result, changed);
             Reindex(was);
-            return element => Top(element) is { } top && pieceOf.GetValueOrDefault(top) == piece && read.Start(element) is var at and >= 0 ? at - head.Length : -1;
+            return element => Top(element) is { } top && ReferenceEquals(sliceOf.GetValueOrDefault(top), slice) && read.Start(element) is var at and >= 0 ? at - head.Length : -1;
         }
         // Read whole, with the main part's bytes as they read now: where the stretch's text went is where it stood, the
-        // stretches changed before it moving it on.
-        var moved = start + changed.Where(i => i.End <= start).Sum(i => i.Text.Length - (i.End - i.Start));
+        // stretches changed before it moving it on, and what stays of a piece before it.
+        var moved = start + changed.Where(i => i.End <= start).Sum(i => i.Length - (i.End - i.Start)) + (reach?.LengthBefore ?? 0);
         var previous = wholeText;
         package.Replace(context.MainPart, Spliced(whole, changed));
         ReadWhole();
@@ -1349,14 +1478,16 @@ public sealed partial class WordDocument : IEditableDocument
         }
     }
 
+    /// <summary>The stretch of the body's text the blocks <paramref name="first"/> to <paramref name="last"/> stand in, as a change of them takes it (see ReachOf).</summary>
+    Stretch StretchOf(int first, int last, bool lastSection = false) => ReachOf(first, last, lastSection).Stretch;
+
     /// <summary>
-    /// The stretch of the main part's text (as read whole) that the blocks <paramref name="first"/> to
-    /// <paramref name="last"/> of the body were read from: the children of the body they stand in, with the others read
-    /// from the same pieces and those between them; its start, its end, the children and the stretch as it reads now,
-    /// parsed afresh; with <paramref name="lastSection"/> on to the body's own section properties after them (see
-    /// SectionFormatting), which no block holds.
+    /// Where a change of the blocks <paramref name="first"/> to <paramref name="last"/> of the body stands (see Reach): the children of
+    /// the body they stand in and their text, from the first's start to the last's end, parsed afresh; the stretch of the main part's
+    /// text (as read whole) it takes the place of, with the pieces they were read from; with <paramref name="lastSection"/> on to the
+    /// body's own section properties after them (see SectionFormatting), which no block holds.
     /// </summary>
-    (int Start, int End, List<XElement> Old, Stretch Stretch) StretchOf(int first, int last, bool lastSection = false)
+    Reach ReachOf(int first, int last, bool lastSection = false)
     {
         if (head.Length == 0 || Top(First(blocks[first])) is not { } a || Top(Last(blocks[last])) is not { } b)
             throw new NotSupportedException("The paragraph is not where it was read.");
@@ -1371,11 +1502,6 @@ public sealed partial class WordDocument : IEditableDocument
         if (RangeOf(a) is not { } from || RangeOf(b) is not { } to)
             throw new NotSupportedException("The paragraph is not where it was read.");
         var (start, end) = (from.Start, to.End);
-        // The children of the pieces they were read from, whole.
-        if (pieceOf.TryGetValue(a, out var firstPiece))
-            a = firstPiece.Children[0];
-        if (pieceOf.TryGetValue(b, out var lastPiece))
-            b = lastPiece.Children[^1];
         var old = new List<XElement>();
         for (var e = a; e != null; e = Next(e))
         {
@@ -1383,18 +1509,62 @@ public sealed partial class WordDocument : IEditableDocument
             if (e == b)
                 break;
         }
-        var within = pieces.Where(p => p.Start >= start && p.End <= end).ToList();
+        // Where the first starts and the last ends, in the texts they were read from: a slice's, else the main part's as read whole.
+        var (fromText, fromAt) = sliceOf.TryGetValue(a, out var firstSlice) ? (firstSlice.Read, firstSlice.Read.Start(a)) : (wholeText, wholeText.Start(a));
+        var (toText, toAt) = sliceOf.TryGetValue(b, out var lastSlice) ? (lastSlice.Read, lastSlice.Read.End(lastSlice.Read.Start(b))) : (wholeText, wholeText.End(wholeText.Start(b)));
+        // Their text, from the texts the stretch reads from one after the other (the slices of its pieces and the main part's text
+        // between them), each with where it begins in it.
+        var parts = new List<(PartText Source, int From, int To, int At)>();
         var text = new StringBuilder();
-        var at = start;
-        foreach (var piece in within)
+        var (taking, taken) = (false, false);
+        void Take(PartText source, int s, int e)
         {
-            text.Append(wholeText.Text, at, piece.Start - at).Append(piece.Text);
+            if (taken || e <= s)
+                return;
+            if (!taking && source == fromText && fromAt >= s && fromAt < e)
+                (taking, s) = (true, fromAt);
+            if (!taking)
+                return;
+            if (source == toText && toAt > s && toAt <= e)
+                (taken, e) = (true, toAt);
+            parts.Add((source, s, e, text.Length));
+            text.Append(source.Text, s, e - s);
+        }
+        var at = start;
+        foreach (var piece in pieces.Where(p => p.Start >= start && p.End <= end))
+        {
+            Take(wholeText, at, piece.Start);
+            foreach (var slice in piece.Slices)
+                Take(slice.Read, slice.From, slice.To);
             at = piece.End;
         }
-        text.Append(wholeText.Text, at, end - at);
+        Take(wholeText, at, end);
+        if (!taken)
+            throw new NotSupportedException("The paragraph is not where it was read.");
+        // What stays of the pieces the first and the last were read from, before and after them.
+        var (firstPiece, lastPiece) = (pieceOf.GetValueOrDefault(a), pieceOf.GetValueOrDefault(b));
+        var (firstIndex, lastIndex, lengthBefore, lengthAfter) = (0, 0, 0, 0);
+        (Slice? before, Slice? after, Run beforeRun, Run afterRun) = (null, null, default, default);
+        if (firstPiece != null && firstSlice != null)
+        {
+            firstIndex = firstPiece.Slices.IndexOf(firstSlice, ReferenceEqualityComparer.Instance);
+            var cut = fromAt - firstSlice.From;
+            lengthBefore = firstPiece.Runs.Take(firstIndex).Sum(r => r.Length) + cut;
+            if (cut > 0)
+                (before, beforeRun) = (firstSlice with { To = fromAt, Children = [.. firstSlice.Children.TakeWhile(c => c != a)] }, firstPiece.Runs[firstIndex] with { Length = cut });
+        }
+        if (lastPiece != null && lastSlice != null)
+        {
+            lastIndex = lastPiece.Slices.IndexOf(lastSlice, ReferenceEqualityComparer.Instance);
+            var rest = lastSlice.To - toAt;
+            lengthAfter = rest + lastPiece.Runs.Skip(lastIndex + 1).Sum(r => r.Length);
+            if (rest > 0 && lastPiece.Runs[lastIndex] is var run)
+                (after, afterRun) = (lastSlice with { From = toAt, Children = [.. lastSlice.Children.SkipWhile(c => c != b).Skip(1)] }, run with { From = run.From + run.Length - rest, Length = rest });
+        }
         try
         {
-            return (start, end, old, new Stretch(head, text.ToString(), tail, read => Where(read, start, end, within)));
+            return new Reach(start, end, old, new Stretch(head, text.ToString(), tail, read => Where(read, parts)), firstPiece, firstIndex, before, beforeRun,
+                lengthBefore, lastPiece, lastIndex, after, afterRun, lengthAfter);
         }
         catch (System.Xml.XmlException e)
         {
@@ -1404,22 +1574,22 @@ public sealed partial class WordDocument : IEditableDocument
     }
 
     /// <summary>
-    /// Where an element read from the stretch <paramref name="start"/> to <paramref name="end"/> (with the pieces
-    /// <paramref name="within"/> it) stands in the stretch's text within the tags around it, or -1: by its line info, in
-    /// the text of the piece it was read from or of the main part as read whole, moved on by the pieces before it.
+    /// Where an element of the body stands in a stretch's text within the tags around it, or -1: by its line info, in the text it was
+    /// read from (a slice's, else the main part's as read whole), among the stretches of texts the stretch's own text is made of (see
+    /// ReachOf: where each begins in it).
     /// </summary>
-    int Where(XElement read, int start, int end, List<Piece> within)
+    int Where(XElement read, List<(PartText Source, int From, int To, int At)> parts)
     {
         if (Top(read) is not { } top)
             return -1;
-        int Moved(int before) => within.Where(p => p.End <= before).Sum(p => p.Text.Length - (p.End - p.Start));
-        if (pieceOf.TryGetValue(top, out var piece))
+        var source = sliceOf.TryGetValue(top, out var slice) ? slice.Read : wholeText;
+        var at = source.Start(read);
+        foreach (var part in parts)
         {
-            var local = piece.Read.Start(read) - head.Length;
-            return within.Contains(piece) && local >= 0 ? head.Length + piece.Start - start + Moved(piece.Start) + local : -1;
+            if (part.Source == source && at >= part.From && at < part.To)
+                return head.Length + part.At + at - part.From;
         }
-        var at = wholeText.Start(read);
-        return at >= start && at < end ? head.Length + at - start + Moved(at) : -1;
+        return -1;
     }
 
     /// <summary>
@@ -1672,6 +1842,7 @@ public sealed partial class WordDocument : IEditableDocument
         islands = [];
         pieces.Clear();
         pieceOf.Clear();
+        sliceOf.Clear();
         (laid, layout, paginator, renderer, scenes, shown) = (null, null, null, null, null, []);
         drawLater = !markup && !package.PartNames.Any(part => part.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
             && (part == context.MainPart ? whole : package.ReadBytes(part)).AsSpan().IndexOf("props3d"u8) >= 0);

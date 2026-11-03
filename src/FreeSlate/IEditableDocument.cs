@@ -248,6 +248,12 @@ public interface IEditableDocument : IDisposable
     bool Undo();
     bool Redo();
 
+    /// <summary>
+    /// Takes the last <paramref name="count"/> changes as one, as an editor undoes and does them again together (the keys of words
+    /// typed one after the other): the versions between them go, and with them what only they kept; Changes then counts one for them.
+    /// </summary>
+    void Combine(int count);
+
     /// <summary>Writes the document in its own format, to a stream or to a file (over the one it was opened from too).</summary>
     void Save(Stream output);
     void Save(string target);

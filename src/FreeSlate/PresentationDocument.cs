@@ -458,6 +458,15 @@ public sealed partial class PresentationDocument : IEditableDocument
         return true;
     }
 
+    /// <summary>Takes the last changes as one (see IEditableDocument.Combine): the versions between them go.</summary>
+    public void Combine(int count)
+    {
+        if (count < 2 || count > version)
+            return;
+        versions.RemoveRange(version - count + 1, count - 1);
+        version -= count - 1;
+    }
+
     /// <summary>A slide as it is drawn now (see PptxConverter.ToScenes), by its index: its places name its paragraphs by id.</summary>
     public PageScene Scene(int index)
     {

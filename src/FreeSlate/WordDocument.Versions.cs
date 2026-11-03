@@ -104,7 +104,7 @@ public sealed partial class WordDocument
             return id;
         }
         Whole(i, j);
-        var (_, _, _, section) = StretchOf(i, j - 1);
+        var section = StretchOf(i, j - 1);
         Fieldless(section, i, j);
         var (from, to) = Span(section, p, j - 1 > i ? blocks[j - 1] : null);
         var copied = Copied(section, from, to, changes);
@@ -244,7 +244,7 @@ public sealed partial class WordDocument
             throw new ArgumentException($"The section has no version {id}.", nameof(id));
         if (head.Length == 0)
             throw new NotSupportedException("The document's text cannot be taken apart.");
-        var (_, _, _, own) = StretchOf(i, i);
+        var own = StretchOf(i, i);
         var parts = TextEdits.Parts(own, p);
         var (start, end) = (own.Text.Start(parts[0]), own.Text.End(own.Text.Start(parts[^1])));
         var heading = new StringBuilder();
@@ -259,7 +259,7 @@ public sealed partial class WordDocument
         var text = version.Text;
         if (text == null)
         {
-            var (_, _, _, section) = StretchOf(i, j - 1);
+            var section = StretchOf(i, j - 1);
             var (first, last) = Span(section, p, j - 1 > i ? blocks[j - 1] : null);
             text = section.Text.Text[first..last];
         }
@@ -274,13 +274,13 @@ public sealed partial class WordDocument
     {
         if (SectionEndOf(paragraph) is { EndsSection: { } ends } end)
         {
-            var (_, _, _, stretch) = StretchOf(IndexOf(end, walking: true), IndexOf(end, walking: true));
+            var stretch = StretchOf(IndexOf(end, walking: true), IndexOf(end, walking: true));
             if (ends.Element is { } read && stretch.Find(read) is { } found && stretch.Text.Start(found) is var at)
                 return stretch.Text.Text[at..stretch.Text.End(at)];
         }
         if (BodySection() is { } last && blocks.Count > 0)
         {
-            var (_, _, _, stretch) = StretchOf(blocks.Count - 1, blocks.Count - 1, lastSection: true);
+            var stretch = StretchOf(blocks.Count - 1, blocks.Count - 1, lastSection: true);
             if (stretch.Find(last) is { } found && stretch.Text.Start(found) is var at)
                 return stretch.Text.Text[at..stretch.Text.End(at)];
         }
@@ -413,7 +413,7 @@ public sealed partial class WordDocument
         if (!Planned(paragraph))
             return new SectionPlan();
         var at = IndexOf(paragraph, walking: true);
-        var (_, _, _, stretch) = StretchOf(at, at);
+        var stretch = StretchOf(at, at);
         return SectionPlan.Read(stretch.Text, SectionPlan.In(TextEdits.Parts(stretch, paragraph)));
     }
 

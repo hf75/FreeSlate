@@ -32,7 +32,7 @@ public sealed partial class WordDocument
             return null;
         try
         {
-            var (_, _, _, stretch) = StretchOf(IndexOf(top), IndexOf(lastTop));
+            var stretch = StretchOf(IndexOf(top), IndexOf(lastTop));
             return TextEdits.Copy(stretch, p, offset, q, lastOffset);
         }
         catch (Exception e) when (e is NotSupportedException or InvalidOperationException)
