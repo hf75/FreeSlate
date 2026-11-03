@@ -13,7 +13,7 @@ namespace FreeSlate.Editor.Controls;
 
 /// <summary>
 /// The lever of a paragraph's level (see Levels): a grip in the margin left of the paragraph the pointer is beside, its level's name
-/// before it. Dragged sideways it moves the paragraph a level for every 64 pixels, to the left what weighs more, to the right what is
+/// before it. Dragged sideways it moves the paragraph a level for every 32 pixels, to the left what weighs more, to the right what is
 /// subordinate: the page shows it at once, and a bar of all levels above the paragraph marks where it stands. Let go, that stays, one
 /// step to undo; Escape takes it back. Clicked, or invoked otherwise, the bar stays for a level to be chosen. The lever lies over the
 /// sheets in their coordinates (it scrolls with them) and takes the pointer only on its grip and its bar.
@@ -21,7 +21,7 @@ namespace FreeSlate.Editor.Controls;
 public sealed class LevelLever : Canvas
 {
     /// <summary>How far the pointer goes for one level, in pixels.</summary>
-    const double Step = 64;
+    const double Step = 32;
 
     /// <summary>The grip's size: what the pointer hits, 44 pixels each way.</summary>
     const double Hit = 44;

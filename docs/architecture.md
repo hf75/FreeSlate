@@ -212,7 +212,7 @@ a change of it one step to undo, which the sheets in view fade through (`Documen
 that looks alike in Word. `DocumentView.ShowsMeanings` frames the stretches with a meaning and names it in the page's margin,
 drawn over the pages, which do not move for it. The engine gets the app's Inter beside the system's fonts (`EngineFonts`).
 A paragraph's level lies on one axis from title to margin note (`Levels`, Word's own styles where it has them): `LevelLever`
-is the grip beside the paragraph the pointer is at, dragged sideways a level per 64 pixels with the page showing it at once, one
+is the grip beside the paragraph the pointer is at, dragged sideways a level per 32 pixels with the page showing it at once, one
 step to undo; Tab and Shift+Tab move the selection's paragraphs a level, Enter in an empty point moves it out. Meanings are
 given with `GestureRing`, a marking menu whose fields share the circle in an order that stays (six: the five meanings, then
 taking one away): the right button held on the selection or a word, moved blindly or into a field; a short click opens it to be
