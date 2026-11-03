@@ -375,6 +375,70 @@
     </Style>
   </ControlTheme>
 
+  <!-- The grip of the level lever (LevelLever): a slim bar in a field the pointer hits easily; it takes the accent where the pointer is on it. -->
+  <ControlTheme x:Key="LeverGrip" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource InkGhost}" />
+    <Setter Property="Cursor" Value="SizeWestEast" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Foreground" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}">
+          <Border Width="4" Height="22" CornerRadius="2" Background="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Foreground" Value="{DynamicResource AccentPressed}" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- The bar of all levels above a paragraph while its lever is moved or after a click on it. -->
+  <ControlTheme x:Key="LevelBar" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource Sheet}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hairline}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="BoxShadow" Value="0 6 20 0 #1A000000" />
+  </ControlTheme>
+
+  <!-- A level on that bar: the paragraph's own, and the one the pointer is on, in the accent. -->
+  <ControlTheme x:Key="LevelItem" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource InkFaint}" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          CornerRadius="{TemplateBinding CornerRadius}"
+                          Padding="{TemplateBinding Padding}"
+                          Content="{TemplateBinding Content}" />
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^.current">
+      <Setter Property="Background" Value="{DynamicResource Accent}" />
+      <Setter Property="Foreground" Value="{DynamicResource OnAccent}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource Accent}" />
+      <Setter Property="Foreground" Value="{DynamicResource OnAccent}" />
+    </Style>
+  </ControlTheme>
+
   <!-- Something that is on or off, written out after a small switch: on, the switch is filled and its knob stands right. -->
   <ControlTheme x:Key="{x:Type ToggleButton}" TargetType="ToggleButton">
     <Setter Property="Background" Value="Transparent" />

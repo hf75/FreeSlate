@@ -52,7 +52,7 @@ public sealed record TextFormatting
 /// </summary>
 public sealed record ParagraphFormatting
 {
-    /// <summary>The paragraph style, by its id (w:pStyle); slides have none.</summary>
+    /// <summary>The paragraph style, by its id (w:pStyle), "" for the default one (none of its own); slides have none.</summary>
     public string? Style { get; init; }
 
     /// <summary>The alignment (w:jc; a:pPr algn): left, center, right, both or distribute.</summary>

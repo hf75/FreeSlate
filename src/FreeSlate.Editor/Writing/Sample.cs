@@ -6,8 +6,8 @@ using System.Text.RegularExpressions;
 namespace FreeSlate.Editor.Writing;
 
 /// <summary>
-/// A short text with every level and meaning so far, to try the tones and the meanings on while there is no other way yet to give
-/// them (`--sample`). A paragraph is its level's style and its text, where {Style|text} gives text a meaning.
+/// A short text with every level and meaning, to try the tones, the meanings and the levels on (`--sample`). A paragraph is its level's
+/// style and its text, where {Style|text} gives text a meaning.
 /// </summary>
 public static partial class Sample
 {
@@ -19,8 +19,12 @@ public static partial class Sample
         ("Heading1", "Älter als die Motte"),
         (null, "Das Wort {Term|Bug} für einen technischen Fehler war damals schon Jahrzehnte alt; Thomas Edison benutzte es bereits 1878 in einem Brief. {Important|Die Motte hat den Begriff also nicht erfunden – sie hat ihn berühmt gemacht.}"),
         (null, "Erzählt hat die Geschichte vor allem Grace Hopper, die am Mark II arbeitete. {OpenQuestion|Klären: Wer hat die Motte tatsächlich entdeckt?}"),
+        ("MarginNote", "Dass Hopper die Motte selbst gefunden hat, ist nicht belegt."),
         ("Heading2", "Das Logbuch heute"),
-        (null, "Das Logbuch mit der Motte gehört heute zur Sammlung des National Museum of American History in Washington."),
+        (null, "Das Logbuch mit der Motte gehört heute zur Sammlung des National Museum of American History in Washington. Der Eintrag:"),
+        ("ListBullet", "9. September 1947"),
+        ("ListBullet2", "um 15:45 Uhr"),
+        ("ListBullet", "Relais Nr. 70 in Feld F"),
     ];
 
     [GeneratedRegex(@"\{(\w+)\|([^}]*)\}")]
@@ -30,7 +34,8 @@ public static partial class Sample
     public static WordDocument Document(Tone tone)
     {
         var culture = CultureInfo.GetCultureInfo("de-DE");
-        using var made = WordDocument.New("Inter", 10.5, EngineFonts.Locator, culture, tone.Styles());
+        var (styles, numbering) = tone.Definitions();
+        using var made = WordDocument.New("Inter", 10.5, EngineFonts.Locator, culture, styles, numbering);
         var empty = made.Beginning!.Value;
         var body = new StringBuilder();
         foreach (var (level, text) in Moth)

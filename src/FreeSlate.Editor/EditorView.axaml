@@ -18,7 +18,10 @@
   </Panel.Styles>
 
   <ScrollViewer Margin="0,40,0,0">
-    <c:DocumentView x:Name="Sheets" />
+    <Panel>
+      <c:DocumentView x:Name="Sheets" />
+      <c:LevelLever x:Name="Lever" />
+    </Panel>
   </ScrollViewer>
 
   <!-- The document's tone and whether its meanings show, quiet above the sheets. -->

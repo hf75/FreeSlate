@@ -526,9 +526,14 @@ public sealed partial class WordDocument : IEditableDocument
         var second = 0;
         // The new paragraph after the paragraph, whose id stays with its text; split at its start, before it.
         var made = offset <= p.TextOffset ? 0 : 1;
+        // At its end a paragraph whose style names another one for the paragraph after it (w:next) gives the new paragraph
+        // that one, as Word's style for the following paragraph does: after a heading comes text.
+        var next = offset >= ParagraphText.End(p) && context.Styles.Find(p.Format.Style) is { Next: { } following } style && following != style.Id
+            ? context.Styles.Find(following) is { Default: true } ? "" : following
+            : null;
         var where = Change(top, top, (stretch, tracking) =>
         {
-            var (text, at) = TextEdits.Split(stretch, p, offset, tracking);
+            var (text, at) = TextEdits.Split(stretch, p, offset, tracking, next);
             second = at;
             return text;
         }, () => Plain(top, p) is { } i ? [.. blocks.Take(i + made), new ModelReader.NewBlock(), .. blocks.Skip(i + made)] : null);
@@ -862,15 +867,33 @@ public sealed partial class WordDocument : IEditableDocument
     /// (as Apply reads it where it cannot read a stretch alone), its blocks keeping their ids.
     /// </summary>
     /// <exception cref="NotSupportedException">The document has no styles part; nothing changes.</exception>
-    public void DefineStyles(string markup)
+    public void DefineStyles(string markup, string? numbering = null)
     {
         Read();
         if (StylesPart() is not { } part)
             throw new NotSupportedException("The document has no styles part.");
         var styles = Xml(package.ReadBytes(part));
         Define(styles.Root!, XElement.Parse(markup));
+        var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase) { [part] = Bytes(styles) };
+        // The lists the styles name: in the numbering part, or in a new one where the document has none.
+        if (numbering != null)
+        {
+            var given = XElement.Parse(numbering);
+            if (NumberingPart() is { } numberingPart)
+            {
+                var lists = Xml(package.ReadBytes(numberingPart));
+                Number(lists.Root!, given);
+                changes[numberingPart] = Bytes(lists);
+            }
+            else
+            {
+                var lists = new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), new XElement(given.Name, given.Attributes(), given.Elements()));
+                Added("", [new NewPart("numbering", "/word/numbering.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml",
+                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering", Bytes(lists))], changes, context.MainPart);
+            }
+        }
         var (was, previous, changed) = (blocks, wholeText, islands);
-        Put(new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase) { [part] = Bytes(styles) });
+        Put(changes);
         package.Replace(context.MainPart, Spliced(whole, changed));
         ReadWhole();
         Rebase(previous, changed);
@@ -887,6 +910,38 @@ public sealed partial class WordDocument : IEditableDocument
         Read();
         return context.Styles.Find(id)?.Name;
     }
+
+    /// <summary>The paragraph style of a paragraph (its w:pStyle), null for the default one.</summary>
+    public string? ParagraphStyle(int paragraph) => Find(paragraph).Paragraph.Format.Style;
+
+    /// <summary>
+    /// A numbering part's root (w:numbering) with the definitions of another (see DefineStyles): its abstract lists and its lists
+    /// in place of those of their ids, or after the others of their kind (abstract lists before lists, as the schema has them).
+    /// </summary>
+    static void Number(XElement root, XElement given)
+    {
+        var w = root.Name.Namespace;
+        foreach (var (kind, key) in new[] { ("abstractNum", "abstractNumId"), ("num", "numId") })
+        {
+            foreach (var definition in given.Elements(w + kind))
+            {
+                var id = (string?)definition.Attribute(w + key);
+                var made = new XElement(definition);
+                if (root.Elements(w + kind).FirstOrDefault(d => (string?)d.Attribute(w + key) == id) is { } own)
+                    own.ReplaceWith(made);
+                else if (root.Elements(w + kind).LastOrDefault() is { } last)
+                    last.AddAfterSelf(made);
+                else if (root.Elements().FirstOrDefault(e => kind == "abstractNum" ? e.Name.LocalName is "num" or "numIdMacAtCleanup" : e.Name.LocalName == "numIdMacAtCleanup") is { } after)
+                    after.AddBeforeSelf(made);
+                else
+                    root.Add(made);
+            }
+        }
+    }
+
+    /// <summary>The numbering part, where the package has one.</summary>
+    string? NumberingPart() =>
+        package.FirstRelationship(context.MainPart, "numbering") is { External: false } related && package.Exists(related.Target) ? related.Target : null;
 
     /// <summary>A styles part's root (w:styles) with the definitions of another (see DefineStyles).</summary>
     static void Define(XElement root, XElement given)
@@ -1384,9 +1439,10 @@ public sealed partial class WordDocument : IEditableDocument
         var stories = StoriesDiffering(partBytes, to.Parts);
         var settings = SettingsPart() is { } settingsPart
             && (partBytes.TryGetValue(settingsPart, out var was) != to.Parts.TryGetValue(settingsPart, out var now) || !ReferenceEquals(was, now));
-        // Styles the version defines otherwise (see DefineStyles) are those of every block: the body is read whole again.
-        var restyled = StylesPart() is { } stylesPart
-            && (partBytes.TryGetValue(stylesPart, out var wasStyled) != to.Parts.TryGetValue(stylesPart, out var nowStyled) || !ReferenceEquals(wasStyled, nowStyled));
+        // Styles or lists the version defines otherwise (see DefineStyles) are those of every block: the body is read whole again.
+        bool Differs(string? part) => part != null
+            && (partBytes.TryGetValue(part, out var wasThen) != to.Parts.TryGetValue(part, out var nowThen) || !ReferenceEquals(wasThen, nowThen));
+        var restyled = Differs(StylesPart()) || Differs(NumberingPart());
         Restore(to.Parts);
         if (restyled)
         {

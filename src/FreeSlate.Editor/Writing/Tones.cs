@@ -1,25 +1,34 @@
 using System.Security;
+using System.Xml.Linq;
 
 namespace FreeSlate.Editor.Writing;
 
 /// <summary>
-/// A tone: how all of a document looks at once, where its text says only what it means. It is a set of style definitions
-/// (Tones/{Key}.xml) for the levels of the paragraphs and the meanings (see Meanings), which the document takes as Word takes a style
-/// set (IEditableDocument.DefineStyles); a hidden style "Tone" in it says which tone the document has.
+/// A tone: how all of a document looks at once, where its text says only what it means. It is a set of style definitions for the
+/// levels of the paragraphs and the meanings (see Levels, Meanings) with the lists they name (Tones/{Key}.xml: a w:styles and a
+/// w:numbering element), which the document takes as Word takes a style set (IEditableDocument.DefineStyles); a hidden style "Tone"
+/// in it says which tone the document has.
 /// </summary>
 public sealed record Tone(string Key, string NameKey)
 {
-    /// <summary>The style definitions, the meanings' styles named in the language of the interface.</summary>
-    public string Styles()
+    /// <summary>The style definitions and the lists' numbering definitions, the meanings' and levels' own styles named in the language of the interface.</summary>
+    public (string Styles, string Numbering) Definitions()
     {
         using var stream = typeof(Tone).Assembly.GetManifestResourceStream($"FreeSlate.Editor.Tones.{Key}.xml")
             ?? throw new InvalidOperationException($"The tone {Key} has no styles.");
         using var reader = new StreamReader(stream);
         var markup = reader.ReadToEnd();
-        foreach (var meaning in Meanings.All)
-            markup = markup.Replace("{" + meaning.Style + "}", SecurityElement.Escape(Meanings.Name(meaning)), StringComparison.Ordinal);
-        return markup.Replace("</w:styles>", $"""<w:style w:type="character" w:customStyle="1" w:styleId="Tone"><w:name w:val="Tone {Key}" /><w:hidden /><w:semiHidden /></w:style></w:styles>""",
-            StringComparison.Ordinal);
+        foreach (var (style, name) in Meanings.All.Select(m => (m.Style, Meanings.Name(m))).Concat(Levels.All.Select(l => (l.Style, Levels.Name(l)))))
+        {
+            if (style.Length > 0)
+                markup = markup.Replace("{" + style + "}", SecurityElement.Escape(name), StringComparison.Ordinal);
+        }
+        var tone = XElement.Parse(markup);
+        XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        var styles = tone.Element(w + "styles")!;
+        styles.Add(new XElement(w + "style", new XAttribute(w + "type", "character"), new XAttribute(w + "customStyle", "1"), new XAttribute(w + "styleId", "Tone"),
+            new XElement(w + "name", new XAttribute(w + "val", "Tone " + Key)), new XElement(w + "hidden"), new XElement(w + "semiHidden")));
+        return (styles.ToString(SaveOptions.DisableFormatting), tone.Element(w + "numbering")!.ToString(SaveOptions.DisableFormatting));
     }
 }
 

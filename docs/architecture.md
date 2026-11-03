@@ -148,8 +148,9 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   Each change is a version that `Undo` goes back from and `Redo` forward to, and `Combine` takes the last few as one (an
   editor's step, words typed one after the other); a change the document cannot make leaves it as it was and throws
   `NotSupportedException`. Text can mean something without a look of its own: a character style (`TextFormatting.Style`,
-  `CharacterStyles`), whose look the style definitions give, which `DefineStyles` replaces all at once as a style set does
-  in Word: a Word document is then read whole again, and so is a version with other styles that undoing goes to.
+  `CharacterStyles`), as a paragraph can have a paragraph style (`ParagraphStyle`), whose look the style definitions give,
+  which `DefineStyles` replaces all at once as a style set does in Word, with the lists they name: a Word document is then
+  read whole again, and so is a version with other styles that undoing goes to.
 - `WordDocument` makes a change in the XML of the blocks it touches: their text is parsed afresh, changed
   (`Docx/TextEdits`; as tracked changes through `Docx/Tracking` where an author is set), made ready as the part was when
   it was loaded and read anew in place of those blocks (`ModelReader.Reread`, `Docx/Reread.cs`). The reader records the
@@ -210,6 +211,9 @@ A document says what its text means, not how it looks (`Writing/`): a meaning is
 a change of it one step to undo, which the sheets in view fade through (`DocumentView.Restyle`). The file stays a Word document
 that looks alike in Word. `DocumentView.ShowsMeanings` frames the stretches with a meaning and names it in the page's margin,
 drawn over the pages, which do not move for it. The engine gets the app's Inter beside the system's fonts (`EngineFonts`).
+A paragraph's level lies on one axis from title to margin note (`Levels`, Word's own styles where it has them): `LevelLever`
+is the grip beside the paragraph the pointer is at, dragged sideways a level per 64 pixels with the page showing it at once, one
+step to undo; Tab and Shift+Tab move the selection's paragraphs a level, Enter in an empty point moves it out.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

@@ -243,13 +243,17 @@ public interface IEditableDocument : IDisposable
     /// </summary>
     IReadOnlyList<(int Offset, int Length, string Style)> CharacterStyles(int paragraph);
 
+    /// <summary>The paragraph style of a paragraph by its id (ParagraphFormatting.Style); null for the default one, and on slides.</summary>
+    string? ParagraphStyle(int paragraph);
+
     /// <summary>
     /// Gives the document style definitions, as a style set does in Word (Design, Document Formatting): the w:style elements of
     /// <paramref name="markup"/> (a w:styles element) take the place of the document's of the same ids or join them, and its
-    /// w:docDefaults the document's where it has them; all of the document is read and laid out anew under them, one change.
-    /// Slides have no styles (NotSupportedException).
+    /// w:docDefaults the document's where it has them; so do the w:abstractNum and w:num elements of <paramref name="numbering"/>
+    /// (a w:numbering element) in the numbering definitions, for lists the styles name. All of the document is read and laid out
+    /// anew under them, one change. Slides have no styles (NotSupportedException).
     /// </summary>
-    void DefineStyles(string markup);
+    void DefineStyles(string markup, string? numbering = null);
 
     /// <summary>The name of a style the document defines (w:name), by its id; null where it defines none of that id (slides: none).</summary>
     string? StyleName(string id);

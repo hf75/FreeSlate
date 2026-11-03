@@ -490,6 +490,67 @@ public sealed class DocumentView : Control
         }
     }
 
+    /// <summary>
+    /// The paragraph beside a point of the view: of the line at its height on the page it is over, or of the nearest line there if that
+    /// is near; with that paragraph's first line on the page and the left edge of the page's text, in the view's coordinates. Null away
+    /// from text.
+    /// </summary>
+    public (int Paragraph, Rect Line, double TextLeft)? ParagraphBeside(Point point)
+    {
+        foreach (var row in rows)
+        {
+            if (point.Y < row.Top * factor || point.Y > (row.Top + row.Size.Height) * factor)
+                continue;
+            var places = pictures.Places(Page(row.Index));
+            var y = point.Y / factor - row.Top;
+            var (best, distance) = (-1, double.MaxValue);
+            foreach (var (toPage, line) in places.Lines)
+            {
+                if (line.Offsets.Length == 0)
+                    continue;
+                var (top, bottom) = (toPage.MapPoint(0, (float)(line.Top * PxPerPt)).Y, toPage.MapPoint(0, (float)(line.Bottom * PxPerPt)).Y);
+                var away = y < Math.Min(top, bottom) ? Math.Min(top, bottom) - y : y > Math.Max(top, bottom) ? y - Math.Max(top, bottom) : 0;
+                if (away < distance)
+                    (best, distance) = (line.Block, away);
+            }
+            return best >= 0 && distance <= 18 && FirstLineOn(row, best) is var (rect, left) ? (best, rect, left) : null;
+        }
+        return null;
+    }
+
+    /// <summary>The first line of a paragraph on the first page in view that shows it, and the left edge of that page's text, in the view's coordinates.</summary>
+    public (Rect Line, double TextLeft)? FirstLine(int paragraph)
+    {
+        var view = scroller != null ? new Rect(scroller.Offset.X, scroller.Offset.Y, scroller.Viewport.Width, scroller.Viewport.Height) : new Rect(Bounds.Size);
+        foreach (var row in rows.Where(r => r.Top * factor < view.Bottom && (r.Top + r.Size.Height) * factor > view.Top))
+        {
+            if (FirstLineOn(row, paragraph) is { } found)
+                return found;
+        }
+        return null;
+    }
+
+    (Rect Line, double TextLeft)? FirstLineOn(Row row, int paragraph)
+    {
+        var places = pictures.Places(Page(row.Index));
+        SKRect? first = null;
+        var textLeft = double.MaxValue;
+        foreach (var (toPage, line) in places.Lines)
+        {
+            if (line.Offsets.Length == 0)
+                continue;
+            SKPoint[] corners = [toPage.MapPoint((float)(line.Starts.Min() * PxPerPt), (float)(line.Top * PxPerPt)), toPage.MapPoint((float)(line.Ends.Max() * PxPerPt), (float)(line.Bottom * PxPerPt))];
+            var area = new SKRect(corners.Min(c => c.X), corners.Min(c => c.Y), corners.Max(c => c.X), corners.Max(c => c.Y));
+            textLeft = Math.Min(textLeft, area.Left);
+            if (line.Block == paragraph && (first == null || area.Top < first.Value.Top))
+                first = area;
+        }
+        if (first is not { } found)
+            return null;
+        var left = Left(row);
+        return (new Rect(left + found.Left * factor, (row.Top + found.Top) * factor, found.Width * factor, found.Height * factor), left + textLeft * factor);
+    }
+
     /// <summary>The stretch with a meaning at a point of the view, while meanings show.</summary>
     MeaningMark? MeaningAt(Point point)
     {

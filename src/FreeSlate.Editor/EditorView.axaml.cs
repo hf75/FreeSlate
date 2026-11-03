@@ -53,14 +53,17 @@ public sealed partial class EditorView : Panel
         Sheets.MeaningName = style => Meanings.Of(style) is { } meaning ? Meanings.Name(meaning) : null;
         Sheets.Changed += FollowTone;
         KeyDown += GiveMeaning;
+        AddHandler(KeyDownEvent, Structure, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         Sheets.IsEmptyChanged += () => Classes.Set("written", !Sheets.IsEmpty);
         // Before the first frame, so that the sheet comes with the window; and the keys go to it from the start.
+        var (styles, numbering) = Tones.All[0].Definitions();
         var document = Environment.GetCommandLineArgs().Contains("--sample")
             ? Sample.Document(Tones.All[0])
-            : WordDocument.New("Inter", 10.5, EngineFonts.Locator, styles: Tones.All[0].Styles());
+            : WordDocument.New("Inter", 10.5, EngineFonts.Locator, styles: styles, numbering: numbering);
         editing = new EditSession(document);
         Sheets.Open(editing);
+        Lever.Attach(Sheets, editing);
         FollowTone();
         Loaded += (_, _) => Sheets.Focus();
     }
@@ -70,12 +73,58 @@ public sealed partial class EditorView : Panel
     {
         if (Tones.Of(editing.Document) == tone)
             return;
+        var (styles, numbering) = tone.Definitions();
         Sheets.Restyle(() => editing.Handle(() =>
         {
-            editing.Document.DefineStyles(tone.Styles());
+            editing.Document.DefineStyles(styles, numbering);
             return null;
         }));
         Sheets.Focus();
+    }
+
+    /// <summary>
+    /// The structure by the keys, while the sheets have them: Tab moves the paragraphs of the selection, or the cursor's, a level to the
+    /// right, Shift+Tab a level to the left (see Levels); Enter in an empty point or subpoint moves it a level to the left instead of
+    /// making another one. Enter after a heading or a margin note makes text, as their styles say (w:next).
+    /// </summary>
+    void Structure(object? sender, KeyEventArgs e)
+    {
+        if (!Sheets.IsFocused)
+            return;
+        var shift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
+        var others = e.KeyModifiers & ~KeyModifiers.Shift;
+        if (e.Key == Key.Tab && others == KeyModifiers.None)
+        {
+            e.Handled = true;
+            Shift(shift ? -1 : 1);
+        }
+        else if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None && !editing.Selecting
+            && editing.Document.Text(editing.Caret.Paragraph).Length == 0 && Levels.Of(editing.Document.ParagraphStyle(editing.Caret.Paragraph)).Step is 1 or 2)
+        {
+            e.Handled = true;
+            Shift(-1);
+        }
+    }
+
+    /// <summary>Moves the paragraphs of the selection, or the cursor's, so many levels, those that can go so far: one step to undo.</summary>
+    void Shift(int steps)
+    {
+        var document = editing.Document;
+        var (start, end) = editing.Selecting ? editing.Selection : (editing.Caret, editing.Caret);
+        var moved = new List<(int Paragraph, Level To)>();
+        for (int? at = start.Paragraph; at is { } paragraph; at = paragraph == end.Paragraph ? null : document.Next(paragraph))
+        {
+            if (Levels.Beside(Levels.Of(document.ParagraphStyle(paragraph)), steps) is { } to)
+                moved.Add((paragraph, to));
+        }
+        if (moved.Count == 0)
+            return;
+        Sheets.Edit(() => editing.Handle(() =>
+        {
+            foreach (var (paragraph, to) in moved)
+                document.Format(paragraph, new ParagraphFormatting { Style = to.Style });
+            return null;
+        }));
     }
 
     /// <summary>The tone's buttons show the document's tone, also after undoing or doing again.</summary>

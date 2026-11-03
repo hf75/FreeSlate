@@ -1361,7 +1361,7 @@ static partial class TextEdits
     /// measured in Word 365 by COM, scratchpad b9/linkedge.vbs, fieldedit.vbs). Returns the stretch's new text and where the
     /// second paragraph begins in it.
     /// </summary>
-    public static (string Text, int Second) Split(Stretch stretch, ParagraphBlock paragraph, int offset, Tracking? tracking = null)
+    public static (string Text, int Second) Split(Stretch stretch, ParagraphBlock paragraph, int offset, Tracking? tracking = null, string? next = null)
     {
         if (offset < paragraph.TextOffset || offset > ParagraphText.End(paragraph))
             throw new ArgumentOutOfRangeException(nameof(offset), "The place is not in the paragraph's text.");
@@ -1448,6 +1448,11 @@ static partial class TextEdits
                     made.Remove();
             }
         }
+        // The style for the paragraph after it, where it splits at its end ("" the default one, of no pStyle).
+        if (next is { Length: 0 })
+            second.Element(w + "pPr")?.Element(w + "pStyle")?.Remove();
+        else if (next != null)
+            Property(Properties(second, "pPr"), "pStyle", ParagraphOrder).SetAttributeValue(w + "val", next);
         if (first != null)
         {
             // The element and what follows it, out of each element around it up to the paragraph, which is split there:
@@ -2583,7 +2588,9 @@ static partial class TextEdits
             change.Add(new XElement(w + "pPr", properties.Elements().Where(e => e.Name.LocalName is not ("rPr" or "sectPr")).Select(e => new XElement(e))));
             properties.Add(change);
         }
-        if (format.Style is { } style)
+        if (format.Style is { Length: 0 })
+            properties.Element(w + "pStyle")?.Remove();
+        else if (format.Style is { } style)
             Property(properties, "pStyle", ParagraphOrder).SetAttributeValue(w + "val", style);
         if (format.Alignment is { } alignment)
             Property(properties, "jc", ParagraphOrder).SetAttributeValue(w + "val", strict ? alignment switch { "left" => "start", "right" => "end", _ => alignment } : alignment);

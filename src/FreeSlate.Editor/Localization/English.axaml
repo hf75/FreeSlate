@@ -19,4 +19,12 @@
   <x:String x:Key="MeaningTerm">Term</x:String>
   <x:String x:Key="MeaningQuotation">Quotation</x:String>
   <x:String x:Key="MeaningOpenQuestion">Open question</x:String>
+  <x:String x:Key="LevelChoice">Level</x:String>
+  <x:String x:Key="LevelTitle">Title</x:String>
+  <x:String x:Key="LevelChapter">Chapter</x:String>
+  <x:String x:Key="LevelSection">Section</x:String>
+  <x:String x:Key="LevelText">Text</x:String>
+  <x:String x:Key="LevelPoint">Point</x:String>
+  <x:String x:Key="LevelSubpoint">Subpoint</x:String>
+  <x:String x:Key="LevelMarginNote">Margin note</x:String>
 </ResourceDictionary>

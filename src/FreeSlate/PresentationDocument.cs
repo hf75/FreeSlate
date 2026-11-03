@@ -284,8 +284,11 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>Slides have no character styles (see IEditableDocument.CharacterStyles).</summary>
     public IReadOnlyList<(int Offset, int Length, string Style)> CharacterStyles(int paragraph) => [];
 
+    /// <summary>Slides have no paragraph styles (see IEditableDocument.ParagraphStyle).</summary>
+    public string? ParagraphStyle(int paragraph) => null;
+
     /// <summary>Slides have no styles (see IEditableDocument.DefineStyles).</summary>
-    public void DefineStyles(string markup) => throw new NotSupportedException("Slides have no styles.");
+    public void DefineStyles(string markup, string? numbering = null) => throw new NotSupportedException("Slides have no styles.");
 
     /// <summary>Slides have no styles (see IEditableDocument.StyleName).</summary>
     public string? StyleName(string id) => null;
