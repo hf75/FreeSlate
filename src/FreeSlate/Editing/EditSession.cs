@@ -296,6 +296,71 @@ public sealed class EditSession(IEditableDocument document)
     }
 
     /// <summary>
+    /// Puts a picture at the cursor in place of the selection, a handling of its own (see InsertMarkup), as Word puts one in
+    /// from a file: in the line, at its own size (its pixels at its resolution, see Html.ImageInfo) but no wider than the
+    /// text of the column it stands in nor higher than the page's text, keeping its proportions; named as given (wp:docPr,
+    /// which Word shows as the picture's name). The bytes are a PNG, JPEG, GIF, BMP or TIFF file, kept as they are. False,
+    /// and nothing done, where they are none of those or the document takes no pictures so (slides).
+    /// </summary>
+    public bool InsertPicture(byte[] bytes, string name)
+    {
+        if (document is not WordDocument word || PictureType(bytes) is not var (type, extension))
+            return false;
+        var (pixelsWide, pixelsHigh) = Html.ImageInfo.Size(bytes);
+        if (pixelsWide <= 0 || pixelsHigh <= 0)
+            return false;
+        // CSS pixels to points, then into the room there is.
+        var (width, height) = (pixelsWide * 0.75, pixelsHigh * 0.75);
+        var (roomWide, roomHigh) = RoomFor(word, Caret.Paragraph);
+        var scale = Math.Min(1, Math.Min(roomWide / width, roomHigh / height));
+        const double EmuPerPoint = 12700;
+        var (cx, cy) = (Math.Max(1, (long)Math.Round(width * scale * EmuPerPoint)), Math.Max(1, (long)Math.Round(height * scale * EmuPerPoint)));
+        var named = System.Security.SecurityElement.Escape(name.Replace('{', '(').Replace('}', ')'));
+        InsertMarkup(
+            $"<w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"{cx}\" cy=\"{cy}\"/><wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/>"
+            + $"<wp:docPr id=\"1\" name=\"{named}\"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect=\"1\"/></wp:cNvGraphicFramePr>"
+            + "<a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic>"
+            + $"<pic:nvPicPr><pic:cNvPr id=\"0\" name=\"{named}\"/><pic:cNvPicPr/></pic:nvPicPr>"
+            + "<pic:blipFill><a:blip r:embed=\"{picture}\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>"
+            + $"<pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr>"
+            + "</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>",
+            [new NewPart("picture", "/word/media/image1" + extension, type, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image", bytes)]);
+        return true;
+    }
+
+    /// <summary>The content type and file extension of a picture Word keeps as it is, by its first bytes; null for others.</summary>
+    static (string Type, string Extension)? PictureType(byte[] bytes) => bytes switch
+    {
+        [0x89, 0x50, 0x4E, 0x47, ..] => ("image/png", ".png"),
+        [0xFF, 0xD8, ..] => ("image/jpeg", ".jpeg"),
+        [0x47, 0x49, 0x46, ..] => ("image/gif", ".gif"),
+        [0x42, 0x4D, ..] => ("image/bmp", ".bmp"),
+        _ when Html.Tiff.IsTiff(bytes) => ("image/tiff", ".tiff"),
+        _ => null,
+    };
+
+    /// <summary>
+    /// The room for a picture in a paragraph of a Word document, in points: the width of its section's text column (columns of
+    /// even width) and the height of the page's text; in a note, header or footer the usual page's.
+    /// </summary>
+    static (double Width, double Height) RoomFor(WordDocument word, int paragraph)
+    {
+        SectionFormatting section;
+        try
+        {
+            section = word.SectionOf(paragraph);
+        }
+        catch (NotSupportedException)
+        {
+            return (451.3, 697.9);
+        }
+        var columns = Math.Max(1, section.Columns ?? 1);
+        var width = ((section.PageWidth ?? 595.3) - (section.Left ?? 72) - (section.Right ?? 72) - (section.Gutter ?? 0) - (columns - 1) * (section.ColumnSpace ?? 36)) / columns;
+        var height = (section.PageHeight ?? 841.9) - Math.Abs(section.Top ?? 72) - Math.Abs(section.Bottom ?? 72);
+        return (Math.Max(36, width), Math.Max(36, height));
+    }
+
+    /// <summary>
     /// Puts blocks of the document's own kind after the cursor's paragraph, or before it (see
     /// IEditableDocument.InsertBlocks), a handling of its own: paragraphs, tables, a section's end. The cursor then stands
     /// at the start of the first paragraph they hold; returns their ids in reading order (a table's cell by cell), to type

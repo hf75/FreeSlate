@@ -348,6 +348,14 @@ public sealed record PlacesItem(int Block, double Top, double Bottom, int[] Offs
     public byte[] Formats { get; init; } = [];
 
     public const byte Bold = 1, Italic = 2, Underlined = 4;
+
+    /// <summary>
+    /// For the places of drawings in the line (by their index), the drawing's box as the page shows it, in the line's units
+    /// (as Top and Bottom, the starts and ends): a picture's own, which the line's height and the character's width need not
+    /// be. None for other characters.
+    /// </summary>
+    public IReadOnlyDictionary<int, (double Left, double Top, double Right, double Bottom)> Boxes { get; init; } =
+        new Dictionary<int, (double, double, double, double)>();
 }
 
 /// <summary>

@@ -228,6 +228,11 @@ whole selection is framed exactly, one outline around the lines that meet (`Docu
 reads as the field pointed at would make it: a preview, a step of its own that letting go keeps and anything else takes back, the
 selection hidden meanwhile (`GestureRing.Preview`, `DocumentView.SelectionHidden`). In full screen
 the line above the sheets lies under the window's buttons and comes and goes with them (`CaptionBar.Changed`).
+Pictures go in as Word puts them in from a file (`EditSession.InsertPicture`): in the line at their own size, no wider than the
+text of their column; dropped on the sheets (a bar shows where they would go), or pasted where the clipboard holds no text (picture
+files copied from a folder, else a picture itself), kinds Word does not keep as PNG. A click on a drawing selects it as a whole and
+frames it instead of tinting it; the frame is the drawing's own box, which the renderer gives among the line's places
+(`PlacesItem.Boxes`, `TextPlaces.Box`).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

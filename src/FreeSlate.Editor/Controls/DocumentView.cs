@@ -6,7 +6,9 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.TextInput;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Media.TextFormatting;
+using Avalonia.Platform.Storage;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Avalonia.Threading;
@@ -44,13 +46,18 @@ public sealed class DocumentView : Control
 
     public static readonly StyledProperty<IBrush?> OnPointedBrushProperty = AvaloniaProperty.Register<DocumentView, IBrush?>(nameof(OnPointedBrush));
 
+    public static readonly StyledProperty<IBrush?> DrawingBrushProperty = AvaloniaProperty.Register<DocumentView, IBrush?>(nameof(DrawingBrush));
+
     static readonly Cursor Text = new(StandardCursorType.Ibeam);
+
+    /// <summary>The kinds of file a picture comes in that the sheets take: Word keeps those up to TIFF as they are, the others go in as PNG.</summary>
+    static readonly HashSet<string> PictureFiles = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".jfif", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".ico" };
 
     /// <summary>How long the pages in view as they were take to fade into their new look (see Restyle), in milliseconds.</summary>
     const double FadeTime = 260;
 
     static DocumentView() => AffectsRender<DocumentView>(SheetProperty, SheetShadowProperty, CaretBrushProperty, SelectionBrushProperty, ShowsMeaningsProperty,
-        MeaningBrushProperty, PointedBrushProperty, OnPointedBrushProperty);
+        MeaningBrushProperty, PointedBrushProperty, OnPointedBrushProperty, DrawingBrushProperty);
 
     readonly Pictures pictures = new();
     readonly DispatcherTimer blinker = new() { Interval = TimeSpan.FromMilliseconds(530) };
@@ -75,6 +82,9 @@ public sealed class DocumentView : Control
     bool lineEnd;
 
     bool selecting, fromSession, layingOut, blink = true;
+
+    /// <summary>Where pictures dragged over the sheets would go while they are (a page and a place among its characters, as the cursor's).</summary>
+    (int Page, int At, bool End)? dropAt;
 
     /// <summary>The input method's text being composed at the cursor, not yet in the document.</summary>
     string? preedit;
@@ -121,6 +131,10 @@ public sealed class DocumentView : Control
             if (session != null)
                 e.Client = ime;
         };
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, DraggedOver);
+        AddHandler(DragDrop.DragLeaveEvent, (_, _) => DropAt(null));
+        AddHandler(DragDrop.DropEvent, Dropped);
     }
 
     public IBrush? Sheet
@@ -133,6 +147,13 @@ public sealed class DocumentView : Control
     {
         get => GetValue(SheetShadowProperty);
         set => SetValue(SheetShadowProperty, value);
+    }
+
+    /// <summary>The frame of a drawing selected as a whole, and the bar where pictures dragged over the sheets would go.</summary>
+    public IBrush? DrawingBrush
+    {
+        get => GetValue(DrawingBrushProperty);
+        set => SetValue(DrawingBrushProperty, value);
     }
 
     public IBrush? CaretBrush
@@ -349,14 +370,20 @@ public sealed class DocumentView : Control
         context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush), Fading()));
         if (ShowsMeanings)
             DrawMeanings(context, visible);
+        // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor.
+        if (!SelectionHidden && SelectedDrawing() is var (drawnPage, drawnAt) && BoxOf(drawnPage, drawnAt) is { } box)
+            context.DrawRectangle(null, new Pen(DrawingBrush, 1.5), box.Inflate(1.5), 2, 2);
+        // Where pictures dragged over the sheets would go.
+        if (dropAt is var (dropPage, dropIndex, dropEnd) && BarAt(dropPage, dropIndex, dropEnd) is { Height: > 0 } bar)
+            context.FillRectangle(DrawingBrush ?? CaretBrush ?? Brushes.Black, new Rect(bar.X - 1, bar.Y, 2, bar.Height));
         // The text being composed over the page at the cursor, underlined, as input methods show it.
-        if (preedit != null && CaretRect() is { Height: > 0 } bar)
+        if (preedit != null && CaretRect() is { Height: > 0 } at)
         {
-            var text = new FormattedText(preedit, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, Math.Max(8, bar.Height * 0.72), CaretBrush);
-            var box = new Rect(bar.X, bar.Y, text.Width + 4, bar.Height);
-            context.FillRectangle(Sheet ?? Brushes.White, box);
-            context.DrawText(text, new Point(bar.X + 2, bar.Y + (bar.Height - text.Height) / 2));
-            context.DrawLine(new Pen(CaretBrush), new Point(box.X + 2, box.Bottom - 1.5), new Point(box.Right - 2, box.Bottom - 1.5));
+            var text = new FormattedText(preedit, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, Math.Max(8, at.Height * 0.72), CaretBrush);
+            var composed = new Rect(at.X, at.Y, text.Width + 4, at.Height);
+            context.FillRectangle(Sheet ?? Brushes.White, composed);
+            context.DrawText(text, new Point(at.X + 2, at.Y + (at.Height - text.Height) / 2));
+            context.DrawLine(new Pen(CaretBrush), new Point(composed.X + 2, composed.Bottom - 1.5), new Point(composed.Right - 2, composed.Bottom - 1.5));
         }
     }
 
@@ -585,8 +612,11 @@ public sealed class DocumentView : Control
     }
 
     /// <summary>The character the cursor stands at on its page, before it, or after it at the end of its line.</summary>
-    (TextPlaces.Spot Spot, bool After) CaretSpot(List<TextPlaces.Spot> spots, int at) =>
-        at >= spots.Count || at > 0 && lineEnd && spots[at - 1].Line != spots[at].Line ? (spots[Math.Min(at, spots.Count) - 1], true) : (spots[at], false);
+    (TextPlaces.Spot Spot, bool After) CaretSpot(List<TextPlaces.Spot> spots, int at) => SpotAt(spots, at, lineEnd);
+
+    /// <summary>The character a place stands at on its page, before it, or after it at the end of its line (<paramref name="end"/>, see lineEnd).</summary>
+    static (TextPlaces.Spot Spot, bool After) SpotAt(List<TextPlaces.Spot> spots, int at, bool end) =>
+        at >= spots.Count || at > 0 && end && spots[at - 1].Line != spots[at].Line ? (spots[Math.Min(at, spots.Count) - 1], true) : (spots[at], false);
 
     /// <summary>What a page shows over its text: the areas of the selection and the cursor (from its top to its bottom), in CSS pixels of the page.</summary>
     sealed record Mark(List<SKPoint[]> Areas, (SKPoint Top, SKPoint Bottom)? Caret);
@@ -598,14 +628,16 @@ public sealed class DocumentView : Control
         if (caret == null)
             return marks;
         var inView = visible.Select(v => v.Row.Index).ToHashSet();
-        foreach (var (page, from, count) in SelectionHidden ? [] : Selected())
+        // A drawing selected as a whole has its frame instead (see Render).
+        var drawing = SelectedDrawing() != null;
+        foreach (var (page, from, count) in SelectionHidden || drawing ? [] : Selected())
         {
             if (!inView.Contains(page))
                 continue;
             var spots = pictures.Spots(Page(page));
             marks[page] = new Mark(pictures.Places(Page(page)).Selection(spots[from], spots[from + count - 1]), null);
         }
-        if (caret is var (cursorPage, at) && blink && preedit == null && inView.Contains(cursorPage) && pictures.Spots(Page(cursorPage)) is { Count: > 0 } all)
+        if (!drawing && caret is var (cursorPage, at) && blink && preedit == null && inView.Contains(cursorPage) && pictures.Spots(Page(cursorPage)) is { Count: > 0 } all)
         {
             var (spot, after) = CaretSpot(all, at);
             var bar = pictures.Places(Page(cursorPage)).CaretAt(spot, after);
@@ -615,15 +647,50 @@ public sealed class DocumentView : Control
     }
 
     /// <summary>The cursor's bar in the view's coordinates (its top to its bottom, a pixel wide), or an empty rectangle.</summary>
-    Rect CaretRect()
+    Rect CaretRect() => caret is var (page, at) ? BarAt(page, at, lineEnd) : default;
+
+    /// <summary>The bar of a place as the cursor's would be there (see CaretRect, SpotAt), or an empty rectangle.</summary>
+    Rect BarAt(int page, int at, bool end)
     {
-        if (caret is not var (page, at) || page >= rows.Count || pictures.Spots(Page(page)) is not { Count: > 0 } spots)
+        if (page >= rows.Count || pictures.Spots(Page(page)) is not { Count: > 0 } spots)
             return default;
         var row = rows[page];
-        var (spot, after) = CaretSpot(spots, at);
+        var (spot, after) = SpotAt(spots, at, end);
         var (top, bottom) = pictures.Places(Page(page)).CaretAt(spot, after);
         var (y1, y2) = ((row.Top + top.Y) * factor, (row.Top + bottom.Y) * factor);
         return new Rect(Left(row) + top.X * factor, Math.Min(y1, y2), 1, Math.Abs(y2 - y1));
+    }
+
+    /// <summary>The drawing the selection holds alone, selected as a whole: its page and its place among the page's characters; else null.</summary>
+    (int Page, int At)? SelectedDrawing() =>
+        Selected() is [(var page, var from, 1)] && pictures.Places(Page(page)).Box(pictures.Spots(Page(page))[from]) != null ? (page, from) : null;
+
+    /// <summary>The box of a drawing among a page's characters (see TextPlaces.Box) in the view's coordinates, or null where the character is none.</summary>
+    Rect? BoxOf(int page, int at)
+    {
+        if (page >= rows.Count || pictures.Places(Page(page)).Box(pictures.Spots(Page(page))[at]) is not { } corners)
+            return null;
+        var row = rows[page];
+        var (left, top) = (corners.Min(c => c.X), corners.Min(c => c.Y));
+        return new Rect(Left(row) + left * factor, (row.Top + top) * factor, (corners.Max(c => c.X) - left) * factor, (corners.Max(c => c.Y) - top) * factor);
+    }
+
+    /// <summary>The drawing a point of the view is on (see TextPlaces.Box): its page and its place among the page's characters.</summary>
+    (int Page, int At)? DrawingAt(Point point)
+    {
+        foreach (var row in rows)
+        {
+            if (point.Y < row.Top * factor || point.Y > (row.Top + row.Size.Height) * factor)
+                continue;
+            var spots = pictures.Spots(Page(row.Index));
+            for (var i = 0; i < spots.Count; i++)
+            {
+                if (BoxOf(row.Index, i) is { } box && box.Contains(point))
+                    return (row.Index, i);
+            }
+            return null;
+        }
+        return null;
     }
 
     void Preedit(string? text)
@@ -672,6 +739,14 @@ public sealed class DocumentView : Control
     public bool Press(Point point, IPointer pointer, KeyModifiers modifiers, bool dragging = true)
     {
         Focus();
+        // A drawing pressed is selected as a whole.
+        if ((modifiers & KeyModifiers.Shift) == 0 && DrawingAt(point) is var (drawnPage, drawnAt))
+        {
+            (anchor, caret, lineEnd) = ((drawnPage, drawnAt), (drawnPage, drawnAt + 1), false);
+            Moved();
+            InvalidateVisual();
+            return true;
+        }
         if (PlaceAt(point) is not var (page, at, end))
             return false;
         (caret, lineEnd) = ((page, at), end);
@@ -1113,9 +1188,13 @@ public sealed class DocumentView : Control
         return null;
     }
 
+    /// <summary>Pastes the text the clipboard holds; without text the pictures it holds: picture files copied from a folder, else a picture itself.</summary>
     async void Paste(IClipboard clipboard)
     {
-        if (await clipboard.TryGetTextAsync() is { Length: > 0 } text && session is { } editing)
+        if (session is not { } editing)
+            return;
+        if (await clipboard.TryGetTextAsync() is { Length: > 0 } text)
+        {
             Edit(() =>
             {
                 if (copied is { } fragment && fragment.Text == text)
@@ -1123,6 +1202,118 @@ public sealed class DocumentView : Control
                 else
                     editing.Paste(text);
             });
+            return;
+        }
+        if (await clipboard.TryGetDataAsync() is { } data)
+            await PastePictures(data);
+    }
+
+    /// <summary>The pictures copied data holds put in at the cursor: picture files (copied from a folder), else a picture itself (a screenshot).</summary>
+    async Task PastePictures(IAsyncDataTransfer data)
+    {
+        if (PictureFilesOf(await data.TryGetFilesAsync()) is { Count: > 0 } files)
+            InsertPictures(await Read(files));
+        else if (await data.TryGetBitmapAsync() is { } bitmap)
+        {
+            using (bitmap)
+            {
+                using var png = new MemoryStream();
+                bitmap.Save(png, PngBitmapEncoderOptions.Default);
+                InsertPictures([(png.ToArray(), "Picture")]);
+            }
+        }
+    }
+
+    /// <summary>The files of pictures among those given (see PictureFiles).</summary>
+    static List<IStorageFile> PictureFilesOf(IEnumerable<IStorageItem>? items) =>
+        items == null ? [] : [.. items.OfType<IStorageFile>().Where(f => PictureFiles.Contains(Path.GetExtension(f.Name)))];
+
+    /// <summary>The bytes of files with their names (without their extensions); those that cannot be read left out.</summary>
+    static async Task<List<(byte[] Bytes, string Name)>> Read(IEnumerable<IStorageFile> files)
+    {
+        var read = new List<(byte[], string)>();
+        foreach (var file in files)
+        {
+            try
+            {
+                await using var stream = await file.OpenReadAsync();
+                using var bytes = new MemoryStream();
+                await stream.CopyToAsync(bytes);
+                read.Add((bytes.ToArray(), Path.GetFileNameWithoutExtension(file.Name)));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+        return read;
+    }
+
+    /// <summary>
+    /// Puts pictures at the cursor in place of the selection, one after the other (see EditSession.InsertPicture): of a kind Word keeps
+    /// as it is, else as PNG (WebP, an icon); what is no picture is left out.
+    /// </summary>
+    public void InsertPictures(IReadOnlyList<(byte[] Bytes, string Name)> given)
+    {
+        if (session is not { } editing)
+            return;
+        Edit(() =>
+        {
+            foreach (var (bytes, name) in given)
+            {
+                if (!editing.InsertPicture(bytes, name) && AsPng(bytes) is { } png)
+                    editing.InsertPicture(png, name);
+            }
+        });
+    }
+
+    /// <summary>A picture's bytes as PNG, where the platform can read them; else null.</summary>
+    static byte[]? AsPng(byte[] bytes)
+    {
+        try
+        {
+            using var bitmap = new Bitmap(new MemoryStream(bytes));
+            using var png = new MemoryStream();
+            bitmap.Save(png, PngBitmapEncoderOptions.Default);
+            return png.ToArray();
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Pictures dragged over the sheets: they would go to the place under the pointer, which shows; other things are not taken.</summary>
+    void DraggedOver(object? sender, DragEventArgs e)
+    {
+        var files = session != null ? PictureFilesOf(e.DataTransfer.TryGetFiles()) : [];
+        e.DragEffects = files.Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+        DropAt(files.Count > 0 ? PlaceAt(e.GetPosition(this)) : null);
+        e.Handled = true;
+    }
+
+    void DropAt((int Page, int At, bool End)? at)
+    {
+        if (at == dropAt)
+            return;
+        dropAt = at;
+        InvalidateVisual();
+    }
+
+    /// <summary>Pictures let go over the sheets go in where they were let go, one after the other, as Word puts them in.</summary>
+    async void Dropped(object? sender, DragEventArgs e)
+    {
+        var at = dropAt ?? PlaceAt(e.GetPosition(this));
+        DropAt(null);
+        var files = PictureFilesOf(e.DataTransfer.TryGetFiles());
+        if (files.Count == 0 || at is not var (page, index, end))
+            return;
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+        var read = await Read(files);
+        (caret, anchor, lineEnd) = ((page, index), (page, index), end);
+        Moved();
+        InsertPictures(read);
+        Focus();
     }
 
     protected override void OnTextInput(TextInputEventArgs e)

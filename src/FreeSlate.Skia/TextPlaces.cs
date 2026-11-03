@@ -58,6 +58,19 @@ public sealed class TextPlaces(IReadOnlyList<(SKMatrix ToPage, PlacesItem Line)>
         return (OnPage(toPage, x, line.Top), OnPage(toPage, x, line.Bottom));
     }
 
+    /// <summary>
+    /// The box of the drawing a spot's character is (see PlacesItem.Boxes), as its four corners on the page from its top left
+    /// clockwise; null for other characters.
+    /// </summary>
+    public SKPoint[]? Box(Spot spot)
+    {
+        var (toPage, line) = lines[spot.Line];
+        if (!line.Boxes.TryGetValue(spot.Index, out var box))
+            return null;
+        var (left, top, right, bottom) = box;
+        return [OnPage(toPage, left, top), OnPage(toPage, right, top), OnPage(toPage, right, bottom), OnPage(toPage, left, bottom)];
+    }
+
     /// <summary>The character a point of the page is over (see Hit), and whether it hits after it.</summary>
     public Spot? HitSpot(SKPoint point)
     {

@@ -996,8 +996,11 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     if (piece.Rule is { } rule)
                         (w, top) = (rule.Width, baseline + rule.Bottom - h);
                     var (ix, iy) = (shape || inline.Drawing.Attribute(Vml.Hangs) != null) && placed.InlineOrigin is { } origin ? origin : (x, top);
+                    // Its box among the line's places (PlacesItem.Boxes), where it shows.
+                    var swapped = Drawings.InlineSwapped(inline.Drawing);
+                    places?.Box(ix + dx, iy + dy, swapped ? h : w, swapped ? w : h);
                     // A drawing whose turn swaps its box's sides turns about that box's middle (ri-*: Drawings.Box).
-                    if (Drawings.InlineSwapped(inline.Drawing))
+                    if (swapped)
                         (ix, iy) = (ix + (h - w) / 2, iy + (w - h) / 2);
                     front.Add(new PlacedDrawing(inline.Drawing, inline.Part, ix + dx, iy + dy, w, h)
                     {
@@ -1072,10 +1075,15 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         readonly List<int> offsets = [];
         readonly List<double> starts = [], ends = [];
         readonly List<byte> formats = [];
+        readonly Dictionary<int, (double, double, double, double)> boxes = [];
+
+        /// <summary>The index of the last character a piece added, -1 where it added none.</summary>
+        int last = -1;
 
         /// <summary>A piece's characters at their positions from x (see Positions), right-to-left text from the piece's right end.</summary>
         public void Add(Piece piece, double x, double[] positions)
         {
+            last = -1;
             if (piece.Start < 0)
                 return;
             var width = positions[^1];
@@ -1090,7 +1098,15 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 starts.Add(x + start);
                 ends.Add(x + end);
                 formats.Add(format);
+                last = offsets.Count - 1;
             }
+        }
+
+        /// <summary>The box of the drawing the last piece added shows, on the page (see PlacesItem.Boxes).</summary>
+        public void Box(double x, double y, double width, double height)
+        {
+            if (last >= 0)
+                boxes[last] = (x, y, x + width, y + height);
         }
 
         /// <summary>The line's places from its top; its paragraph's last line ends with the mark, after the last character or at the line's start.</summary>
@@ -1104,7 +1120,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 ends.Add(at);
                 formats.Add(formats.Count > 0 ? formats[^1] : (byte)0);
             }
-            return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends]) { Formats = [.. formats] };
+            return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends]) { Formats = [.. formats], Boxes = boxes };
         }
     }
 
