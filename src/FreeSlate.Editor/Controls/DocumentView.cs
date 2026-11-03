@@ -25,7 +25,7 @@ namespace FreeSlate.Editor.Controls;
 /// typed text go to its editing session and the sheets a change touched are drawn again; an input method's text being composed shows
 /// at the cursor until it is committed.
 /// </summary>
-public sealed class DocumentView : Control
+public sealed partial class DocumentView : Control
 {
     const double PxPerPt = 96.0 / 72;
     const double Edge = 16, Gap = 16;
@@ -371,8 +371,7 @@ public sealed class DocumentView : Control
         if (ShowsMeanings)
             DrawMeanings(context, visible);
         // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor.
-        if (!SelectionHidden && SelectedDrawing() is var (drawnPage, drawnAt) && BoxOf(drawnPage, drawnAt) is { } box)
-            context.DrawRectangle(null, new Pen(DrawingBrush, 1.5), box.Inflate(1.5), 2, 2);
+        DrawDrawing(context);
         // Where pictures dragged over the sheets would go.
         if (dropAt is var (dropPage, dropIndex, dropEnd) && BarAt(dropPage, dropIndex, dropEnd) is { Height: > 0 } bar)
             context.FillRectangle(DrawingBrush ?? CaretBrush ?? Brushes.Black, new Rect(bar.X - 1, bar.Y, 2, bar.Height));
@@ -730,6 +729,15 @@ public sealed class DocumentView : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        if (dragged != null)
+        {
+            DragTo(e.GetPosition(this), e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
+        // Over a drawing the pointer shows that it can be moved.
+        if (!selecting)
+            Cursor = DrawingAt(e.GetPosition(this)) != null ? Grab : Text;
         if (selecting && PlaceAt(e.GetPosition(this)) is var (page, at, end))
         {
             (caret, lineEnd) = ((page, at), end);
@@ -767,9 +775,13 @@ public sealed class DocumentView : Control
     public bool Press(Point point, IPointer pointer, KeyModifiers modifiers, bool dragging = true)
     {
         Focus();
-        // A drawing pressed is selected as a whole.
+        // A drawing pressed is selected as a whole, and may be dragged from there.
         if ((modifiers & KeyModifiers.Shift) == 0 && SelectDrawingAt(point))
+        {
+            if (dragging)
+                BeginDrag(point, pointer);
             return true;
+        }
         if (PlaceAt(point) is not var (page, at, end))
             return false;
         (caret, lineEnd) = ((page, at), end);
@@ -863,6 +875,13 @@ public sealed class DocumentView : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (dragged != null)
+        {
+            EndDrag(keep: true);
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (selecting)
         {
             selecting = false;
@@ -902,6 +921,14 @@ public sealed class DocumentView : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
+        // Escape while a drawing is dragged: it goes back.
+        if (dragged is { } d && e.Key == Key.Escape)
+        {
+            EndDrag(keep: false);
+            d.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (e.Handled || session is not { } editing || caret is not var (page, at) || page >= scenes.Count)
             return;
         var control = (e.KeyModifiers & KeyModifiers.Control) != 0 || (e.KeyModifiers & KeyModifiers.Meta) != 0;

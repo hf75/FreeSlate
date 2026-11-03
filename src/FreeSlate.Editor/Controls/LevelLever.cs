@@ -121,6 +121,12 @@ public sealed class LevelLever : Canvas
     {
         if (drag != null || choosing)
             return;
+        // A drawing dragged over the sheets is about the page, not a paragraph's level.
+        if (sheets?.DraggingDrawing == true)
+        {
+            Hide();
+            return;
+        }
         if (sheets?.ParagraphBeside(point) is not var (at, _, _))
         {
             leaving.Start();

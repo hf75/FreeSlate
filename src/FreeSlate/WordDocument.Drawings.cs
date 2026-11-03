@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using FreeSlate.Docx;
+using FreeSlate.Docx.Layout;
 using FreeSlate.Rendering;
 
 namespace FreeSlate;
@@ -38,6 +39,203 @@ public sealed partial class WordDocument
             throw new NotSupportedException("No drawing stands at that place.");
         var drawn = Drawn(own, format, () => WhereItStands(paragraph, offset));
         Change(top, top, (stretch, _) => TextEdits.Redraw(stretch, p, offset, drawn));
+    }
+
+    /// <summary>
+    /// Moves the drawing whose character stands at a place of a paragraph's text to another place of the text of its story, one change,
+    /// as Word moves one dragged there: in the line it goes in there; floating, its anchor goes there. Its run's formatting goes with
+    /// it. Returns where its character then stands.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// No drawing stands at the place, the other is in another story or within what the document computes or keeps, or changes are
+    /// tracked; nothing changes.
+    /// </exception>
+    public (int Paragraph, int Offset) MoveDrawing(int paragraph, int offset, int toParagraph, int toOffset)
+    {
+        var (p, top) = Find(paragraph);
+        var (q, toTop) = Find(toParagraph);
+        if (DrawingAt(p, offset) == null)
+            throw new NotSupportedException("No drawing stands at that place.");
+        if (toParagraph == paragraph && (toOffset == offset || toOffset == offset + 1))
+            return (paragraph, offset);
+        if (!ReferenceEquals(top, toTop) && !(paragraphs.ContainsKey(paragraph) && paragraphs.ContainsKey(toParagraph)))
+            throw new NotSupportedException("A drawing moves within its story.");
+        var (first, last) = IndexOf(top) <= IndexOf(toTop) ? (top, toTop) : (toTop, top);
+        Change(first, last, (stretch, tracking) => tracking == null ? TextEdits.MoveDrawing(stretch, p, offset, q, toOffset)
+            : throw new NotSupportedException("A drawing moved is not tracked."));
+        return (toParagraph, toParagraph == paragraph && toOffset > offset ? toOffset - 1 : toOffset);
+    }
+
+    /// <summary>
+    /// Puts the floating drawing whose character stands at a place of a paragraph's text where its box's top left stands at a point of
+    /// a page, in points from the page's top left, one change, as Word puts one dragged there: across and down by offsets from what it
+    /// stands from (an alignment across given instead, from the column); its anchor goes to the beginning of the paragraph of the body
+    /// whose line stands at the box's top, where that is another (one in a table keeps its anchor). Where the layout holds it (between
+    /// the margins, on the page), it stands as near as that lets it. Returns where its character then stands.
+    /// </summary>
+    /// <exception cref="NotSupportedException">No floating drawing stands at the place; nothing changes.</exception>
+    public (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null)
+    {
+        var (p, top) = Find(paragraph);
+        if (DrawingAt(p, offset) is not { Name.LocalName: "anchor" })
+            throw new NotSupportedException("No floating drawing stands at that place.");
+        Scenes();
+        if (page < 0 || page >= shown.Count)
+            throw new ArgumentOutOfRangeException(nameof(page), "The document has no such page laid out.");
+        var start = version;
+        var place = (Paragraph: paragraph, Offset: offset);
+        try
+        {
+            if (paragraphs.ContainsKey(paragraph) && ReferenceEquals(p, top) && ParagraphAt(page, x, y) is { } at && at != paragraph)
+            {
+                try
+                {
+                    place = MoveDrawing(paragraph, offset, at, Find(at).Paragraph.TextOffset);
+                }
+                catch (NotSupportedException)
+                {
+                    // It stays anchored where it was.
+                }
+            }
+            // Offsets from what it stands from: from where it is by as much as it moves, else from where that begins; measured as laid out
+            // and once more where the layout put it elsewhere (a paragraph's top lies above its space before).
+            Scenes();
+            var now = DrawingOf(place.Paragraph, place.Offset)!;
+            var stood = place == (paragraph, offset) ? PlacedAt(place.Paragraph, place.Offset) : null;
+            var (across, down) = (alignAcross != null ? "column" : now.HorizontalFrom ?? "column", now.VerticalFrom ?? "paragraph");
+            var format = new DrawingFormatting
+            {
+                HorizontalFrom = across,
+                HorizontalAlign = alignAcross,
+                HorizontalOffset = alignAcross != null ? null
+                    : now.HorizontalOffset is { } h && stood is var (_, was) ? h + x - was.X : x - AcrossFrom(across, shown[page], x),
+                VerticalFrom = down,
+                VerticalOffset = now.VerticalOffset is { } v && stood is var (_, had) ? v + y - had.Y : y - DownFrom(down, shown[page], place.Paragraph),
+            };
+            for (var pass = 0; pass < 2; pass++)
+            {
+                Format(place.Paragraph, place.Offset, format);
+                if (PlacedAt(place.Paragraph, place.Offset) is not var (on, drawn) || on != page
+                    || Math.Abs(drawn.X - x) < 0.01 && Math.Abs(drawn.Y - y) < 0.01 || pass == 1)
+                    break;
+                format = format with
+                {
+                    HorizontalOffset = format.HorizontalOffset + x - drawn.X,
+                    VerticalOffset = format.VerticalOffset + y - drawn.Y,
+                };
+            }
+        }
+        catch
+        {
+            if (version > start)
+            {
+                Go(start);
+                versions.RemoveRange(start + 1, versions.Count - start - 1);
+            }
+            throw;
+        }
+        Combine(version - start);
+        return place;
+    }
+
+    /// <summary>
+    /// The text area of a page as laid out (see IEditableDocument.TextArea): its columns across, from the left of the first, and the
+    /// margins down; null for a page not laid out.
+    /// </summary>
+    public (IReadOnlyList<(double Left, double Right)> Columns, double Top, double Bottom)? TextArea(int page)
+    {
+        Scenes();
+        if (page < 0 || page >= shown.Count)
+            return null;
+        var box = shown[page];
+        return (ColumnsOf(box), box.Section.Top, box.Section.PageHeight - box.Section.Bottom);
+    }
+
+    /// <summary>The columns of a page's text, each from its left to its right in points from the page's left.</summary>
+    static List<(double Left, double Right)> ColumnsOf(PageBox page)
+    {
+        var s = page.Section;
+        var columns = new List<(double Left, double Right)>();
+        var left = page.TextLeft;
+        if (s.ColumnWidths is { Count: > 0 } widths)
+        {
+            foreach (var (width, space) in widths)
+            {
+                columns.Add((left, left + width));
+                left += width + space;
+            }
+            return columns;
+        }
+        var count = Math.Max(1, s.Columns);
+        var each = (page.TextWidth - (count - 1) * s.ColumnSpace) / count;
+        for (var k = 0; k < count; k++)
+            columns.Add((left + k * (each + s.ColumnSpace), left + k * (each + s.ColumnSpace) + each));
+        return columns;
+    }
+
+    /// <summary>The page a floating drawing at a place of a paragraph's text is laid out on and its box there, or null where it is on none.</summary>
+    (int Page, PlacedDrawing Drawing)? PlacedAt(int paragraph, int offset)
+    {
+        Scenes();
+        if (DrawingAt(Find(paragraph).Paragraph, offset) is not { } own)
+            return null;
+        for (var k = 0; k < shown.Count; k++)
+        {
+            if (shown[k].Drawings.FirstOrDefault(d => ReferenceEquals(d.Drawing, own)) is { } drawn)
+                return (k, drawn);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The paragraph of the body, not of a table, whose line on a page stands at a height in the column at a point across: the last
+    /// beginning above it, else the first; null where the page has none.
+    /// </summary>
+    int? ParagraphAt(int page, double x, double y)
+    {
+        var box = shown[page];
+        var columns = ColumnsOf(box);
+        var column = columns.LastOrDefault(c => c.Left <= x + 0.01, columns[0]);
+        var lines = box.Lines.Where(l => !l.Story && l.Line.Paragraph is { } own && paragraphs.TryGetValue(own.Id, out var found)
+            && ReferenceEquals(found.Paragraph, found.Top)).ToList();
+        var inColumn = lines.Where(l => l.Left >= column.Left - 1 && l.Left < column.Right).ToList();
+        if (inColumn.Count > 0)
+            lines = inColumn;
+        var line = lines.Where(l => l.Top <= y + 0.01).MaxBy(l => l.Top) ?? lines.MinBy(l => l.Top);
+        return line?.Line.Paragraph!.Id;
+    }
+
+    /// <summary>Where a drawing's place across counts from on a page, near enough for a first guess (see Paginator.Anchored).</summary>
+    static double AcrossFrom(string from, PageBox page, double x)
+    {
+        var right = page.TextLeft + page.TextWidth;
+        var odd = page.DisplayNumber % 2 == 1;
+        return from switch
+        {
+            "page" or "leftMargin" => 0,
+            "rightMargin" => right,
+            "insideMargin" => odd ? 0 : right,
+            "outsideMargin" => odd ? right : 0,
+            "column" or "character" => ColumnsOf(page).Select(c => c.Left).Where(left => left <= x + 0.01).DefaultIfEmpty(page.TextLeft).Last(),
+            _ => page.TextLeft,
+        };
+    }
+
+    /// <summary>Where a drawing's place down counts from on a page, near enough for a first guess (see Paginator.Anchored).</summary>
+    static double DownFrom(string from, PageBox page, int paragraph)
+    {
+        var s = page.Section;
+        var bottom = s.PageHeight - s.Bottom;
+        var odd = page.DisplayNumber % 2 == 1;
+        return from switch
+        {
+            "page" or "topMargin" => 0,
+            "bottomMargin" => bottom,
+            "insideMargin" => odd ? 0 : bottom,
+            "outsideMargin" => odd ? bottom : 0,
+            "paragraph" or "line" => page.Lines.Where(l => l.Line.Paragraph?.Id == paragraph).Select(l => l.Top).DefaultIfEmpty(s.Top).Min(),
+            _ => s.Top,
+        };
     }
 
     /// <summary>The wp:inline or wp:anchor of the drawing whose character stands at a place of a paragraph's text, or null.</summary>

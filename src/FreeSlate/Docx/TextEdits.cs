@@ -908,6 +908,49 @@ static partial class TextEdits
     }
 
     /// <summary>
+    /// The drawing at a place of a paragraph's text moved to another place of the stretch's text (see WordDocument.MoveDrawing): in a
+    /// run of its own there with its run's formatting, put in as InsertMarkup puts markup; out of its run here, which goes where it
+    /// held nothing else. Returns the stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// No drawing stands at the place as it was read, or the other place is within what the document computes or keeps; nothing changes.
+    /// </exception>
+    public static string MoveDrawing(Stretch stretch, ParagraphBlock paragraph, int offset, ParagraphBlock to, int at)
+    {
+        var parts = Parts(stretch, paragraph);
+        XElement? drawing = null;
+        var start = paragraph.TextOffset;
+        foreach (var inline in paragraph.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (start == offset && length > 0)
+            {
+                if (inline is DrawingInline or AnchorInline && stretch.Find(inline.Xml) is { } found && In(found, parts)
+                    && RunChild(found) is { Parent.Name.LocalName: "r" } child)
+                    drawing = child;
+                break;
+            }
+            start += length;
+        }
+        if (drawing == null)
+            throw new NotSupportedException("No drawing stands at that place as it was read.");
+        var run = drawing.Parent!;
+        var w = run.Name.Namespace;
+        var source = PartOf(drawing, parts);
+        // The run with the namespaces it declares (markup put in declares there those the part's root does not).
+        var moved = new XElement(w + "r", run.Attributes().Where(a => a.IsNamespaceDeclaration).Select(a => new XAttribute(a)),
+            run.Element(w + "rPr") is { } format ? new XElement(format) : null, new XElement(drawing));
+        var target = Place(stretch, to, at, [moved], null);
+        // Out of its run, which putting the other in may have split (the drawing in one of its parts).
+        var holder = drawing.Parent!;
+        if (holder.Elements().All(e => e == drawing || e.Name.LocalName is "rPr" or "lastRenderedPageBreak"))
+            holder.Remove();
+        else
+            drawing.Remove();
+        return stretch.Written(Outermost([target, source]).Select(p => (p, (IEnumerable<XElement>)[p])));
+    }
+
+    /// <summary>
     /// Marks put into the text at two places in reading order (a comment's range, see WordDocument.AddComment):
     /// <paramref name="last"/> at the second, then <paramref name="first"/> at the first, as InsertMarkup puts markup in;
     /// the places may stand in two paragraphs of the stretch. Returns the stretch's new text.

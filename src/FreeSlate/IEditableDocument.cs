@@ -247,6 +247,27 @@ public interface IEditableDocument : IDisposable
     void Format(int paragraph, int offset, DrawingFormatting format);
 
     /// <summary>
+    /// Moves the drawing whose character stands at a place of a paragraph's text to another place of the text, one change, as Word
+    /// moves one dragged there: in the line it goes in there; floating, its anchor goes there. Returns where its character then
+    /// stands. Slides have none (NotSupportedException).
+    /// </summary>
+    (int Paragraph, int Offset) MoveDrawing(int paragraph, int offset, int toParagraph, int toOffset);
+
+    /// <summary>
+    /// Puts the floating drawing whose character stands at a place of a paragraph's text where its box's top left stands at a point of a
+    /// page (points from its top left), one change, as Word puts one dragged there: by offsets from what it stands from, or aligned
+    /// across in its column; its anchor going to the paragraph there. Returns where its character then stands. Slides have none
+    /// (NotSupportedException).
+    /// </summary>
+    (int Paragraph, int Offset) PlaceDrawing(int paragraph, int offset, int page, double x, double y, string? alignAcross = null);
+
+    /// <summary>
+    /// The text area of a page as laid out, in points from its top left: its columns across and its margins down, what a drawing dragged
+    /// over the page lines up with; null for a page not laid out, and on slides.
+    /// </summary>
+    (IReadOnlyList<(double Left, double Right)> Columns, double Top, double Bottom)? TextArea(int page);
+
+    /// <summary>
     /// The stretches of a paragraph's text that have a character style (TextFormatting.Style), in order, neighbouring runs of
     /// one style as one stretch: what the text means where its styles say so. Slides have none.
     /// </summary>

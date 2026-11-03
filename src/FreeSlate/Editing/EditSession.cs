@@ -346,6 +346,34 @@ public sealed class EditSession(IEditableDocument document)
         });
     }
 
+    /// <summary>
+    /// Moves the drawing the selection holds alone to a place of the text (see IEditableDocument.MoveDrawing), a handling of its own; it
+    /// stays selected there. False where the selection holds none, or where it would go is where it stands.
+    /// </summary>
+    public bool MoveDrawing(TextPlace to)
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || to.Paragraph == paragraph && (to.Offset == offset || to.Offset == offset + 1))
+            return false;
+        Act(false, () => Around(document.MoveDrawing(paragraph, offset, to.Paragraph, to.Offset)));
+        return true;
+    }
+
+    /// <summary>
+    /// Puts the floating drawing the selection holds alone where its box's top left stands at a point of a page (see
+    /// IEditableDocument.PlaceDrawing), a handling of its own; it stays selected. False where the selection holds none floating.
+    /// </summary>
+    public bool PlaceDrawing(int page, double x, double y, string? alignAcross = null)
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || document.DrawingOf(paragraph, offset) is not { Wrap: not "inline" })
+            return false;
+        Act(false, () => Around(document.PlaceDrawing(paragraph, offset, page, x, y, alignAcross)));
+        return true;
+    }
+
+    /// <summary>A drawing's character selected as a whole, as a click selects it: the cursor after it, the anchor before.</summary>
+    static (TextPlace Caret, TextPlace Anchor) Around((int Paragraph, int Offset) drawing) =>
+        (new TextPlace(drawing.Paragraph, drawing.Offset + 1), new TextPlace(drawing.Paragraph, drawing.Offset));
+
     /// <summary>The place of the drawing the selection holds alone: one character of one paragraph, a drawing's.</summary>
     (int Paragraph, int Offset)? SelectedDrawing() =>
         Caret.Paragraph == Anchor.Paragraph && Math.Abs(Caret.Offset - Anchor.Offset) == 1 && Math.Min(Caret.Offset, Anchor.Offset) is var at
