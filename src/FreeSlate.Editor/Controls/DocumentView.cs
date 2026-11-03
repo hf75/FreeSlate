@@ -643,20 +643,81 @@ public sealed class DocumentView : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            return;
-        Focus();
-        if (PlaceAt(e.GetPosition(this)) is var (page, at, end))
-        {
-            (caret, lineEnd) = ((page, at), end);
-            if ((e.KeyModifiers & KeyModifiers.Shift) == 0 || anchor == null)
-                anchor = (page, at);
-            selecting = true;
-            e.Pointer.Capture(this);
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && Press(e.GetPosition(this), e.Pointer, e.KeyModifiers))
             e.Handled = true;
-            Moved();
-        }
     }
+
+    /// <summary>
+    /// A press of the main button at a point of the view, as a click takes it: the cursor at the place nearest to it, with Shift the selection
+    /// up to there; <paramref name="dragging"/>, the pointer goes on selecting until it is let go. Whether there was a place.
+    /// </summary>
+    public bool Press(Point point, IPointer pointer, KeyModifiers modifiers, bool dragging = true)
+    {
+        Focus();
+        if (PlaceAt(point) is not var (page, at, end))
+            return false;
+        (caret, lineEnd) = ((page, at), end);
+        if ((modifiers & KeyModifiers.Shift) == 0 || anchor == null)
+            anchor = (page, at);
+        if (dragging)
+        {
+            selecting = true;
+            pointer.Capture(this);
+        }
+        Moved();
+        return true;
+    }
+
+    /// <summary>Whether a point of the view is on the selection.</summary>
+    public bool OnSelection(Point point)
+    {
+        foreach (var (page, from, count) in Selected())
+        {
+            if (page >= rows.Count)
+                continue;
+            var row = rows[page];
+            var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
+            var spots = pictures.Spots(Page(page));
+            if (pictures.Places(Page(page)).Selection(spots[from], spots[from + count - 1]).Any(area =>
+                    local.X >= area.Min(c => c.X) && local.X <= area.Max(c => c.X) && local.Y >= area.Min(c => c.Y) && local.Y <= area.Max(c => c.Y)))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Selects the word the character at a point of the view belongs to; false where it is no word's.</summary>
+    public bool SelectWordAt(Point point)
+    {
+        if (session is not { } editing)
+            return false;
+        foreach (var row in rows)
+        {
+            if (point.Y < row.Top * factor || point.Y > (row.Top + row.Size.Height) * factor)
+                continue;
+            var places = pictures.Places(Page(row.Index));
+            var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
+            if (places.HitSpot(local) is not { } spot)
+                return false;
+            // Only the character the point is over, not the nearest one beside the text.
+            var (toPage, line) = places.Lines[spot.Line];
+            var (left, right) = (Math.Min(line.Starts[spot.Index], line.Ends[spot.Index]), Math.Max(line.Starts[spot.Index], line.Ends[spot.Index]));
+            var (a, b) = (toPage.MapPoint((float)(left * PxPerPt), (float)(line.Top * PxPerPt)), toPage.MapPoint((float)(right * PxPerPt), (float)(line.Bottom * PxPerPt)));
+            if (local.X < Math.Min(a.X, b.X) - 2 || local.X > Math.Max(a.X, b.X) + 2 || local.Y < Math.Min(a.Y, b.Y) - 2 || local.Y > Math.Max(a.Y, b.Y) + 2)
+                return false;
+            var (block, offset) = places.PlaceAt(spot, false);
+            if (!editing.Document.Contains(block)
+                || (editing.Document.WordAt(block, offset + 1) ?? editing.Document.WordAt(block, offset)) is not var (start, length))
+                return false;
+            editing.Place(new TextPlace(block, start));
+            editing.Place(new TextPlace(block, start + length), extend: true);
+            Show(editing.Caret, editing.Anchor);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>The cursor's bar in the view's coordinates, an empty rectangle where it shows nowhere.</summary>
+    public Rect CaretBounds => CaretRect();
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {

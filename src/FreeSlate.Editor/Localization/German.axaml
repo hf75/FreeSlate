@@ -27,4 +27,5 @@
   <x:String x:Key="LevelPoint">Punkt</x:String>
   <x:String x:Key="LevelSubpoint">Unterpunkt</x:String>
   <x:String x:Key="LevelMarginNote">Randnotiz</x:String>
+  <x:String x:Key="RingRemove">Entfernen</x:String>
 </ResourceDictionary>

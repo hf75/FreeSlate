@@ -27,4 +27,5 @@
   <x:String x:Key="LevelPoint">Point</x:String>
   <x:String x:Key="LevelSubpoint">Subpoint</x:String>
   <x:String x:Key="LevelMarginNote">Margin note</x:String>
+  <x:String x:Key="RingRemove">Remove</x:String>
 </ResourceDictionary>

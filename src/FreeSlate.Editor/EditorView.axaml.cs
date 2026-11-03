@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using FreeSlate.Editing;
@@ -64,8 +65,58 @@ public sealed partial class EditorView : Panel
         editing = new EditSession(document);
         Sheets.Open(editing);
         Lever.Attach(Sheets, editing);
+        Join(Ring);
         FollowTone();
         Loaded += (_, _) => Sheets.Focus();
+    }
+
+    /// <summary>Where the pointer was last over the editor, in its own coordinates: where the ring comes for the keyboard.</summary>
+    Avalonia.Point? pointer;
+
+    /// <summary>
+    /// The gesture ring's fields (their places fixed: the hand learns them) and its ways to the sheets: the meanings up, up right, right,
+    /// down and down left, taking the meaning away left, down right and up left empty. Space held on a selection brings it for the keyboard.
+    /// </summary>
+    void Join(Controls.MeaningRing ring)
+    {
+        var meaning = Meanings.All.ToDictionary(m => m.Style);
+        Controls.MeaningRing.Slot Field(string style, string sign, bool slanted = false) => new(style, meaning[style].NameKey, sign, slanted);
+        ring.Slots =
+        [
+            Field("Important", "!"),
+            Field("Emphasized", "i", slanted: true),
+            Field("Term", "Aa"),
+            new(null, "", ""),
+            Field("Quotation", "“"),
+            Field("OpenQuestion", "?"),
+            new("", "RingRemove", "×"),
+            new(null, "", ""),
+        ];
+        Avalonia.Point OnSheets(Avalonia.Point point) => ring.TranslatePoint(point, Sheets) ?? point;
+        ring.Target = point => Sheets.OnSelection(OnSheets(point)) || Sheets.SelectWordAt(OnSheets(point));
+        ring.OnSelection = point => Sheets.OnSelection(OnSheets(point));
+        ring.Give = style => Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
+        ring.Press = (point, by, dragging) => Sheets.Press(OnSheets(point), by, KeyModifiers.None, dragging);
+        ring.Attach(Sheets);
+        AddHandler(PointerMovedEvent, (_, e) =>
+        {
+            pointer = e.GetPosition(ring);
+            ring.Follow(pointer.Value);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerExitedEvent, (_, _) => pointer = null, Avalonia.Interactivity.RoutingStrategies.Direct, handledEventsToo: true);
+        AddHandler(KeyUpEvent, (_, e) =>
+        {
+            if (e.Key == Key.Space && ring.IsBusy && !ring.SpaceUp())
+                Sheets.Edit(() => editing.Type(" "));
+            else if (ring.KeyChanged(e.Key, down: false))
+                e.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        // While Space waits for the ring or brings it, it types nothing; let go early, it types its space then (see above).
+        AddHandler(TextInputEvent, (_, e) =>
+        {
+            if (ring.IsBusy && e.Text == " ")
+                e.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
     }
 
     /// <summary>Gives the document a tone, one step to undo: what is in view fades into its new look.</summary>
@@ -89,8 +140,21 @@ public sealed partial class EditorView : Panel
     /// </summary>
     void Structure(object? sender, KeyEventArgs e)
     {
+        // The ring's keys first: the arrows and Escape while it is up, Space held on a selection.
+        if (Ring.KeyChanged(e.Key, down: true))
+        {
+            e.Handled = true;
+            return;
+        }
         if (!Sheets.IsFocused)
             return;
+        if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None && editing.Selecting)
+        {
+            var at = pointer ?? (Sheets.CaretBounds is { Height: > 0 } bar ? Sheets.TranslatePoint(bar.Center, Ring) : null) ?? new Avalonia.Point(Bounds.Width / 2, Bounds.Height / 2);
+            if (Ring.SpaceDown(at))
+                e.Handled = true;
+            return;
+        }
         var shift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
         var others = e.KeyModifiers & ~KeyModifiers.Shift;
         if (e.Key == Key.Tab && others == KeyModifiers.None)
