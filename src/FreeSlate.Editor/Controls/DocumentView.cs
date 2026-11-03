@@ -548,17 +548,20 @@ public sealed partial class DocumentView : Control
                 continue;
             var places = pictures.Places(Page(row.Index));
             var y = point.Y / factor - row.Top;
-            var (best, distance) = (-1, double.MaxValue);
-            foreach (var (toPage, line) in places.Lines)
+            var nearest = places.Lines.Where(l => l.Line.Offsets.Length > 0).Select(l =>
             {
-                if (line.Offsets.Length == 0)
-                    continue;
+                var (toPage, line) = l;
                 var (top, bottom) = (toPage.MapPoint(0, (float)(line.Top * PxPerPt)).Y, toPage.MapPoint(0, (float)(line.Bottom * PxPerPt)).Y);
-                var away = y < Math.Min(top, bottom) ? Math.Min(top, bottom) - y : y > Math.Max(top, bottom) ? y - Math.Max(top, bottom) : 0;
-                if (away < distance)
-                    (best, distance) = (line.Block, away);
+                return (line.Block, Away: y < Math.Min(top, bottom) ? Math.Min(top, bottom) - y : y > Math.Max(top, bottom) ? y - Math.Max(top, bottom) : 0);
+            }).OrderBy(l => l.Away);
+            // The nearest line of the text's own, not of a drawing's text box (a caption is its picture's, of no level).
+            foreach (var (best, distance) in nearest)
+            {
+                if (session?.Document.DrawingAround(best) != null)
+                    continue;
+                return distance <= 18 && FirstLineOn(row, best) is var (rect, left) ? (best, rect, left) : null;
             }
-            return best >= 0 && distance <= 18 && FirstLineOn(row, best) is var (rect, left) ? (best, rect, left) : null;
+            return null;
         }
         return null;
     }
@@ -677,7 +680,9 @@ public sealed partial class DocumentView : Control
 
     /// <summary>
     /// The drawing a point of the view is on: its page and the place of its character among the page's (a floating one's anchor). One in
-    /// front of the text first, then one in the line, then one behind the text where no character is over the point.
+    /// front of the text first, then one in the line, then one behind the text where no character is over the point; a drawing in
+    /// another's text box counts as that one (a picture as its caption's figure), and the text a drawing's box holds is text where the
+    /// point is in one of its lines (see TextHolder).
     /// </summary>
     (int Page, int At)? DrawingAt(Point point)
     {
@@ -689,17 +694,44 @@ public sealed partial class DocumentView : Control
             var places = pictures.Places(scene);
             var spots = pictures.Spots(scene);
             var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
-            int? Anchor((int Block, int Offset)? floating) =>
-                floating is var (block, offset) && places.Exact(block, offset) is { } spot ? pictures.Index(scene, spot) : null;
-            if (Anchor(places.FloatingAt(local, behind: false)) is { } front)
-                return (row.Index, front);
-            for (var i = 0; i < spots.Count; i++)
+            if (TextHolder(places, local) != null)
+                return null;
+            var found = places.FloatingAt(local, behind: false);
+            for (var i = 0; i < spots.Count && found == null; i++)
             {
                 if (places.InlineBox(spots[i]) is { } corners && local.X >= corners.Min(c => c.X) && local.X <= corners.Max(c => c.X)
                     && local.Y >= corners.Min(c => c.Y) && local.Y <= corners.Max(c => c.Y))
-                    return (row.Index, i);
+                    found = places.PlaceAt(spots[i], after: false);
             }
-            return !places.Over(local) && Anchor(places.FloatingAt(local, behind: true)) is { } behind ? (row.Index, behind) : null;
+            if (found == null && !places.Over(local))
+                found = places.FloatingAt(local, behind: true);
+            if (found is not var (block, offset))
+                return null;
+            if (session?.Document.DrawingAround(block) is var (outer, at))
+                (block, offset) = (outer, at);
+            return places.Exact(block, offset) is { } spot ? (row.Index, pictures.Index(scene, spot)) : null;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The drawing whose box holds the text a point of a page is in (a picture's caption): the point in one of that text's lines with no
+    /// drawing in it, within the drawing's box; the place of the drawing's character, or null where the point is in no such text.
+    /// </summary>
+    (int Paragraph, int Offset)? TextHolder(TextPlaces places, SKPoint local)
+    {
+        if (session is not { } editing)
+            return null;
+        for (var k = 0; k < places.Lines.Count; k++)
+        {
+            var line = places.Lines[k].Line;
+            if (line.Offsets.Length == 0 || line.Boxes.Count > 0)
+                continue;
+            var (top, bottom) = places.CaretAt(new TextPlaces.Spot(k, 0), after: false);
+            if (local.Y < Math.Min(top.Y, bottom.Y) || local.Y > Math.Max(top.Y, bottom.Y) || editing.Document.DrawingAround(line.Block) is not var (block, offset)
+                || places.Exact(block, offset) is not { } own || places.Box(own) is not { } box || local.X < box.Min(c => c.X) || local.X > box.Max(c => c.X))
+                continue;
+            return (block, offset);
         }
         return null;
     }
@@ -918,7 +950,11 @@ public sealed partial class DocumentView : Control
         if (best == null)
             return null;
         var local = new SKPoint((float)((point.X - Left(best)) / factor), (float)(point.Y / factor - best.Top));
-        return pictures.Places(Page(best.Index)).HitPlace(local) is var (spot, after) ? Placed(best.Index, spot, after) : null;
+        var places = pictures.Places(Page(best.Index));
+        // In the text a drawing's box holds (a caption), a place of that text, not of the line the drawing stands in.
+        Func<PlacesItem, bool>? among = TextHolder(places, local) is { } holder && session is { } editing
+            ? line => editing.Document.DrawingAround(line.Block) == holder : null;
+        return places.HitPlace(local, among) is var (spot, after) ? Placed(best.Index, spot, after) : null;
     }
 
     /// <summary>The place before or after a character of a page, and whether that is after its line's last one.</summary>
@@ -990,23 +1026,53 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        // A picture with its caption selected in the line: down goes into the caption.
+        if (e.Key == Key.Down && !shift && !control && SelectedDrawing() != null && editing.Caption is { } caption)
+        {
+            e.Handled = true;
+            editing.Place(new TextPlace(caption, 0));
+            Show(editing.Caret, editing.Anchor);
+            return;
+        }
         var spots = pictures.Spots(Page(page));
+        // The arrows keep to the text the cursor is in, the page's own or a drawing's (see StoryAt).
+        var story = spots.Count > 0 ? StoryAt(page, CaretSpot(spots, at).Spot) : null;
         (int Page, int At, bool End)? moved = e.Key switch
         {
-            Key.Left => at > 0 ? (page, at - 1, false) : page > 0 ? (page - 1, pictures.Spots(Page(page - 1)).Count, true) : null,
-            Key.Right => at < spots.Count ? (page, at + 1, false) : page + 1 < scenes.Count ? (page + 1, 0, false) : null,
+            Key.Left or Key.Right => Step(page, at, e.Key == Key.Right, story),
             Key.Home or Key.End when spots.Count > 0 => LineEdge(page, at, e.Key == Key.End),
-            Key.Up or Key.Down when spots.Count > 0 => LineAcross(page, at, e.Key == Key.Down),
+            Key.Up or Key.Down when spots.Count > 0 => LineAcross(page, at, e.Key == Key.Down, story),
             _ => null,
         };
         if (moved is not var (movedPage, movedAt, movedEnd))
             return;
         e.Handled = true;
+        // The paragraph of a picture with its caption is no place for the cursor: the picture is selected instead.
+        if (!shift && CaptionedPictureAt(movedPage, movedAt) is { } picture)
+        {
+            (anchor, caret, lineEnd) = ((movedPage, picture), (movedPage, picture + 1), false);
+            Moved();
+            Reveal((movedPage, picture));
+            return;
+        }
         (caret, lineEnd) = ((movedPage, movedAt), movedEnd);
         if (!shift)
             anchor = (movedPage, movedAt);
         Moved();
         Reveal((movedPage, movedAt));
+    }
+
+    /// <summary>
+    /// A place of a page in the paragraph of a picture with its caption, no place for the cursor (see EditSession.CaptionedPicture): the
+    /// picture's character among the page's, to select it instead; null for other places.
+    /// </summary>
+    int? CaptionedPictureAt(int page, int at)
+    {
+        if (session is not { } editing || page >= scenes.Count || pictures.Spots(Page(page)) is not { Count: > 0 } spots)
+            return null;
+        var places = pictures.Places(Page(page));
+        var (block, _) = places.PlaceAt(CaretSpot(spots, at).Spot, after: false);
+        return editing.CaptionedPicture(block) is var (paragraph, offset) && places.Exact(paragraph, offset) is { } spot ? pictures.Index(Page(page), spot) : null;
     }
 
     /// <summary>The first or the last place of the cursor's line: after its last character, before the paragraph's mark.</summary>
@@ -1022,19 +1088,62 @@ public sealed partial class DocumentView : Control
         return places.Starts[spots[last].Index] == places.Ends[spots[last].Index] ? (page, last, false) : (page, last + 1, true);
     }
 
-    /// <summary>The place in the line above or below the cursor's that stands nearest to it, on the next page over its edge.</summary>
-    (int Page, int At, bool End)? LineAcross(int page, int at, bool down)
+    /// <summary>The drawing whose text a character of a page is (a caption, see IEditableDocument.DrawingAround); null for the page's own text.</summary>
+    (int Paragraph, int Offset)? StoryAt(int page, TextPlaces.Spot spot) =>
+        session?.Document.DrawingAround(pictures.Places(Page(page)).Lines[spot.Line].Line.Block);
+
+    /// <summary>
+    /// The place of the character left or right of the cursor, on the next page over its edge, in the text the cursor is in (see StoryAt):
+    /// in the page's own the characters of drawings' texts passed over; out of a drawing's text by its start before the drawing, by its
+    /// end after it (a caption's start reaches its picture's paragraph first, see CaptionedPictureAt).
+    /// </summary>
+    (int Page, int At, bool End)? Step(int page, int at, bool right, (int Paragraph, int Offset)? story)
+    {
+        var spots = pictures.Spots(Page(page));
+        var by = right ? 1 : -1;
+        var next = at + by;
+        if (story is var (paragraph, offset))
+        {
+            if (next < 0 || next >= spots.Count || StoryAt(page, spots[next]) != story)
+                return pictures.Places(Page(page)).Exact(paragraph, offset) is { } own ? (page, pictures.Index(Page(page), own) + (right ? 1 : 0), false) : null;
+            return (page, next, false);
+        }
+        var passed = false;
+        while (next >= 0 && next < spots.Count && StoryAt(page, spots[next]) != null)
+            (next, passed) = (next + by, true);
+        // Over the page's edge: after the last character of the page's own text on the page before.
+        if (next < 0)
+        {
+            if (page == 0)
+                return null;
+            var before = pictures.Spots(Page(page - 1));
+            var last = before.FindLastIndex(s => StoryAt(page - 1, s) == null);
+            return (page - 1, last + 1, true);
+        }
+        if (next > spots.Count || passed && next == spots.Count)
+            return page + 1 < scenes.Count ? (page + 1, 0, false) : null;
+        return (page, next, false);
+    }
+
+    /// <summary>
+    /// The place in the line above or below the cursor's that stands nearest to it, on the next page over its edge, of the text the cursor
+    /// is in (see StoryAt): out of a drawing's text on from the line the drawing stands in.
+    /// </summary>
+    (int Page, int At, bool End)? LineAcross(int page, int at, bool down, (int Paragraph, int Offset)? story)
     {
         var places = pictures.Places(Page(page));
         var spots = pictures.Spots(Page(page));
         var (current, currentAfter) = CaretSpot(spots, at);
         var x = places.CaretAt(current, currentAfter).Top.X;
-        // The nearest line beside this one, in the page's order of lines.
+        bool Ours(PlacesItem line) => session?.Document.DrawingAround(line.Block) == story;
+        // The nearest line beside this one of the same text, in the page's order of lines.
         var lineIndex = current.Line + (down ? 1 : -1);
-        while (lineIndex >= 0 && lineIndex < places.Lines.Count && places.Lines[lineIndex].Line.Offsets.Length == 0)
+        while (lineIndex >= 0 && lineIndex < places.Lines.Count && (places.Lines[lineIndex].Line.Offsets.Length == 0 || !Ours(places.Lines[lineIndex].Line)))
             lineIndex += down ? 1 : -1;
         if (lineIndex < 0 || lineIndex >= places.Lines.Count)
         {
+            if (story is var (paragraph, offset))
+                return places.Exact(paragraph, offset) is { } own ? LineAcross(page, pictures.Index(Page(page), own), down, null) : null;
             var next = page + (down ? 1 : -1);
             if (next < 0 || next >= scenes.Count)
                 return null;
@@ -1043,7 +1152,7 @@ public sealed partial class DocumentView : Control
         }
         var (toPage, line) = places.Lines[lineIndex];
         var middle = toPage.MapPoint((float)(line.Starts[0] * PxPerPt), (float)((line.Top + line.Bottom) / 2 * PxPerPt));
-        return places.HitPlace(new SKPoint(x, middle.Y)) is var (spot, after) ? Placed(page, spot, after) : null;
+        return places.HitPlace(new SKPoint(x, middle.Y), Ours) is var (spot, after) ? Placed(page, spot, after) : null;
     }
 
     /// <summary>Scrolls the cursor into view where it is out of it; not while a drawing is dragged (the view goes with the pointer then).</summary>

@@ -178,6 +178,16 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   stays within its own paragraph, whose text a wide drawing pushes below it); `SizeDrawing` sizes one as Word does by a
   handle, the side it is sized from moving and its anchor staying; `TextArea` gives a page's columns and margins for lining
   up with.
+- A picture's caption makes it a figure (`WordDocument.Captions.cs`, `AddCaption`, `RemoveCaption`): a text box where the
+  picture stood (in the line or floating, wrapped and placed as it was, its name and description kept), as wide as the
+  picture and resizing to its text (a:spAutoFit, no insets, no fill, no line), the picture in a paragraph of its own first,
+  then the caption's paragraphs of Word's caption style (defined where the document has none). Word moves, wraps and
+  deletes it as one drawing; the text box of a figure in the line takes the height it is saved with until Word fits it,
+  so the engine keeps that height right as the caption changes (`FitFigure`, from the text's height as the paginator lays
+  it out, `Paginator.TextHeight`), after a style's change too. A figure is sized by its picture (`SizeDrawing`: a corner
+  keeps the picture's proportions, the caption grows with the width; `SizePicture` for a picture's own size), its
+  description is its picture's too. `DrawingAround` gives the drawing whose text box holds a paragraph, `FigureOf` the
+  figure of a caption or of its picture's paragraph.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
@@ -252,9 +262,14 @@ frames it instead of tinting it; the frame is the drawing's own box, which the r
 (`PlacesItem.Boxes`, `TextPlaces.Box`); one in front of the text is hit first, one behind it only where no text lies over it. On a
 picture the ring has the picture's fields (`GestureRing.Choose`, `Writing/Placements`): in the line up, beside the text right and
 left, on its own between the text down, in front of the text and behind it between them, a place on the page down right (a
-ring of the eight places round the margins, each in its direction), and up left the picture itself (a ring: its description, written
-on a card under it with whether it is decoration only, `Controls/DescriptionCard`; the size it took when it was put in; removing
-it). Their signs are icons, the picture a frame among lines of text. A preview the ring takes back leaves nothing to do
+ring of the eight places round the margins, each in its direction), and up left the picture itself (a ring: a caption up, the
+cursor then in it, or taking it away; its description, written on a card under it with whether it is decoration only,
+`Controls/DescriptionCard`; the size it took when it was put in; removing it). Their signs are icons, the picture a frame among
+lines of text. A caption is text where the pointer is in one of its lines, its picture selects the figure (`DocumentView.TextHolder`);
+the arrows keep to the text the cursor is in (a drawing's text box is a text of its own, `DocumentView.StoryAt`): the body passes
+over captions, up or left out of a caption select its picture, down from a picture selected in the line goes into its caption,
+down or right past a caption's end back to the text after the picture; Backspace at an empty caption's start takes it away. The
+level lever goes by the text's own paragraphs, not a caption's. A preview the ring takes back leaves nothing to do
 again (`EditSession.TakeBack`). A picture is dragged with the main button (`DocumentView.Dragging.cs`): in the line its outline
 goes with the pointer and a bar shows where it would go in the text; floating it follows the pointer over the pages, the text
 going round it as it goes (a step taken back and made anew as it goes on, kept where it is let go, Escape takes it back), its

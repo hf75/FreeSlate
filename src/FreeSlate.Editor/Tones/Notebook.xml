@@ -54,6 +54,14 @@
       <w:pPr><w:pBdr><w:left w:val="single" w:sz="18" w:space="8" w:color="FACC15" /></w:pBdr><w:ind w:left="4400" /></w:pPr>
       <w:rPr><w:i /><w:iCs /><w:color w:val="5C5C5C" /><w:sz w:val="18" /><w:szCs w:val="18" /></w:rPr>
     </w:style>
+    <w:style w:type="paragraph" w:styleId="Caption">
+      <w:name w:val="caption" />
+      <w:basedOn w:val="Normal" />
+      <w:next w:val="Caption" />
+      <w:qFormat />
+      <w:pPr><w:spacing w:before="80" w:after="0" w:line="264" w:lineRule="auto" /></w:pPr>
+      <w:rPr><w:color w:val="5C5C5C" /><w:sz w:val="17" /><w:szCs w:val="17" /></w:rPr>
+    </w:style>
     <w:style w:type="character" w:styleId="Important">
       <w:name w:val="{Important}" />
       <w:qFormat />

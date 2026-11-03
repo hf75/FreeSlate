@@ -46,8 +46,14 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     public static readonly string ClipboardIcon = Drawn(Frame(3, 1.6, 14, 14.4), Block(7, 0, 6, 3.2),
         "M5.6,13.6 L9,9.6 L11.2,12 L12.6,10.6 L14.4,13.6 Z");
 
-    /// <summary>The icon of a caption: a picture with two lines below it.</summary>
-    public static readonly string CaptionIcon = Drawn(Frame(3, 0, 14, 9.8), Bar(3, 12.2, 14), Bar(6, 14.8, 8));
+    /// <summary>The icon of a caption: a picture with two lines of text below it.</summary>
+    public static readonly string CaptionIcon = Drawn(Frame(3, 0, 14, 9.8), Hills, Bar(3, 12.2, 14), Bar(3, 14.8, 9));
+
+    /// <summary>The icon of taking a caption away: the picture with a cross where its lines were.</summary>
+    public static readonly string CaptionRemoveIcon = Drawn(Frame(3, 0, 14, 9.8), Hills, Stroke(7.6, 11.6, 12.4, 16.2), Stroke(12.4, 11.6, 7.6, 16.2));
+
+    /// <summary>The hills of a small picture (the caption's), as the picture's own icon has them.</summary>
+    const string Hills = "M5.3,8 L8.6,4.6 L10.8,6.7 L12.4,5.1 L14.7,8 Z";
 
     /// <summary>The icon of a description, what screen readers read: a speech bubble with lines in it.</summary>
     public static readonly string DescriptionIcon = Drawn(Frame(1, 1, 18, 11.2), "M5,11.4 L5,15.6 L9.6,11.4 Z", Bar(4.2, 4.3, 11.6), Bar(4.2, 7.5, 7.6));
@@ -95,6 +101,15 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
 
     /// <summary>A line of text, as wide as given.</summary>
     static string Bar(double x, double y, double width) => Block(x, y, width, Weight);
+
+    /// <summary>A stroke from one point to another, as thick as a line of text (all of them turning the same way, so that they cross filled).</summary>
+    static string Stroke(double x1, double y1, double x2, double y2)
+    {
+        var (dx, dy) = (x2 - x1, y2 - y1);
+        var length = Math.Sqrt(dx * dx + dy * dy);
+        var (nx, ny) = (-dy / length * Weight / 2, dx / length * Weight / 2);
+        return $"M{N(x1 + nx)},{N(y1 + ny)} L{N(x2 + nx)},{N(y2 + ny)} L{N(x2 - nx)},{N(y2 - ny)} L{N(x1 - nx)},{N(y1 - ny)} Z";
+    }
 
     /// <summary>A filled box, clockwise.</summary>
     static string Block(double x, double y, double width, double height) => $"M{N(x)},{N(y)} H{N(x + width)} V{N(y + height)} H{N(x)} Z";

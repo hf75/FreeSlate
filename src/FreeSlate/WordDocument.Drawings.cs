@@ -121,7 +121,9 @@ public sealed partial class WordDocument
     /// <summary>
     /// Gives the drawing whose character stands at a place of a paragraph's text a size, in points, one change, as Word sizes one by a
     /// handle: floating, with its box's top left at a point of a page where it is given (the side it is sized from moving, the other
-    /// staying, see PlaceDrawing), its anchor staying where it is. Returns where its character then stands.
+    /// staying, see PlaceDrawing), its anchor staying where it is. A picture with its caption (see AddCaption) is sized by its picture:
+    /// as wide as given, as high as given less the caption, or, where both change (a corner's sizing), its picture's proportions kept;
+    /// the figure then as high as it holds. Returns where its character then stands.
     /// </summary>
     /// <exception cref="NotSupportedException">No drawing stands at the place; nothing changes.</exception>
     public (int Paragraph, int Offset) SizeDrawing(int paragraph, int offset, double width, double height, (int Page, double X, double Y)? at = null,
@@ -130,7 +132,10 @@ public sealed partial class WordDocument
         var start = version;
         try
         {
-            Format(paragraph, offset, new DrawingFormatting { Width = width, Height = height });
+            if (FigureAt(paragraph, offset) is { } figure)
+                SizedByHandles(figure, paragraph, offset, width, height);
+            else
+                Format(paragraph, offset, new DrawingFormatting { Width = width, Height = height });
             var place = (paragraph, offset);
             if (at is var (page, x, y) && DrawingOf(paragraph, offset) is { Wrap: not "inline" })
                 place = Placed(paragraph, offset, page, x, y, alignAcross, alignDown, anchorMoves: false);
@@ -385,12 +390,15 @@ public sealed partial class WordDocument
 
     /// <summary>
     /// A drawing's wp:docPr (a copy) with the description and the mark of decoration a format gives, and the picture's own pic:cNvPr in
-    /// its graphic with the description too (see DrawingFormatting.Description, Decorative).
+    /// its graphic with the description too (see DrawingFormatting.Description, Decorative); a figure's picture (see AddCaption) as the
+    /// figure, its own wp:docPr too.
     /// </summary>
     static XElement? Described(XElement? docPr, XElement? graphic, DrawingFormatting format)
     {
         if (docPr == null)
             return null;
+        if (FigurePicture(graphic) is { } picture)
+            Described(picture.Element(picture.Name.Namespace + "docPr"), null, format);
         if (format.Description is { } text)
         {
             docPr.SetAttributeValue("descr", text.Length > 0 ? text : null);

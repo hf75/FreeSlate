@@ -44,8 +44,12 @@ public sealed class TextPlaces
     /// </summary>
     public (int Block, int Offset)? Hit(SKPoint point) => HitSpot(point) is { } spot ? PlaceAt(spot, After(point, spot)) : null;
 
-    /// <summary>The character a point of the page is over and whether the point hits after it (see Hit); null on a page without places.</summary>
-    public (Spot Spot, bool After)? HitPlace(SKPoint point) => HitSpot(point) is { } spot ? (spot, After(point, spot)) : null;
+    /// <summary>
+    /// The character a point of the page is over and whether the point hits after it (see Hit), of the lines <paramref name="among"/> takes
+    /// where it is given; null on a page without places.
+    /// </summary>
+    public (Spot Spot, bool After)? HitPlace(SKPoint point, Func<PlacesItem, bool>? among = null) =>
+        HitSpot(point, among) is { } spot ? (spot, After(point, spot)) : null;
 
     /// <summary>The page's characters in order, line after line (each a spot).</summary>
     public List<Spot> Spots()
@@ -119,15 +123,15 @@ public sealed class TextPlaces
         return point.X >= Math.Min(a.X, b.X) && point.X <= Math.Max(a.X, b.X) && point.Y >= Math.Min(a.Y, b.Y) && point.Y <= Math.Max(a.Y, b.Y);
     }
 
-    /// <summary>The character a point of the page is over (see Hit), and whether it hits after it.</summary>
-    public Spot? HitSpot(SKPoint point)
+    /// <summary>The character a point of the page is over (see Hit), of the lines <paramref name="among"/> takes where it is given.</summary>
+    public Spot? HitSpot(SKPoint point, Func<PlacesItem, bool>? among = null)
     {
         Spot? best = null;
         var (bestY, bestX) = (double.MaxValue, double.MaxValue);
         for (var k = 0; k < lines.Count; k++)
         {
             var (toPage, line) = lines[k];
-            if (line.Offsets.Length == 0)
+            if (line.Offsets.Length == 0 || among != null && !among(line))
                 continue;
             var local = Local(toPage, point);
             var dy = local.Y < line.Top ? line.Top - local.Y : local.Y > line.Bottom ? local.Y - line.Bottom : 0;

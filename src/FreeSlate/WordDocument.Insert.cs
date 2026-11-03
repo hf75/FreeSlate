@@ -321,15 +321,17 @@ public sealed partial class WordDocument
                 element.Add(new XAttribute(XNamespace.Xmlns + prefix, ns.NamespaceName));
             }
         }
-        var drawings = elements.SelectMany(e => e.DescendantsAndSelf(Wp + "docPr")).ToList();
-        if (drawings.Count > 0)
-        {
-            if (nextDrawing == 0)
-                nextDrawing = DrawingIds().DefaultIfEmpty(0).Max() + 1;
-            foreach (var drawing in drawings)
-                drawing.SetAttributeValue("id", nextDrawing++);
-        }
+        foreach (var drawing in elements.SelectMany(e => e.DescendantsAndSelf(Wp + "docPr")).ToList())
+            drawing.SetAttributeValue("id", NewDrawingId());
         return elements;
+    }
+
+    /// <summary>The id a drawing made takes (its wp:docPr's, which Word wants unique): on from the greatest the document had, or gave before.</summary>
+    int NewDrawingId()
+    {
+        if (nextDrawing == 0)
+            nextDrawing = DrawingIds().DefaultIfEmpty(0).Max() + 1;
+        return nextDrawing++;
     }
 
     /// <summary>The ids the main part's drawings have (wp:docPr), as it reads now.</summary>

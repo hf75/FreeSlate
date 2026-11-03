@@ -407,7 +407,53 @@ public sealed class EditSession(IEditableDocument document)
         if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.PictureOf(paragraph, offset) is not { } bytes
             || PictureSize(bytes, paragraph) is not var (width, height))
             return false;
-        Format(new DrawingFormatting { Width = width, Height = height });
+        Act(false, () =>
+        {
+            word.SizePicture(paragraph, offset, width, height);
+            return (Caret, Anchor);
+        });
+        return true;
+    }
+
+    /// <summary>
+    /// The first paragraph of the caption of the picture the selection holds alone (see WordDocument.AddCaption); null where it has none,
+    /// or the selection holds no picture.
+    /// </summary>
+    public int? Caption => SelectedDrawing() is var (paragraph, offset) && document is WordDocument word ? word.CaptionOf(paragraph, offset) : null;
+
+    /// <summary>
+    /// Gives the picture the selection holds alone a caption below it (see WordDocument.AddCaption), a handling of its own; the cursor then
+    /// in the caption, to write it. False where the selection holds no picture, or one with its caption.
+    /// </summary>
+    public bool AddCaption()
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.PictureOf(paragraph, offset) == null
+            || word.CaptionOf(paragraph, offset) != null)
+            return false;
+        Act(false, () => Same(new TextPlace(word.AddCaption(paragraph, offset), 0)));
+        return true;
+    }
+
+    /// <summary>
+    /// The picture with its caption whose picture's paragraph a paragraph is (see AddCaption), which is no place for the cursor: the place of
+    /// its character, to select it instead; null for other paragraphs.
+    /// </summary>
+    public (int Paragraph, int Offset)? CaptionedPicture(int paragraph) =>
+        document is WordDocument word && word.FigureOf(paragraph) is (var p, var o, true) ? (p, o) : null;
+
+    /// <summary>
+    /// Takes the caption of the picture the selection holds alone away (see WordDocument.RemoveCaption), a handling of its own; the picture
+    /// stays selected. False where it has none.
+    /// </summary>
+    public bool RemoveCaption()
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.CaptionOf(paragraph, offset) == null)
+            return false;
+        Act(false, () =>
+        {
+            word.RemoveCaption(paragraph, offset);
+            return (Caret, Anchor);
+        });
         return true;
     }
 
@@ -506,6 +552,14 @@ public sealed class EditSession(IEditableDocument document)
         }
         if (document.Before(paragraph) is not { } before)
             return (Caret, Anchor);
+        // At the beginning of a picture's caption the picture's paragraph is not joined: an empty caption goes, the picture selected.
+        if (document is WordDocument word && word.FigureOf(before) is (var p, var o, true))
+        {
+            if (document.Text(paragraph).Length > 0 || document.After(paragraph) != null)
+                return (Caret, Anchor);
+            word.RemoveCaption(p, o);
+            return Around((p, o));
+        }
         var end = document.Text(before).Length;
         var joined = document.Join(before, backward: true);
         return Same(new TextPlace(joined, joined == before ? end : 0));
@@ -690,6 +744,9 @@ public sealed class EditSession(IEditableDocument document)
         try
         {
             after = change();
+            // A picture's caption written in: the picture with it as high as they then are (see WordDocument.FitFigure).
+            if (document.Changes > start && document is WordDocument word && word.FigureOf(after.Caret.Paragraph) is var (paragraph, offset, _))
+                word.FitFigure(paragraph, offset);
         }
         catch
         {

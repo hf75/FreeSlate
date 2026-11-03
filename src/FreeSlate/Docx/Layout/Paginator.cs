@@ -1643,6 +1643,14 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     public TextSettings Settings => settings;
 
     /// <summary>
+    /// How high a text box's text stands laid out at a width on a page, as a box that resizes to its text takes it less its insets
+    /// (see TextBoxLayout.FitToText): what an editor keeps a box in the line as high as, whose height the line takes as it is saved.
+    /// </summary>
+    public double TextHeight(List<Block> text, double width, PageBox page) =>
+        tables.Blocks(text, Math.Max(1, width), settings with { GridCell = null },
+            new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix }).Height;
+
+    /// <summary>
     /// The settings a run ended with, as what comes after it keeps them (the runs after it, Relayout, the text boxes drawn
     /// later): with the width of its column as it stood at the end, which the run's closure over its column gives from
     /// then on too, but would keep the run alive with all it holds (its pages, those of the run before it and that run's

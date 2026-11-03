@@ -302,6 +302,9 @@ public sealed partial class PresentationDocument : IEditableDocument
     /// <summary>Slides have no text area of pages (see IEditableDocument.TextArea).</summary>
     public (IReadOnlyList<(double Left, double Right)> Columns, double Top, double Bottom)? TextArea(int page) => null;
 
+    /// <summary>A slide's text is all its shapes', none a drawing's in its text (see IEditableDocument.DrawingAround).</summary>
+    public (int Paragraph, int Offset)? DrawingAround(int paragraph) => null;
+
     /// <summary>Slides have no character styles (see IEditableDocument.CharacterStyles).</summary>
     public IReadOnlyList<(int Offset, int Length, string Style)> CharacterStyles(int paragraph) => [];
 

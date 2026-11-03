@@ -864,7 +864,8 @@ public sealed partial class WordDocument : IEditableDocument
     /// <summary>
     /// Gives the document style definitions (see IEditableDocument.DefineStyles): the styles part with the given ones in place of
     /// those of their ids, or after the others, a version of its own; the body read whole again with its stretches changed put in
-    /// (as Apply reads it where it cannot read a stretch alone), its blocks keeping their ids.
+    /// (as Apply reads it where it cannot read a stretch alone), its blocks keeping their ids, its pictures with captions as high as
+    /// their captions are now (see FitFigure).
     /// </summary>
     /// <exception cref="NotSupportedException">The document has no styles part; nothing changes.</exception>
     public void DefineStyles(string markup, string? numbering = null)
@@ -902,6 +903,9 @@ public sealed partial class WordDocument : IEditableDocument
         versions.RemoveRange(version + 1, versions.Count - version - 1);
         versions.Add(new Version(whole, islands, kept, partBytes));
         version++;
+        var start = version - 1;
+        FitFigures();
+        Combine(version - start);
     }
 
     /// <summary>The name of a style the document defines, by its id (see IEditableDocument.StyleName).</summary>

@@ -143,15 +143,18 @@ public sealed partial class EditorView : Panel
             Meaning("OpenQuestion", "?"),
             Field("RingRemove", "×", () => editing.Format(new TextFormatting { Style = "" })),
         ];
-        // What is done with the picture itself, up left: its description (a card under it), the size it took when it was put in (a
-        // preview as the others), removing it.
-        IReadOnlyList<Controls.GestureRing.Slot> itself =
+        // What is done with the picture itself, up left: a caption below it, the cursor then in it (or taking it away, a preview as the
+        // others), its description (a card under it), the size it took when it was put in, removing it.
+        IReadOnlyList<Controls.GestureRing.Slot> Itself(bool captioned) =>
         [
+            captioned
+                ? Field("PictureCaptionRemove", "", () => editing.RemoveCaption(), icon: Placement.CaptionRemoveIcon)
+                : new("PictureCaption", "", () => Sheets.Edit(() => editing.AddCaption()), Icon: Placement.CaptionIcon),
             new("PictureDescribe", "", Describe, Icon: Placement.DescriptionIcon),
             Field("PictureNaturalSize", "", () => editing.RestoreSize(), icon: Placement.NaturalSizeIcon),
             new("PictureRemove", "×", () => Sheets.Edit(() => editing.Delete())),
         ];
-        IReadOnlyList<Controls.GestureRing.Slot> picture =
+        IReadOnlyList<Controls.GestureRing.Slot> Picture(bool captioned) =>
         [
             Placed(Placement.Inline),
             Placed(Placement.Front),
@@ -160,8 +163,9 @@ public sealed partial class EditorView : Panel
             Placed(Placement.Own),
             Placed(Placement.Behind),
             Placed(Placement.Left),
-            new("PictureMore", "", Under: itself, Icon: Placement.PictureIcon),
+            new("PictureMore", "", Under: Itself(captioned), Icon: Placement.PictureIcon),
         ];
+        var (bare, withCaption) = (Picture(captioned: false), Picture(captioned: true));
         // At a spot with nothing to act on (no picture, selection or word there): what goes in there, the cursor there.
         IReadOnlyList<Controls.GestureRing.Slot> insert =
         [
@@ -173,7 +177,7 @@ public sealed partial class EditorView : Panel
         {
             var empty = inserting;
             inserting = false;
-            return empty ? insert : Sheets.DrawingSelected ? picture : null;
+            return empty ? insert : Sheets.DrawingSelected ? editing.Caption != null ? withCaption : bare : null;
         };
         ring.Preview = slot =>
         {

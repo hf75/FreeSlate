@@ -276,6 +276,12 @@ public interface IEditableDocument : IDisposable
     (IReadOnlyList<(double Left, double Right)> Columns, double Top, double Bottom)? TextArea(int page);
 
     /// <summary>
+    /// The drawing whose text box holds a paragraph (a shape's text, a picture's caption): the paragraph and the place of its character,
+    /// the nearest around it; null for a paragraph of none, and on slides, whose text is all their shapes'.
+    /// </summary>
+    (int Paragraph, int Offset)? DrawingAround(int paragraph);
+
+    /// <summary>
     /// The stretches of a paragraph's text that have a character style (TextFormatting.Style), in order, neighbouring runs of
     /// one style as one stretch: what the text means where its styles say so. Slides have none.
     /// </summary>
