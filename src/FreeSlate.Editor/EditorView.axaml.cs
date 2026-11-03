@@ -146,9 +146,9 @@ public sealed partial class EditorView : Panel
             Sheets.SelectionHidden = true;
         };
         Avalonia.Point OnSheets(Avalonia.Point point) => ring.TranslatePoint(point, Sheets) ?? point;
-        ring.Window = point => Sheets.SelectionNear(OnSheets(point)) is { } area && Sheets.TranslatePoint(area.TopLeft, ring) is { } corner
-            ? new Rect(corner, area.Size)
-            : null;
+        ring.Selection = () => Sheets.TranslatePoint(default, ring) is { } shift
+            ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList()
+            : [];
         ring.Target = point => Sheets.OnSelection(OnSheets(point)) || Sheets.SelectWordAt(OnSheets(point));
         ring.OnSelection = point => Sheets.OnSelection(OnSheets(point));
         ring.Press = (point, by, dragging) => Sheets.Press(OnSheets(point), by, KeyModifiers.None, dragging);

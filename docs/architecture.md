@@ -220,10 +220,11 @@ clicked; the left button held on the selection, or Space held, bring it too. A f
 for what is to come: inserting WordArt, tables), which opens where the pointer leaves the field, on a click, by a turn of a blind
 stroke, or by Enter. The ring is always of one size and shows signs only, light, set by their ink, each in the middle of its
 field with room all around and no lines between the fields: a band around an inner circle, the band's glass nearly whole and the
-inner circle's clear; the field pointed at shows as a rounded part of the band, its name beside the ring. Where the text it acts
-on lies under it, the ring stands centred on it and a window is cut into it; pointing at the window chooses nothing, and the
-text there reads as the field pointed at would make it: a preview, a step of its own that letting go keeps and anything else
-takes back, the selection hidden meanwhile (`GestureRing.Preview`, `DocumentView.SelectionHidden`). In full screen
+middle clear; the field pointed at shows as a rounded part of the band, its name beside the ring. It lies over everything; brought
+on the text, it stands centred on the selection's part there, as far as the point it was brought at stays in its middle. The
+whole selection is framed exactly, one outline around the lines that meet (`DocumentView.SelectionAreas`), under the ring, and
+reads as the field pointed at would make it: a preview, a step of its own that letting go keeps and anything else takes back, the
+selection hidden meanwhile (`GestureRing.Preview`, `DocumentView.SelectionHidden`). In full screen
 the line above the sheets lies under the window's buttons and comes and goes with them (`CaptionBar.Changed`).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:

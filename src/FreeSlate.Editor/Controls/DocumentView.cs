@@ -327,13 +327,16 @@ public sealed class DocumentView : Control
 
     double Left(Row row) => Math.Max(Edge, (Bounds.Width - row.Size.Width * factor) / 2);
 
+    /// <summary>The part of the view in sight, in its coordinates.</summary>
+    Rect Viewed() => scroller != null ? new Rect(scroller.Offset.X, scroller.Offset.Y, scroller.Viewport.Width, scroller.Viewport.Height) : new Rect(Bounds.Size);
+
     Rect SheetRect(Row row) => new(Left(row), row.Top * factor, row.Size.Width * factor, row.Size.Height * factor);
 
     public override void Render(DrawingContext context)
     {
         // Clicks count everywhere, also beside the sheets.
         context.FillRectangle(Brushes.Transparent, new Rect(Bounds.Size));
-        var view = scroller != null ? new Rect(scroller.Offset.X, scroller.Offset.Y, scroller.Viewport.Width, scroller.Viewport.Height) : new Rect(Bounds.Size);
+        var view = Viewed();
         var visible = rows.Where(r => r.Top * factor < view.Bottom && (r.Top + r.Size.Height) * factor > view.Top).Select(r => (Row: r, Left: Left(r))).ToList();
         if (visible.Count == 0)
             return;
@@ -700,28 +703,25 @@ public sealed class DocumentView : Control
         return false;
     }
 
-    /// <summary>The part of the selection on the line nearest to a point of the view, as a rectangle of the view's coordinates; null without a selection.</summary>
-    public Rect? SelectionNear(Point point)
+    /// <summary>
+    /// The parts of the selection on the sheets in view, one for each line (or run of a line) in the order of the text, as rectangles of
+    /// the view's coordinates; none without a selection.
+    /// </summary>
+    public List<Rect> SelectionAreas()
     {
-        Rect? nearest = null;
-        var distance = double.MaxValue;
+        var parts = new List<Rect>();
+        var view = Viewed();
         foreach (var (page, from, count) in Selected())
         {
-            if (page >= rows.Count)
+            if (page >= rows.Count || rows[page] is var row && (row.Top * factor >= view.Bottom || (row.Top + row.Size.Height) * factor <= view.Top))
                 continue;
-            var row = rows[page];
             var left = Left(row);
             var spots = pictures.Spots(Page(page));
             foreach (var area in pictures.Places(Page(page)).Selection(spots[from], spots[from + count - 1]))
-            {
-                var rect = new Rect(left + area.Min(c => c.X) * factor, (row.Top + area.Min(c => c.Y)) * factor,
-                    (area.Max(c => c.X) - area.Min(c => c.X)) * factor, (area.Max(c => c.Y) - area.Min(c => c.Y)) * factor);
-                var away = Math.Max(0, Math.Max(rect.Left - point.X, point.X - rect.Right)) + Math.Max(0, Math.Max(rect.Top - point.Y, point.Y - rect.Bottom)) * 4;
-                if (away < distance)
-                    (nearest, distance) = (rect, away);
-            }
+                parts.Add(new Rect(left + area.Min(c => c.X) * factor, (row.Top + area.Min(c => c.Y)) * factor,
+                    (area.Max(c => c.X) - area.Min(c => c.X)) * factor, (area.Max(c => c.Y) - area.Min(c => c.Y)) * factor));
         }
-        return nearest;
+        return parts;
     }
 
     /// <summary>Selects the word the character at a point of the view belongs to; false where it is no word's.</summary>
