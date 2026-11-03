@@ -258,7 +258,8 @@ anchor's paragraph marked in the margin. Near a column's edges and middle and th
 each (Alt held, not); at a column's edge or middle of a page of one column it stays aligned there. The handles at the corners and
 the middles of the sides of the picture selected size it the same way, as a step that goes on: a corner keeps its proportions, a
 side stretches it, the opposite side stays and an alignment there too, a side it moves lines up with the columns' edges and the
-margins.
+margins. Near the view's top or bottom a drag scrolls the pages, the faster the nearer (a picture dragged or sized, or the
+selection, reaching on). The arrows move a floating picture a point, ten with Shift; arrows one after another are one step.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

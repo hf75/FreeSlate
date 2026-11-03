@@ -125,6 +125,7 @@ public sealed partial class DocumentView : Control
             }
             InvalidateVisual();
         };
+        scrolling.Tick += (_, _) => Scroll();
         ime = new Ime(this);
         TextInputMethodClientRequested += (_, e) =>
         {
@@ -732,6 +733,7 @@ public sealed partial class DocumentView : Control
         if (dragged != null)
         {
             DragTo(e.GetPosition(this), e.KeyModifiers);
+            Hold(e.GetPosition(this), e.KeyModifiers);
             e.Handled = true;
             return;
         }
@@ -743,6 +745,8 @@ public sealed partial class DocumentView : Control
             (caret, lineEnd) = ((page, at), end);
             Moved();
         }
+        if (selecting)
+            Hold(e.GetPosition(this), e.KeyModifiers);
         else if (!selecting && MeaningAt(e.GetPosition(this)) is var mark && !ReferenceEquals(mark, pointed))
         {
             pointed = mark;
@@ -881,6 +885,7 @@ public sealed partial class DocumentView : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        LetGo();
         if (dragged != null)
         {
             EndDrag(keep: true);
@@ -979,6 +984,12 @@ public sealed partial class DocumentView : Control
             Edit(edit);
             return;
         }
+        // A floating drawing selected: the arrows move it (see Nudge).
+        if (!control && (e.KeyModifiers & KeyModifiers.Alt) == 0 && e.Key is Key.Left or Key.Right or Key.Up or Key.Down && Nudge(e.Key, shift))
+        {
+            e.Handled = true;
+            return;
+        }
         var spots = pictures.Spots(Page(page));
         (int Page, int At, bool End)? moved = e.Key switch
         {
@@ -1035,10 +1046,10 @@ public sealed partial class DocumentView : Control
         return places.HitPlace(new SKPoint(x, middle.Y)) is var (spot, after) ? Placed(page, spot, after) : null;
     }
 
-    /// <summary>Scrolls the cursor into view where it is out of it.</summary>
+    /// <summary>Scrolls the cursor into view where it is out of it; not while a drawing is dragged (the view goes with the pointer then).</summary>
     void Reveal((int Page, int At) place)
     {
-        if (scroller == null || place.Page >= rows.Count)
+        if (scroller == null || place.Page >= rows.Count || dragged is { Moving: true })
             return;
         var row = rows[place.Page];
         var spots = pictures.Spots(Page(place.Page));

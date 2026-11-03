@@ -61,6 +61,124 @@ public sealed partial class DocumentView
     /// <summary>Whether a drawing is being dragged over the sheets.</summary>
     public bool DraggingDrawing => dragged is { Moving: true };
 
+    /// <summary>
+    /// How near the view's top or bottom the pointer scrolls it while it drags (a drawing, or the selection), and how fast it then
+    /// scrolls at most, where it is at the edge (past it, half again as fast), in pixels and pixels a second.
+    /// </summary>
+    const double ScrollZone = 36, ScrollSpeed = 1500;
+
+    readonly DispatcherTimer scrolling = new() { Interval = TimeSpan.FromMilliseconds(15) };
+
+    /// <summary>Where the pointer dragging last was, in the view's visible part (it stays there while the pages scroll under it), and the keys held.</summary>
+    (Point InView, KeyModifiers Modifiers)? held;
+
+    long scrolledAt;
+
+    /// <summary>The pointer dragging at a point of the view: near the view's top or bottom the pages scroll, so that it reaches on.</summary>
+    void Hold(Point point, KeyModifiers modifiers)
+    {
+        if (scroller == null || dragged is { Moving: false })
+            return;
+        var inView = point - scroller.Offset;
+        held = (inView, modifiers);
+        if (Depth(inView.Y) == 0)
+            scrolling.Stop();
+        else if (!scrolling.IsEnabled)
+        {
+            scrolledAt = Environment.TickCount64;
+            scrolling.Start();
+        }
+    }
+
+    /// <summary>How far a height of the visible part lies in its top zone (negative) or its bottom zone, in shares of the zone; 0 between.</summary>
+    double Depth(double y)
+    {
+        var height = scroller?.Viewport.Height ?? 0;
+        return y < ScrollZone ? Math.Max(-1.5, (y - ScrollZone) / ScrollZone) : y > height - ScrollZone ? Math.Min(1.5, (y - height + ScrollZone) / ScrollZone) : 0;
+    }
+
+    /// <summary>
+    /// A moment of scrolling while the pointer drags near an edge, the faster the nearer: what is under the pointer then is what it drags
+    /// to, a drawing following it, the selection reaching there.
+    /// </summary>
+    void Scroll()
+    {
+        var (inView, modifiers) = held ?? default;
+        var depth = held != null ? Depth(inView.Y) : 0;
+        if (scroller == null || depth == 0 || !(dragged is { Moving: true } || selecting))
+        {
+            scrolling.Stop();
+            return;
+        }
+        var now = Environment.TickCount64;
+        var seconds = Math.Clamp((now - scrolledAt) / 1000.0, 0, 0.05);
+        scrolledAt = now;
+        var top = Math.Clamp(scroller.Offset.Y + Math.Sign(depth) * depth * depth * ScrollSpeed * seconds, 0, Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height));
+        if (Math.Abs(top - scroller.Offset.Y) < 0.01)
+            return;
+        scroller.Offset = new Vector(scroller.Offset.X, top);
+        var point = inView + scroller.Offset;
+        if (dragged != null)
+            DragTo(point, modifiers);
+        else if (PlaceAt(point) is var (page, at, end))
+        {
+            (caret, lineEnd) = ((page, at), end);
+            Moved();
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>How far an arrow moves a floating drawing, and with Shift, in points.</summary>
+    const double NudgeStep = 1, FarStep = 10;
+
+    /// <summary>
+    /// The arrows pressed one after another on a floating drawing: its page and its box's top left in points where they began, how far
+    /// they have moved it, the place of its character then, and the document's changes after the last; null before them.
+    /// </summary>
+    (int Page, double X, double Y, double Dx, double Dy, TextPlace Drawing, int Changes)? nudged;
+
+    /// <summary>
+    /// An arrow on the floating drawing selected: it moves a point that way, ten with Shift (its anchor going with it as a drag takes
+    /// it). Arrows one after another, with nothing else between them, are one step: the one before taken back, all of them made again.
+    /// False where no floating drawing is selected, the arrow then moving the cursor.
+    /// </summary>
+    bool Nudge(Key key, bool far)
+    {
+        if (session is not { } editing || SelectedDrawing() is not var (page, at) || pictures.Places(Page(page)).InlineBox(pictures.Spots(Page(page))[at]) != null
+            || BoxOf(page, at) is not { } box)
+            return false;
+        var step = far ? FarStep : NudgeStep;
+        var (dx, dy) = key switch { Key.Left => (-step, 0.0), Key.Right => (step, 0.0), Key.Up => (0.0, -step), _ => (0.0, step) };
+        var drawing = editing.Anchor.Offset < editing.Caret.Offset ? editing.Anchor : editing.Caret;
+        if (nudged is { } before && before.Changes == editing.Document.Changes && before.Drawing == drawing && editing.CanUndo)
+        {
+            var (total, totalY) = (before.Dx + dx, before.Dy + dy);
+            Edit(() =>
+            {
+                editing.TakeBack();
+                editing.PlaceDrawing(before.Page, before.X + total, before.Y + totalY);
+            });
+            nudged = before with { Dx = total, Dy = totalY };
+        }
+        else
+        {
+            var row = rows[page];
+            var pt = factor * PxPerPt;
+            var (x, y) = ((box.X - Left(row)) / pt, box.Y / pt - row.Top / PxPerPt);
+            Edit(() => editing.PlaceDrawing(page, x + dx, y + dy));
+            nudged = (page, x, y, dx, dy, drawing, 0);
+        }
+        nudged = nudged.Value with { Drawing = editing.Anchor.Offset < editing.Caret.Offset ? editing.Anchor : editing.Caret, Changes = editing.Document.Changes };
+        return true;
+    }
+
+    /// <summary>The pointer let go: no more scrolling for it.</summary>
+    void LetGo()
+    {
+        scrolling.Stop();
+        held = null;
+    }
+
     /// <summary>A press on the drawing just selected, or on one of its handles: it may be dragged, or sized, from there.</summary>
     void BeginDrag(Point point, IPointer pointer, (int Across, int Down)? handle = null)
     {
@@ -274,6 +392,7 @@ public sealed partial class DocumentView
         if (dragged is not { } d)
             return;
         dragged = null;
+        LetGo();
         Cursor = Text;
         if (d.Moving && (d.Floating || d.Handle != null))
         {
