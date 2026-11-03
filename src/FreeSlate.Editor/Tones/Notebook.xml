@@ -7,7 +7,7 @@
     <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
       <w:name w:val="Normal" />
       <w:qFormat />
-      <w:pPr><w:spacing w:before="0" w:after="400" w:line="400" w:lineRule="exact" /></w:pPr>
+      <w:pPr><w:suppressAutoHyphens /><w:spacing w:before="0" w:after="400" w:line="400" w:lineRule="exact" /></w:pPr>
       <w:rPr><w:rFonts w:ascii="Inter" w:hAnsi="Inter" w:eastAsia="Inter" w:cs="Inter" /><w:color w:val="2B2B2B" /><w:sz w:val="20" /><w:szCs w:val="20" /></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Title">

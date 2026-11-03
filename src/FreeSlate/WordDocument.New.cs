@@ -12,13 +12,17 @@ public sealed partial class WordDocument
     /// <summary>A new document: one empty paragraph on a page of A4 with the usual margins, set in the given font at the given size in points.</summary>
     /// <param name="styles">Style definitions it begins with, as DefineStyles gives them, but as it was opened: no change to undo.</param>
     /// <param name="numbering">The numbering definitions of the lists those styles name (see DefineStyles), in a numbering part of its own.</param>
+    /// <param name="hyphenate">
+    /// Whether words break with a hyphen at the end of a line as Word's automatic hyphenation breaks them (w:autoHyphenation): where the
+    /// text's language has patterns and the paragraph's style does not suppress it.
+    /// </param>
     public static WordDocument New(string font, double size = 11, FontLocator? fonts = null, CultureInfo? culture = null, string? styles = null,
-        string? numbering = null)
+        string? numbering = null, bool hyphenate = false)
     {
         culture ??= CultureInfo.CurrentCulture;
         using var package = new MemoryStream();
         using (var zip = new ZipArchive(package, ZipArchiveMode.Create, leaveOpen: true))
-            foreach (var (name, xml) in NewParts(SecurityElement.Escape(font), (int)Math.Round(size * 2), culture.Name, numbering != null))
+            foreach (var (name, xml) in NewParts(SecurityElement.Escape(font), (int)Math.Round(size * 2), culture.Name, numbering != null, hyphenate))
             {
                 using var part = new StreamWriter(zip.CreateEntry(name).Open(), new UTF8Encoding(false));
                 if (name == "word/styles.xml" && styles != null)
@@ -41,8 +45,11 @@ public sealed partial class WordDocument
         return Open(package.ToArray(), fonts: fonts, culture: culture);
     }
 
-    /// <summary>The parts of a new document: only what Word and this engine need of it, with a numbering part where it has <paramref name="lists"/>.</summary>
-    static IEnumerable<(string Name, string Xml)> NewParts(string font, int halfPoints, string language, bool lists)
+    /// <summary>
+    /// The parts of a new document: only what Word and this engine need of it, with a numbering part where it has <paramref name="lists"/>,
+    /// and automatic hyphenation where it is to <paramref name="hyphenate"/>.
+    /// </summary>
+    static IEnumerable<(string Name, string Xml)> NewParts(string font, int halfPoints, string language, bool lists, bool hyphenate)
     {
         const string word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
         const string relationships = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -65,8 +72,9 @@ public sealed partial class WordDocument
         yield return ("word/styles.xml", $"""
             <w:styles xmlns:w="{word}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="{font}" w:hAnsi="{font}" w:eastAsia="{font}" w:cs="{font}"/><w:sz w:val="{halfPoints}"/><w:szCs w:val="{halfPoints}"/>{lang}</w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>
             """);
+        var hyphenation = hyphenate ? "<w:autoHyphenation/>" : "";
         yield return ("word/settings.xml", $"""
-            <w:settings xmlns:w="{word}"><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>
+            <w:settings xmlns:w="{word}">{hyphenation}<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>
             """);
         if (lists)
             yield return ("word/numbering.xml", $"""<w:numbering xmlns:w="{word}"/>""");

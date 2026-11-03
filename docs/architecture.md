@@ -209,7 +209,9 @@ input method's text to an `EditSession`. It neither opens nor saves files yet.
 A document says what its text means, not how it looks (`Writing/`): a meaning is a character style (`Meanings`), and a tone
 (`Tones`, the style sets in `Tones/*.xml`) gives the meanings and the paragraphs' levels their look, the whole document at once,
 a change of it one step to undo, which the sheets in view fade through (`DocumentView.Restyle`). The file stays a Word document
-that looks alike in Word. `DocumentView.ShowsMeanings` frames the stretches with a meaning and names it in the page's margin,
+that looks alike in Word. The editor's documents hyphenate (`WordDocument.New(hyphenate)`, Word's w:autoHyphenation, a setting of
+the whole document): the magazine tone justifies and hyphenates its text, the others suppress hyphenation in their normal
+paragraph, which the other levels are based on. `DocumentView.ShowsMeanings` frames the stretches with a meaning and names it in the page's margin,
 drawn over the pages, which do not move for it. The engine gets the app's Inter beside the system's fonts (`EngineFonts`).
 A paragraph's level lies on one axis from title to margin note (`Levels`, Word's own styles where it has them): `LevelLever`
 is the grip beside the paragraph the pointer is at, dragged sideways a level per 32 pixels with the page showing it at once, one

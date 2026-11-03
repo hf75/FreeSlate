@@ -62,7 +62,7 @@ public sealed partial class EditorView : Panel
         var (styles, numbering) = Tones.All[0].Definitions();
         var document = Environment.GetCommandLineArgs().Contains("--sample")
             ? Sample.Document(Tones.All[0])
-            : WordDocument.New("Inter", 10.5, EngineFonts.Locator, styles: styles, numbering: numbering);
+            : WordDocument.New("Inter", 10.5, EngineFonts.Locator, styles: styles, numbering: numbering, hyphenate: true);
         editing = new EditSession(document);
         Sheets.Open(editing);
         Lever.Attach(Sheets, editing);

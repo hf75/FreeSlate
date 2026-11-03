@@ -35,7 +35,7 @@ public static partial class Sample
     {
         var culture = CultureInfo.GetCultureInfo("de-DE");
         var (styles, numbering) = tone.Definitions();
-        using var made = WordDocument.New("Inter", 10.5, EngineFonts.Locator, culture, styles, numbering);
+        using var made = WordDocument.New("Inter", 10.5, EngineFonts.Locator, culture, styles, numbering, hyphenate: true);
         var empty = made.Beginning!.Value;
         var body = new StringBuilder();
         foreach (var (level, text) in Moth)
