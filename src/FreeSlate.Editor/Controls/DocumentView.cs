@@ -1075,7 +1075,8 @@ public sealed partial class DocumentView : Control
         var (spot, after) = CaretSpot(spots, at);
         var (block, offset) = pictures.Places(Page(page)).PlaceAt(spot, after);
         var (from, fromAfter) = anchorAt >= anchorSpots.Count ? (anchorSpots[^1], true) : (anchorSpots[anchorAt], false);
-        var (anchorBlock, anchorOffset) = pictures.Places(Page(anchorPage)).PlaceAt(from, fromAfter);
+        // An anchor where the cursor is is its place, at a line's end too (not the next line's start).
+        var (anchorBlock, anchorOffset) = (anchorPage, anchorAt) == (page, at) ? (block, offset) : pictures.Places(Page(anchorPage)).PlaceAt(from, fromAfter);
         session.Place(new TextPlace(anchorBlock, anchorOffset));
         session.Place(new TextPlace(block, offset), extend: true);
     }
@@ -1527,9 +1528,10 @@ public sealed partial class DocumentView : Control
                 // Its pictures decoded once, at two pixels a CSS pixel, not again at every frame.
                 SkiaScene.Draw(scene, recorder.BeginRecording(SKRect.Create((float)size.Width, (float)size.Height)), places: lines, pictureScale: 2);
                 var places = new TextPlaces(lines);
-                var starts = new int[lines.Count];
-                for (var k = 1; k < lines.Count; k++)
-                    starts[k] = starts[k - 1] + lines[k - 1].Line.Offsets.Length;
+                // Where each line's characters begin among the page's, in the order of its lines (those of floating drawings not lines).
+                var starts = new int[places.Lines.Count];
+                for (var k = 1; k < places.Lines.Count; k++)
+                    starts[k] = starts[k - 1] + places.Lines[k - 1].Line.Offsets.Length;
                 var recording = new Recording(recorder.EndRecording(), places, places.Spots(), starts);
                 pages.AddOrUpdate(scene, recording);
                 return recording;
