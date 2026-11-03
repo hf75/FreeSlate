@@ -15,6 +15,35 @@
       <Setter Property="Opacity" Value="0" />
       <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
+
+    <!--
+      In full screen the sheets take the whole height, and the line above them lies over them as the screen's top line, under the
+      window's buttons: it comes with them when the pointer goes to the top and goes with them, as the bar of full screen does.
+    -->
+    <Style Selector=":is(Panel).fullScreen > ScrollViewer">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector=":is(Panel).fullScreen > Border#Desk">
+      <Setter Property="Background" Value="{DynamicResource Canvas}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Hairline}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.8" Easing="SineEaseInOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector=":is(Panel).fullScreen.revealed > Border#Desk">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="IsHitTestVisible" Value="True" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
+    </Style>
   </Panel.Styles>
 
   <ScrollViewer Margin="0,40,0,0">
@@ -25,25 +54,23 @@
   </ScrollViewer>
 
   <!-- The document's tone and whether its meanings show, quiet above the sheets. -->
-  <StackPanel Orientation="Horizontal"
-              Spacing="2"
-              Height="40"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Top">
-    <TextBlock Text="{DynamicResource ToneChoice}"
-               Foreground="{DynamicResource InkGhost}"
-               FontSize="12"
-               VerticalAlignment="Center"
-               Margin="0,0,6,0" />
-    <StackPanel x:Name="ToneChoice"
-                Orientation="Horizontal"
-                Spacing="2"
-                VerticalAlignment="Center"
-                AutomationProperties.Name="{DynamicResource ToneChoice}"
-                AutomationProperties.IsControlElementOverride="True" />
-    <Border Width="1" Height="14" Background="{DynamicResource Hairline}" Margin="14,0" VerticalAlignment="Center" />
-    <ToggleButton x:Name="ShowMeanings" Content="{DynamicResource ShowMeanings}" VerticalAlignment="Center" />
-  </StackPanel>
+  <Border x:Name="Desk" Height="40" VerticalAlignment="Top">
+    <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+      <TextBlock Text="{DynamicResource ToneChoice}"
+                 Foreground="{DynamicResource InkGhost}"
+                 FontSize="12"
+                 VerticalAlignment="Center"
+                 Margin="0,0,6,0" />
+      <StackPanel x:Name="ToneChoice"
+                  Orientation="Horizontal"
+                  Spacing="2"
+                  VerticalAlignment="Center"
+                  AutomationProperties.Name="{DynamicResource ToneChoice}"
+                  AutomationProperties.IsControlElementOverride="True" />
+      <Border Width="1" Height="14" Background="{DynamicResource Hairline}" Margin="14,0" VerticalAlignment="Center" />
+      <ToggleButton x:Name="ShowMeanings" Content="{DynamicResource ShowMeanings}" VerticalAlignment="Center" />
+    </StackPanel>
+  </Border>
 
   <!-- While nothing is written yet: a line a little above the middle, and the choice of language. -->
   <Grid Classes="whileEmpty" RowDefinitions="4*,Auto,5*" IsHitTestVisible="False">
@@ -69,5 +96,5 @@
               AutomationProperties.IsControlElementOverride="True" />
 
   <!-- The gesture ring, over everything while it has a gesture. -->
-  <c:MeaningRing x:Name="Ring" />
+  <c:GestureRing x:Name="Ring" />
 </Panel>

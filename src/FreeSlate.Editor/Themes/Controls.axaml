@@ -28,22 +28,15 @@
                               ContentTemplate="{TemplateBinding ContentTemplate}"
                               Margin="{TemplateBinding WindowDecorationMargin}" />
           </VisualLayerManager>
-          <!-- In full screen the frame is gone: this takes its place, from the screen's top edge on. -->
+          <!--
+            In full screen the frame is gone: this takes its place, from the screen's top edge on. It has only the buttons: the content
+            lays its own top line under them (the editor its choice of tone), which comes and goes with the bar (CaptionBar.Changed).
+          -->
           <c:CaptionBar Name="PART_FullScreenBar"
                         ForFullScreen="True"
                         IsVisible="False"
                         VerticalAlignment="Top"
-                        Height="{StaticResource TitleBarHeight}"
-                        Background="{DynamicResource Canvas}">
-            <Border BorderBrush="{DynamicResource Hairline}" BorderThickness="0,0,0,1" IsHitTestVisible="False" />
-            <TextBlock Text="{TemplateBinding Title}"
-                       Foreground="{DynamicResource InkFaint}"
-                       FontSize="12"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       TextTrimming="CharacterEllipsis"
-                       Margin="92,0"
-                       IsHitTestVisible="False" />
+                        Height="{StaticResource TitleBarHeight}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
               <c:CaptionButton Job="ToggleFullScreen"
                                Symbol="ExitFullScreen"

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using FreeSlate.Editing;
 using FreeSlate.Editor.Localization;
 using FreeSlate.Editor.Writing;
@@ -67,7 +68,21 @@ public sealed partial class EditorView : Panel
         Lever.Attach(Sheets, editing);
         Join(Ring);
         FollowTone();
-        Loaded += (_, _) => Sheets.Focus();
+        Loaded += (_, _) =>
+        {
+            Sheets.Focus();
+            // In a window: its bar of full screen, which the line above the sheets comes and goes with there.
+            if (this.FindAncestorOfType<Window>()?.GetVisualDescendants().OfType<Controls.CaptionBar>().FirstOrDefault(b => b.ForFullScreen) is { } bar)
+            {
+                void Follow()
+                {
+                    Classes.Set("fullScreen", bar.IsVisible);
+                    Classes.Set("revealed", bar.IsVisible && !bar.IsResting);
+                }
+                bar.Changed += Follow;
+                Follow();
+            }
+        };
     }
 
     /// <summary>Where the pointer was last over the editor, in its own coordinates: where the ring comes for the keyboard.</summary>
@@ -75,27 +90,29 @@ public sealed partial class EditorView : Panel
 
     /// <summary>
     /// The gesture ring's fields (their places fixed: the hand learns them) and its ways to the sheets: the meanings up, up right, right,
-    /// down and down left, taking the meaning away left, down right and up left empty. Space held on a selection brings it for the keyboard.
+    /// down and down left, taking the meaning away left, down right and up left empty (room for a field that holds a ring of its own).
+    /// Space held on a selection brings it for the keyboard.
     /// </summary>
-    void Join(Controls.MeaningRing ring)
+    void Join(Controls.GestureRing ring)
     {
-        var meaning = Meanings.All.ToDictionary(m => m.Style);
-        Controls.MeaningRing.Slot Field(string style, string sign, bool slanted = false) => new(style, meaning[style].NameKey, sign, slanted);
+        void Give(string style) => Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
+        Controls.GestureRing.Slot Meaning(string style, string sign, bool slanted = false) =>
+            new(Meanings.Of(style)!.NameKey, sign, () => Give(style), Slanted: slanted);
+        Controls.GestureRing.Slot empty = new("", "");
         ring.Slots =
         [
-            Field("Important", "!"),
-            Field("Emphasized", "i", slanted: true),
-            Field("Term", "Aa"),
-            new(null, "", ""),
-            Field("Quotation", "“"),
-            Field("OpenQuestion", "?"),
-            new("", "RingRemove", "×"),
-            new(null, "", ""),
+            Meaning("Important", "!"),
+            Meaning("Emphasized", "i", slanted: true),
+            Meaning("Term", "Aa"),
+            empty,
+            Meaning("Quotation", "“"),
+            Meaning("OpenQuestion", "?"),
+            new("RingRemove", "×", () => Give("")),
+            empty,
         ];
         Avalonia.Point OnSheets(Avalonia.Point point) => ring.TranslatePoint(point, Sheets) ?? point;
         ring.Target = point => Sheets.OnSelection(OnSheets(point)) || Sheets.SelectWordAt(OnSheets(point));
         ring.OnSelection = point => Sheets.OnSelection(OnSheets(point));
-        ring.Give = style => Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
         ring.Press = (point, by, dragging) => Sheets.Press(OnSheets(point), by, KeyModifiers.None, dragging);
         ring.Attach(Sheets);
         AddHandler(PointerMovedEvent, (_, e) =>

@@ -52,6 +52,12 @@ public sealed class CaptionBar : Panel
 
     public Window? Window => window;
 
+    /// <summary>Whether the bar's buttons, or the bar of full screen as a whole, have faded away (see the class).</summary>
+    public bool IsResting => Classes.Contains(":resting");
+
+    /// <summary>The bar rested or came back, or (the bar of full screen) came with full screen or went: what lies with it follows.</summary>
+    public event Action? Changed;
+
     CaptionTip? Tip => Children.OfType<CaptionTip>().FirstOrDefault();
 
     public void PointerOn(CaptionButton button)
@@ -193,6 +199,7 @@ public sealed class CaptionBar : Panel
             buttonsTimer.Stop();
             PointerOff();
         }
+        Changed?.Invoke();
     }
 
     void FollowPointerInFullScreen(object? sender, PointerEventArgs e)
@@ -207,7 +214,11 @@ public sealed class CaptionBar : Panel
     void PointerOnBar()
     {
         pointerSeenAt = Environment.TickCount64;
-        PseudoClasses.Set(":resting", false);
+        if (IsResting)
+        {
+            PseudoClasses.Set(":resting", false);
+            Changed?.Invoke();
+        }
         buttonsTimer.Start();
     }
 
@@ -226,6 +237,7 @@ public sealed class CaptionBar : Panel
             buttonsTimer.Stop();
             buttonsTimer.Interval = TimeSpan.FromMilliseconds(ButtonsStay);
             PseudoClasses.Set(":resting", true);
+            Changed?.Invoke();
         }
     }
 

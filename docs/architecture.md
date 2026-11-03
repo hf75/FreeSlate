@@ -214,8 +214,12 @@ drawn over the pages, which do not move for it. The engine gets the app's Inter 
 A paragraph's level lies on one axis from title to margin note (`Levels`, Word's own styles where it has them): `LevelLever`
 is the grip beside the paragraph the pointer is at, dragged sideways a level per 64 pixels with the page showing it at once, one
 step to undo; Tab and Shift+Tab move the selection's paragraphs a level, Enter in an empty point moves it out. Meanings are
-given with `MeaningRing`, a marking menu of eight fixed fields: the right button held on the selection or a word, moved blindly
-or into a field; a short click opens it to be clicked; the left button held on the selection, or Space held, bring it too.
+given with `GestureRing`, a marking menu of eight fixed fields: the right button held on the selection or a word, moved blindly
+or into a field; a short click opens it to be clicked; the left button held on the selection, or Space held, bring it too. A
+field may hold a ring of its own (a second level, for what is to come: inserting WordArt, tables), which opens where the pointer
+leaves the field, on a click, by a turn of a blind stroke, or by Enter. Each ring lays its fields out for their contents, so
+that a sign and its name keep clear of the field's edges whatever their length; signs are set by their ink. In full screen
+the line above the sheets lies under the window's buttons and comes and goes with them (`CaptionBar.Changed`).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 
