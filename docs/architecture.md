@@ -217,8 +217,10 @@ step to undo; Tab and Shift+Tab move the selection's paragraphs a level, Enter i
 given with `GestureRing`, a marking menu of eight fixed fields: the right button held on the selection or a word, moved blindly
 or into a field; a short click opens it to be clicked; the left button held on the selection, or Space held, bring it too. A
 field may hold a ring of its own (a second level, for what is to come: inserting WordArt, tables), which opens where the pointer
-leaves the field, on a click, by a turn of a blind stroke, or by Enter. Each ring lays its fields out for their contents, so
-that a sign and its name keep clear of the field's edges whatever their length; signs are set by their ink. In full screen
+leaves the field, on a click, by a turn of a blind stroke, or by Enter. The ring shows signs only (set by their ink), small and
+of glass; the name of the field pointed at stands beside it. Where the text it acts on lies under it, a window is cut into it,
+and the text there reads as the field pointed at would make it: a preview, a step of its own that letting go keeps and
+anything else takes back, the selection hidden meanwhile (`GestureRing.Preview`, `DocumentView.SelectionHidden`). In full screen
 the line above the sheets lies under the window's buttons and comes and goes with them (`CaptionBar.Changed`).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:

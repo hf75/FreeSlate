@@ -95,9 +95,35 @@ public sealed partial class EditorView : Panel
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
-        void Give(string style) => Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
+        // The style a field pointed at gave the selection for a preview, as a step of its own; null where none did.
+        string? previewed = null;
+        void Undo()
+        {
+            if (previewed != null)
+                Sheets.Edit(() => editing.Undo());
+            previewed = null;
+            Sheets.SelectionHidden = false;
+        }
+        // A field does what its preview showed: that preview stays, the step it is; another one is taken back first.
+        void Give(string style)
+        {
+            if (previewed == style)
+            {
+                previewed = null;
+                Sheets.SelectionHidden = false;
+                return;
+            }
+            Undo();
+            Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
+        }
+        var styles = new Dictionary<Controls.GestureRing.Slot, string>();
         Controls.GestureRing.Slot Meaning(string style, string sign, bool slanted = false) =>
-            new(Meanings.Of(style)!.NameKey, sign, () => Give(style), Slanted: slanted);
+            Styled(new(Meanings.Of(style)!.NameKey, sign, () => Give(style), Slanted: slanted), style);
+        Controls.GestureRing.Slot Styled(Controls.GestureRing.Slot slot, string style)
+        {
+            styles[slot] = style;
+            return slot;
+        }
         Controls.GestureRing.Slot empty = new("", "");
         ring.Slots =
         [
@@ -107,10 +133,26 @@ public sealed partial class EditorView : Panel
             empty,
             Meaning("Quotation", "“"),
             Meaning("OpenQuestion", "?"),
-            new("RingRemove", "×", () => Give("")),
+            Styled(new("RingRemove", "×", () => Give("")), ""),
             empty,
         ];
+        ring.Preview = slot =>
+        {
+            var style = slot != null && styles.TryGetValue(slot, out var given) ? given : null;
+            if (style == previewed)
+                return;
+            Undo();
+            if (style == null)
+                return;
+            // The text as it would read, without the selection over it.
+            Sheets.Edit(() => editing.Format(new TextFormatting { Style = style }));
+            previewed = style;
+            Sheets.SelectionHidden = true;
+        };
         Avalonia.Point OnSheets(Avalonia.Point point) => ring.TranslatePoint(point, Sheets) ?? point;
+        ring.Window = point => Sheets.SelectionNear(OnSheets(point)) is { } area && Sheets.TranslatePoint(area.TopLeft, ring) is { } corner
+            ? new Rect(corner, area.Size)
+            : null;
         ring.Target = point => Sheets.OnSelection(OnSheets(point)) || Sheets.SelectWordAt(OnSheets(point));
         ring.OnSelection = point => Sheets.OnSelection(OnSheets(point));
         ring.Press = (point, by, dragging) => Sheets.Press(OnSheets(point), by, KeyModifiers.None, dragging);

@@ -177,6 +177,21 @@ public sealed class DocumentView : Control
         set => SetValue(OnPointedBrushProperty, value);
     }
 
+    /// <summary>Whether the selection does not show for a while (it stays): the text shows as it reads, a preview of a change to it (see GestureRing.Preview).</summary>
+    public bool SelectionHidden
+    {
+        get => selectionHidden;
+        set
+        {
+            if (selectionHidden == value)
+                return;
+            selectionHidden = value;
+            InvalidateVisual();
+        }
+    }
+
+    bool selectionHidden;
+
     /// <summary>The name of the meaning a character style stands for (see IEditableDocument.CharacterStyles), or null for one that stands for none.</summary>
     public Func<string, string?>? MeaningName { get; set; }
 
@@ -580,7 +595,7 @@ public sealed class DocumentView : Control
         if (caret == null)
             return marks;
         var inView = visible.Select(v => v.Row.Index).ToHashSet();
-        foreach (var (page, from, count) in Selected())
+        foreach (var (page, from, count) in SelectionHidden ? [] : Selected())
         {
             if (!inView.Contains(page))
                 continue;
@@ -683,6 +698,30 @@ public sealed class DocumentView : Control
                 return true;
         }
         return false;
+    }
+
+    /// <summary>The part of the selection on the line nearest to a point of the view, as a rectangle of the view's coordinates; null without a selection.</summary>
+    public Rect? SelectionNear(Point point)
+    {
+        Rect? nearest = null;
+        var distance = double.MaxValue;
+        foreach (var (page, from, count) in Selected())
+        {
+            if (page >= rows.Count)
+                continue;
+            var row = rows[page];
+            var left = Left(row);
+            var spots = pictures.Spots(Page(page));
+            foreach (var area in pictures.Places(Page(page)).Selection(spots[from], spots[from + count - 1]))
+            {
+                var rect = new Rect(left + area.Min(c => c.X) * factor, (row.Top + area.Min(c => c.Y)) * factor,
+                    (area.Max(c => c.X) - area.Min(c => c.X)) * factor, (area.Max(c => c.Y) - area.Min(c => c.Y)) * factor);
+                var away = Math.Max(0, Math.Max(rect.Left - point.X, point.X - rect.Right)) + Math.Max(0, Math.Max(rect.Top - point.Y, point.Y - rect.Bottom)) * 4;
+                if (away < distance)
+                    (nearest, distance) = (rect, away);
+            }
+        }
+        return nearest;
     }
 
     /// <summary>Selects the word the character at a point of the view belongs to; false where it is no word's.</summary>
