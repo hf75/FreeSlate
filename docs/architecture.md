@@ -166,7 +166,8 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
 - `WordDocument` changes how a drawing stands among the text as Word's Layout Options and its Position gallery do
   (`WordDocument.Drawings.cs`, `DrawingOf` and `Format` with a `DrawingFormatting`): in the line or floating, the text
   round it (square, top and bottom, behind, in front), its place across and down (aligned or at an offset, from the page,
-  the margin, the column or the paragraph), its size. A drawing made floating with no place given stays where it stood,
+  the margin, the column or the paragraph), its size, its description for those who cannot see it and whether it is
+  decoration only (wp:docPr descr, Word's adec:decorative). A drawing made floating with no place given stays where it stood,
   from its column and its paragraph, as the pages laid out show it; one floating keeps its place where none is given. A
   floating drawing's anchor is a character of its paragraph's text that no line shows: its place stands before the
   character after it, of no width, and the drawing's box among the places of its page (`PlacesItem.Floating`), so that a
@@ -251,8 +252,9 @@ frames it instead of tinting it; the frame is the drawing's own box, which the r
 (`PlacesItem.Boxes`, `TextPlaces.Box`); one in front of the text is hit first, one behind it only where no text lies over it. On a
 picture the ring has the picture's fields (`GestureRing.Choose`, `Writing/Placements`): in the line up, beside the text right and
 left, on its own between the text down, in front of the text and behind it between them, a place on the page down right (a
-ring of the eight places round the margins, each in its direction), and removing it up left, where the meanings' ring takes a
-meaning away. Their signs are icons, the picture a frame among lines of text. A preview the ring takes back leaves nothing to do
+ring of the eight places round the margins, each in its direction), and up left the picture itself (a ring: its description, written
+on a card under it with whether it is decoration only, `Controls/DescriptionCard`; the size it took when it was put in; removing
+it). Their signs are icons, the picture a frame among lines of text. A preview the ring takes back leaves nothing to do
 again (`EditSession.TakeBack`). A picture is dragged with the main button (`DocumentView.Dragging.cs`): in the line its outline
 goes with the pointer and a bar shows where it would go in the text; floating it follows the pointer over the pages, the text
 going round it as it goes (a step taken back and made anew as it goes on, kept where it is let go, Escape takes it back), its

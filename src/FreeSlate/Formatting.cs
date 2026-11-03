@@ -157,4 +157,13 @@ public sealed record DrawingFormatting
     public string? VerticalFrom { get; init; }
     public string? VerticalAlign { get; init; }
     public double? VerticalOffset { get; init; }
+
+    /// <summary>
+    /// What the drawing shows, for those who cannot see it (its alternative text: wp:docPr descr, a picture's pic:cNvPr descr with
+    /// it), which screen readers read; "" takes it away.
+    /// </summary>
+    public string? Description { get; init; }
+
+    /// <summary>Whether the drawing is decoration only, which screen readers pass over (Word's "Mark as decorative", adec:decorative in wp:docPr).</summary>
+    public bool? Decorative { get; init; }
 }

@@ -36,6 +36,13 @@
   <x:String x:Key="PictureBehind">Behind the text</x:String>
   <x:String x:Key="PictureLeft">Left, text beside it</x:String>
   <x:String x:Key="PictureRemove">Remove picture</x:String>
+  <x:String x:Key="PictureMore">Picture</x:String>
+  <x:String x:Key="PictureCaption">Caption</x:String>
+  <x:String x:Key="PictureCaptionRemove">Remove caption</x:String>
+  <x:String x:Key="PictureDescribe">Description</x:String>
+  <x:String x:Key="PictureNaturalSize">Original size</x:String>
+  <x:String x:Key="DescriptionPlaceholder">What does the picture show? For those who cannot see it.</x:String>
+  <x:String x:Key="PictureDecorative">Decorative only</x:String>
   <x:String x:Key="PlaceTop">Top center</x:String>
   <x:String x:Key="PlaceTopRight">Top right</x:String>
   <x:String x:Key="PlaceRight">Middle right</x:String>

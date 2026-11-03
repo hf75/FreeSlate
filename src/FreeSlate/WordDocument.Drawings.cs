@@ -19,6 +19,33 @@ public sealed partial class WordDocument
     /// <summary>The DrawingML namespace (a:graphic, a:ext).</summary>
     static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
+    /// <summary>Word's mark of a drawing as decoration (adec:decorative, in an a:ext of wp:docPr with its own uri).</summary>
+    static readonly XNamespace Adec = "http://schemas.microsoft.com/office/drawing/2017/decorative";
+    const string DecorativeUri = "{C183D7F6-B498-43B3-948B-1728B52AA6E4}";
+
+    /// <summary>
+    /// The bytes of the picture the drawing at a place of a paragraph's text shows (its a:blip's r:embed in the part it stands in); null
+    /// where it shows none, or its part is not in the package.
+    /// </summary>
+    public byte[]? PictureOf(int paragraph, int offset)
+    {
+        var (p, _) = Find(paragraph);
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (at == offset && length > 0)
+            {
+                var (own, part) = inline switch { DrawingInline d => (d.Drawing, d.Part), AnchorInline a => (a.Anchor, a.Part), _ => (null, null) };
+                var id = (string?)own?.Descendants(A + "blip").FirstOrDefault()?.Attributes().FirstOrDefault(a => a.Name.LocalName == "embed");
+                return id != null && part != null && package.Relationship(part, id) is { External: false } related && package.Exists(related.Target)
+                    ? package.ReadBytes(related.Target) : null;
+            }
+            at += length;
+        }
+        return null;
+    }
+
     /// <summary>
     /// How the drawing at a place of a paragraph's text stands among the text (see DrawingFormatting), every property given that it has
     /// (Wrap also "tight" or "through" for those Word's wrap points go round); null where no drawing stands there.
@@ -319,9 +346,11 @@ public sealed partial class WordDocument
     static DrawingFormatting Read(XElement own)
     {
         var (width, height) = Drawings.Extent(own);
-        if (own.Name.LocalName == "inline")
-            return new DrawingFormatting { Width = width, Height = height, Wrap = "inline" };
         var wp = own.Name.Namespace;
+        var docPr = own.Element(wp + "docPr");
+        var (description, decorative) = ((string?)docPr?.Attribute("descr") ?? "", Decorative(docPr));
+        if (own.Name.LocalName == "inline")
+            return new DrawingFormatting { Width = width, Height = height, Wrap = "inline", Description = description, Decorative = decorative };
         var wrap = own.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
         var across = own.Element(wp + "positionH");
         var down = own.Element(wp + "positionV");
@@ -344,7 +373,45 @@ public sealed partial class WordDocument
             VerticalFrom = (string?)down?.Attribute("relativeFrom"),
             VerticalAlign = down?.Element(wp + "align")?.Value,
             VerticalOffset = Points(down?.Element(wp + "posOffset")?.Value),
+            Description = description,
+            Decorative = decorative,
         };
+    }
+
+    /// <summary>Whether a drawing's wp:docPr marks it as decoration (see DrawingFormatting.Decorative).</summary>
+    static bool Decorative(XElement? docPr) =>
+        docPr?.Elements().FirstOrDefault(e => e.Name.LocalName == "extLst")?.Elements().Where(e => (string?)e.Attribute("uri") == DecorativeUri)
+            .SelectMany(e => e.Elements(Adec + "decorative")).Any(e => (string?)e.Attribute("val") is "1" or "true") == true;
+
+    /// <summary>
+    /// A drawing's wp:docPr (a copy) with the description and the mark of decoration a format gives, and the picture's own pic:cNvPr in
+    /// its graphic with the description too (see DrawingFormatting.Description, Decorative).
+    /// </summary>
+    static XElement? Described(XElement? docPr, XElement? graphic, DrawingFormatting format)
+    {
+        if (docPr == null)
+            return null;
+        if (format.Description is { } text)
+        {
+            docPr.SetAttributeValue("descr", text.Length > 0 ? text : null);
+            foreach (var own in graphic?.Descendants().Where(e => e.Name.LocalName == "cNvPr") ?? [])
+                own.SetAttributeValue("descr", text.Length > 0 ? text : null);
+        }
+        if (format.Decorative is { } decorative && decorative != Decorative(docPr))
+        {
+            var list = docPr.Elements().FirstOrDefault(e => e.Name.LocalName == "extLst");
+            list?.Elements().Where(e => (string?)e.Attribute("uri") == DecorativeUri).Remove();
+            if (decorative)
+            {
+                if (list == null)
+                    docPr.Add(list = new XElement(A + "extLst", new XAttribute(XNamespace.Xmlns + "a", A)));
+                list.Add(new XElement(A + "ext", new XAttribute("uri", DecorativeUri),
+                    new XElement(Adec + "decorative", new XAttribute(XNamespace.Xmlns + "adec", Adec), new XAttribute("val", "1"))));
+            }
+            else if (list != null && !list.HasElements)
+                list.Remove();
+        }
+        return docPr;
     }
 
     static double? Points(string? emu) => long.TryParse(emu, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value / EmuPerPoint : null;
@@ -380,7 +447,7 @@ public sealed partial class WordDocument
         }
         if (wrap == "inline")
             return new XElement(wp + "inline", new XAttribute("distT", 0), new XAttribute("distB", 0), new XAttribute("distL", 0), new XAttribute("distR", 0),
-                extent, effect, Kept("docPr"), Kept("cNvGraphicFramePr"), graphic);
+                extent, effect, Described(Kept("docPr"), graphic, format), Kept("cNvGraphicFramePr"), graphic);
         var floating = own.Name.LocalName == "anchor";
         // Where it stands, each way: as given, else where it is (floating), else where it stood in the line.
         var stood = new Lazy<(double X, double Y)?>(() => floating ? null : where());
@@ -412,7 +479,7 @@ public sealed partial class WordDocument
             new XAttribute("behindDoc", wrap == "behind" ? "1" : "0"), new XAttribute("locked", Attribute("locked", "0")),
             new XAttribute("layoutInCell", Attribute("layoutInCell", "1")), new XAttribute("allowOverlap", Attribute("allowOverlap", "1")),
             new XElement(wp + "simplePos", new XAttribute("x", 0), new XAttribute("y", 0)),
-            across, down, extent, effect, wrapping, Kept("docPr"), Kept("cNvGraphicFramePr"), graphic,
+            across, down, extent, effect, wrapping, Described(Kept("docPr"), graphic, format), Kept("cNvGraphicFramePr"), graphic,
             own.Elements().Where(e => e.Name.LocalName is "sizeRelH" or "sizeRelV").Select(e => new XElement(e)));
     }
 

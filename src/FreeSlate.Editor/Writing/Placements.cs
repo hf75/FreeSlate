@@ -39,6 +39,20 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
         Drawn(Bar(0, 0.4, 20), Bar(0, 5, 3.3), Bar(16.7, 5, 3.3), Frame(4.5, 3.2, 11, 9.4), Bar(0, 9.6, 3.3), Bar(16.7, 9.6, 3.3), Bar(0, 14.2, 20)),
         new() { Wrap = "front" });
 
+    /// <summary>The icon of what is done with the picture itself (its caption, its description, its size): a picture, a hill and the sun in a frame.</summary>
+    public static readonly string PictureIcon = Drawn(Frame(0, 1, 20, 14), "M3.2,12.6 L8,7.4 L11.1,10.6 L13.5,8.3 L16.8,12.6 Z", Circle(14.6, 5.4, 1.7));
+
+    /// <summary>The icon of a caption: a picture with two lines below it.</summary>
+    public static readonly string CaptionIcon = Drawn(Frame(3, 0, 14, 9.8), Bar(3, 12.2, 14), Bar(6, 14.8, 8));
+
+    /// <summary>The icon of a description, what screen readers read: a speech bubble with lines in it.</summary>
+    public static readonly string DescriptionIcon = Drawn(Frame(1, 1, 18, 11.2), "M5,11.4 L5,15.6 L9.6,11.4 Z", Bar(4.2, 4.3, 11.6), Bar(4.2, 7.5, 7.6));
+
+    /// <summary>The icon of the size a picture took when it was put in: a frame with the corners of its room around it.</summary>
+    public static readonly string NaturalSizeIcon = Drawn(Frame(4.4, 3.6, 11.2, 8.8),
+        Bar(0, 0, 4), Block(0, 0, Weight, 4), Bar(16, 0, 4), Block(20 - Weight, 0, Weight, 4),
+        Bar(0, 16 - Weight, 4), Block(0, 12, Weight, 4), Bar(16, 16 - Weight, 4), Block(20 - Weight, 12, Weight, 4));
+
     /// <summary>The icon of the places on the page: a page with nine dots.</summary>
     public static readonly string PlacesIcon = Drawn(Frame(4, 0, 12, 16),
         Block(6, 2.6, 1.6, 1.6), Block(9.2, 2.6, 1.6, 1.6), Block(12.4, 2.6, 1.6, 1.6),
@@ -84,6 +98,10 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>A frame: a box less its inside, which goes the other way round.</summary>
     static string Frame(double x, double y, double width, double height) =>
         Block(x, y, width, height) + $" M{N(x + Weight)},{N(y + Weight)} V{N(y + height - Weight)} H{N(x + width - Weight)} V{N(y + Weight)} Z";
+
+    /// <summary>A filled circle.</summary>
+    static string Circle(double x, double y, double radius) =>
+        $"M{N(x - radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 0 {N(x + radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 0 {N(x - radius)},{N(y)} Z";
 
     static string N(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 }

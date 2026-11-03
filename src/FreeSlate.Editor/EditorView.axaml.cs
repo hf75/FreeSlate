@@ -67,6 +67,9 @@ public sealed partial class EditorView : Panel
         Sheets.Open(editing);
         Lever.Attach(Sheets, editing);
         Join(Ring);
+        // The card of a picture's description: a press on the sheets keeps what is written there; closed, the keys go back to them.
+        Card.Closed += () => Sheets.Focus();
+        Sheets.AddHandler(PointerPressedEvent, (_, _) => Card.Close(kept: true), Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         FollowTone();
         Loaded += (_, _) =>
         {
@@ -92,8 +95,8 @@ public sealed partial class EditorView : Panel
     /// The gesture ring's fields, sharing the circle from the top clockwise in an order that stays (the hand learns it): the meanings, and
     /// last, up left, taking the meaning away; on a picture, where it stands among the text (see Placement): in the line up, beside the
     /// text right and left, on its own down, in front of the text and behind it between them, a place on the page down right (a ring of
-    /// the eight ways, top, top right …), and up left, removing it. And its ways to the sheets. Space held on a selection brings it for the
-    /// keyboard.
+    /// the eight ways, top, top right …), and up left the picture itself (a ring: its description, the size it took when it was put in,
+    /// removing it). And its ways to the sheets. Space held on a selection brings it for the keyboard.
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
@@ -139,6 +142,14 @@ public sealed partial class EditorView : Panel
             Meaning("OpenQuestion", "?"),
             Field("RingRemove", "×", () => editing.Format(new TextFormatting { Style = "" })),
         ];
+        // What is done with the picture itself, up left: its description (a card under it), the size it took when it was put in (a
+        // preview as the others), removing it.
+        IReadOnlyList<Controls.GestureRing.Slot> itself =
+        [
+            new("PictureDescribe", "", Describe, Icon: Placement.DescriptionIcon),
+            Field("PictureNaturalSize", "", () => editing.RestoreSize(), icon: Placement.NaturalSizeIcon),
+            new("PictureRemove", "×", () => Sheets.Edit(() => editing.Delete())),
+        ];
         IReadOnlyList<Controls.GestureRing.Slot> picture =
         [
             Placed(Placement.Inline),
@@ -148,7 +159,7 @@ public sealed partial class EditorView : Panel
             Placed(Placement.Own),
             Placed(Placement.Behind),
             Placed(Placement.Left),
-            new("PictureRemove", "×", () => Sheets.Edit(() => editing.Delete())),
+            new("PictureMore", "", Under: itself, Icon: Placement.PictureIcon),
         ];
         ring.Choose = () => Sheets.DrawingSelected ? picture : null;
         ring.Preview = slot =>
@@ -195,6 +206,22 @@ public sealed partial class EditorView : Panel
             if (ring.IsBusy && e.Text == " ")
                 e.Handled = true;
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>
+    /// The description of the picture selected written on a card under it (see DescriptionCard): kept as one step where it changed;
+    /// the keys go back to the sheets as the card closes.
+    /// </summary>
+    void Describe()
+    {
+        if (editing.Drawing is not { } drawn || Sheets.SelectionAreas() is not [var box])
+            return;
+        var (description, decorative) = (drawn.Description ?? "", drawn.Decorative == true);
+        Card.Open(box, description, decorative, (text, isDecorative) =>
+        {
+            if (text != description || isDecorative != decorative)
+                Sheets.Edit(() => editing.Format(new DrawingFormatting { Description = text, Decorative = isDecorative }));
+        });
     }
 
     /// <summary>Gives the document a tone, one step to undo: what is in view fades into its new look.</summary>

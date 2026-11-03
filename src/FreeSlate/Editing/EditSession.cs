@@ -300,7 +300,10 @@ public sealed class EditSession(IEditableDocument document)
     /// Html.ImageInfo) but no wider than the text of the column it stands in nor higher than the page's text, its proportions
     /// kept; null where the bytes are no PNG, JPEG, GIF, BMP or TIFF file or the document takes no pictures so (slides).
     /// </summary>
-    public (double Width, double Height)? PictureSize(byte[] bytes)
+    public (double Width, double Height)? PictureSize(byte[] bytes) => PictureSize(bytes, Caret.Paragraph);
+
+    /// <summary>The size a picture takes put in in a paragraph (see PictureSize).</summary>
+    (double Width, double Height)? PictureSize(byte[] bytes, int paragraph)
     {
         if (document is not WordDocument word || PictureType(bytes) == null)
             return null;
@@ -309,7 +312,7 @@ public sealed class EditSession(IEditableDocument document)
             return null;
         // CSS pixels to points, then into the room there is.
         var (width, height) = (pixelsWide * 0.75, pixelsHigh * 0.75);
-        var (roomWide, roomHigh) = RoomFor(word, Caret.Paragraph);
+        var (roomWide, roomHigh) = RoomFor(word, paragraph);
         var scale = Math.Min(1, Math.Min(roomWide / width, roomHigh / height));
         return (width * scale, height * scale);
     }
@@ -392,6 +395,19 @@ public sealed class EditSession(IEditableDocument document)
         if (SelectedDrawing() is not var (paragraph, offset))
             return false;
         Act(false, () => Around(document.SizeDrawing(paragraph, offset, width, height, at, alignAcross, alignDown)));
+        return true;
+    }
+
+    /// <summary>
+    /// Gives the picture the selection holds alone the size it took when it was put in there (see PictureSize), a handling of its own;
+    /// a floating one keeps its top left. False where the selection holds no picture.
+    /// </summary>
+    public bool RestoreSize()
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.PictureOf(paragraph, offset) is not { } bytes
+            || PictureSize(bytes, paragraph) is not var (width, height))
+            return false;
+        Format(new DrawingFormatting { Width = width, Height = height });
         return true;
     }
 

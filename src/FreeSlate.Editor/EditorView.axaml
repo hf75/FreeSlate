@@ -50,6 +50,7 @@
     <Panel>
       <c:DocumentView x:Name="Sheets" />
       <c:LevelLever x:Name="Lever" />
+      <c:DescriptionCard x:Name="Card" />
     </Panel>
   </ScrollViewer>
 
