@@ -835,6 +835,84 @@ public sealed partial class WordDocument : IEditableDocument
         Change(top, top, (stretch, tracking) => TextEdits.Format(stretch, p, format, tracking));
     }
 
+    /// <summary>The stretches of a paragraph's text whose runs have a character style (w:rStyle), see IEditableDocument.CharacterStyles.</summary>
+    public IReadOnlyList<(int Offset, int Length, string Style)> CharacterStyles(int paragraph)
+    {
+        var p = Find(paragraph).Paragraph;
+        var stretches = new List<(int Offset, int Length, string Style)>();
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (length > 0 && inline.Format.Origin?.CharacterStyle is { Length: > 0 } style)
+            {
+                if (stretches.Count > 0 && stretches[^1] is var (offset, before, last) && last == style && offset + before == at)
+                    stretches[^1] = (offset, before + length, style);
+                else
+                    stretches.Add((at, length, style));
+            }
+            at += length;
+        }
+        return stretches;
+    }
+
+    /// <summary>
+    /// Gives the document style definitions (see IEditableDocument.DefineStyles): the styles part with the given ones in place of
+    /// those of their ids, or after the others, a version of its own; the body read whole again with its stretches changed put in
+    /// (as Apply reads it where it cannot read a stretch alone), its blocks keeping their ids.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The document has no styles part; nothing changes.</exception>
+    public void DefineStyles(string markup)
+    {
+        Read();
+        if (StylesPart() is not { } part)
+            throw new NotSupportedException("The document has no styles part.");
+        var styles = Xml(package.ReadBytes(part));
+        Define(styles.Root!, XElement.Parse(markup));
+        var (was, previous, changed) = (blocks, wholeText, islands);
+        Put(new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase) { [part] = Bytes(styles) });
+        package.Replace(context.MainPart, Spliced(whole, changed));
+        ReadWhole();
+        Rebase(previous, changed);
+        ModelReader.Keep(was, blocks);
+        Index();
+        versions.RemoveRange(version + 1, versions.Count - version - 1);
+        versions.Add(new Version(whole, islands, kept, partBytes));
+        version++;
+    }
+
+    /// <summary>The name of a style the document defines, by its id (see IEditableDocument.StyleName).</summary>
+    public string? StyleName(string id)
+    {
+        Read();
+        return context.Styles.Find(id)?.Name;
+    }
+
+    /// <summary>A styles part's root (w:styles) with the definitions of another (see DefineStyles).</summary>
+    static void Define(XElement root, XElement given)
+    {
+        var w = root.Name.Namespace;
+        if (given.Element(w + "docDefaults") is { } defaults)
+        {
+            if (root.Element(w + "docDefaults") is { } own)
+                own.ReplaceWith(new XElement(defaults));
+            else
+                root.AddFirst(new XElement(defaults));
+        }
+        foreach (var style in given.Elements(w + "style"))
+        {
+            var id = (string?)style.Attribute(w + "styleId");
+            if (root.Elements(w + "style").FirstOrDefault(s => (string?)s.Attribute(w + "styleId") == id) is { } own)
+                own.ReplaceWith(new XElement(style));
+            else
+                root.Add(new XElement(style));
+        }
+    }
+
+    /// <summary>The styles part, where the package has one.</summary>
+    string? StylesPart() =>
+        package.FirstRelationship(context.MainPart, "styles") is { External: false } related && package.Exists(related.Target) ? related.Target : null;
+
     /// <summary>Takes a paragraph away with all its content; the section it ends goes on into the next one.</summary>
     /// <exception cref="NotSupportedException">It is the last of its body, cell or text box; nothing changes.</exception>
     public void Remove(int paragraph)
@@ -1306,7 +1384,22 @@ public sealed partial class WordDocument : IEditableDocument
         var stories = StoriesDiffering(partBytes, to.Parts);
         var settings = SettingsPart() is { } settingsPart
             && (partBytes.TryGetValue(settingsPart, out var was) != to.Parts.TryGetValue(settingsPart, out var now) || !ReferenceEquals(was, now));
+        // Styles the version defines otherwise (see DefineStyles) are those of every block: the body is read whole again.
+        var restyled = StylesPart() is { } stylesPart
+            && (partBytes.TryGetValue(stylesPart, out var wasStyled) != to.Parts.TryGetValue(stylesPart, out var nowStyled) || !ReferenceEquals(wasStyled, nowStyled));
         Restore(to.Parts);
+        if (restyled)
+        {
+            var previous = wholeText;
+            package.Replace(context.MainPart, Spliced(whole, to.Islands));
+            ReadWhole();
+            Rebase(previous, to.Islands);
+            ModelReader.Keep(to.Blocks, blocks);
+            Index();
+            versions[target] = new Version(whole, islands, kept, partBytes);
+            version = target;
+            return;
+        }
         if (stories.Count > 0)
             Restory(stories);
         if (settings)

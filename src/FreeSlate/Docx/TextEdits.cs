@@ -2546,6 +2546,10 @@ static partial class TextEdits
             Set("color", color, "themeColor", "themeTint", "themeShade");
         if (format.Highlight is { } highlight)
             Set("highlight", highlight);
+        if (format.Style is { Length: 0 })
+            properties.Element(w + "rStyle")?.Remove();
+        else if (format.Style is { } style)
+            Set("rStyle", style);
         if (!properties.HasElements && !properties.HasAttributes)
             properties.Remove();
     }

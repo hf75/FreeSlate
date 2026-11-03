@@ -437,6 +437,7 @@ public sealed class EditSession(IEditableDocument document)
         Font = over.Font ?? format.Font,
         Color = over.Color ?? format.Color,
         Highlight = over.Highlight ?? format.Highlight,
+        Style = over.Style ?? format.Style,
     };
 
     /// <summary>Gives the paragraphs of the selection, or the cursor's, paragraph formatting.</summary>

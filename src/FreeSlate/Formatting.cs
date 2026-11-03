@@ -38,6 +38,12 @@ public sealed record TextFormatting
     /// on a slide in the color of that name, or as RRGGBB (a:highlight).
     /// </summary>
     public string? Highlight { get; init; }
+
+    /// <summary>
+    /// The character style by its id (w:rStyle), "" for none: what the text means, where the style says how it looks
+    /// (see IEditableDocument.DefineStyles). Slides have no character styles; there it changes nothing.
+    /// </summary>
+    public string? Style { get; init; }
 }
 
 /// <summary>

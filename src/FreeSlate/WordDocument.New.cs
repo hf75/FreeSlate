@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Security;
 using System.Text;
+using System.Xml.Linq;
 using FreeSlate.Fonts;
 
 namespace FreeSlate;
@@ -9,7 +10,8 @@ namespace FreeSlate;
 public sealed partial class WordDocument
 {
     /// <summary>A new document: one empty paragraph on a page of A4 with the usual margins, set in the given font at the given size in points.</summary>
-    public static WordDocument New(string font, double size = 11, FontLocator? fonts = null, CultureInfo? culture = null)
+    /// <param name="styles">Style definitions it begins with, as DefineStyles gives them, but as it was opened: no change to undo.</param>
+    public static WordDocument New(string font, double size = 11, FontLocator? fonts = null, CultureInfo? culture = null, string? styles = null)
     {
         culture ??= CultureInfo.CurrentCulture;
         using var package = new MemoryStream();
@@ -17,6 +19,13 @@ public sealed partial class WordDocument
             foreach (var (name, xml) in NewParts(SecurityElement.Escape(font), (int)Math.Round(size * 2), culture.Name))
             {
                 using var part = new StreamWriter(zip.CreateEntry(name).Open(), new UTF8Encoding(false));
+                if (name == "word/styles.xml" && styles != null)
+                {
+                    var defined = XDocument.Parse(xml);
+                    Define(defined.Root!, XElement.Parse(styles));
+                    part.Write(Encoding.UTF8.GetString(Bytes(new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), defined.Root))));
+                    continue;
+                }
                 part.Write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>""");
                 part.Write(xml);
             }

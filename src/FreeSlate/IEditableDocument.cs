@@ -237,6 +237,23 @@ public interface IEditableDocument : IDisposable
     void Format(int paragraph, int offset, int length, TextFormatting format);
     void Format(int paragraph, ParagraphFormatting format);
 
+    /// <summary>
+    /// The stretches of a paragraph's text that have a character style (TextFormatting.Style), in order, neighbouring runs of
+    /// one style as one stretch: what the text means where its styles say so. Slides have none.
+    /// </summary>
+    IReadOnlyList<(int Offset, int Length, string Style)> CharacterStyles(int paragraph);
+
+    /// <summary>
+    /// Gives the document style definitions, as a style set does in Word (Design, Document Formatting): the w:style elements of
+    /// <paramref name="markup"/> (a w:styles element) take the place of the document's of the same ids or join them, and its
+    /// w:docDefaults the document's where it has them; all of the document is read and laid out anew under them, one change.
+    /// Slides have no styles (NotSupportedException).
+    /// </summary>
+    void DefineStyles(string markup);
+
+    /// <summary>The name of a style the document defines (w:name), by its id; null where it defines none of that id (slides: none).</summary>
+    string? StyleName(string id);
+
     /// <summary>How many changes the document holds as it reads now: 0 as opened, one more for each change made, one less for each undone.</summary>
     int Changes { get; }
 

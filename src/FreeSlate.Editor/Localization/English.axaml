@@ -9,4 +9,14 @@
   <x:String x:Key="CaptionClose">Close</x:String>
   <x:String x:Key="EmptyLine">A clean slate.</x:String>
   <x:String x:Key="LanguageChoice">Language</x:String>
+  <x:String x:Key="ToneChoice">Tone</x:String>
+  <x:String x:Key="TonePlain">Plain</x:String>
+  <x:String x:Key="ToneMagazine">Magazine</x:String>
+  <x:String x:Key="ToneNotebook">Notebook</x:String>
+  <x:String x:Key="ShowMeanings">Show meaning</x:String>
+  <x:String x:Key="MeaningImportant">Important</x:String>
+  <x:String x:Key="MeaningEmphasized">Emphasis</x:String>
+  <x:String x:Key="MeaningTerm">Term</x:String>
+  <x:String x:Key="MeaningQuotation">Quotation</x:String>
+  <x:String x:Key="MeaningOpenQuestion">Open question</x:String>
 </ResourceDictionary>

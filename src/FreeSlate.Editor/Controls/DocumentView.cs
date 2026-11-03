@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.TextInput;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Avalonia.Threading;
@@ -35,9 +36,21 @@ public sealed class DocumentView : Control
 
     public static readonly StyledProperty<IBrush?> SelectionBrushProperty = AvaloniaProperty.Register<DocumentView, IBrush?>(nameof(SelectionBrush));
 
+    public static readonly StyledProperty<bool> ShowsMeaningsProperty = AvaloniaProperty.Register<DocumentView, bool>(nameof(ShowsMeanings));
+
+    public static readonly StyledProperty<IBrush?> MeaningBrushProperty = AvaloniaProperty.Register<DocumentView, IBrush?>(nameof(MeaningBrush));
+
+    public static readonly StyledProperty<IBrush?> PointedBrushProperty = AvaloniaProperty.Register<DocumentView, IBrush?>(nameof(PointedBrush));
+
+    public static readonly StyledProperty<IBrush?> OnPointedBrushProperty = AvaloniaProperty.Register<DocumentView, IBrush?>(nameof(OnPointedBrush));
+
     static readonly Cursor Text = new(StandardCursorType.Ibeam);
 
-    static DocumentView() => AffectsRender<DocumentView>(SheetProperty, SheetShadowProperty, CaretBrushProperty, SelectionBrushProperty);
+    /// <summary>How long the pages in view as they were take to fade into their new look (see Restyle), in milliseconds.</summary>
+    const double FadeTime = 260;
+
+    static DocumentView() => AffectsRender<DocumentView>(SheetProperty, SheetShadowProperty, CaretBrushProperty, SelectionBrushProperty, ShowsMeaningsProperty,
+        MeaningBrushProperty, PointedBrushProperty, OnPointedBrushProperty);
 
     readonly Pictures pictures = new();
     readonly DispatcherTimer blinker = new() { Interval = TimeSpan.FromMilliseconds(530) };
@@ -69,6 +82,20 @@ public sealed class DocumentView : Control
     /// <summary>The copy last made, with its formatting, for pasting it as it was while the clipboard still holds its text.</summary>
     Fragment? copied;
 
+    /// <summary>The stretches with a meaning each page shows, found once for its scene (see MeaningMarks).</summary>
+    readonly ConditionalWeakTable<PageScene, List<MeaningMark>> meaningMarks = new();
+
+    /// <summary>The stretch with a meaning the pointer is over while meanings show.</summary>
+    MeaningMark? pointed;
+
+    /// <summary>
+    /// The pages in view as they were before a change of the whole look, fading out over their new look (see Restyle): where they stood
+    /// (their sheets in the view's coordinates at the factor then), the view's scroll offset then, and since when.
+    /// </summary>
+    (List<(Rect Sheet, SKPicture Picture, double Factor)> Pages, Vector Offset, long Since)? fading;
+
+    readonly DispatcherTimer fader = new() { Interval = TimeSpan.FromMilliseconds(15) };
+
     public DocumentView()
     {
         ClipToBounds = true;
@@ -77,6 +104,15 @@ public sealed class DocumentView : Control
         blinker.Tick += (_, _) =>
         {
             blink = !blink;
+            InvalidateVisual();
+        };
+        fader.Tick += (_, _) =>
+        {
+            if (fading is { } fade && Environment.TickCount64 - fade.Since >= FadeTime)
+            {
+                fading = null;
+                fader.Stop();
+            }
             InvalidateVisual();
         };
         ime = new Ime(this);
@@ -110,6 +146,42 @@ public sealed class DocumentView : Control
         get => GetValue(SelectionBrushProperty);
         set => SetValue(SelectionBrushProperty, value);
     }
+
+    /// <summary>
+    /// Whether the text shows what it means: each stretch with a meaning (see MeaningName) framed, its meaning's name beside its first line
+    /// in the page's margin, and over its start while the pointer is on it. Nothing of the pages moves for it.
+    /// </summary>
+    public bool ShowsMeanings
+    {
+        get => GetValue(ShowsMeaningsProperty);
+        set => SetValue(ShowsMeaningsProperty, value);
+    }
+
+    /// <summary>The frames and names of the meanings.</summary>
+    public IBrush? MeaningBrush
+    {
+        get => GetValue(MeaningBrushProperty);
+        set => SetValue(MeaningBrushProperty, value);
+    }
+
+    /// <summary>What the pointer is on, and what stands on that.</summary>
+    public IBrush? PointedBrush
+    {
+        get => GetValue(PointedBrushProperty);
+        set => SetValue(PointedBrushProperty, value);
+    }
+
+    public IBrush? OnPointedBrush
+    {
+        get => GetValue(OnPointedBrushProperty);
+        set => SetValue(OnPointedBrushProperty, value);
+    }
+
+    /// <summary>The name of the meaning a character style stands for (see IEditableDocument.CharacterStyles), or null for one that stands for none.</summary>
+    public Func<string, string?>? MeaningName { get; set; }
+
+    /// <summary>The document changed, or may have: an edit made through the view, undoing or doing again.</summary>
+    public event Action? Changed;
 
     /// <summary>Whether the document holds nothing yet: one empty paragraph.</summary>
     public bool IsEmpty { get; private set; } = true;
@@ -256,7 +328,9 @@ public sealed class DocumentView : Control
             // The document draws its pages when they are wanted, before the frame records them.
             Page(row.Index);
         }
-        context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush)));
+        context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush), Fading()));
+        if (ShowsMeanings)
+            DrawMeanings(context, visible);
         // The text being composed over the page at the cursor, underlined, as input methods show it.
         if (preedit != null && CaretRect() is { Height: > 0 } bar)
         {
@@ -269,6 +343,167 @@ public sealed class DocumentView : Control
     }
 
     static SKColor Skia(IBrush? brush) => brush is ISolidColorBrush { Color: var c } ? new SKColor(c.R, c.G, c.B, c.A) : SKColors.Black;
+
+    /// <summary>
+    /// Makes an edit that changes how all of the document looks (its tone, see IEditableDocument.DefineStyles) through the session: the pages
+    /// in view as they were fade out over their new look, where they stood in the view.
+    /// </summary>
+    public void Restyle(Action change)
+    {
+        var view = scroller != null ? new Rect(scroller.Offset.X, scroller.Offset.Y, scroller.Viewport.Width, scroller.Viewport.Height) : new Rect(Bounds.Size);
+        var before = rows.Where(r => r.Top * factor < view.Bottom && (r.Top + r.Size.Height) * factor > view.Top)
+            .Select(r => (SheetRect(r), pictures.Page(Page(r.Index)), factor)).ToList();
+        Edit(change);
+        fading = (before, scroller?.Offset ?? default, Environment.TickCount64);
+        fader.Start();
+    }
+
+    /// <summary>The pages fading out (see Restyle) where they stand in the view now and how much of them shows, or null.</summary>
+    (List<(SKRect Sheet, SKPicture Picture, float Factor)> Pages, float Opacity)? Fading()
+    {
+        if (fading is not var (pages, offset, since))
+            return null;
+        var t = Math.Clamp((Environment.TickCount64 - since) / FadeTime, 0, 1);
+        // Out quickly at first, then gently.
+        var opacity = (float)Math.Pow(1 - t, 2);
+        var shift = (scroller?.Offset ?? default) - offset;
+        return (pages.Select(p => (SKRect.Create((float)(p.Sheet.X + shift.X), (float)(p.Sheet.Y + shift.Y), (float)p.Sheet.Width, (float)p.Sheet.Height), p.Picture, (float)p.Factor)).ToList(),
+            opacity);
+    }
+
+    /// <summary>A stretch of text with a meaning as its page shows it: its character style and its areas line by line (CSS pixels of the page).</summary>
+    sealed record MeaningMark(string Style, List<SKRect> Areas);
+
+    /// <summary>
+    /// The stretches with a meaning a page shows (see IEditableDocument.CharacterStyles), in the order the page shows their starts. A
+    /// change of a meaning changes the page's scene, which they are found for once.
+    /// </summary>
+    List<MeaningMark> MeaningMarks(int page)
+    {
+        var scene = Page(page);
+        if (meaningMarks.TryGetValue(scene, out var known))
+            return known;
+        var marks = new List<MeaningMark>();
+        if (session is { } editing && MeaningName is { } name)
+        {
+            var places = pictures.Places(scene);
+            var styles = new Dictionary<int, IReadOnlyList<(int Offset, int Length, string Style)>>();
+            var byStretch = new Dictionary<(int Block, int Offset), MeaningMark>();
+            const float PxPerPoint = 96f / 72;
+            foreach (var (toPage, line) in places.Lines)
+            {
+                if (line.Offsets.Length == 0)
+                    continue;
+                if (!styles.TryGetValue(line.Block, out var stretches))
+                    styles[line.Block] = stretches = editing.Document.Contains(line.Block) ? editing.Document.CharacterStyles(line.Block) : [];
+                if (stretches.Count == 0)
+                    continue;
+                // The characters of the line in a stretch with a meaning, one area for each run of them in one stretch.
+                (int Offset, double Left, double Right)? run = null;
+                void Close()
+                {
+                    if (run is not var (offset, left, right) || right <= left)
+                        return;
+                    var stretch = stretches.First(s => s.Offset == offset);
+                    if (name(stretch.Style) == null)
+                        return;
+                    SKPoint[] corners = [toPage.MapPoint((float)(left * PxPerPoint), (float)(line.Top * PxPerPoint)), toPage.MapPoint((float)(right * PxPerPoint), (float)(line.Bottom * PxPerPoint))];
+                    var area = new SKRect(corners.Min(c => c.X), corners.Min(c => c.Y), corners.Max(c => c.X), corners.Max(c => c.Y));
+                    if (!byStretch.TryGetValue((line.Block, offset), out var mark))
+                        marks.Add(byStretch[(line.Block, offset)] = mark = new MeaningMark(stretch.Style, []));
+                    mark.Areas.Add(area);
+                }
+                for (var i = 0; i < line.Offsets.Length; i++)
+                {
+                    var at = line.Offsets[i];
+                    var stretch = stretches.FirstOrDefault(s => at >= s.Offset && at < s.Offset + s.Length);
+                    var (left, right) = (Math.Min(line.Starts[i], line.Ends[i]), Math.Max(line.Starts[i], line.Ends[i]));
+                    if (stretch.Style != null && run is var (offset, runLeft, runRight) && offset == stretch.Offset)
+                    {
+                        run = (offset, Math.Min(runLeft, left), Math.Max(runRight, right));
+                        continue;
+                    }
+                    Close();
+                    run = stretch.Style != null ? (stretch.Offset, left, right) : null;
+                }
+                Close();
+            }
+        }
+        meaningMarks.AddOrUpdate(scene, marks);
+        return marks;
+    }
+
+    /// <summary>
+    /// The meanings over the pages in view (see ShowsMeanings): each stretch framed, its meaning's name in the margin right of the page's
+    /// text beside its first line, after those of the stretches before it there; the stretch the pointer is on, and its name, in the
+    /// pointer's colour, its name also over its start.
+    /// </summary>
+    void DrawMeanings(DrawingContext context, List<(Row Row, double Left)> visible)
+    {
+        var typeface = new Typeface(new FontFamily("fonts:Inter#Inter"), FontStyle.Normal, FontWeight.SemiBold);
+        var frame = new Pen(MeaningBrush, 1);
+        var pointedFrame = new Pen(PointedBrush, 1.5);
+        foreach (var (row, left) in visible)
+        {
+            var marks = MeaningMarks(row.Index);
+            if (marks.Count == 0)
+                continue;
+            Rect ToView(SKRect area) => new(left + area.Left * factor, (row.Top + area.Top) * factor, area.Width * factor, area.Height * factor);
+            // The margin begins after the right end of the page's text.
+            var places = pictures.Places(Page(row.Index));
+            var textRight = 0.0;
+            foreach (var (toPage, line) in places.Lines)
+            {
+                if (line.Offsets.Length > 0)
+                    textRight = Math.Max(textRight, toPage.MapPoint((float)(line.Ends.Max() * 96 / 72), 0).X);
+            }
+            // Where the next name beside a line goes: after the one before it, below it where the sheet ends first.
+            var (margin, sheetRight) = (left + textRight * factor + 18, left + row.Size.Width * factor - 8);
+            var nextFree = new Dictionary<int, Point>();
+            foreach (var mark in marks)
+            {
+                var isPointed = ReferenceEquals(mark, pointed);
+                foreach (var area in mark.Areas)
+                    context.DrawRectangle(null, isPointed ? pointedFrame : frame, ToView(area).Inflate(new Thickness(1.5, 0.5)), 2.5, 2.5);
+                var first = ToView(mark.Areas[0]);
+                // Named now, in the language the interface has now.
+                var name = MeaningName?.Invoke(mark.Style) ?? mark.Style;
+                var label = new TextLayout(name.ToUpper(CultureInfo.CurrentCulture), typeface, 8.5, isPointed ? OnPointedBrush : MeaningBrush, letterSpacing: 0.7);
+                var width = label.WidthIncludingTrailingWhitespace;
+                var lineKey = (int)Math.Round(first.Top);
+                var at = nextFree.TryGetValue(lineKey, out var free) ? free : new Point(margin, first.Center.Y - label.Height / 2);
+                if (at.X > margin && at.X + width > sheetRight)
+                    at = new Point(margin, at.Y + label.Height + 3);
+                var (x, y) = (at.X, at.Y);
+                if (isPointed)
+                    context.DrawRectangle(PointedBrush, null, new Rect(x - 4, y - 1.5, width + 8, label.Height + 3), 3, 3);
+                label.Draw(context, new Point(x, y));
+                nextFree[lineKey] = new Point(x + width + 14, y);
+                // Over the start of the stretch the pointer is on as well, where the eye is.
+                if (isPointed)
+                {
+                    var over = new Point(first.Left, first.Top - label.Height - 4);
+                    context.DrawRectangle(PointedBrush, null, new Rect(over.X - 4, over.Y - 1.5, width + 8, label.Height + 3), 3, 3);
+                    label.Draw(context, over);
+                }
+            }
+        }
+    }
+
+    /// <summary>The stretch with a meaning at a point of the view, while meanings show.</summary>
+    MeaningMark? MeaningAt(Point point)
+    {
+        if (!ShowsMeanings)
+            return null;
+        foreach (var row in rows)
+        {
+            if (point.Y < row.Top * factor || point.Y > (row.Top + row.Size.Height) * factor)
+                continue;
+            var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
+            return MeaningMarks(row.Index).FirstOrDefault(m => m.Areas.Any(a => SKRect.Inflate(a, 1.5f, 0.5f).Contains(local)));
+        }
+        return null;
+    }
 
     /// <summary>The character the cursor stands at on its page, before it, or after it at the end of its line.</summary>
     (TextPlaces.Spot Spot, bool After) CaretSpot(List<TextPlaces.Spot> spots, int at) =>
@@ -325,6 +560,21 @@ public sealed class DocumentView : Control
         {
             (caret, lineEnd) = ((page, at), end);
             Moved();
+        }
+        else if (!selecting && MeaningAt(e.GetPosition(this)) is var mark && !ReferenceEquals(mark, pointed))
+        {
+            pointed = mark;
+            InvalidateVisual();
+        }
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        if (pointed != null)
+        {
+            pointed = null;
+            InvalidateVisual();
         }
     }
 
@@ -543,6 +793,7 @@ public sealed class DocumentView : Control
         Show(editing.Caret, editing.Anchor);
         CheckEmpty();
         LayOutLater();
+        Changed?.Invoke();
     }
 
     void CheckEmpty()
@@ -825,9 +1076,10 @@ public sealed class DocumentView : Control
         }
     }
 
-    /// <summary>The rows in view drawn on Avalonia's Skia canvas.</summary>
+    /// <summary>The rows in view drawn on Avalonia's Skia canvas, and over them the pages fading out (see Restyle).</summary>
     sealed class Drawing(Rect bounds, List<(Row Row, double Left)> rows, double factor, IReadOnlyList<PageScene> scenes,
-        Pictures pictures, Dictionary<int, Mark> marks, SKColor selection, SKColor caret) : ICustomDrawOperation
+        Pictures pictures, Dictionary<int, Mark> marks, SKColor selection, SKColor caret,
+        (List<(SKRect Sheet, SKPicture Picture, float Factor)> Pages, float Opacity)? fading = null) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -869,6 +1121,22 @@ public sealed class DocumentView : Control
                     }
                 }
                 canvas.Restore();
+            }
+            // A page as it was: its sheet and its drawing, the more transparent the further the fade has come.
+            if (fading is var (pages, opacity))
+            {
+                using var faded = new SKPaint { Color = SKColors.White.WithAlpha((byte)Math.Round(opacity * 255)) };
+                foreach (var (sheet, picture, scale) in pages)
+                {
+                    canvas.DrawRect(sheet, faded);
+                    canvas.Save();
+                    canvas.Translate(sheet.Left, sheet.Top);
+                    canvas.Scale(scale);
+                    canvas.ClipRect(SKRect.Create(sheet.Width / scale, sheet.Height / scale));
+                    canvas.DrawPicture(picture, faded);
+                    canvas.Restore();
+                    GC.KeepAlive(picture);
+                }
             }
         }
     }

@@ -147,7 +147,9 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   places of its scenes name, a place is an offset in a paragraph's text (`Docx/ParagraphText`, `Pptx/SlideText`).
   Each change is a version that `Undo` goes back from and `Redo` forward to, and `Combine` takes the last few as one (an
   editor's step, words typed one after the other); a change the document cannot make leaves it as it was and throws
-  `NotSupportedException`.
+  `NotSupportedException`. Text can mean something without a look of its own: a character style (`TextFormatting.Style`,
+  `CharacterStyles`), whose look the style definitions give, which `DefineStyles` replaces all at once as a style set does
+  in Word: a Word document is then read whole again, and so is a version with other styles that undoing goes to.
 - `WordDocument` makes a change in the XML of the blocks it touches: their text is parsed afresh, changed
   (`Docx/TextEdits`; as tracked changes through `Docx/Tracking` where an author is set), made ready as the part was when
   it was loaded and read anew in place of those blocks (`ModelReader.Reread`, `Docx/Reread.cs`). The reader records the
@@ -202,6 +204,12 @@ interface, `FreeSlate.Editor.Desktop` and `FreeSlate.Editor.Browser` only start 
 go to the page's storage, and the engine gets the app's Inter as its only font). It opens on a new document
 (`WordDocument.New`) in `DocumentView`, which draws the sheets from their scenes with Skia and sends keys, typed text and an
 input method's text to an `EditSession`. It neither opens nor saves files yet.
+
+A document says what its text means, not how it looks (`Writing/`): a meaning is a character style (`Meanings`), and a tone
+(`Tones`, the style sets in `Tones/*.xml`) gives the meanings and the paragraphs' levels their look, the whole document at once,
+a change of it one step to undo, which the sheets in view fade through (`DocumentView.Restyle`). The file stays a Word document
+that looks alike in Word. `DocumentView.ShowsMeanings` frames the stretches with a meaning and names it in the page's margin,
+drawn over the pages, which do not move for it. The engine gets the app's Inter beside the system's fonts (`EngineFonts`).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

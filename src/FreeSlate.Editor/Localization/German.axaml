@@ -9,4 +9,14 @@
   <x:String x:Key="CaptionClose">Schließen</x:String>
   <x:String x:Key="EmptyLine">Ein unbeschriebenes Blatt.</x:String>
   <x:String x:Key="LanguageChoice">Sprache</x:String>
+  <x:String x:Key="ToneChoice">Haltung</x:String>
+  <x:String x:Key="TonePlain">Sachlich</x:String>
+  <x:String x:Key="ToneMagazine">Magazin</x:String>
+  <x:String x:Key="ToneNotebook">Notizbuch</x:String>
+  <x:String x:Key="ShowMeanings">Bedeutung zeigen</x:String>
+  <x:String x:Key="MeaningImportant">Wichtig</x:String>
+  <x:String x:Key="MeaningEmphasized">Betonung</x:String>
+  <x:String x:Key="MeaningTerm">Begriff</x:String>
+  <x:String x:Key="MeaningQuotation">Zitat</x:String>
+  <x:String x:Key="MeaningOpenQuestion">Offene Frage</x:String>
 </ResourceDictionary>

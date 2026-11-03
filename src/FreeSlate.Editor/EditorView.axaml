@@ -17,9 +17,30 @@
     </Style>
   </Panel.Styles>
 
-  <ScrollViewer>
+  <ScrollViewer Margin="0,40,0,0">
     <c:DocumentView x:Name="Sheets" />
   </ScrollViewer>
+
+  <!-- The document's tone and whether its meanings show, quiet above the sheets. -->
+  <StackPanel Orientation="Horizontal"
+              Spacing="2"
+              Height="40"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top">
+    <TextBlock Text="{DynamicResource ToneChoice}"
+               Foreground="{DynamicResource InkGhost}"
+               FontSize="12"
+               VerticalAlignment="Center"
+               Margin="0,0,6,0" />
+    <StackPanel x:Name="ToneChoice"
+                Orientation="Horizontal"
+                Spacing="2"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="{DynamicResource ToneChoice}"
+                AutomationProperties.IsControlElementOverride="True" />
+    <Border Width="1" Height="14" Background="{DynamicResource Hairline}" Margin="14,0" VerticalAlignment="Center" />
+    <ToggleButton x:Name="ShowMeanings" Content="{DynamicResource ShowMeanings}" VerticalAlignment="Center" />
+  </StackPanel>
 
   <!-- While nothing is written yet: a line a little above the middle, and the choice of language. -->
   <Grid Classes="whileEmpty" RowDefinitions="4*,Auto,5*" IsHitTestVisible="False">

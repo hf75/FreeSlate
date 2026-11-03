@@ -1,0 +1,61 @@
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <!--
+    Notizbuch (notebook): Inter on a line pitch of 20 pt, a blank line between paragraphs, marks as with pens: important
+    things underlined in yellow, terms boxed, open questions in orange.
+  -->
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal" />
+    <w:qFormat />
+    <w:pPr><w:spacing w:before="0" w:after="400" w:line="400" w:lineRule="exact" /></w:pPr>
+    <w:rPr><w:rFonts w:ascii="Inter" w:hAnsi="Inter" w:eastAsia="Inter" w:cs="Inter" /><w:color w:val="2B2B2B" /><w:sz w:val="20" /><w:szCs w:val="20" /></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Title">
+    <w:name w:val="Title" />
+    <w:basedOn w:val="Normal" />
+    <w:next w:val="Normal" />
+    <w:qFormat />
+    <w:pPr><w:keepNext /><w:keepLines /><w:spacing w:before="0" w:after="400" w:line="800" w:lineRule="exact" /></w:pPr>
+    <w:rPr><w:b /><w:bCs /><w:color w:val="1F1F1F" /><w:sz w:val="36" /><w:szCs w:val="36" /></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1" />
+    <w:basedOn w:val="Normal" />
+    <w:next w:val="Normal" />
+    <w:qFormat />
+    <w:pPr><w:keepNext /><w:keepLines /><w:spacing w:before="400" w:after="0" w:line="400" w:lineRule="exact" /><w:outlineLvl w:val="0" /></w:pPr>
+    <w:rPr><w:b /><w:bCs /><w:color w:val="2563EB" /><w:sz w:val="22" /><w:szCs w:val="22" /></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2">
+    <w:name w:val="heading 2" />
+    <w:basedOn w:val="Normal" />
+    <w:next w:val="Normal" />
+    <w:qFormat />
+    <w:pPr><w:keepNext /><w:keepLines /><w:spacing w:before="0" w:after="0" w:line="400" w:lineRule="exact" /><w:outlineLvl w:val="1" /></w:pPr>
+    <w:rPr><w:rFonts w:ascii="Inter SemiBold" w:hAnsi="Inter SemiBold" w:eastAsia="Inter SemiBold" w:cs="Inter SemiBold" /><w:color w:val="2563EB" /></w:rPr>
+  </w:style>
+  <w:style w:type="character" w:styleId="Important">
+    <w:name w:val="{Important}" />
+    <w:qFormat />
+    <w:rPr><w:u w:val="thick" w:color="FACC15" /></w:rPr>
+  </w:style>
+  <w:style w:type="character" w:styleId="Emphasized">
+    <w:name w:val="{Emphasized}" />
+    <w:qFormat />
+    <w:rPr><w:i /><w:iCs /></w:rPr>
+  </w:style>
+  <w:style w:type="character" w:styleId="Term">
+    <w:name w:val="{Term}" />
+    <w:qFormat />
+    <w:rPr><w:bdr w:val="single" w:sz="4" w:space="1" w:color="3F3F3F" /></w:rPr>
+  </w:style>
+  <w:style w:type="character" w:styleId="Quotation">
+    <w:name w:val="{Quotation}" />
+    <w:qFormat />
+    <w:rPr><w:i /><w:iCs /><w:color w:val="555555" /></w:rPr>
+  </w:style>
+  <w:style w:type="character" w:styleId="OpenQuestion">
+    <w:name w:val="{OpenQuestion}" />
+    <w:qFormat />
+    <w:rPr><w:b /><w:bCs /><w:color w:val="EA580C" /></w:rPr>
+  </w:style>
+</w:styles>
