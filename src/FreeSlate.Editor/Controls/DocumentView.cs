@@ -1320,8 +1320,9 @@ public sealed partial class DocumentView : Control
     }
 
     /// <summary>
-    /// Puts pictures at the cursor in place of the selection, one after the other (see EditSession.InsertPicture): of a kind Word keeps
-    /// as it is, else as PNG (WebP, an icon); what is no picture is left out.
+    /// Puts pictures at the cursor in place of the selection, one after the other (see EditSession.InsertPicture), made ready first
+    /// (see PictureFit): upright, of a kind Word keeps as it is, else as PNG (WebP, an icon), and no larger in pixels than their size
+    /// needs; what is no picture is left out.
     /// </summary>
     public void InsertPictures(IReadOnlyList<(byte[] Bytes, string Name)> given)
     {
@@ -1331,8 +1332,9 @@ public sealed partial class DocumentView : Control
         {
             foreach (var (bytes, name) in given)
             {
-                if (!editing.InsertPicture(bytes, name) && AsPng(bytes) is { } png)
-                    editing.InsertPicture(png, name);
+                var upright = PictureFit.Upright(bytes) ?? AsPng(bytes) ?? bytes;
+                if (editing.PictureSize(upright) is { } size)
+                    editing.InsertPicture(PictureFit.Fitted(upright, size.Width, size.Height), name, size);
             }
         });
     }

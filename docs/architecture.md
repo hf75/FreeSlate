@@ -244,7 +244,9 @@ selection hidden meanwhile (`GestureRing.Preview`, `DocumentView.SelectionHidden
 the line above the sheets lies under the window's buttons and comes and goes with them (`CaptionBar.Changed`).
 Pictures go in as Word puts them in from a file (`EditSession.InsertPicture`): in the line at their own size, no wider than the
 text of their column; dropped on the sheets (a bar shows where they would go), or pasted where the clipboard holds no text (picture
-files copied from a folder, else a picture itself), kinds Word does not keep as PNG. A click on a drawing selects it as a whole and
+files copied from a folder, else a picture itself), kinds Word does not keep as PNG. They are made ready first (`Skia/PictureFit`):
+upright as their camera says (EXIF orientation, which Word does not follow in a document), and no larger in pixels than their size
+needs at Word's default 220 pixels an inch, a picture made anew in sRGB and without the camera's metadata. A click on a drawing selects it as a whole and
 frames it instead of tinting it; the frame is the drawing's own box, which the renderer gives among the line's places
 (`PlacesItem.Boxes`, `TextPlaces.Box`); one in front of the text is hit first, one behind it only where no text lies over it. On a
 picture the ring has the picture's fields (`GestureRing.Choose`, `Writing/Placements`): in the line up, beside the text right and

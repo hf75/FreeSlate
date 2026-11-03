@@ -296,25 +296,37 @@ public sealed class EditSession(IEditableDocument document)
     }
 
     /// <summary>
-    /// Puts a picture at the cursor in place of the selection, a handling of its own (see InsertMarkup), as Word puts one in
-    /// from a file: in the line, at its own size (its pixels at its resolution, see Html.ImageInfo) but no wider than the
-    /// text of the column it stands in nor higher than the page's text, keeping its proportions; named as given (wp:docPr,
-    /// which Word shows as the picture's name). The bytes are a PNG, JPEG, GIF, BMP or TIFF file, kept as they are. False,
-    /// and nothing done, where they are none of those or the document takes no pictures so (slides).
+    /// The size a picture takes put in at the cursor (see InsertPicture), in points: its own (its pixels at its resolution, see
+    /// Html.ImageInfo) but no wider than the text of the column it stands in nor higher than the page's text, its proportions
+    /// kept; null where the bytes are no PNG, JPEG, GIF, BMP or TIFF file or the document takes no pictures so (slides).
     /// </summary>
-    public bool InsertPicture(byte[] bytes, string name)
+    public (double Width, double Height)? PictureSize(byte[] bytes)
     {
-        if (document is not WordDocument word || PictureType(bytes) is not var (type, extension))
-            return false;
+        if (document is not WordDocument word || PictureType(bytes) == null)
+            return null;
         var (pixelsWide, pixelsHigh) = Html.ImageInfo.Size(bytes);
         if (pixelsWide <= 0 || pixelsHigh <= 0)
-            return false;
+            return null;
         // CSS pixels to points, then into the room there is.
         var (width, height) = (pixelsWide * 0.75, pixelsHigh * 0.75);
         var (roomWide, roomHigh) = RoomFor(word, Caret.Paragraph);
         var scale = Math.Min(1, Math.Min(roomWide / width, roomHigh / height));
+        return (width * scale, height * scale);
+    }
+
+    /// <summary>
+    /// Puts a picture at the cursor in place of the selection, a handling of its own (see InsertMarkup), as Word puts one in
+    /// from a file: in the line, at the size given (in points) or at the size it takes there (see PictureSize); named as given
+    /// (wp:docPr, which Word shows as the picture's name). The bytes are a PNG, JPEG, GIF, BMP or TIFF file, kept as they are
+    /// (made ready before, see Skia.PictureFit, the size given is the one they were made smaller for). False, and nothing done,
+    /// where they are none of those or the document takes no pictures so (slides).
+    /// </summary>
+    public bool InsertPicture(byte[] bytes, string name, (double Width, double Height)? size = null)
+    {
+        if (document is not WordDocument || PictureType(bytes) is not var (type, extension) || (size ?? PictureSize(bytes)) is not var (width, height))
+            return false;
         const double EmuPerPoint = 12700;
-        var (cx, cy) = (Math.Max(1, (long)Math.Round(width * scale * EmuPerPoint)), Math.Max(1, (long)Math.Round(height * scale * EmuPerPoint)));
+        var (cx, cy) = (Math.Max(1, (long)Math.Round(width * EmuPerPoint)), Math.Max(1, (long)Math.Round(height * EmuPerPoint)));
         var named = System.Security.SecurityElement.Escape(name.Replace('{', '(').Replace('}', ')'));
         InsertMarkup(
             $"<w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"{cx}\" cy=\"{cy}\"/><wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/>"
