@@ -45,6 +45,9 @@ public sealed partial class DocumentView
     /// <summary>Whether the drawing selected can be turned: a picture, by itself or with its caption.</summary>
     bool TurnsHere => session?.PictureShown != null && !cropping && !tilting;
 
+    /// <summary>The selection where it is a picture shown turned: its frame unturned and how far it is turned (see TurnedFrame); null otherwise.</summary>
+    public (Rect Frame, double Turn)? SelectionTurned() => TurnedFrame() is var (frame, turn) && turn != 0 ? (frame, turn) : null;
+
     /// <summary>A turn about a point by so many degrees clockwise, as the view's matrix.</summary>
     static Matrix TurnAbout(Point centre, double degrees) =>
         Matrix.CreateTranslation(-centre.X, -centre.Y) * Matrix.CreateRotation(degrees * Math.PI / 180) * Matrix.CreateTranslation(centre.X, centre.Y);

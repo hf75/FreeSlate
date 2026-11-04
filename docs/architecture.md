@@ -139,7 +139,9 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
 - `Rendering/HtmlScene` writes the HTML document described above.
 - `src/FreeSlate.Skia` draws scenes on a Skia canvas: PNG (`SkiaScene.Png`), PDF and PDF/A (`PdfExport`, fonts embedded
   as subsets made with HarfBuzz's subsetter, `Text/FontSubset`), and the viewer's pages. `TextPlaces` turns the places
-  into hit tests, cursors and selections; the SVG of `MarkupItem`s is drawn by its own SVG reader (`SvgDrawing`).
+  into hit tests, cursors and selections (a drawing turned or tilted hit where it shows, the outline the renderer gives
+  for it, `PlacesItem.Outlines`, `Docx/Drawings.TurnedOutline`); the SVG of `MarkupItem`s is drawn by its own SVG
+  reader (`SvgDrawing`).
 
 ## Editing (`WordDocument`, `PresentationDocument`, `Editing/`)
 
@@ -291,7 +293,8 @@ files copied from a folder, else a picture itself), kinds Word does not keep as 
 upright as their camera says (EXIF orientation, which Word does not follow in a document), and no larger in pixels than their size
 needs at Word's default 220 pixels an inch, a picture made anew in sRGB and without the camera's metadata. A click on a drawing selects it as a whole and
 frames it instead of tinting it; the frame is the drawing's own box, which the renderer gives among the line's places
-(`PlacesItem.Boxes`, `TextPlaces.Box`); one in front of the text is hit first, one behind it only where no text lies over it. On a
+(`PlacesItem.Boxes`, `TextPlaces.Box`); one in front of the text is hit first, one behind it only where no text lies over it, one
+turned or tilted where it shows (`TextPlaces.OnDrawing`); the ring frames a turned picture turned (`GestureRing.Turned`). On a
 picture the ring has the picture's fields (`GestureRing.Choose`, `Writing/Placements`): in the line up, beside the text right and
 left, on its own between the text down, in front of the text and behind it between them, a place on the page down right (a
 ring of the eight places round the margins, each in its direction), and up left the picture itself (a ring: a caption up, the

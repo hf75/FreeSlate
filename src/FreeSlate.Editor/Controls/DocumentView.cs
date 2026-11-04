@@ -698,7 +698,7 @@ public sealed partial class DocumentView : Control
     /// The drawing a point of the view is on: its page and the place of its character among the page's (a floating one's anchor). One in
     /// front of the text first, then one in the line, then one behind the text where no character is over the point; a drawing in
     /// another's text box counts as that one (a picture as its caption's figure), and the text a drawing's box holds is text where the
-    /// point is in one of its lines (see TextHolder).
+    /// point is in one of its lines (see TextHolder). A drawing turned or tilted is on the point where it shows (TextPlaces.OnDrawing).
     /// </summary>
     (int Page, int At)? DrawingAt(Point point)
     {
@@ -715,8 +715,7 @@ public sealed partial class DocumentView : Control
             var found = places.FloatingAt(local, behind: false);
             for (var i = 0; i < spots.Count && found == null; i++)
             {
-                if (places.InlineBox(spots[i]) is { } corners && local.X >= corners.Min(c => c.X) && local.X <= corners.Max(c => c.X)
-                    && local.Y >= corners.Min(c => c.Y) && local.Y <= corners.Max(c => c.Y))
+                if (places.InlineBox(spots[i]) != null && places.OnDrawing(spots[i], local))
                     found = places.PlaceAt(spots[i], after: false);
             }
             if (found == null && !places.Over(local))
@@ -754,6 +753,16 @@ public sealed partial class DocumentView : Control
 
     /// <summary>Whether a point of the view is on a drawing (see DrawingAt).</summary>
     public bool OnDrawing(Point point) => DrawingAt(point) != null;
+
+    /// <summary>Whether a point of the view is on the drawing among a page's characters: where it shows turned or tilted, else on its box (see TextPlaces.OnDrawing).</summary>
+    bool Hits(int page, int at, Point point)
+    {
+        if (page >= rows.Count)
+            return false;
+        var row = rows[page];
+        var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
+        return pictures.Places(Page(page)).OnDrawing(pictures.Spots(Page(page))[at], local);
+    }
 
     /// <summary>Selects the drawing a point of the view is on as a whole (see DrawingAt); false where it is on none.</summary>
     public bool SelectDrawingAt(Point point)
@@ -946,15 +955,15 @@ public sealed partial class DocumentView : Control
     }
 
     /// <summary>
-    /// Whether a point of the view is on the selection (a drawing selected as a whole: on its box, not on a handle); a picture being cropped
-    /// or tilted is none, a press on it crops or tilts it.
+    /// Whether a point of the view is on the selection (a drawing selected as a whole: on it where it shows, see Hits, not on a handle); a
+    /// picture being cropped or tilted is none, a press on it crops or tilts it.
     /// </summary>
     public bool OnSelection(Point point)
     {
         if (cropping || tilting)
             return false;
         if (SelectedDrawing() is var (drawnPage, drawnAt))
-            return BoxOf(drawnPage, drawnAt) is { } box && box.Contains(point) && HandleAt(point) == null;
+            return Hits(drawnPage, drawnAt, point) && HandleAt(point) == null;
         foreach (var (page, from, count) in Selected())
         {
             if (page >= rows.Count)
@@ -971,10 +980,14 @@ public sealed partial class DocumentView : Control
 
     /// <summary>
     /// The parts of the selection on the sheets in view, one for each line (or run of a line) in the order of the text, as rectangles of
-    /// the view's coordinates; a drawing selected as a whole its box; none without a selection.
+    /// the view's coordinates; a drawing selected as a whole its box, a picture turned what its frame takes turned; none without a
+    /// selection.
     /// </summary>
     public List<Rect> SelectionAreas()
     {
+        if (SelectionTurned() is var (frame, turn))
+            return [new Rect(Turned(frame.TopLeft, frame.Center, turn), Turned(frame.BottomRight, frame.Center, turn))
+                .Union(new Rect(Turned(frame.TopRight, frame.Center, turn), Turned(frame.BottomLeft, frame.Center, turn)))];
         if (SelectedDrawing() is var (drawnPage, drawnAt))
             return BoxOf(drawnPage, drawnAt) is { } box ? [box] : [];
         var parts = new List<Rect>();

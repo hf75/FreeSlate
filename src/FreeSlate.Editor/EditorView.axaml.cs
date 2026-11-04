@@ -268,6 +268,9 @@ public sealed partial class EditorView : Panel
         ring.Selection = () => Sheets.TranslatePoint(default, ring) is { } shift
             ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList()
             : [];
+        ring.Turned = () => Sheets.SelectionTurned() is var (frame, turn) && Sheets.TranslatePoint(default, ring) is { } moved
+            ? (frame.Translate((Vector)moved), turn)
+            : null;
         // A picture under the pointer first: it lies over the text, or is the text's; where nothing is, what goes in there.
         ring.Target = point =>
         {

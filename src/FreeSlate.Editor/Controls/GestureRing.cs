@@ -134,6 +134,12 @@ public sealed class GestureRing : Control
     public Func<IReadOnlyList<Rect>>? Selection { get; set; }
 
     /// <summary>
+    /// Where the selection is a drawing shown turned: its frame before it turns, in the ring's coordinates, and how far it is turned
+    /// clockwise about its middle, in degrees; the ring frames it turned so (instead of Selection's parts). Null otherwise.
+    /// </summary>
+    public Func<(Rect Frame, double Turn)?>? Turned { get; set; }
+
+    /// <summary>
     /// The field pointed at changed: the text is to read as that field would make it (null: as it was). What the field then does keeps
     /// what its preview made; a ring closed without doing anything has a preview taken back by this with null.
     /// </summary>
@@ -693,9 +699,17 @@ public sealed class GestureRing : Control
         var parts = Selection?.Invoke() ?? [];
         using (context.PushOpacity(appear))
         {
-            // Its frame, under the ring: in the ring's clear middle, and around it.
-            if (parts.Count > 0)
-                context.DrawGeometry(null, new Pen(chosen != null ? accent : line, chosen != null ? 1.5 : 1), Around(parts));
+            // Its frame, under the ring: in the ring's clear middle, and around it; a drawing turned, its frame turned with it.
+            var framing = new Pen(chosen != null ? accent : line, chosen != null ? 1.5 : 1);
+            if (Turned?.Invoke() is var (frame, turn))
+            {
+                var middle = frame.Center;
+                var turned = Matrix.CreateTranslation(-middle.X, -middle.Y) * Matrix.CreateRotation(turn * Math.PI / 180) * Matrix.CreateTranslation(middle.X, middle.Y);
+                using (context.PushTransform(turned))
+                    context.DrawGeometry(null, framing, Around([frame]));
+            }
+            else if (parts.Count > 0)
+                context.DrawGeometry(null, framing, Around(parts));
             using (context.PushTransform(Matrix.CreateTranslation(-c.X, -c.Y) * Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(c.X, c.Y)))
             {
                 // The disc, of glass, raised over the page (a little higher while it is moved): the band of fields nearly whole, so that
