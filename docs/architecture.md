@@ -374,6 +374,11 @@ let go it is one step, Escape takes a stroke back. Enter, Escape or a press besi
 column right (sorted up or down by it, a column left or right, taken away), shaping the table by hand down, and the table left
 (rows turned into columns, columns made even, a head row or none, the table taken away), each laid out as the table is and each
 a preview.
+Beside the table the pointer is at its rows and columns have grips, left of the row and above the column, faint, in the accent
+where the pointer is on one, a plus between two (`DocumentView.Grips.cs`): a click on a grip selects its row or column (Shift
+another one up to it; Delete or Backspace takes them away), dragged along the table it moves them before another (rows and
+columns of their own, a bar showing where), dragged out of the table it takes them away (tinted as going), a plus puts a row or a
+column in there; each one step. The level lever does not show beside a table.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

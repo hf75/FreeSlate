@@ -384,6 +384,7 @@ public sealed partial class DocumentView : Control
         context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush), Fading()));
         DrawGuides(context, visible);
         DrawShaping(context, visible);
+        DrawGrips(context, visible, pointerAt);
         if (ShowsMeanings)
             DrawMeanings(context, visible);
         // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor; a picture cropped by
@@ -573,11 +574,14 @@ public sealed partial class DocumentView : Control
                 var (top, bottom) = (toPage.MapPoint(0, (float)(line.Top * PxPerPt)).Y, toPage.MapPoint(0, (float)(line.Bottom * PxPerPt)).Y);
                 return (line.Block, Away: y < Math.Min(top, bottom) ? Math.Min(top, bottom) - y : y > Math.Max(top, bottom) ? y - Math.Max(top, bottom) : 0);
             }).OrderBy(l => l.Away);
-            // The nearest line of the text's own, not of a drawing's text box (a caption is its picture's, of no level).
+            // The nearest line of the text's own, not of a drawing's text box (a caption is its picture's, of no level); none beside a
+            // table, whose rows have their grips there (see DocumentView.Grips.cs).
             foreach (var (best, distance) in nearest)
             {
                 if (session?.Document.DrawingAround(best) != null)
                     continue;
+                if (session?.Document is WordDocument word && word.TableOf(best) != null)
+                    return null;
                 return distance <= 18 && FirstLineOn(row, best) is var (rect, left) ? (best, rect, left) : null;
             }
             return null;
@@ -822,6 +826,15 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (gripDrag != null)
+        {
+            GripDragTo(e.GetPosition(this));
+            e.Handled = true;
+            return;
+        }
+        pointerAt = e.GetPosition(this);
+        if (!selecting)
+            PointAtTable(e.GetPosition(this));
         // Over a drawing the pointer shows that it can be moved, over a handle of the one selected that it can be sized; while cropping, the
         // marks and the picture; while tilting, the picture.
         if (cropping)
@@ -847,6 +860,7 @@ public sealed partial class DocumentView : Control
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
+        (pointerAt, pointedTable) = (null, null);
         if (pointed != null)
         {
             pointed = null;
@@ -899,8 +913,15 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        // A grip of a table's row or column selects it, moves it or takes it away; a plus puts one in (see GripPress).
+        if (e.ClickCount == 1 && GripPress(point, e.Pointer, e.KeyModifiers))
+        {
+            e.Handled = true;
+            return;
+        }
+        gripped = null;
         // A double click on a line between a table's cells shapes the table by hand (see BeginShape).
-        else if (e.ClickCount == 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && TableLineAt(point) is { } line && BeginShape(line.Table))
+        if (e.ClickCount == 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && TableLineAt(point) is { } line && BeginShape(line.Table))
         {
             Focus();
             e.Handled = true;
@@ -1114,6 +1135,13 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (gripDrag != null)
+        {
+            EndGripDrag(keep: true);
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (selecting)
         {
             (selecting, units) = (false, null);
@@ -1180,6 +1208,26 @@ public sealed partial class DocumentView : Control
             line.Pointer.Capture(null);
             e.Handled = true;
             return;
+        }
+        if (gripDrag is { } grip && e.Key == Key.Escape)
+        {
+            EndGripDrag(keep: false);
+            grip.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+        // Rows or columns selected by their grips: Delete and Backspace take them away; Escape and any other key leave them.
+        if (gripped != null)
+        {
+            if (e.Key is Key.Delete or Key.Back && RemoveGripped() || e.Key == Key.Escape)
+            {
+                gripped = null;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+            gripped = null;
+            InvalidateVisual();
         }
         // While shaping a table: Escape takes a stroke back, else Enter and Escape end shaping; another key ends it and goes on.
         if (shaping != null)

@@ -238,7 +238,7 @@ public sealed partial class DocumentView
 
     /// <summary>The pointer over the sheets, no button held: the cursor of a handle, of a drawing that can be moved, or of the text.</summary>
     Cursor CursorAt(Point point) => HandleAt(point) is { } handle ? CursorOf(handle, TurnedFrame()?.Turn ?? 0) : DrawingAt(point) != null ? Grab
-        : TableLineAt(point) is { } line ? (line.Upright ? Sideways : Upways) : Text;
+        : GripAt(point) is { } grip ? (grip.Plus ? Turning : Grab) : TableLineAt(point) is { } line ? (line.Upright ? Sideways : Upways) : Text;
 
     /// <summary>The pointer moved while a drawing is pressed: once far enough, where the drawing goes, or how large it gets.</summary>
     void DragTo(Point point, KeyModifiers modifiers)
@@ -525,6 +525,8 @@ public sealed partial class DocumentView
             EndLineDrag(keep: false);
         if (stroke is { } drawn && ReferenceEquals(e.Pointer, drawn.Pointer))
             EndStroke(keep: false);
+        if (gripDrag is { } grip && ReferenceEquals(e.Pointer, grip.Pointer))
+            EndGripDrag(keep: false);
     }
 
     /// <summary>
