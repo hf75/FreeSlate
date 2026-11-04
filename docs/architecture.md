@@ -187,7 +187,17 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   it out, `Paginator.TextHeight`), after a style's change too. A figure is sized by its picture (`SizeDrawing`: a corner
   keeps the picture's proportions, the caption grows with the width; `SizePicture` for a picture's own size), its
   description is its picture's too. `DrawingAround` gives the drawing whose text box holds a paragraph, `FigureOf` the
-  figure of a caption or of its picture's paragraph.
+  figure of a caption or of its picture's paragraph. The room a picture's effects and line take round it stays the
+  picture's in its line, the figure as wide as both and its caption indented by it (Word shows of a text box only what
+  lies within its text).
+- How a picture shows, as Word's Picture Format writes it (`DrawingFormatting` Crop, Shape, Recolor, Outline; a figure's
+  picture likewise): the part of it shown (a:srcRect), its shape (a:prstGeom, an ellipse for a circle), its colors (one of
+  a:grayscl, a:biLevel at half, a:lum as Word's washout), the line round it (a:ln, with Word's effect extents for it: its
+  width up to the next 1.5 pt). `WordDocument.Pictures.cs` crops one at the scale it has (`CropPicture`: a floating one's box
+  moving with the sides cropped so that the picture stays where it stands, or staying while the picture moves under it) and
+  shows another picture in one's frame (`ReplacePicture`: a part of its own, the frame as it stands and shows, the new one
+  filling it at its middle, `Filling`). `EditSession` crops to proportions about the middle of what shows, no larger than the
+  room there (`CropPicture(double)`), and to a circle (`RoundPicture`); the size it took when it was put in is its part's.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty

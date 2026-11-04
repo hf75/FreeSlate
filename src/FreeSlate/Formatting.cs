@@ -124,7 +124,9 @@ public sealed record SectionFormatting
 
 /// <summary>
 /// How a drawing stands among the text of a Word document (catalog: drawing.inline, drawing.anchor), as Word's Layout Options and its
-/// Position gallery give it: each property given is set in its wp:inline or wp:anchor, the others stay as they are; lengths in points.
+/// Position gallery give it, and how a picture shows, as Word's Picture Format gives it (catalog: picture.basic, picture.effects): each
+/// property given is set in its wp:inline or wp:anchor, the others stay as they are; lengths in points. A picture with its caption (see
+/// WordDocument.AddCaption) shows as its picture does.
 /// </summary>
 public sealed record DrawingFormatting
 {
@@ -166,4 +168,40 @@ public sealed record DrawingFormatting
 
     /// <summary>Whether the drawing is decoration only, which screen readers pass over (Word's "Mark as decorative", adec:decorative in wp:docPr).</summary>
     public bool? Decorative { get; init; }
+
+    /// <summary>
+    /// The part of a picture it shows (a:srcRect of its pic:blipFill, Word's Crop): read as it is; given, it is set as it is, the size
+    /// as given (see WordDocument.CropPicture, which keeps the picture's scale).
+    /// </summary>
+    public PictureCrop? Crop { get; init; }
+
+    /// <summary>The shape a picture shows in (a:prstGeom of its pic:spPr, Word's Crop to Shape): "rect", "ellipse", "roundRect" …</summary>
+    public string? Shape { get; init; }
+
+    /// <summary>
+    /// How a picture's colors show (Word's Recolor, an effect of its a:blip): "none", "grayscale" (a:grayscl), "blackWhite" (a:biLevel at
+    /// half), "washout" (a:lum, as bright as Word washes a picture out to stand behind text); read "other" for another recoloring.
+    /// </summary>
+    public string? Recolor { get; init; }
+
+    /// <summary>
+    /// The line round a picture (a:ln of its pic:spPr, Word's Picture Border): its width in points, 0 for none, and its color as RRGGBB;
+    /// the effect extents round a picture by itself as Word gives them for it.
+    /// </summary>
+    public double? Outline { get; init; }
+    public string? OutlineColor { get; init; }
+}
+
+/// <summary>
+/// The part of a picture a drawing shows (a:srcRect l, t, r, b): how much of the picture is cut away at each side, as shares of its whole
+/// width (left, right) and height (top, bottom); below 0 the picture leaves room there.
+/// </summary>
+public readonly record struct PictureCrop(double Left, double Top, double Right, double Bottom)
+{
+    /// <summary>The whole picture.</summary>
+    public static readonly PictureCrop None = new(0, 0, 0, 0);
+
+    /// <summary>The shares of the picture's width and height the part shows.</summary>
+    public double Wide => 1 - Left - Right;
+    public double High => 1 - Top - Bottom;
 }

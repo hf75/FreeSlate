@@ -61,6 +61,26 @@ public sealed partial class WordDocument
     /// <exception cref="NotSupportedException">No drawing stands at the place, or it is not where it was read; nothing changes.</exception>
     public void Format(int paragraph, int offset, DrawingFormatting format)
     {
+        // A line round a picture with its caption goes round the picture in its line, the figure making room for it (see Refit), which
+        // Word shows (it shows of a text box only what lies within its text); a few changes taken as one.
+        if ((format.Outline != null || format.OutlineColor != null) && FigureAt(paragraph, offset) is { } figure)
+        {
+            var start = version;
+            try
+            {
+                Format(figure.Holder.Id, figure.Holder.TextOffset, new DrawingFormatting { Outline = format.Outline, OutlineColor = format.OutlineColor });
+                Refit(paragraph, offset, indent: true);
+                if (format with { Outline = null, OutlineColor = null } is var rest && rest != new DrawingFormatting())
+                    Format(paragraph, offset, rest);
+                Combine(version - start);
+            }
+            catch
+            {
+                Back(start);
+                throw;
+            }
+            return;
+        }
         var (p, top) = Find(paragraph);
         if (DrawingAt(p, offset) is not { } own)
             throw new NotSupportedException("No drawing stands at that place.");
@@ -347,19 +367,20 @@ public sealed partial class WordDocument
         return null;
     }
 
-    /// <summary>How a drawing's element has it stand (see DrawingOf).</summary>
+    /// <summary>How a drawing's element has it stand (see DrawingOf), and a picture show.</summary>
     static DrawingFormatting Read(XElement own)
     {
         var (width, height) = Drawings.Extent(own);
         var wp = own.Name.Namespace;
         var docPr = own.Element(wp + "docPr");
         var (description, decorative) = ((string?)docPr?.Attribute("descr") ?? "", Decorative(docPr));
+        var shows = Shows(Pic(own.Element(A + "graphic")));
         if (own.Name.LocalName == "inline")
-            return new DrawingFormatting { Width = width, Height = height, Wrap = "inline", Description = description, Decorative = decorative };
+            return shows with { Width = width, Height = height, Wrap = "inline", Description = description, Decorative = decorative };
         var wrap = own.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
         var across = own.Element(wp + "positionH");
         var down = own.Element(wp + "positionV");
-        return new DrawingFormatting
+        return shows with
         {
             Width = width,
             Height = height,
@@ -382,6 +403,139 @@ public sealed partial class WordDocument
             Decorative = decorative,
         };
     }
+
+    /// <summary>
+    /// The pic:pic a drawing's graphic shows: a picture's own, or the picture's of a picture with its caption (see AddCaption); null for
+    /// other graphics.
+    /// </summary>
+    static XElement? Pic(XElement? graphic) =>
+        graphic?.Element(A + "graphicData") is { } data && (string?)data.Attribute("uri") == PictureUri
+            ? data.Elements().FirstOrDefault(e => e.Name.LocalName == "pic")
+            : FigurePicture(graphic)?.Element(A + "graphic") is { } inner ? Pic(inner) : null;
+
+    /// <summary>How a picture's pic:pic has it show (see DrawingFormatting.Crop, Shape, Recolor, Outline); nothing where there is none.</summary>
+    static DrawingFormatting Shows(XElement? pic)
+    {
+        if (pic == null)
+            return new DrawingFormatting();
+        var fill = pic.Element(pic.Name.Namespace + "blipFill");
+        var spPr = pic.Element(pic.Name.Namespace + "spPr");
+        var line = spPr?.Element(A + "ln");
+        var solid = line?.Element(A + "solidFill");
+        double Share(XElement rect, string side) => (long?)rect.Attribute(side) / 100000.0 ?? 0;
+        return new DrawingFormatting
+        {
+            Crop = fill?.Element(A + "srcRect") is { } rect ? new PictureCrop(Share(rect, "l"), Share(rect, "t"), Share(rect, "r"), Share(rect, "b")) : PictureCrop.None,
+            Shape = (string?)spPr?.Element(A + "prstGeom")?.Attribute("prst"),
+            Recolor = RecolorOf(fill?.Element(A + "blip")),
+            // A line without a width is as wide as Office draws one by default.
+            Outline = solid != null ? Points((string?)line!.Attribute("w")) ?? 0.75 : 0,
+            OutlineColor = (string?)solid?.Element(A + "srgbClr")?.Attribute("val"),
+        };
+    }
+
+    /// <summary>The effects of an a:blip that recolor its picture, as Word's Recolor sets one of them (see DrawingFormatting.Recolor).</summary>
+    static readonly HashSet<string> Recolorings = ["grayscl", "biLevel", "lum", "duotone"];
+
+    /// <summary>How an a:blip's effects recolor its picture (see DrawingFormatting.Recolor).</summary>
+    static string RecolorOf(XElement? blip) =>
+        blip?.Elements().Where(e => e.Name.Namespace == A && Recolorings.Contains(e.Name.LocalName)).ToList() switch
+        {
+            null or [] => "none",
+            [{ Name.LocalName: "grayscl" }] => "grayscale",
+            [{ Name.LocalName: "biLevel" } level] when (string?)level.Attribute("thresh") == "50000" => "blackWhite",
+            [{ Name.LocalName: "lum" } lum] when (string?)lum.Attribute("bright") == "70000" && (string?)lum.Attribute("contrast") == "-70000" => "washout",
+            _ => "other",
+        };
+
+    /// <summary>
+    /// A picture's pic:pic (a copy, changed in place) showing as a format has it (see DrawingFormatting.Crop, Shape, Recolor, Outline):
+    /// the part of it given where <paramref name="cropping"/> (a picture by itself, whose size goes with it), the shape, the recoloring
+    /// in place of any other, the line round it, as Word's Picture Format writes them.
+    /// </summary>
+    static void Show(XElement pic, DrawingFormatting format, bool cropping)
+    {
+        var fill = pic.Element(pic.Name.Namespace + "blipFill");
+        var spPr = pic.Element(pic.Name.Namespace + "spPr");
+        if (cropping && format.Crop is { } crop && fill != null)
+        {
+            fill.Element(A + "srcRect")?.Remove();
+            static string Share(double share) => ((long)Math.Round(share * 100000)).ToString(CultureInfo.InvariantCulture);
+            var rect = new XElement(A + "srcRect");
+            foreach (var (side, share) in new[] { ("l", crop.Left), ("t", crop.Top), ("r", crop.Right), ("b", crop.Bottom) })
+            {
+                if (Math.Round(share * 100000) != 0)
+                    rect.SetAttributeValue(side, Share(share));
+            }
+            // After the blip, before how it fills the picture's box.
+            if (rect.HasAttributes)
+            {
+                if (fill.Element(A + "blip") is { } blipAt)
+                    blipAt.AddAfterSelf(rect);
+                else
+                    fill.AddFirst(rect);
+            }
+        }
+        if (format.Shape is { } shape && spPr != null)
+        {
+            spPr.Elements().Where(e => e.Name == A + "prstGeom" || e.Name == A + "custGeom").Remove();
+            var geometry = new XElement(A + "prstGeom", new XAttribute("prst", shape), new XElement(A + "avLst"));
+            if (spPr.Element(A + "xfrm") is { } xfrm)
+                xfrm.AddAfterSelf(geometry);
+            else
+                spPr.AddFirst(geometry);
+        }
+        if (format.Recolor is { } recolor && recolor != "other" && fill?.Element(A + "blip") is { } blip)
+        {
+            blip.Elements().Where(e => e.Name.Namespace == A && Recolorings.Contains(e.Name.LocalName)).Remove();
+            XElement? effect = recolor switch
+            {
+                "grayscale" => new XElement(A + "grayscl"),
+                "blackWhite" => new XElement(A + "biLevel", new XAttribute("thresh", 50000)),
+                "washout" => new XElement(A + "lum", new XAttribute("bright", 70000), new XAttribute("contrast", -70000)),
+                _ => null,
+            };
+            // Before the blip's extensions, as Word writes it.
+            if (effect != null)
+            {
+                if (blip.Element(A + "extLst") is { } extensions)
+                    extensions.AddBeforeSelf(effect);
+                else
+                    blip.Add(effect);
+            }
+        }
+        if ((format.Outline != null || format.OutlineColor != null) && spPr != null)
+        {
+            var had = spPr.Element(A + "ln");
+            var width = format.Outline ?? Shows(pic).Outline ?? 0;
+            had?.Remove();
+            if (width > 0)
+            {
+                var color = format.OutlineColor ?? (string?)had?.Element(A + "solidFill")?.Element(A + "srgbClr")?.Attribute("val") ?? "000000";
+                var line = new XElement(A + "ln", new XAttribute("w", Emu(width)), new XElement(A + "solidFill", new XElement(A + "srgbClr", new XAttribute("val", color))),
+                    had?.Elements().Where(e => !e.Name.LocalName.EndsWith("Fill", StringComparison.Ordinal)).Select(e => new XElement(e)));
+                // After the geometry and the fill, before the effects.
+                if (spPr.Elements().LastOrDefault(e => e.Name.LocalName is "xfrm" or "prstGeom" or "custGeom" or "noFill" or "solidFill" or "gradFill" or "blipFill" or "pattFill" or "grpFill") is { } before)
+                    before.AddAfterSelf(line);
+                else
+                    spPr.AddFirst(line);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The effect extents Word gives a picture by itself with a line round it (see DrawingFormatting.Outline), on each side: the line's
+    /// width up to the next 1.5 pt, at least 1.5 pt (measured in Word 365: 0.25 up to 1.5 pt make 1.5 pt, 2.25 and 3 pt make 3 pt, 4.5
+    /// and 6 pt as wide as they are); none without a line.
+    /// </summary>
+    static XElement OutlineExtent(XNamespace wp, double width)
+    {
+        var side = width > 0 ? Emu(Math.Max(1, Math.Ceiling(width / 1.5 - 1e-9)) * 1.5) : "0";
+        return new XElement(wp + "effectExtent", new XAttribute("l", side), new XAttribute("t", side), new XAttribute("r", side), new XAttribute("b", side));
+    }
+
+    /// <summary>Whether a drawing's element is a picture by itself (not one with its caption, see AddCaption).</summary>
+    static bool IsPicture(XElement own) => GraphicUri(own) == PictureUri;
 
     /// <summary>Whether a drawing's wp:docPr marks it as decoration (see DrawingFormatting.Decorative).</summary>
     static bool Decorative(XElement? docPr) =>
@@ -446,6 +600,15 @@ public sealed partial class WordDocument
         var extent = new XElement(wp + "extent", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height)));
         var effect = Kept("effectExtent") ?? new XElement(wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0));
         var graphic = own.Elements().FirstOrDefault(e => e.Name.LocalName == "graphic") is { } g ? new XElement(g) : null;
+        // How a picture shows (see Show), by itself or with its caption; a line round one by itself takes Word's effect extents, where it
+        // has no effects of its own (a figure's picture so in its line, see Format).
+        if (Pic(graphic) is { } pic)
+        {
+            Show(pic, format, cropping: IsPicture(own));
+            if (IsPicture(own) && format.Outline != null
+                && pic.Element(pic.Name.Namespace + "spPr")?.Elements().Any(e => e.Name.LocalName is "effectLst" or "effectDag") != true)
+                effect = OutlineExtent(wp, Shows(pic).Outline ?? 0);
+        }
         // A picture's own size goes with the drawing's (pic:spPr/a:xfrm/a:ext).
         if (graphic?.Elements().FirstOrDefault()?.Elements().FirstOrDefault()?.Elements().FirstOrDefault(e => e.Name.LocalName == "spPr")
                 ?.Element(A + "xfrm")?.Element(A + "ext") is { } ext)

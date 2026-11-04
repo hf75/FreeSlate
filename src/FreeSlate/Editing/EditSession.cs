@@ -302,16 +302,17 @@ public sealed class EditSession(IEditableDocument document)
     /// </summary>
     public (double Width, double Height)? PictureSize(byte[] bytes) => PictureSize(bytes, Caret.Paragraph);
 
-    /// <summary>The size a picture takes put in in a paragraph (see PictureSize).</summary>
-    (double Width, double Height)? PictureSize(byte[] bytes, int paragraph)
+    /// <summary>The size a picture takes put in in a paragraph (see PictureSize), or the part of it given (see PictureCrop).</summary>
+    (double Width, double Height)? PictureSize(byte[] bytes, int paragraph, PictureCrop? part = null)
     {
         if (document is not WordDocument word || PictureType(bytes) == null)
             return null;
         var (pixelsWide, pixelsHigh) = Html.ImageInfo.Size(bytes);
-        if (pixelsWide <= 0 || pixelsHigh <= 0)
+        var crop = part ?? PictureCrop.None;
+        if (pixelsWide <= 0 || pixelsHigh <= 0 || crop.Wide <= 0 || crop.High <= 0)
             return null;
         // CSS pixels to points, then into the room there is.
-        var (width, height) = (pixelsWide * 0.75, pixelsHigh * 0.75);
+        var (width, height) = (pixelsWide * 0.75 * crop.Wide, pixelsHigh * 0.75 * crop.High);
         var (roomWide, roomHigh) = RoomFor(word, paragraph);
         var scale = Math.Min(1, Math.Min(roomWide / width, roomHigh / height));
         return (width * scale, height * scale);
@@ -399,17 +400,118 @@ public sealed class EditSession(IEditableDocument document)
     }
 
     /// <summary>
-    /// Gives the picture the selection holds alone the size it took when it was put in there (see PictureSize), a handling of its own;
-    /// a floating one keeps its top left. False where the selection holds no picture.
+    /// Gives the picture the selection holds alone the size it took when it was put in there (see PictureSize), the part of it it shows
+    /// so (see CropPicture), a handling of its own; a floating one keeps its top left. False where the selection holds no picture.
     /// </summary>
     public bool RestoreSize()
     {
         if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.PictureOf(paragraph, offset) is not { } bytes
-            || PictureSize(bytes, paragraph) is not var (width, height))
+            || PictureSize(bytes, paragraph, Picture(word, paragraph, offset)?.Crop) is not var (width, height))
             return false;
         Act(false, () =>
         {
             word.SizePicture(paragraph, offset, width, height);
+            return (Caret, Anchor);
+        });
+        return true;
+    }
+
+    /// <summary>How the picture of the drawing at a place shows (a picture with its caption's own, see WordDocument.PictureAt): its size, its part.</summary>
+    static DrawingFormatting? Picture(WordDocument word, int paragraph, int offset) =>
+        word.PictureAt(paragraph, offset) is var (p, o) ? word.DrawingOf(p, o) : null;
+
+    /// <summary>
+    /// How the picture the selection holds alone shows by itself (a picture with its caption's own, see WordDocument.PictureAt): its size,
+    /// the part of it it shows, its shape, colors and line; null where the selection holds no picture.
+    /// </summary>
+    public DrawingFormatting? PictureShown =>
+        SelectedDrawing() is var (paragraph, offset) && document is WordDocument word && word.PictureOf(paragraph, offset) != null ? Picture(word, paragraph, offset) : null;
+
+    /// <summary>The bytes of the picture the selection holds alone (see WordDocument.PictureOf); null where it holds none.</summary>
+    public byte[]? PictureBytes => SelectedDrawing() is var (paragraph, offset) && document is WordDocument word ? word.PictureOf(paragraph, offset) : null;
+
+    /// <summary>
+    /// Crops the picture the selection holds alone to a part of it (see WordDocument.CropPicture: at its scale, a floating one's box moving
+    /// with the sides cropped, or staying where <paramref name="boxStays"/>), a handling of its own; it stays selected. False where the
+    /// selection holds no picture, or the part shows nothing of it.
+    /// </summary>
+    public bool CropPicture(PictureCrop crop, bool boxStays = false)
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.PictureOf(paragraph, offset) == null
+            || crop.Wide < 0.001 || crop.High < 0.001)
+            return false;
+        Act(false, () =>
+        {
+            word.CropPicture(paragraph, offset, crop, boxStays);
+            return (Caret, Anchor);
+        });
+        return true;
+    }
+
+    /// <summary>
+    /// Crops the picture the selection holds alone to proportions (width to height; 0 or less, the whole picture), a handling of its own:
+    /// the most of the picture they let it show, about the middle of what it shows so far, at the scale it has (see CropPicture) but no
+    /// larger than the room it has (see PictureSize). It stays selected. False where the selection holds no picture.
+    /// </summary>
+    public bool CropPicture(double proportions) => Cropped(proportions, null);
+
+    /// <summary>
+    /// Shows the picture the selection holds alone in a circle (cropped to a square, see CropPicture, in an ellipse: Word's Crop to Shape),
+    /// or back in a rectangle, as it is cropped; a handling of its own, it stays selected. False where the selection holds no picture.
+    /// </summary>
+    public bool RoundPicture(bool round) => round ? Cropped(1, "ellipse") : Cropped(null, "rect");
+
+    /// <summary>The picture selected cropped to proportions where given (see CropPicture), and in a shape where given, one handling.</summary>
+    bool Cropped(double? proportions, string? shape)
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.PictureOf(paragraph, offset) == null
+            || Picture(word, paragraph, offset) is not { Crop: { } was, Width: { } width, Height: { } height } || was.Wide <= 0 || was.High <= 0)
+            return false;
+        // The whole picture as large as it is shown.
+        var (wide, high) = (width / was.Wide, height / was.High);
+        var crop = was;
+        if (proportions is { } ratio)
+        {
+            if (ratio <= 0)
+                crop = PictureCrop.None;
+            else
+            {
+                // As wide and high as the proportions let it be within the whole picture, about the middle of the part shown so far.
+                var share = ratio / (wide / high);
+                var (across, down) = share <= 1 ? (share, 1.0) : (1.0, 1 / share);
+                var (middle, centre) = (Math.Clamp(was.Left + was.Wide / 2, across / 2, 1 - across / 2), Math.Clamp(was.Top + was.High / 2, down / 2, 1 - down / 2));
+                crop = new PictureCrop(middle - across / 2, centre - down / 2, 1 - middle - across / 2, 1 - centre - down / 2);
+            }
+        }
+        var (roomWide, roomHigh) = RoomFor(word, paragraph);
+        var (shownWide, shownHigh) = (wide * crop.Wide, high * crop.High);
+        var scale = Math.Min(1, Math.Min(roomWide / shownWide, roomHigh / shownHigh));
+        Act(false, () =>
+        {
+            if (crop != was)
+                word.CropPicture(paragraph, offset, crop);
+            if (scale < 0.999)
+                word.SizePicture(paragraph, offset, shownWide * scale, shownHigh * scale);
+            if (shape != null)
+                word.Format(paragraph, offset, new DrawingFormatting { Shape = shape });
+            return (Caret, Anchor);
+        });
+        return true;
+    }
+
+    /// <summary>
+    /// Shows another picture in the frame of the picture the selection holds alone (see WordDocument.ReplacePicture: as it stands and shows,
+    /// filled by the new one), a handling of its own; it stays selected. The bytes are a PNG, JPEG, GIF, BMP or TIFF file, kept as they are
+    /// (made ready before, see Skia.PictureFit). False, and nothing done, where they are none of those or the selection holds no picture.
+    /// </summary>
+    public bool ReplacePicture(byte[] bytes)
+    {
+        if (SelectedDrawing() is not var (paragraph, offset) || document is not WordDocument word || word.PictureOf(paragraph, offset) == null
+            || PictureType(bytes) is not var (type, extension))
+            return false;
+        Act(false, () =>
+        {
+            word.ReplacePicture(paragraph, offset, bytes, type, extension);
             return (Caret, Anchor);
         });
         return true;

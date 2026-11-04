@@ -115,8 +115,9 @@ public sealed partial class WordDocument
 
     /// <summary>
     /// A picture's drawing made a figure with an empty caption of a style (see the class): the box where the picture stood as it stood
-    /// (its wrapping, its place, its name and description), the picture as it was (its size, its effects, its name and description, an
-    /// id of its own) in a line of its own in it.
+    /// (its wrapping, its place, its name and description), the picture as it was (its size, its effects and the room they and its line
+    /// take round it in its line, its name and description, an id of its own) in a line of its own in it, the box as wide as the picture
+    /// and that room, the caption indented by it (Word shows of a text box only what lies within its text).
     /// </summary>
     XElement Figured(XElement own, string style)
     {
@@ -124,7 +125,8 @@ public sealed partial class WordDocument
         var w = Wml.W;
         var wps = Drawings.Wps;
         var (width, height) = Drawings.Extent(own);
-        var (cx, cy) = (Emu(width), Emu(height + CaptionEstimate));
+        var (l, t, r, b) = Room(own);
+        var (cx, cy) = (Emu(width + l + r), Emu(height + t + b + CaptionEstimate));
         XElement None() => new(wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0));
         var docPr = own.Element(wp + "docPr") is { } named ? new XElement(named) : new XElement(wp + "docPr", new XAttribute("name", "Picture"));
         docPr.SetAttributeValue("id", NewDrawingId());
@@ -141,7 +143,8 @@ public sealed partial class WordDocument
                 new XElement(w + "ind", new XAttribute(w + "left", 0), new XAttribute(w + "right", 0), new XAttribute(w + "firstLine", 0)),
                 new XElement(w + "jc", new XAttribute(w + "val", "left"))),
             new XElement(w + "r", new XElement(w + "drawing", picture)));
-        var caption = new XElement(w + "p", new XElement(w + "pPr", new XElement(w + "pStyle", new XAttribute(w + "val", style))));
+        var caption = new XElement(w + "p", new XElement(w + "pPr", new XElement(w + "pStyle", new XAttribute(w + "val", style)),
+            l > 0 || r > 0 ? new XElement(w + "ind", new XAttribute(w + "left", Twips(l)), new XAttribute(w + "right", Twips(r))) : null));
         var box = new XElement(own);
         box.Element(wp + "extent")?.ReplaceWith(new XElement(wp + "extent", new XAttribute("cx", cx), new XAttribute("cy", cy)));
         box.Element(wp + "effectExtent")?.ReplaceWith(None());
@@ -295,33 +298,68 @@ public sealed partial class WordDocument
     }
 
     /// <summary>
-    /// A figure sized by its handles (see SizeDrawing): its picture as wide as given and as high as given less the caption; where both
-    /// change (a corner's, which keeps the figure's proportions) as wide as given, its own proportions kept. A change or a few.
+    /// A figure sized by its handles (see SizeDrawing): its picture as wide as given less the room round it (see Room) and as high as
+    /// given less the caption; where both change (a corner's, which keeps the figure's proportions) as wide so, its own proportions kept. A
+    /// change or a few.
     /// </summary>
     void SizedByHandles(Figure figure, int paragraph, int offset, double width, double height)
     {
         var (boxWidth, boxHeight) = Drawings.Extent(figure.Box);
         var (wide, high) = Drawings.Extent(figure.Picture);
+        var (l, _, r, _) = Room(figure.Picture);
         var (across, down) = (Math.Abs(width - boxWidth) > 0.01, Math.Abs(height - boxHeight) > 0.01);
+        var picture = Math.Max(1, width - l - r);
         var (w, h) = (across, down) switch
         {
-            (true, true) when wide > 0 => (width, width * high / wide),
-            (true, _) => (width, high),
+            (true, true) when wide > 0 => (picture, picture * high / wide),
+            (true, _) => (picture, high),
             (_, true) => (wide, Math.Max(1, height - Math.Max(0, boxHeight - high))),
             _ => (wide, high),
         };
         Sized(figure, paragraph, offset, w, h);
     }
 
-    /// <summary>A figure's picture given a size (points), the figure as wide as it and as high as it then holds: a change or two.</summary>
-    void Sized(Figure figure, int paragraph, int offset, double width, double height)
+    /// <summary>
+    /// A figure's picture given a size (points), and the part of it shown where given (see CropPicture), the figure as wide as it and the
+    /// room round it and as high as it then holds (see Refit): a change or two.
+    /// </summary>
+    void Sized(Figure figure, int paragraph, int offset, double width, double height, PictureCrop? crop = null)
     {
-        Format(figure.Holder.Id, figure.Holder.TextOffset, new DrawingFormatting { Width = width, Height = height });
-        if (FigureAt(paragraph, offset) is not { } sized)
+        Format(figure.Holder.Id, figure.Holder.TextOffset, new DrawingFormatting { Width = width, Height = height, Crop = crop });
+        Refit(paragraph, offset, indent: false);
+    }
+
+    /// <summary>
+    /// The figure at a place as wide as its picture and the room round it in its line (see Room), and as high as it then holds; with
+    /// <paramref name="indent"/>, its caption's paragraphs indented by that room at both sides, so that they stand under the picture. A
+    /// change or a few.
+    /// </summary>
+    void Refit(int paragraph, int offset, bool indent)
+    {
+        if (FigureAt(paragraph, offset) is not { } figure)
             return;
-        var fitted = Fitted(sized, width) ?? Drawings.Extent(figure.Box).Height - Drawings.Extent(figure.Picture).Height + height;
+        var (l, _, r, _) = Room(figure.Picture);
+        if (indent)
+        {
+            foreach (var caption in figure.Caption)
+                Format(caption.Id, new ParagraphFormatting { Left = l, Right = r });
+        }
+        if (FigureAt(paragraph, offset) is not { } now)
+            return;
+        var width = Drawings.Extent(now.Picture).Width + l + r;
+        var fitted = Fitted(now, width) ?? Drawings.Extent(now.Box).Height;
         Format(paragraph, offset, new DrawingFormatting { Width = width, Height = fitted });
     }
+
+    /// <summary>The room round a drawing in its line (its wp:effectExtent: the left, the top, the right and the bottom), in points.</summary>
+    static (double Left, double Top, double Right, double Bottom) Room(XElement drawing)
+    {
+        var effect = drawing.Element(drawing.Name.Namespace + "effectExtent");
+        double Side(string name) => Points((string?)effect?.Attribute(name)) ?? 0;
+        return (Side("l"), Side("t"), Side("r"), Side("b"));
+    }
+
+    static string Twips(double points) => ((long)Math.Round(points * 20)).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>
     /// The wp:inline of a figure's picture in the graphic of the figure's box (see the class), as its XML has it: the only drawing of the
