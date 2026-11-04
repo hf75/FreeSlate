@@ -22,10 +22,11 @@ namespace FreeSlate.Editor.Controls;
 /// where the pointer is, and let go in its middle it stays to be clicked (it goes back, once the pointer was on its fields). Moved on at
 /// once beyond a few pixels, it does what the direction does without a ring (a turn and a second direction for a second level), with a
 /// thin trace and the field's name for a moment. A short click opens it to be clicked (a click on a field with a ring opens that ring,
-/// one in the middle goes back, as Backspace does). The left button, a finger or a pen held on the selection brings it too, where there
-/// is no right button. With the keyboard, Space held on a selection brings it at the pointer: the arrows choose the field nearest their
-/// direction (two together a diagonal), Enter opens a field's ring, Backspace goes back, letting go of Space does what is chosen, Escape
-/// nothing. It lies over the editor and takes the pointer only while it has a gesture.
+/// one in the middle goes back, as Backspace does); pressed in its middle and moved on, it goes with the pointer, the rings before it
+/// along. The left button, a finger or a pen held on the selection brings it too, where there is no right button. With the keyboard,
+/// Space held on a selection brings it at the pointer: the arrows choose the field nearest their direction (two together a diagonal),
+/// Enter opens a field's ring, Backspace goes back, letting go of Space does what is chosen, Escape nothing. It lies over the editor and
+/// takes the pointer only while it has a gesture.
 /// </summary>
 public sealed class GestureRing : Control
 {
@@ -33,8 +34,9 @@ public sealed class GestureRing : Control
     const double RestTime = 230, HoldTime = 450;
 
     /// <summary>
-    /// How far the pointer goes before the ring shows to choose blindly, and before a press on the selection selects anew; how far a
-    /// blind stroke turns aside for a second level; how near to where the gesture began it chooses nothing on the first ring.
+    /// How far the pointer goes before the ring shows to choose blindly, and before a press on the selection selects anew (or one in the
+    /// middle of a ring to be clicked moves it); how far a blind stroke turns aside for a second level; how near to where the gesture
+    /// began it chooses nothing on the first ring.
     /// </summary>
     const double BlindDistance = 15, SelectDistance = 4, Turn = 12, Still = 6;
 
@@ -71,7 +73,10 @@ public sealed class GestureRing : Control
     /// <summary>A ring as it shows: its fields, its centre, and the field of the ring before it that holds it.</summary>
     sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent);
 
-    enum Mode { None, Waiting, Blind, Held, Clicking, Holding, KeysWaiting, Keys }
+    enum Mode { None, Waiting, Blind, Held, Clicking, Gripped, Moving, Holding, KeysWaiting, Keys }
+
+    /// <summary>The pointer while it moves the ring, as while it moves a picture.</summary>
+    static readonly Cursor Grab = new(StandardCursorType.SizeAll);
 
     readonly DispatcherTimer rest = new();
     readonly DispatcherTimer frames = new() { Interval = TimeSpan.FromMilliseconds(15) };
@@ -90,6 +95,8 @@ public sealed class GestureRing : Control
     /// way back in the middle of a ring that came where it is only once it went on from there.
     /// </summary>
     bool backward, visited;
+    /// <summary>Where the middle of a ring to be clicked was pressed, and where its centre stood then: moved on, the ring goes with the pointer.</summary>
+    (Point At, Point Centre) grip;
     long since;
     (string Name, Point At, long Since)? confirmed;
 
@@ -227,6 +234,7 @@ public sealed class GestureRing : Control
         levels.Clear();
         (mode, chosen, pointer, backward) = (Mode.None, null, null, false);
         IsHitTestVisible = false;
+        ClearValue(CursorProperty);
         InvalidateVisual();
     }
 
@@ -241,8 +249,19 @@ public sealed class GestureRing : Control
         Preview?.Invoke(field is { } k && Current is { } level ? level.Slots[k] : null);
     }
 
-    /// <summary>Whether a point is in the middle of a ring of a second level: on its way back.</summary>
-    bool Backward(Point point) => levels.Count > 1 && Far(point, levels[^1].Centre) < Inner - 1;
+    /// <summary>Whether a point is in the middle of the ring now; in a ring of a second level, on its way back.</summary>
+    bool InMiddle(Point point) => levels.Count > 0 && Far(point, levels[^1].Centre) < Inner - 1;
+
+    bool Backward(Point point) => levels.Count > 1 && InMiddle(point);
+
+    /// <summary>The ring held by its middle where the pointer is now, wholly in view, the rings before it along (and where the gesture began).</summary>
+    void Shift()
+    {
+        var by = InView(grip.Centre + (at - grip.At)) - levels[^1].Centre;
+        for (var k = 0; k < levels.Count; k++)
+            levels[k] = levels[k] with { Centre = InView(levels[k].Centre + by) };
+        start += by;
+    }
 
     static double Far(Point a, Point b) => ((Vector)(a - b)).Length;
 
@@ -299,6 +318,15 @@ public sealed class GestureRing : Control
             case Mode.Clicking or Mode.Keys when Current is { } level:
                 if (mode != Mode.Keys || arrows.Count == 0)
                     Aim(mode == Mode.Clicking && Far(at, level.Centre) > Outer + 24 ? null : Pointed(at), back: mode == Mode.Clicking && Backward(at));
+                break;
+            case Mode.Gripped when Far(at, grip.At) > SelectDistance:
+                // Pressed in its middle and moved on, not clicked: the ring goes with the pointer.
+                (mode, Cursor) = (Mode.Moving, Grab);
+                Aim(null);
+                Shift();
+                break;
+            case Mode.Moving:
+                Shift();
                 break;
         }
         if (mode != Mode.None)
@@ -361,6 +389,21 @@ public sealed class GestureRing : Control
                 if (held != null)
                     Do(held, null);
                 break;
+            case Mode.Gripped:
+                // Let go in the middle where it was pressed, a click there: back to the ring before, or the first one closed.
+                mode = Mode.Clicking;
+                e.Pointer.Capture(null);
+                if (levels.Count > 1)
+                    Back();
+                else
+                    Close(keep: false);
+                break;
+            case Mode.Moving:
+                // Moved: it stays where it is, to be clicked.
+                mode = Mode.Clicking;
+                ClearValue(CursorProperty);
+                e.Pointer.Capture(null);
+                break;
             default:
                 return;
         }
@@ -391,7 +434,11 @@ public sealed class GestureRing : Control
         return turned && Field(slot.Under, end - corner, BlindDistance) is { } second ? slot.Under[second] : null;
     }
 
-    /// <summary>A click while the ring waits for one: on a field it does that field (one with a ring opens it), in the middle of a ring of a second level it goes back, elsewhere it closes.</summary>
+    /// <summary>
+    /// A click while the ring waits for one: on a field it does that field (one with a ring opens it), elsewhere it closes; in the middle
+    /// it is a click as it is let go there (back to the ring before, or the first one closed), and the ring goes with the pointer moved
+    /// on from there (see Shift).
+    /// </summary>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
@@ -399,9 +446,10 @@ public sealed class GestureRing : Control
             return;
         e.Handled = true;
         var point = e.GetPosition(this);
-        if (Backward(point))
+        if (InMiddle(point))
         {
-            Back();
+            (mode, grip, pointer) = (Mode.Gripped, (point, level.Centre), e.Pointer);
+            e.Pointer.Capture(this);
             return;
         }
         var field = Far(point, level.Centre) <= Outer + 4 ? Pointed(point) : null;
@@ -421,6 +469,12 @@ public sealed class GestureRing : Control
         base.OnPointerCaptureLost(e);
         if (mode is Mode.Waiting or Mode.Blind or Mode.Held or Mode.Holding)
             Close(keep: false);
+        // Lost while it holds the ring by its middle: the ring stays where it is, to be clicked.
+        else if (mode is Mode.Gripped or Mode.Moving)
+        {
+            mode = Mode.Clicking;
+            ClearValue(CursorProperty);
+        }
     }
 
     /// <summary>Does what a field does; where it was chosen blindly, its name shows there for a moment.</summary>
@@ -479,8 +533,8 @@ public sealed class GestureRing : Control
 
     /// <summary>
     /// A key while the ring has a gesture: the arrows choose for the keyboard (two of them a diagonal), Enter opens the ring of the field
-    /// chosen; Backspace goes back while a ring shows (not where the held pointer would bring the ring it left again at once), and the
-    /// selection under it stays; Escape closes any ring. Whether the ring took the key.
+    /// chosen; Backspace goes back while a ring shows to be clicked or for the keys (not where the held pointer would bring the ring it
+    /// left again at once, nor while it moves one), and the selection under it stays; Escape closes any ring. Whether the ring took the key.
     /// </summary>
     public bool KeyChanged(Key key, bool down)
     {
@@ -497,7 +551,7 @@ public sealed class GestureRing : Control
         }
         if (key == Key.Back && levels.Count > 0)
         {
-            if (down && levels.Count > 1 && mode != Mode.Held)
+            if (down && levels.Count > 1 && mode is (Mode.Clicking or Mode.Keys))
                 Back();
             return true;
         }
@@ -573,9 +627,14 @@ public sealed class GestureRing : Control
             var reach = Math.Sqrt(Math.Max(0, near * near - (point.Y - y) * (point.Y - y)));
             centre = new Point(Math.Clamp(part.Center.X, point.X - reach, point.X + reach), y);
         }
+        return new Level(slots, InView(centre), parent);
+    }
+
+    /// <summary>A ring's centre where the ring is wholly in view.</summary>
+    Point InView(Point centre)
+    {
         var margin = Outer + 8;
-        centre = new Point(Math.Clamp(centre.X, margin, Math.Max(margin, Bounds.Width - margin)), Math.Clamp(centre.Y, margin, Math.Max(margin, Bounds.Height - margin)));
-        return new Level(slots, centre, parent);
+        return new Point(Math.Clamp(centre.X, margin, Math.Max(margin, Bounds.Width - margin)), Math.Clamp(centre.Y, margin, Math.Max(margin, Bounds.Height - margin)));
     }
 
     /// <summary>The part of the selection on the line nearest to a point, or null without one.</summary>
@@ -639,13 +698,14 @@ public sealed class GestureRing : Control
                 context.DrawGeometry(null, new Pen(chosen != null ? accent : line, chosen != null ? 1.5 : 1), Around(parts));
             using (context.PushTransform(Matrix.CreateTranslation(-c.X, -c.Y) * Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(c.X, c.Y)))
             {
-                // The disc, of glass, raised over the page: the band of fields nearly whole, so that the signs read clearly; the middle
-                // clear, so that the text there shows as it is.
+                // The disc, of glass, raised over the page (a little higher while it is moved): the band of fields nearly whole, so that
+                // the signs read clearly; the middle clear, so that the text there shows as it is.
                 var everywhere = new RectangleGeometry(new Rect(Bounds.Size).Inflate(400));
                 var inside = new GeometryGroup { FillRule = FillRule.EvenOdd, Children = new GeometryCollection { everywhere, new EllipseGeometry(new Rect(c.X - Inner, c.Y - Inner, 2 * Inner, 2 * Inner)) } };
+                var (rise, blur, shade) = mode == Mode.Moving ? (16, 36, (byte)0x28) : (10, 28, (byte)0x1E);
                 using (context.PushGeometryClip(inside))
                     context.DrawRectangle(surface, rim, new RoundedRect(new Rect(c.X - Outer, c.Y - Outer, 2 * Outer, 2 * Outer), Outer),
-                        new BoxShadows(new BoxShadow { OffsetY = 10, Blur = 28, Color = Color.FromArgb(0x1E, 0, 0, 0) },
+                        new BoxShadows(new BoxShadow { OffsetY = rise, Blur = blur, Color = Color.FromArgb(shade, 0, 0, 0) },
                             [new BoxShadow { OffsetY = 2, Blur = 6, Color = Color.FromArgb(0x12, 0, 0, 0) }]));
                 // The way back pointed at: the middle of glass too, a field as the others (see below).
                 if (backward)
