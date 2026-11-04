@@ -2480,11 +2480,15 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
     }
 
-    /// <summary>Whether a drawing is placed above its paragraph or line, a negative offset from it.</summary>
+    /// <summary>
+    /// Whether a drawing is placed above its paragraph or line: a negative offset from it, or its effect extent above reaching higher
+    /// than its offset (a picture turned or tilted at the top of its paragraph, measured with a picture turned by 30 degrees placed at
+    /// its paragraph's top: Word has the paragraph before it go round it, where it first stood).
+    /// </summary>
     static bool Above(XElement anchor) =>
         anchor.Element(Docx.Drawings.Wp + "positionV") is { } position && (string?)position.Attribute("relativeFrom") is "paragraph" or "line"
         && double.TryParse(position.Element(Docx.Drawings.Wp + "posOffset")?.Value, System.Globalization.NumberStyles.Float,
-            System.Globalization.CultureInfo.InvariantCulture, out var offset) && offset < 0;
+            System.Globalization.CultureInfo.InvariantCulture, out var offset) && offset / 12700 < Math.Max(0, new DrawingBox(anchor).Effect.Top);
 
     /// <summary>
     /// The drawings of this run placed above their paragraphs, wrapped top and bottom, over lines before them on the

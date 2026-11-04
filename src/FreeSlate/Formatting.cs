@@ -190,6 +190,49 @@ public sealed record DrawingFormatting
     /// </summary>
     public double? Outline { get; init; }
     public string? OutlineColor { get; init; }
+
+    /// <summary>
+    /// How far a picture is turned in its plane, clockwise in degrees from 0 up to 360 (a:xfrm rot of its pic:spPr, Word's Rotate and its
+    /// handle for turning); the effect extents round a picture by itself as Word gives them for it.
+    /// </summary>
+    public double? Rotation { get; init; }
+
+    /// <summary>Whether a picture is mirrored across, left for right, and down, top for bottom (a:xfrm flipH, flipV, Word's Flip Horizontal and Vertical).</summary>
+    public bool? FlipHorizontal { get; init; }
+    public bool? FlipVertical { get; init; }
+
+    /// <summary>
+    /// How a picture is tilted in space (a:scene3d of its pic:spPr, Word's 3-D Rotation, see PictureTilt); PictureTilt.Flat for not at
+    /// all. The effect extents round a picture by itself as Word gives them for it.
+    /// </summary>
+    public PictureTilt? Tilt { get; init; }
+}
+
+/// <summary>
+/// A picture tilted in space as Word's 3-D Rotation tilts it (a:scene3d/a:camera, catalog: effect.scene3d): the camera, one of
+/// DrawingML's presets ("orthographicFront" straight on, "perspectiveFront" the same in perspective, "isometricLeftDown" and its kin
+/// askew), and where turns are given (degrees, Word's X, Y and Z Rotation: X about the vertical axis, Y about the horizontal one, Z in
+/// the picture's plane; a:rot −lon, lat and −rev) they stand in place of the preset's; Fov, a perspective's field of view (degrees).
+/// </summary>
+public readonly record struct PictureTilt(string Camera, double? X = null, double? Y = null, double? Z = null, double? Fov = null)
+{
+    /// <summary>Not tilted: no scene of its own.</summary>
+    public static readonly PictureTilt Flat = new("orthographicFront");
+
+    /// <summary>Whether the tilt leaves the picture as it is: straight on, not turned.</summary>
+    public bool IsFlat => Camera == "orthographicFront" && Straight(X) && Straight(Y) && Straight(Z);
+
+    /// <summary>The turns it gives the picture (degrees, as X, Y and Z): those given, else its preset's (see Drawing.Camera).</summary>
+    public (double X, double Y, double Z) Angles
+    {
+        get
+        {
+            var (x, y, z) = Drawing.Camera.PresetAngles(Camera);
+            return (X ?? x, Y ?? y, Z ?? z);
+        }
+    }
+
+    static bool Straight(double? degrees) => Math.Abs(Math.IEEERemainder(degrees ?? 0, 360)) < 1e-9;
 }
 
 /// <summary>

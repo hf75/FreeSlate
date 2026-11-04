@@ -122,6 +122,26 @@ public sealed class EditSession(IEditableDocument document)
     public bool CanUndo => done.Count > 0;
     public bool CanRedo => undone.Count > 0;
 
+    /// <summary>How many steps there are to undo.</summary>
+    public int Steps => done.Count;
+
+    /// <summary>
+    /// The steps done since there were so many made one (handlings an editor makes one, as a tilted picture shown flat while it is cropped
+    /// and tilted again), undone and done again together, the cursor and the selection as before the first and after the last; nothing
+    /// where fewer than two came since.
+    /// </summary>
+    public void JoinSince(int steps)
+    {
+        if (steps < 0 || done.Count - steps < 2)
+            return;
+        var joined = done.GetRange(steps, done.Count - steps);
+        done.RemoveRange(steps, joined.Count);
+        done.Add(new Step(Combined(joined.Sum(s => s.Changes)), joined[0].CaretBefore, joined[0].AnchorBefore, joined[^1].CaretAfter, joined[^1].AnchorAfter, false));
+        // Saved between them, that state cannot come back.
+        if (saved > steps)
+            saved = saved == steps + joined.Count ? steps + 1 : -1;
+    }
+
     /// <summary>
     /// Puts the cursor at a place, within its paragraph's text, not between the halves of a character (a surrogate pair) nor
     /// within what a field computes (see IEditableDocument.Standing); <paramref name="extend"/> keeps the selection's anchor (Shift).
@@ -538,6 +558,34 @@ public sealed class EditSession(IEditableDocument document)
     /// or back in a rectangle, as it is cropped; a handling of its own, it stays selected. False where the selection holds no picture.
     /// </summary>
     public bool RoundPicture(bool round) => round ? Cropped(1, "ellipse") : Cropped(null, "rect");
+
+    /// <summary>
+    /// Turns the picture the selection holds alone in its plane by so many degrees clockwise, on from where it stands (see
+    /// DrawingFormatting.Rotation; with its caption, the picture alone, the caption staying level), a handling of its own; it stays
+    /// selected. False where the selection holds no picture.
+    /// </summary>
+    public bool TurnPicture(double by) =>
+        PictureShown is { } shown && Shows(new DrawingFormatting { Rotation = (((shown.Rotation ?? 0) + by) % 360 + 360) % 360 });
+
+    /// <summary>
+    /// Mirrors the picture the selection holds alone across, left for right, or down, top for bottom (back where it is mirrored so), a
+    /// handling of its own. False where the selection holds no picture.
+    /// </summary>
+    public bool FlipPicture(bool across) =>
+        PictureShown is { } shown && Shows(across ? new DrawingFormatting { FlipHorizontal = shown.FlipHorizontal != true } : new DrawingFormatting { FlipVertical = shown.FlipVertical != true });
+
+    /// <summary>Stands the picture the selection holds alone straight, neither turned, mirrored nor tilted, a handling of its own. False where it holds no picture.</summary>
+    public bool StraightenPicture() =>
+        PictureShown != null && Shows(new DrawingFormatting { Rotation = 0, FlipHorizontal = false, FlipVertical = false, Tilt = PictureTilt.Flat });
+
+    /// <summary>Tilts the picture the selection holds alone in space as Word's 3-D Rotation does (see PictureTilt), a handling of its own. False where it holds no picture.</summary>
+    public bool TiltPicture(PictureTilt tilt) => PictureShown != null && Shows(new DrawingFormatting { Tilt = tilt });
+
+    bool Shows(DrawingFormatting format)
+    {
+        Format(format);
+        return true;
+    }
 
     /// <summary>The picture selected cropped to proportions where given (see CropPicture), and in a shape where given, one handling.</summary>
     bool Cropped(double? proportions, string? shape)

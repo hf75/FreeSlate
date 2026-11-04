@@ -78,6 +78,9 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
         ["perspectiveRelaxedModerately"] = (0, -35.15602, 0, 45),
     };
 
+    /// <summary>The turns a preset camera gives (X, Y and Z in degrees, see the class); none for one unknown.</summary>
+    public static (double X, double Y, double Z) PresetAngles(string preset) => Presets.TryGetValue(preset, out var p) ? (p.X, p.Y, p.Z) : default;
+
     /// <summary>The camera of a:scene3d, or null without one.</summary>
     public static Camera? Read(XElement? scene3d)
     {
@@ -126,11 +129,13 @@ public sealed record Camera(double X, double Y, double Z, double Fov, bool Persp
     public bool Legacy { get; init; }
 
     /// <summary>
-    /// An oblique camera that is not a legacy one turns the projected picture by the shape's rotation, its depths' shift
-    /// along, where the other cameras turn the shape in its plane before they project it (measured with
-    /// local/oblique-rot: an extruded box under obliqueTopRight turned by 60° shows its faces lit as unturned).
+    /// A camera that is not a legacy one turns the projected picture by the shape's rotation (about the view's axis, an
+    /// oblique one's depths' shift along), the shape itself seen unturned (measured with local/oblique-rot: an extruded box
+    /// under obliqueTopRight turned by 60° shows its faces lit as unturned; and with a picture marked in its corners,
+    /// turned by 30 and 90 degrees under isometricLeftDown, perspectiveRight and X 40, Y 20, in PowerPoint 365 and Word
+    /// 365 alike: the marks within 0.4 pt of the turned picture, 18 to 53 pt off where the shape is turned first).
     /// </summary>
-    public bool TurnsPicture => Oblique && !Legacy;
+    public bool TurnsPicture => !Legacy;
 
     /// <summary>The camera leaves a flat shape as it is.</summary>
     public bool Flat => !Oblique && Normalized(X) == 0 && Normalized(Y) == 0 && Normalized(Z) == 0 && (!Perspective || Math.Abs(Offset) < 1e-9)

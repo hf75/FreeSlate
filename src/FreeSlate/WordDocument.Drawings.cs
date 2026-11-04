@@ -62,15 +62,26 @@ public sealed partial class WordDocument
     public void Format(int paragraph, int offset, DrawingFormatting format)
     {
         // A line round a picture with its caption goes round the picture in its line, the figure making room for it (see Refit), which
-        // Word shows (it shows of a text box only what lies within its text); a few changes taken as one.
-        if ((format.Outline != null || format.OutlineColor != null) && FigureAt(paragraph, offset) is { } figure)
+        // Word shows (it shows of a text box only what lies within its text); so does the picture turned, mirrored or tilted, its caption
+        // staying level under it. A few changes taken as one.
+        if ((format.Outline != null || format.OutlineColor != null || format.Rotation != null || format.FlipHorizontal != null || format.FlipVertical != null
+                || format.Tilt != null) && FigureAt(paragraph, offset) is { } figure)
         {
             var start = version;
             try
             {
-                Format(figure.Holder.Id, figure.Holder.TextOffset, new DrawingFormatting { Outline = format.Outline, OutlineColor = format.OutlineColor });
+                Format(figure.Holder.Id, figure.Holder.TextOffset, new DrawingFormatting
+                {
+                    Outline = format.Outline,
+                    OutlineColor = format.OutlineColor,
+                    Rotation = format.Rotation,
+                    FlipHorizontal = format.FlipHorizontal,
+                    FlipVertical = format.FlipVertical,
+                    Tilt = format.Tilt,
+                });
                 Refit(paragraph, offset, indent: true);
-                if (format with { Outline = null, OutlineColor = null } is var rest && rest != new DrawingFormatting())
+                if (format with { Outline = null, OutlineColor = null, Rotation = null, FlipHorizontal = null, FlipVertical = null, Tilt = null } is var rest
+                    && rest != new DrawingFormatting())
                     Format(paragraph, offset, rest);
                 Combine(version - start);
             }
@@ -413,7 +424,7 @@ public sealed partial class WordDocument
             ? data.Elements().FirstOrDefault(e => e.Name.LocalName == "pic")
             : FigurePicture(graphic)?.Element(A + "graphic") is { } inner ? Pic(inner) : null;
 
-    /// <summary>How a picture's pic:pic has it show (see DrawingFormatting.Crop, Shape, Recolor, Outline); nothing where there is none.</summary>
+    /// <summary>How a picture's pic:pic has it show (see DrawingFormatting.Crop, Shape, Recolor, Outline, Rotation, Tilt); nothing where there is none.</summary>
     static DrawingFormatting Shows(XElement? pic)
     {
         if (pic == null)
@@ -422,6 +433,7 @@ public sealed partial class WordDocument
         var spPr = pic.Element(pic.Name.Namespace + "spPr");
         var line = spPr?.Element(A + "ln");
         var solid = line?.Element(A + "solidFill");
+        var xfrm = spPr?.Element(A + "xfrm");
         double Share(XElement rect, string side) => (long?)rect.Attribute(side) / 100000.0 ?? 0;
         return new DrawingFormatting
         {
@@ -431,7 +443,25 @@ public sealed partial class WordDocument
             // A line without a width is as wide as Office draws one by default.
             Outline = solid != null ? Points((string?)line!.Attribute("w")) ?? 0.75 : 0,
             OutlineColor = (string?)solid?.Element(A + "srgbClr")?.Attribute("val"),
+            Rotation = Turned(((long?)xfrm?.Attribute("rot") ?? 0) / 60000.0),
+            FlipHorizontal = (string?)xfrm?.Attribute("flipH") is "1" or "true",
+            FlipVertical = (string?)xfrm?.Attribute("flipV") is "1" or "true",
+            Tilt = TiltOf(spPr?.Element(A + "scene3d")),
         };
+    }
+
+    /// <summary>An angle in degrees from 0 up to 360.</summary>
+    static double Turned(double degrees) => (degrees % 360 + 360) % 360;
+
+    /// <summary>How an a:scene3d has a picture tilted (see PictureTilt): flat without one.</summary>
+    static PictureTilt TiltOf(XElement? scene)
+    {
+        if (scene?.Element(A + "camera") is not { } camera)
+            return PictureTilt.Flat;
+        var rot = camera.Element(A + "rot");
+        double? Degrees(string name, int sign) => rot == null ? null : Turned(sign * ((long?)rot.Attribute(name) ?? 0) / 60000.0);
+        return new PictureTilt((string?)camera.Attribute("prst") ?? "orthographicFront", Degrees("lon", -1), Degrees("lat", 1), Degrees("rev", -1),
+            (long?)camera.Attribute("fov") is { } fov ? fov / 60000.0 : null);
     }
 
     /// <summary>The effects of an a:blip that recolor its picture, as Word's Recolor sets one of them (see DrawingFormatting.Recolor).</summary>
@@ -449,14 +479,43 @@ public sealed partial class WordDocument
         };
 
     /// <summary>
-    /// A picture's pic:pic (a copy, changed in place) showing as a format has it (see DrawingFormatting.Crop, Shape, Recolor, Outline):
-    /// the part of it given where <paramref name="cropping"/> (a picture by itself, whose size goes with it), the shape, the recoloring
-    /// in place of any other, the line round it, as Word's Picture Format writes them.
+    /// A picture's pic:pic (a copy, changed in place) showing as a format has it (see DrawingFormatting.Crop, Shape, Recolor, Outline,
+    /// Rotation, Tilt): the part of it given where <paramref name="cropping"/> (a picture by itself, whose size goes with it), the shape,
+    /// the recoloring in place of any other, the line round it, its turn and mirroring, its tilt, as Word's Picture Format writes them.
     /// </summary>
     static void Show(XElement pic, DrawingFormatting format, bool cropping)
     {
         var fill = pic.Element(pic.Name.Namespace + "blipFill");
         var spPr = pic.Element(pic.Name.Namespace + "spPr");
+        if (spPr?.Element(A + "xfrm") is { } frame)
+        {
+            if (format.Rotation is { } rotation)
+                frame.SetAttributeValue("rot", Angle(rotation) is var turn and not 0 ? turn : null);
+            if (format.FlipHorizontal is { } across)
+                frame.SetAttributeValue("flipH", across ? "1" : null);
+            if (format.FlipVertical is { } down)
+                frame.SetAttributeValue("flipV", down ? "1" : null);
+        }
+        if (format.Tilt is { } tilt && spPr != null)
+        {
+            spPr.Element(A + "scene3d")?.Remove();
+            if (!tilt.IsFlat)
+            {
+                var camera = new XElement(A + "camera", new XAttribute("prst", tilt.Camera));
+                if (tilt.Fov is { } fov)
+                    camera.SetAttributeValue("fov", (long)Math.Round(fov * 60000));
+                if (tilt.X != null || tilt.Y != null || tilt.Z != null)
+                    camera.Add(new XElement(A + "rot", new XAttribute("lat", Angle(tilt.Y ?? 0)), new XAttribute("lon", Angle(-(tilt.X ?? 0))),
+                        new XAttribute("rev", Angle(-(tilt.Z ?? 0)))));
+                var scene = new XElement(A + "scene3d", camera, new XElement(A + "lightRig", new XAttribute("rig", "threePt"), new XAttribute("dir", "t")));
+                // After the line and the effects, before an extrusion (a:sp3d) and the extensions.
+                if (spPr.Elements().LastOrDefault(e => e.Name.LocalName is "xfrm" or "prstGeom" or "custGeom" or "noFill" or "solidFill" or "gradFill" or "blipFill"
+                        or "pattFill" or "grpFill" or "ln" or "effectLst" or "effectDag") is { } after)
+                    after.AddAfterSelf(scene);
+                else
+                    spPr.AddFirst(scene);
+            }
+        }
         if (cropping && format.Crop is { } crop && fill != null)
         {
             fill.Element(A + "srcRect")?.Remove();
@@ -523,15 +582,42 @@ public sealed partial class WordDocument
         }
     }
 
+    /// <summary>An angle in 60000ths of a degree from 0 up to a whole turn, as DrawingML writes them.</summary>
+    static long Angle(double degrees) => (long)Math.Round(Turned(degrees) * 60000) % 21600000;
+
+    /// <summary>How far a tilted picture's effect extents reach beyond what it shows, in points: 3 pt and a little (Word's 4.5 pt round a flat camera's).</summary>
+    const double TiltSeam = 3.01;
+
     /// <summary>
-    /// The effect extents Word gives a picture by itself with a line round it (see DrawingFormatting.Outline), on each side: the line's
-    /// width up to the next 1.5 pt, at least 1.5 pt (measured in Word 365: 0.25 up to 1.5 pt make 1.5 pt, 2.25 and 3 pt make 3 pt, 4.5
-    /// and 6 pt as wide as they are); none without a line.
+    /// The effect extents Word gives a picture by itself, of its size, with a line round it, turned or tilted (see DrawingFormatting.Outline,
+    /// Rotation, Tilt), on each side: how far the picture with its line (as wide as the line all round; an ellipse as one) stands out of
+    /// the box it stands in, turned in its plane and seen through its camera, a little more than 3 pt more where tilted, up to the next
+    /// 1.5 pt; the box itself turned with it from 45 up to 135 degrees and from 225 up to 315. Measured in Word 365 by COM
+    /// (scratch/TurnCheck): a line alone 1.5 pt at least, its width above (2.25 and 3 pt make 3 pt); the tops and bottoms of 432 turns
+    /// and of nearly all 278 tilts alike. Word's sides go round what the picture shows, at times short of it, these never. None without any.
     /// </summary>
-    static XElement OutlineExtent(XNamespace wp, double width)
+    static XElement Margins(XNamespace wp, double width, double height, XElement pic)
     {
-        var side = width > 0 ? Emu(Math.Max(1, Math.Ceiling(width / 1.5 - 1e-9)) * 1.5) : "0";
-        return new XElement(wp + "effectExtent", new XAttribute("l", side), new XAttribute("t", side), new XAttribute("r", side), new XAttribute("b", side));
+        var shows = Shows(pic);
+        var line = shows.Outline ?? 0;
+        var camera = Drawing.Camera.Read(pic.Element(pic.Name.Namespace + "spPr")?.Element(A + "scene3d")) is { Flat: false } seen ? seen : null;
+        var turn = shows.Rotation ?? 0;
+        var (a, b) = (width / 2 + line, height / 2 + line);
+        (double X, double Y)[] outline = shows.Shape == "ellipse"
+            ? [.. Enumerable.Range(0, 72).Select(k => (a * Math.Cos(k * Math.PI / 36), b * Math.Sin(k * Math.PI / 36)))]
+            : [(-a, -b), (a, -b), (a, b), (-a, b)];
+        var (sin, cos) = Math.SinCos(turn * Math.PI / 180);
+        (double X, double Y) Turn((double X, double Y) p) => (p.X * cos - p.Y * sin, p.X * sin + p.Y * cos);
+        // Through the camera in pixels about the picture's center; it turns the picture it shows (see Camera.TurnsPicture).
+        (double X, double Y) Project((double X, double Y) p) =>
+            camera?.Project(p.X * 96 / 72, p.Y * 96 / 72, 0) is var (x, y) && camera != null ? (x * 72 / 96, y * 72 / 96) : p;
+        var points = outline.Select(p => camera?.TurnsPicture == true ? Turn(Project(p)) : Project(Turn(p))).ToList();
+        var (boxWidth, boxHeight) = turn is >= 45 and < 135 or >= 225 and < 315 ? (height, width) : (width, height);
+        var seam = camera != null ? TiltSeam : 0;
+        string Side(double beyond) => beyond + seam > 1e-6 ? Emu(Math.Ceiling((beyond + seam) / 1.5 - 1e-6) * 1.5) : "0";
+        return new XElement(wp + "effectExtent",
+            new XAttribute("l", Side(-points.Min(p => p.X) - boxWidth / 2)), new XAttribute("t", Side(-points.Min(p => p.Y) - boxHeight / 2)),
+            new XAttribute("r", Side(points.Max(p => p.X) - boxWidth / 2)), new XAttribute("b", Side(points.Max(p => p.Y) - boxHeight / 2)));
     }
 
     /// <summary>Whether a drawing's element is a picture by itself (not one with its caption, see AddCaption).</summary>
@@ -600,14 +686,16 @@ public sealed partial class WordDocument
         var extent = new XElement(wp + "extent", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height)));
         var effect = Kept("effectExtent") ?? new XElement(wp + "effectExtent", new XAttribute("l", 0), new XAttribute("t", 0), new XAttribute("r", 0), new XAttribute("b", 0));
         var graphic = own.Elements().FirstOrDefault(e => e.Name.LocalName == "graphic") is { } g ? new XElement(g) : null;
-        // How a picture shows (see Show), by itself or with its caption; a line round one by itself takes Word's effect extents, where it
-        // has no effects of its own (a figure's picture so in its line, see Format).
+        // How a picture shows (see Show), by itself or with its caption. One by itself framed, turned, tilted, cut to a shape or sized anew
+        // takes Word's effect extents for that (see Margins), where it has no effects or extrusion of its own (a figure's picture so in its
+        // line, see Format).
         if (Pic(graphic) is { } pic)
         {
             Show(pic, format, cropping: IsPicture(own));
-            if (IsPicture(own) && format.Outline != null
-                && pic.Element(pic.Name.Namespace + "spPr")?.Elements().Any(e => e.Name.LocalName is "effectLst" or "effectDag") != true)
-                effect = OutlineExtent(wp, Shows(pic).Outline ?? 0);
+            if (IsPicture(own) && (format.Outline != null || format.Rotation != null || format.Tilt != null || format.Shape != null || format.Width != null
+                    || format.Height != null || format.Crop != null)
+                && pic.Element(pic.Name.Namespace + "spPr")?.Elements().Any(e => e.Name.LocalName is "effectLst" or "effectDag" or "sp3d") != true)
+                effect = Margins(wp, width, height, pic);
         }
         // A picture's own size goes with the drawing's (pic:spPr/a:xfrm/a:ext).
         if (graphic?.Elements().FirstOrDefault()?.Elements().FirstOrDefault()?.Elements().FirstOrDefault(e => e.Name.LocalName == "spPr")

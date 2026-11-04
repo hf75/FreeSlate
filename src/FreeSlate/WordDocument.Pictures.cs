@@ -22,9 +22,9 @@ public sealed partial class WordDocument
     /// <summary>
     /// Crops the picture at a place of a paragraph's text to a part of it (see PictureCrop), one change, as Word crops one: at the scale it
     /// has, its size the part's; floating, its box moves with the sides cropped at its left and top so that the picture stays where it
-    /// stands on the page (where it stands at an offset; aligned, it stays aligned), unless <paramref name="boxStays"/>: then the box
-    /// stays where it is and the picture moves in it (a part as large as before, elsewhere). A picture with its caption is cropped so,
-    /// the figure as wide as it and as high as it then holds (see AddCaption).
+    /// stands on the page (turned or mirrored, as it shows; where it stands at an offset; aligned, it stays aligned), unless
+    /// <paramref name="boxStays"/>: then the box stays where it is and the picture moves in it (a part as large as before, elsewhere). A
+    /// picture with its caption is cropped so, the figure as wide as it and as high as it then holds (see AddCaption).
     /// </summary>
     /// <exception cref="NotSupportedException">No picture stands at the place; nothing changes.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The part shows nothing of the picture; nothing changes.</exception>
@@ -49,8 +49,16 @@ public sealed partial class WordDocument
                 Sized(figure, paragraph, offset, width, height, crop);
             else
                 Format(paragraph, offset, new DrawingFormatting { Crop = crop, Width = width, Height = height });
-            // The box with the sides cropped at its left and top, where it stands at an offset there.
+            // The box with the sides cropped at its left and top, where it stands at an offset there; turned or mirrored, so that the part
+            // kept stays where it shows: its middle mirrored and turned about the box's as the picture is.
             var (dx, dy) = ((crop.Left - was.Left) * wide, (crop.Top - was.Top) * high);
+            if (figure == null && (now.Rotation is not (null or 0) || now.FlipHorizontal == true || now.FlipVertical == true))
+            {
+                var (grownX, grownY) = ((width - now.Width!.Value) / 2, (height - now.Height!.Value) / 2);
+                var (ux, uy) = ((dx + grownX) * (now.FlipHorizontal == true ? -1 : 1), (dy + grownY) * (now.FlipVertical == true ? -1 : 1));
+                var angle = (now.Rotation ?? 0) * Math.PI / 180;
+                (dx, dy) = (ux * Math.Cos(angle) - uy * Math.Sin(angle) - grownX, ux * Math.Sin(angle) + uy * Math.Cos(angle) - grownY);
+            }
             var across = !boxStays && stood.Wrap != "inline" && stood.HorizontalAlign == null && stood.HorizontalOffset != null && Math.Abs(dx) > 0.001;
             var down = !boxStays && stood.Wrap != "inline" && stood.VerticalAlign == null && stood.VerticalOffset != null && Math.Abs(dy) > 0.001;
             if (across || down)
