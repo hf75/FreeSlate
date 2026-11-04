@@ -8,7 +8,8 @@ namespace FreeSlate.Skia;
 /// point hits, where the cursor of a place stands, and what a selection between two places covers, in the units the page
 /// was drawn in (CSS pixels from its top left). A place is a paragraph's id (Block.Id; a slide paragraph's in its
 /// PresentationDocument) and an offset in its text (Docx.ParagraphText, Pptx.SlideText). The places of floating drawings
-/// (PlacesItem.Floating) are not lines: they only tell which drawing a point is on and where its box is (see FloatingAt, Box).
+/// (PlacesItem.Floating) are not lines: they only tell which drawing a point is on and where its box is (see FloatingAt, Box); a
+/// drawing turned or tilted is hit where it shows (see OnDrawing).
 /// </summary>
 public sealed class TextPlaces
 {
@@ -95,21 +96,56 @@ public sealed class TextPlaces
         [OnPage(toPage, box.Left, box.Top), OnPage(toPage, box.Right, box.Top), OnPage(toPage, box.Right, box.Bottom), OnPage(toPage, box.Left, box.Bottom)];
 
     /// <summary>
-    /// The floating drawing a point of the page is on, the topmost of those behind the text or of the others (<paramref name="behind"/>):
-    /// its anchor's place; null where it is on none.
+    /// The floating drawing a point of the page is on (see OnDrawing), the topmost of those behind the text or of the others
+    /// (<paramref name="behind"/>): its anchor's place; null where it is on none.
     /// </summary>
     public (int Block, int Offset)? FloatingAt(SKPoint point, bool behind)
     {
         for (var k = floating.Count - 1; k >= 0; k--)
         {
             var (toPage, drawing) = floating[k];
-            if (drawing.Behind != behind)
-                continue;
-            var corners = Corners(toPage, drawing.Boxes[0]);
-            if (point.X >= corners.Min(c => c.X) && point.X <= corners.Max(c => c.X) && point.Y >= corners.Min(c => c.Y) && point.Y <= corners.Max(c => c.Y))
+            if (drawing.Behind == behind && On(toPage, drawing, 0, point))
                 return (drawing.Block, drawing.Offsets[0]);
         }
         return null;
+    }
+
+    /// <summary>
+    /// Whether a point of the page is on the drawing a spot's character is (see Box), in the line or floating: within the outline it
+    /// shows where it is turned or tilted (PlacesItem.Outlines), else within its box; false for other characters.
+    /// </summary>
+    public bool OnDrawing(Spot spot, SKPoint point)
+    {
+        var (toPage, line) = lines[spot.Line];
+        if (line.Boxes.ContainsKey(spot.Index))
+            return On(toPage, line, spot.Index, point);
+        var (block, offset) = (line.Block, line.Offsets[spot.Index]);
+        return floating.FirstOrDefault(f => f.Line.Block == block && f.Line.Offsets[0] == offset) is var (at, drawing) && drawing != null && On(at, drawing, 0, point);
+    }
+
+    /// <summary>Whether a point of the page is on the drawing of a box among places (see OnDrawing).</summary>
+    static bool On(SKMatrix toPage, PlacesItem places, int index, SKPoint point)
+    {
+        if (places.Outlines.TryGetValue(index, out var outline))
+        {
+            var local = Local(toPage, point);
+            return Inside(outline, local.X, local.Y);
+        }
+        var corners = Corners(toPage, places.Boxes[index]);
+        return point.X >= corners.Min(c => c.X) && point.X <= corners.Max(c => c.X) && point.Y >= corners.Min(c => c.Y) && point.Y <= corners.Max(c => c.Y);
+    }
+
+    /// <summary>Whether a point lies within a polygon: a ray from it to the right crosses its sides an odd number of times.</summary>
+    static bool Inside((double X, double Y)[] polygon, double x, double y)
+    {
+        var inside = false;
+        for (int i = 0, j = polygon.Length - 1; i < polygon.Length; j = i++)
+        {
+            var (a, b) = (polygon[i], polygon[j]);
+            if (a.Y > y != b.Y > y && x < (b.X - a.X) * (y - a.Y) / (b.Y - a.Y) + a.X)
+                inside = !inside;
+        }
+        return inside;
     }
 
     /// <summary>Whether a point of the page is over a character of a line (within its width and its line's height).</summary>

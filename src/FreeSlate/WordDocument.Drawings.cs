@@ -606,12 +606,7 @@ public sealed partial class WordDocument
         (double X, double Y)[] outline = shows.Shape == "ellipse"
             ? [.. Enumerable.Range(0, 72).Select(k => (a * Math.Cos(k * Math.PI / 36), b * Math.Sin(k * Math.PI / 36)))]
             : [(-a, -b), (a, -b), (a, b), (-a, b)];
-        var (sin, cos) = Math.SinCos(turn * Math.PI / 180);
-        (double X, double Y) Turn((double X, double Y) p) => (p.X * cos - p.Y * sin, p.X * sin + p.Y * cos);
-        // Through the camera in pixels about the picture's center; it turns the picture it shows (see Camera.TurnsPicture).
-        (double X, double Y) Project((double X, double Y) p) =>
-            camera?.Project(p.X * 96 / 72, p.Y * 96 / 72, 0) is var (x, y) && camera != null ? (x * 72 / 96, y * 72 / 96) : p;
-        var points = outline.Select(p => camera?.TurnsPicture == true ? Turn(Project(p)) : Project(Turn(p))).ToList();
+        var points = Docx.Drawings.Shown(outline, turn, camera);
         var (boxWidth, boxHeight) = turn is >= 45 and < 135 or >= 225 and < 315 ? (height, width) : (width, height);
         var seam = camera != null ? TiltSeam : 0;
         string Side(double beyond) => beyond + seam > 1e-6 ? Emu(Math.Ceiling((beyond + seam) / 1.5 - 1e-6) * 1.5) : "0";

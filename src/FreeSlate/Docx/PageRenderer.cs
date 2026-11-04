@@ -201,9 +201,15 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     Floating = true,
                     Behind = drawing.Behind,
                     Boxes = new Dictionary<int, (double, double, double, double)> { [0] = (drawing.X, drawing.Y, drawing.X + drawing.Width, drawing.Y + drawing.Height) },
+                    Outlines = Drawings.TurnedOutline(drawing.Drawing) is { } outline
+                        ? new Dictionary<int, (double X, double Y)[]> { [0] = Around(outline, drawing.X + drawing.Width / 2, drawing.Y + drawing.Height / 2) }
+                        : new Dictionary<int, (double X, double Y)[]>(),
                 };
         }
     }
+
+    /// <summary>An outline about a middle (see Drawings.TurnedOutline) placed at a point of the page.</summary>
+    static (double X, double Y)[] Around((double X, double Y)[] outline, double x, double y) => [.. outline.Select(p => (x + p.X, y + p.Y))];
 
     /// <summary>
     /// The text boxes of the chains of linked text boxes that have their first box on the page, in each chain's order:
@@ -1028,7 +1034,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                     var (ix, iy) = (shape || inline.Drawing.Attribute(Vml.Hangs) != null) && placed.InlineOrigin is { } origin ? origin : (x, top);
                     // Its box among the line's places (PlacesItem.Boxes), where it shows.
                     var swapped = Drawings.InlineSwapped(inline.Drawing);
-                    places?.Box(ix + dx, iy + dy, swapped ? h : w, swapped ? w : h);
+                    places?.Box(ix + dx, iy + dy, swapped ? h : w, swapped ? w : h, inline.Drawing);
                     // A drawing whose turn swaps its box's sides turns about that box's middle (ri-*: Drawings.Box).
                     if (swapped)
                         (ix, iy) = (ix + (h - w) / 2, iy + (w - h) / 2);
@@ -1106,6 +1112,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         readonly List<double> starts = [], ends = [];
         readonly List<byte> formats = [];
         readonly Dictionary<int, (double, double, double, double)> boxes = [];
+        readonly Dictionary<int, (double X, double Y)[]> outlines = [];
 
         /// <summary>The index of the last character a piece added, -1 where it added none.</summary>
         int last = -1;
@@ -1132,11 +1139,17 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             }
         }
 
-        /// <summary>The box of the drawing the last piece added shows, on the page (see PlacesItem.Boxes).</summary>
-        public void Box(double x, double y, double width, double height)
+        /// <summary>
+        /// The box of the drawing the last piece added shows, on the page (see PlacesItem.Boxes), and the outline it shows about the box's
+        /// middle where it shows turned or tilted (Outlines, see Drawings.TurnedOutline).
+        /// </summary>
+        public void Box(double x, double y, double width, double height, XElement drawing)
         {
-            if (last >= 0)
-                boxes[last] = (x, y, x + width, y + height);
+            if (last < 0)
+                return;
+            boxes[last] = (x, y, x + width, y + height);
+            if (Drawings.TurnedOutline(drawing) is { } outline)
+                outlines[last] = Around(outline, x + width / 2, y + height / 2);
         }
 
         /// <summary>
@@ -1155,7 +1168,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 formats.Add(formats.Count > 0 ? formats[^1] : (byte)0);
             }
             Anchors(line.Paragraph!);
-            return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends]) { Formats = [.. formats], Boxes = boxes };
+            return new PlacesItem(line.Paragraph!.Id, top, top + line.Height, [.. offsets], [.. starts], [.. ends])
+            {
+                Formats = [.. formats],
+                Boxes = boxes,
+                Outlines = outlines,
+            };
         }
 
         /// <summary>The characters of the paragraph's anchors whose characters after them the line has, each before that one (see Item).</summary>
@@ -1179,6 +1197,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 {
                     boxes[shifted + 1] = boxes[shifted];
                     boxes.Remove(shifted);
+                    if (outlines.Remove(shifted, out var outline))
+                        outlines[shifted + 1] = outline;
                 }
                 offsets.Insert(index, anchors[k]);
                 starts.Insert(index, starts[index]);

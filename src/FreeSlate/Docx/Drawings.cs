@@ -405,6 +405,40 @@ public sealed class Drawings(DocumentContext context, System.Globalization.Cultu
         return degrees is >= 45 and < 135 or >= 225 and < 315;
     }
 
+    /// <summary>
+    /// The outline a drawing shows of its extent where its graphic turns it in its plane (a:xfrm rot of its picture's, shape's or
+    /// group's properties) or tilts it in space (a:scene3d): its corners in points about the extent's middle, clockwise from what was
+    /// its top left, as it is drawn (see Shown); null for one standing straight and flat.
+    /// </summary>
+    public static (double X, double Y)[]? TurnedOutline(XElement drawing)
+    {
+        if (drawing.Element(Ns.A + "graphic")?.Element(Ns.A + "graphicData")?.Elements().FirstOrDefault()?.Elements()
+                .FirstOrDefault(e => e.Name.LocalName is "spPr" or "grpSpPr") is not { } properties)
+            return null;
+        var turn = long.TryParse((string?)properties.Element(Ns.A + "xfrm")?.Attribute("rot"), System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out var rot) ? rot / 60000.0 : 0;
+        var camera = FreeSlate.Drawing.Camera.Read(properties.Element(Ns.A + "scene3d")) is { Flat: false } seen ? seen : null;
+        if (camera == null && Math.Abs(Math.IEEERemainder(turn, 360)) < 1e-9)
+            return null;
+        var (width, height) = Extent(drawing);
+        var (a, b) = (width / 2, height / 2);
+        return Shown([(-a, -b), (a, -b), (a, b), (-a, b)], turn, camera);
+    }
+
+    /// <summary>
+    /// Points of a drawing (in points about its middle) where it shows them: turned in its plane by so many degrees clockwise, and seen
+    /// through its camera where it has one, which turns the picture it shows (see Camera.TurnsPicture) or sees the drawing turned.
+    /// </summary>
+    public static (double X, double Y)[] Shown(IEnumerable<(double X, double Y)> points, double turn, FreeSlate.Drawing.Camera? camera)
+    {
+        var (sin, cos) = Math.SinCos(turn * Math.PI / 180);
+        (double X, double Y) Turn((double X, double Y) p) => (p.X * cos - p.Y * sin, p.X * sin + p.Y * cos);
+        // Through the camera in pixels about the middle.
+        (double X, double Y) Project((double X, double Y) p) =>
+            camera?.Project(p.X * 96 / 72, p.Y * 96 / 72, 0) is var (x, y) && camera != null ? (x * 72 / 96, y * 72 / 96) : p;
+        return [.. points.Select(p => camera?.TurnsPicture == true ? Turn(Project(p)) : Project(Turn(p)))];
+    }
+
     /// <summary>The effect extents left and above the drawing's extent, in points.</summary>
     public static (double Left, double Top) EffectOffset(XElement drawing)
     {

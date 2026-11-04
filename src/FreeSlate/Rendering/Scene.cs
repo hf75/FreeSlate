@@ -358,6 +358,13 @@ public sealed record PlacesItem(int Block, double Top, double Bottom, int[] Offs
         new Dictionary<int, (double, double, double, double)>();
 
     /// <summary>
+    /// For the boxes of drawings that show turned in their plane or tilted in space (by their index, as Boxes): the outline they show,
+    /// its corners in the line's units (as Boxes), which a click on the drawing hits rather than its box. None for drawings standing
+    /// straight and flat.
+    /// </summary>
+    public IReadOnlyDictionary<int, (double X, double Y)[]> Outlines { get; init; } = new Dictionary<int, (double X, double Y)[]>();
+
+    /// <summary>
     /// Whether these are the places of a floating drawing rather than a line's: its one place, the offset of its anchor's character
     /// in its paragraph, over its box (in Boxes too), which a click on the drawing hits; behind the text (<see cref="Behind"/>) or not.
     /// </summary>
