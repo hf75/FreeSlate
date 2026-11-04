@@ -146,6 +146,54 @@ static partial class TextEdits
         }
 
         /// <summary>
+        /// The smallest rectangle of the grid that holds a given one and every cell reaching into it whole: what merging over it takes, as
+        /// a cell is never anything but a rectangle.
+        /// </summary>
+        public (int Top, int Bottom, int Left, int Right) Enclosing(int top, int bottom, int left, int right)
+        {
+            for (var grown = true; grown;)
+            {
+                grown = false;
+                foreach (var cell in Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right))
+                {
+                    if (cell.Top < top || cell.Bottom > bottom || cell.Left < left || cell.Right > right)
+                    {
+                        (top, bottom, left, right) = (Math.Min(top, cell.Top), Math.Max(bottom, cell.Bottom), Math.Min(left, cell.Left), Math.Max(right, cell.Right));
+                        grown = true;
+                    }
+                }
+            }
+            return (top, bottom, left, right);
+        }
+
+        /// <summary>
+        /// Takes a line between cells away, as Word's eraser does: an upright one (a line of the grid) through rows from one to before
+        /// another, one across (the line before a row) through grid columns; each stretch of it between two cells merges them (see
+        /// Merge), into the smallest rectangle holding both where they do not make one (see Enclosing). The table's own sides stay.
+        /// Returns the first cell merged.
+        /// </summary>
+        public Cell? Erase(bool upright, int line, int from, int to)
+        {
+            Cell? first = null;
+            if (upright ? line <= 0 || line >= Grid.Count : line <= 0 || line >= Rows.Count)
+                return null;
+            for (var k = from; k < to; k++)
+            {
+                var (before, after) = upright ? (At(k, line - 1), At(k, line)) : (At(line - 1, k), At(line, k));
+                if (before == null || after == null || ReferenceEquals(before, after))
+                    continue;
+                var (top, bottom, left, right) = Enclosing(Math.Min(before.Top, after.Top), Math.Max(before.Bottom, after.Bottom),
+                    Math.Min(before.Left, after.Left), Math.Max(before.Right, after.Right));
+                if (Cells.Any(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right) is false
+                    || (bottom - top) * (right - left) != Cells.Where(c => c.Top >= top && c.Bottom <= bottom && c.Left >= left && c.Right <= right).Sum(c => (c.Bottom - c.Top) * (c.Right - c.Left)))
+                    continue;
+                var merged = Merge(top, bottom, left, right);
+                first ??= merged;
+            }
+            return first;
+        }
+
+        /// <summary>
         /// Splits cells along an upright line, as Word's pen does: at a line of the grid within them, or where <paramref name="width"/>
         /// is given, at that many twips into grid column <paramref name="column"/> (a new line of the grid there, the cells of other rows
         /// that cover the column spanning both of its parts). The part left of the line keeps the cell, its content and properties;
@@ -532,6 +580,30 @@ static partial class TextEdits
             }
             look.SetAttributeValue(w + "val", turned.ToString("X4", CultureInfo.InvariantCulture));
             return marks[0].On;
+        }
+
+        /// <summary>
+        /// The table with a head row or without a head: the look marks its first row (w:tblLook firstRow, Word's Header Row) and the row
+        /// repeats on each page the table goes on to (w:tblHeader), or neither, nor a head column (firstColumn).
+        /// </summary>
+        public void SetHead(bool on)
+        {
+            var tblPr = table.Element(w + "tblPr") ?? Made(table, w + "tblPr");
+            var look = Property(tblPr, "tblLook", TableOrder);
+            var bits = look.Attribute(w + "val") is { } val && int.TryParse(val.Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var given) ? given : 0;
+            bits = on ? (bits | 0x20) & ~0x80 : bits & ~0xA0;
+            look.SetAttributeValue(w + "val", bits.ToString("X4", CultureInfo.InvariantCulture));
+            look.SetAttributeValue(w + "firstRow", on ? "1" : "0");
+            look.SetAttributeValue(w + "firstColumn", "0");
+            foreach (var row in Rows)
+                row.Element(w + "trPr")?.Element(w + "tblHeader")?.Remove();
+            if (on)
+                Property(Rows[0].Element(w + "trPr") ?? Made(Rows[0], w + "trPr"), "tblHeader", RowOrder);
+            foreach (var row in Rows)
+            {
+                if (row.Element(w + "trPr") is { HasElements: false, HasAttributes: false } empty)
+                    empty.Remove();
+            }
         }
 
         /// <summary>The columns of even width over the table's width, as Word gives a new table's (the rest a twip each to the last ones).</summary>

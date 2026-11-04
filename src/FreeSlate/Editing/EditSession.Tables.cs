@@ -73,6 +73,47 @@ public sealed partial class EditSession
         Place(new TextPlace(cell.Last, document.Text(cell.Last).Length), extend: true);
     }
 
+    /// <summary>A row put in above the cursor's cell or below it, like its row, the cursor then in the new row's cell of its column.</summary>
+    public bool InsertRow(bool above) => Table is { } table && Cell is { } cell
+        && ChangeTable(word => word.AddRows(table.Table, above ? cell.Top : cell.Bottom, 1, like: above ? cell.Top : cell.Bottom - 1, column: cell.Left));
+
+    /// <summary>A column put in left of the cursor's cell or right of it, like its column, the table as wide as it was; the cursor then in the new column's cell of its row.</summary>
+    public bool InsertColumn(bool left) => Table is { } table && Cell is { } cell
+        && ChangeTable(word => word.AddColumns(table.Table, left ? cell.Left : cell.Right, 1, like: left ? cell.Left : cell.Right - 1, row: cell.Top));
+
+    /// <summary>The rows of the cursor's cell taken away (all of them, the table), the cursor then in the row after them.</summary>
+    public bool RemoveRow() => Table is { } table && Cell is { } cell && ChangeTable(word => word.RemoveRows(table.Table, cell.Top, cell.Bottom));
+
+    /// <summary>The columns of the cursor's cell taken away, the table as wide as it was (all of them, the table).</summary>
+    public bool RemoveColumn() => Table is { } table && Cell is { } cell && ChangeTable(word => word.RemoveColumns(table.Table, cell.Left, cell.Right));
+
+    /// <summary>The cells of the cursor's rows merged into one, with what reaches into them (see WordDocument.MergeAround).</summary>
+    public bool MergeRow() => Table is { } table && Cell is { } cell && ChangeTable(word => word.MergeAround(table.Table, cell.Top, cell.Bottom, 0, table.Columns));
+
+    /// <summary>The rows after the head sorted by the column of the cursor's cell (see WordDocument.SortRows), the cursor then in the first row sorted.</summary>
+    public bool SortRows(bool descending) => Table is { } table && Cell is { } cell
+        && ChangeTable(word => word.SortRows(table.Table, cell.Left, table.HeadRow ? 1 : 0, descending));
+
+    /// <summary>The cursor's table turned, its rows its columns (see WordDocument.Transpose).</summary>
+    public bool TransposeTable() => Table is { } table && ChangeTable(word => word.Transpose(table.Table));
+
+    /// <summary>The columns of the cursor's table made even (see WordDocument.DistributeColumns).</summary>
+    public bool DistributeColumns() => Table is { } table && ChangeTable(word =>
+    {
+        word.DistributeColumns(table.Table);
+        return null;
+    });
+
+    /// <summary>The cursor's table with a head row, or without a head (see WordDocument.SetHead).</summary>
+    public bool SetHead(bool on) => Table is { } table && ChangeTable(word =>
+    {
+        word.SetHead(table.Table, on);
+        return null;
+    });
+
+    /// <summary>The cursor's table taken away, the cursor then after it.</summary>
+    public bool RemoveTable() => Table is { } table && ChangeTable(word => word.RemoveTable(table.Table));
+
     /// <summary>
     /// A change of a table of the body as a whole (see WordDocument's changes of tables), a handling of its own: <paramref name="change"/>
     /// makes it and names the paragraph to go on in, the cursor then at its start; where it names none, the cursor stays (a table's

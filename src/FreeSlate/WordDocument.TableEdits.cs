@@ -139,7 +139,15 @@ public sealed partial class WordDocument
             var empty = cell.Blocks.All(b => b is ParagraphBlock p && ParagraphText.Of(p).Length == 0);
             made.Add(new TableCell(top, bottom, left, right, paragraphs[0], last, paragraphs, empty));
         }
-        return new TableCells(table, rows.Count, columns, made, model.Table.Format.BidiVisual);
+        var look = model.Element.Element(model.Element.Name.Namespace + "tblPr")?.Element(model.Element.Name.Namespace + "tblLook");
+        bool Marked(string name, int bit)
+        {
+            var w = model.Element.Name.Namespace;
+            if (look?.Attribute(w + name) is { } given)
+                return given.Value is "1" or "true" or "on";
+            return look?.Attribute(w + "val") is { } val && int.TryParse(val.Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var bits) && (bits & bit) != 0;
+        }
+        return new TableCells(table, rows.Count, columns, made, model.Table.Format.BidiVisual, Marked("firstRow", 0x20), Marked("firstColumn", 0x80));
     }
 
     /// <summary>
@@ -169,15 +177,18 @@ public sealed partial class WordDocument
     /// <paramref name="like"/>, as Word's Insert Rows Above and Below do (see TextEdits.TableShape.InsertRows); returns the first
     /// paragraph of the first new row's first cell.
     /// </summary>
-    public int AddRows(int table, int at, int count, int like) =>
-        Reshape(table, shape => shape.InsertRows(at, count, like).OrderBy(c => c.Left).FirstOrDefault());
+    public int AddRows(int table, int at, int count, int like, int column = 0) =>
+        Reshape(table, shape => shape.InsertRows(at, count, like) is var made && made.Count > 0
+            ? made.FirstOrDefault(c => c.Left <= column && column < c.Right) ?? made.MinBy(c => c.Left) : null);
 
     /// <summary>
     /// Puts columns into a table before grid column <paramref name="at"/> (at its end where it is the count), the table as wide as it
-    /// was (see TextEdits.TableShape.InsertColumns); returns the first paragraph of the first new column's first cell.
+    /// was (see TextEdits.TableShape.InsertColumns); returns the first paragraph of the first new column's cell in row
+    /// <paramref name="row"/>, else its first cell.
     /// </summary>
-    public int AddColumns(int table, int at, int count, int like) =>
-        Reshape(table, shape => shape.InsertColumns(at, count, like).OrderBy(c => c.Top).FirstOrDefault());
+    public int AddColumns(int table, int at, int count, int like, int row = 0) =>
+        Reshape(table, shape => shape.InsertColumns(at, count, like) is var made && made.Count > 0
+            ? made.FirstOrDefault(c => c.Top <= row && row < c.Bottom) ?? made.MinBy(c => c.Top) : null);
 
     /// <summary>
     /// Takes rows of a table away (from one to before another); all of them, the table. Returns the paragraph to go on in: the first
@@ -254,6 +265,26 @@ public sealed partial class WordDocument
         Reshape(table, shape => shape.SplitAcross(Named(shape, cells), line, part is { } points ? InTwips(points) : null, height is { } whole ? InTwips(whole) : null)
             .OrderBy(c => c.Left).FirstOrDefault());
 
+    /// <summary>
+    /// Takes a line between a table's cells away, as Word's eraser does (see TextEdits.TableShape.Erase): an upright one, grid line
+    /// <paramref name="line"/>, through rows from <paramref name="from"/> to before <paramref name="to"/>; one across, the line before
+    /// row <paramref name="line"/>, through grid columns; the cells on either side merge. Returns the first paragraph of the first cell
+    /// merged.
+    /// </summary>
+    public int EraseLine(int table, bool upright, int line, int from, int to) =>
+        Reshape(table, shape => shape.Erase(upright, line, from, to));
+
+    /// <summary>
+    /// Merges the cells of a rectangle of a table's grid and every cell that reaches into it, into the smallest rectangle that holds them
+    /// (see TextEdits.TableShape.Enclosing); returns its first paragraph.
+    /// </summary>
+    public int MergeAround(int table, int top, int bottom, int left, int right) =>
+        Reshape(table, shape =>
+        {
+            var (t, b, l, r) = shape.Enclosing(top, bottom, left, right);
+            return shape.Merge(t, b, l, r);
+        });
+
     static List<TextEdits.TableShape.Cell> Named(TextEdits.TableShape shape, IReadOnlyList<(int Row, int Column)> cells) =>
         [.. cells.Select(c => shape.At(c.Row, c.Column) ?? throw new ArgumentException("No cell covers a place named.", nameof(cells))).Distinct()];
 
@@ -323,6 +354,14 @@ public sealed partial class WordDocument
             return shape.At(0, 0);
         });
 
+    /// <summary>A table with a head row or without a head (see TextEdits.TableShape.SetHead). The paragraphs stay as they are.</summary>
+    public void SetHead(int table, bool on) =>
+        Reshape(table, shape =>
+        {
+            shape.SetHead(on);
+            return null;
+        }, widths: true);
+
     /// <summary>A table's columns made even over its width, as Word's Distribute Columns does (see TextEdits.TableShape.Distribute).</summary>
     public void DistributeColumns(int table) =>
         Reshape(table, shape =>
@@ -344,5 +383,8 @@ public sealed partial class WordDocument
 /// </summary>
 public sealed record TableCell(int Top, int Bottom, int Left, int Right, int First, int Last, IReadOnlyList<int> Paragraphs, bool Empty);
 
-/// <summary>A table's cells (see TableCell) in reading order, its numbers of rows and of its grid's columns, and whether it goes from the right (w:bidiVisual).</summary>
-public sealed record TableCells(int Table, int Rows, int Columns, IReadOnlyList<TableCell> Cells, bool FromRight);
+/// <summary>
+/// A table's cells (see TableCell) in reading order, its numbers of rows and of its grid's columns, whether it goes from the right
+/// (w:bidiVisual), and whether its look marks its first row or its first column as its head (w:tblLook).
+/// </summary>
+public sealed record TableCells(int Table, int Rows, int Columns, IReadOnlyList<TableCell> Cells, bool FromRight, bool HeadRow, bool HeadColumn);
