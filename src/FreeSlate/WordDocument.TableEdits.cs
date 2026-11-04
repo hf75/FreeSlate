@@ -354,6 +354,14 @@ public sealed partial class WordDocument
             return shape.At(0, 0);
         });
 
+    /// <summary>A table in a table style, its own formatting staying (see TextEdits.TableShape.SetStyle). The paragraphs stay as they are.</summary>
+    public void StyleTable(int table, string style) =>
+        Reshape(table, shape =>
+        {
+            shape.SetStyle(style);
+            return null;
+        }, widths: true);
+
     /// <summary>A table with a head row or without a head (see TextEdits.TableShape.SetHead). The paragraphs stay as they are.</summary>
     public void SetHead(int table, bool on) =>
         Reshape(table, shape =>

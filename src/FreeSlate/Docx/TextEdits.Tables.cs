@@ -582,6 +582,15 @@ static partial class TextEdits
             return marks[0].On;
         }
 
+        /// <summary>The table in a table style (w:tblStyle), its own formatting staying.</summary>
+        public void SetStyle(string style)
+        {
+            var tblPr = table.Element(w + "tblPr") ?? Made(table, w + "tblPr");
+            var made = Property(tblPr, "tblStyle", TableOrder);
+            made.RemoveAttributes();
+            made.SetAttributeValue(w + "val", style);
+        }
+
         /// <summary>
         /// The table with a head row or without a head: the look marks its first row (w:tblLook firstRow, Word's Header Row) and the row
         /// repeats on each page the table goes on to (w:tblHeader), or neither, nor a head column (firstColumn).

@@ -104,6 +104,13 @@ public sealed partial class EditSession
         return null;
     });
 
+    /// <summary>The cursor's table in a table style (see WordDocument.StyleTable).</summary>
+    public bool StyleTable(string style) => Table is { } table && ChangeTable(word =>
+    {
+        word.StyleTable(table.Table, style);
+        return null;
+    });
+
     /// <summary>The cursor's table with a head row, or without a head (see WordDocument.SetHead).</summary>
     public bool SetHead(bool on) => Table is { } table && ChangeTable(word =>
     {
