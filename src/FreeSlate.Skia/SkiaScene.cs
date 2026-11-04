@@ -1098,9 +1098,12 @@ public static class SkiaScene
                 statistics.Effects++;
             canvas.Save();
             canvas.ClipPath(path, antialias: smooth);
+            var whole = SKRect.Create((float)x, (float)y, (float)fullW, (float)fullH);
+            // The layer no larger than the filter's region (the picture and a tenth round it, as SVG's) where the path cuts it: a PDF's is a
+            // picture of its own, else as large as the page.
             if (recolored != null)
-                canvas.SaveLayer(recolored);
-            Picture(fill.Image, SKRect.Create((float)x, (float)y, (float)fullW, (float)fullH), null);
+                canvas.SaveLayer(SKRect.Intersect(FilterRegion(whole), bounds) is { IsEmpty: false } part ? part : FilterRegion(whole), recolored);
+            Picture(fill.Image, whole, null);
             if (recolored != null)
                 canvas.Restore();
             canvas.Restore();
@@ -1131,6 +1134,9 @@ public static class SkiaScene
             }
             canvas.Restore();
         }
+
+        /// <summary>Where a picture's recoloring reaches at most: the picture and a tenth of it round it, an SVG filter's region by default.</summary>
+        static SKRect FilterRegion(SKRect picture) => SKRect.Inflate(picture, picture.Width * 0.1f, picture.Height * 0.1f);
 
         /// <summary>The pictures recolored so far, by picture and filter primitives.</summary>
         readonly Dictionary<(SKImage, string), SKImage?> recolorings = [];
@@ -1613,9 +1619,11 @@ public static class SkiaScene
                 ? new SKPaint { ImageFilter = filter } : null;
             if (item.Filter.Length > 0 && recolored == null)
                 statistics.Effects++;
+            var rect = SKRect.Create((float)item.X, (float)item.Y, (float)item.Width, (float)item.Height);
+            // The layer no larger than the filter's region (see FilterRegion): a PDF's is a picture of its own, else as large as the page.
             if (recolored != null)
-                canvas.SaveLayer(recolored);
-            Picture(item.Source, SKRect.Create((float)item.X, (float)item.Y, (float)item.Width, (float)item.Height), item.ClipPath);
+                canvas.SaveLayer(FilterRegion(rect), recolored);
+            Picture(item.Source, rect, item.ClipPath);
             if (recolored != null)
                 canvas.Restore();
         }
