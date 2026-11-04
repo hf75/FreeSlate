@@ -13,16 +13,19 @@ namespace FreeSlate.Editor.Controls;
 /// hand learns them (see Slots); a field may hold a ring of its own, a second level. The ring is always of one size; its fields show
 /// signs only, with room all around them, and the name of the field pointed at stands beside the ring. It lies over everything, of
 /// glass, its middle clear: the text it acts on stands there as far as it can (see Measure), framed exactly around all of it, under
-/// the ring where the ring lies over it, and reads as the field pointed at would make it (Preview).
+/// the ring where the ring lies over it, and reads as the field pointed at would make it (Preview). The middle of a ring of a second
+/// level is the way back to the ring before: the sign of the field that holds it stands there while no field is pointed at, and it
+/// lights up as a field does where the pointer is in it.
 /// What it acts on may have fields of its own (see Choose), a picture its places among the text.
 /// The right button held on the selection, or on a word where there is none, brings it after a moment of rest; moved into a field and
 /// let go there, it does what the field does, let go in the middle nothing; moved on out of a field that holds a ring, that ring comes
-/// where the pointer is. Moved on at once beyond a few pixels, it does what the direction does without a ring (a turn and a second
-/// direction for a second level), with a thin trace and the field's name for a moment. A short click opens it to be clicked (a click on
-/// a field with a ring opens that ring, one in the middle goes back). The left button, a finger or a pen held on the selection brings it
-/// too, where there is no right button. With the keyboard, Space held on a selection brings it at the pointer: the arrows choose the
-/// field nearest their direction (two together a diagonal), Enter opens a field's ring, Backspace goes back, letting go of Space does
-/// what is chosen, Escape nothing. It lies over the editor and takes the pointer only while it has a gesture.
+/// where the pointer is, and let go in its middle it stays to be clicked (it goes back, once the pointer was on its fields). Moved on at
+/// once beyond a few pixels, it does what the direction does without a ring (a turn and a second direction for a second level), with a
+/// thin trace and the field's name for a moment. A short click opens it to be clicked (a click on a field with a ring opens that ring,
+/// one in the middle goes back, as Backspace does). The left button, a finger or a pen held on the selection brings it too, where there
+/// is no right button. With the keyboard, Space held on a selection brings it at the pointer: the arrows choose the field nearest their
+/// direction (two together a diagonal), Enter opens a field's ring, Backspace goes back, letting go of Space does what is chosen, Escape
+/// nothing. It lies over the editor and takes the pointer only while it has a gesture.
 /// </summary>
 public sealed class GestureRing : Control
 {
@@ -43,6 +46,9 @@ public sealed class GestureRing : Control
 
     /// <summary>The room around the field the pointer is in, which shows it, and the round of its corners.</summary>
     const double Gap = 5, Round = 7;
+
+    /// <summary>The way back in the middle of a ring of a second level: the radius of its button of glass, and its sign's size beside the fields'.</summary>
+    const double Hub = 14, HubSign = 0.75;
 
     /// <summary>How much the glass of the band of fields covers.</summary>
     const double Glass = 0.94;
@@ -79,6 +85,11 @@ public sealed class GestureRing : Control
     Point start, at;
     IPointer? pointer;
     int? chosen;
+    /// <summary>
+    /// Whether the way back is pointed at; and whether the pointer was on a field of the ring now, so that the held pointer finds the
+    /// way back in the middle of a ring that came where it is only once it went on from there.
+    /// </summary>
+    bool backward, visited;
     long since;
     (string Name, Point At, long Since)? confirmed;
 
@@ -191,16 +202,18 @@ public sealed class GestureRing : Control
     {
         Aim(null);
         levels.Add(Measure(slot.Under!, point, slot, onText: false));
-        since = Environment.TickCount64;
+        (since, visited) = (Environment.TickCount64, false);
         frames.Start();
         InvalidateVisual();
     }
 
-    /// <summary>Back to the ring before.</summary>
+    /// <summary>Back to the ring before, which comes again where it stood.</summary>
     void Back()
     {
         Aim(null);
         levels.RemoveAt(levels.Count - 1);
+        (since, visited) = (Environment.TickCount64, true);
+        frames.Start();
         InvalidateVisual();
     }
 
@@ -212,19 +225,24 @@ public sealed class GestureRing : Control
         rest.Stop();
         arrows.Clear();
         levels.Clear();
-        (mode, chosen, pointer) = (Mode.None, null, null);
+        (mode, chosen, pointer, backward) = (Mode.None, null, null, false);
         IsHitTestVisible = false;
         InvalidateVisual();
     }
 
-    /// <summary>Points at a field, or at none: the text reads as that field would make it.</summary>
-    void Aim(int? field)
+    /// <summary>Points at a field, at the way back (with none), or at nothing: the text reads as that field would make it.</summary>
+    void Aim(int? field, bool back = false)
     {
+        backward = back;
         if (field == chosen)
             return;
         chosen = field;
+        visited |= field != null;
         Preview?.Invoke(field is { } k && Current is { } level ? level.Slots[k] : null);
     }
+
+    /// <summary>Whether a point is in the middle of a ring of a second level: on its way back.</summary>
+    bool Backward(Point point) => levels.Count > 1 && Far(point, levels[^1].Centre) < Inner - 1;
 
     static double Far(Point a, Point b) => ((Vector)(a - b)).Length;
 
@@ -273,14 +291,14 @@ public sealed class GestureRing : Control
                     Press?.Invoke(start, by, true);
                 return;
             case Mode.Held when Current is { } level:
-                Aim(Pointed(at));
+                Aim(Pointed(at), back: visited && Backward(at));
                 // On out of a field that holds a ring: that ring, where the pointer is.
                 if (chosen is { } field && level.Slots[field].Under != null && Far(at, level.Centre) > Outer + 6)
                     Enter(level.Slots[field], at);
                 break;
             case Mode.Clicking or Mode.Keys when Current is { } level:
                 if (mode != Mode.Keys || arrows.Count == 0)
-                    Aim(mode == Mode.Clicking && Far(at, level.Centre) > Outer + 24 ? null : Pointed(at));
+                    Aim(mode == Mode.Clicking && Far(at, level.Centre) > Outer + 24 ? null : Pointed(at), back: mode == Mode.Clicking && Backward(at));
                 break;
         }
         if (mode != Mode.None)
@@ -327,6 +345,16 @@ public sealed class GestureRing : Control
                     e.Pointer.Capture(null);
                     break;
                 }
+                if (chosen == null && levels.Count > 1)
+                {
+                    // Let go in the middle of a ring of a second level: on the way back, the ring before; where that ring came to the
+                    // pointer, that ring; to be clicked.
+                    (mode, IsHitTestVisible) = (Mode.Clicking, true);
+                    if (backward)
+                        Back();
+                    e.Pointer.Capture(null);
+                    break;
+                }
                 var held = chosen is { } done ? level.Slots[done] : null;
                 Close(keep: held != null);
                 e.Pointer.Capture(null);
@@ -363,7 +391,7 @@ public sealed class GestureRing : Control
         return turned && Field(slot.Under, end - corner, BlindDistance) is { } second ? slot.Under[second] : null;
     }
 
-    /// <summary>A click while the ring waits for one: on a field it does that field (one with a ring opens it), in the middle it goes back, elsewhere it closes.</summary>
+    /// <summary>A click while the ring waits for one: on a field it does that field (one with a ring opens it), in the middle of a ring of a second level it goes back, elsewhere it closes.</summary>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
@@ -371,13 +399,12 @@ public sealed class GestureRing : Control
             return;
         e.Handled = true;
         var point = e.GetPosition(this);
-        var distance = Far(point, level.Centre);
-        if (distance < Inner && levels.Count > 1)
+        if (Backward(point))
         {
             Back();
             return;
         }
-        var field = distance <= Outer + 4 ? Pointed(point) : null;
+        var field = Far(point, level.Centre) <= Outer + 4 ? Pointed(point) : null;
         if (field is { } inside && level.Slots[inside].Under != null)
         {
             Enter(level.Slots[inside], level.Centre);
@@ -402,7 +429,7 @@ public sealed class GestureRing : Control
         slot.Act?.Invoke();
         if (blindly is { } point)
         {
-            confirmed = (NameOf(slot), point, Environment.TickCount64);
+            confirmed = (NameOf(slot.NameKey), point, Environment.TickCount64);
             frames.Start();
             InvalidateVisual();
         }
@@ -452,7 +479,8 @@ public sealed class GestureRing : Control
 
     /// <summary>
     /// A key while the ring has a gesture: the arrows choose for the keyboard (two of them a diagonal), Enter opens the ring of the field
-    /// chosen, Backspace goes back; Escape closes any ring. Whether the ring took the key.
+    /// chosen; Backspace goes back while a ring shows (not where the held pointer would bring the ring it left again at once), and the
+    /// selection under it stays; Escape closes any ring. Whether the ring took the key.
     /// </summary>
     public bool KeyChanged(Key key, bool down)
     {
@@ -467,15 +495,16 @@ public sealed class GestureRing : Control
             }
             return true;
         }
+        if (key == Key.Back && levels.Count > 0)
+        {
+            if (down && levels.Count > 1 && mode != Mode.Held)
+                Back();
+            return true;
+        }
         if (mode is not (Mode.Keys or Mode.KeysWaiting))
             return false;
-        if (down && mode == Mode.Keys && Current is { } level)
-        {
-            if (key == Key.Enter && chosen is { } field && level.Slots[field].Under != null)
-                Enter(level.Slots[field], level.Centre);
-            else if (key == Key.Back && levels.Count > 1)
-                Back();
-        }
+        if (down && mode == Mode.Keys && Current is { } level && key == Key.Enter && chosen is { } field && level.Slots[field].Under != null)
+            Enter(level.Slots[field], level.Centre);
         if (key is Key.Up or Key.Down or Key.Left or Key.Right)
         {
             if (down)
@@ -495,8 +524,8 @@ public sealed class GestureRing : Control
         return true;
     }
 
-    /// <summary>A field's name in the language of the interface.</summary>
-    string NameOf(Slot slot) => this.TryFindResource(slot.NameKey, out var text) && text is string name ? name : slot.NameKey;
+    /// <summary>A name in the language of the interface, by its key among the texts (the key where there is none).</summary>
+    string NameOf(string key) => this.TryFindResource(key, out var text) && text is string name ? name : key;
 
     /// <summary>A colour of the theme: they lie under its variant.</summary>
     IBrush? Brush(string key) => this.TryFindResource(key, ActualThemeVariant, out var brush) ? brush as IBrush : null;
@@ -618,6 +647,9 @@ public sealed class GestureRing : Control
                     context.DrawRectangle(surface, rim, new RoundedRect(new Rect(c.X - Outer, c.Y - Outer, 2 * Outer, 2 * Outer), Outer),
                         new BoxShadows(new BoxShadow { OffsetY = 10, Blur = 28, Color = Color.FromArgb(0x1E, 0, 0, 0) },
                             [new BoxShadow { OffsetY = 2, Blur = 6, Color = Color.FromArgb(0x12, 0, 0, 0) }]));
+                // The way back pointed at: the middle of glass too, a field as the others (see below).
+                if (backward)
+                    context.DrawEllipse(surface, null, c, Inner, Inner);
                 // The band of fields: its inner rim. No lines between the fields: the signs show them, and lines across the text's lines
                 // under the glass would read as strokes through the words.
                 context.DrawEllipse(null, hairline, c, Inner, Inner);
@@ -639,19 +671,28 @@ public sealed class GestureRing : Control
                         context.DrawLine(chevron, back - side, tip);
                     }
                 }
-                // A ring of a second level away from the text: the sign of the field that holds it, in its middle.
-                var middle = new Rect(c.X - 9, c.Y - 9, 18, 18);
-                if (level.Parent is { } parent && !parts.Any(part => part.Intersects(middle)))
-                    using (context.PushTransform(Matrix.CreateScale(0.7, 0.7) * Matrix.CreateTranslation(c.X, c.Y)))
-                        context.DrawGeometry(faint, null, SignOf(parent));
+                // A ring of a second level: in its middle the way back, the sign of the field that holds it; on a button of glass, so that
+                // it reads over the text, and lit as a field where the pointer is in it. While a field is pointed at it is away: the text
+                // there reads as that field would make it.
+                if (level.Parent is { } parent && (backward || chosen == null))
+                {
+                    if (backward)
+                        context.DrawEllipse(accent, null, c, Inner - Gap, Inner - Gap);
+                    else
+                        context.DrawEllipse(surface, rim, c, Hub, Hub);
+                    using (context.PushTransform(Matrix.CreateScale(HubSign, HubSign) * Matrix.CreateTranslation(c.X, c.Y)))
+                        context.DrawGeometry(backward ? onAccent : faint, null, SignOf(parent));
+                }
             }
         }
-        // The name of the field pointed at, beside the ring in its direction.
-        if (chosen is { } named)
+        // The name of the field pointed at, beside the ring in its direction; the way back's below it, above where the view ends below.
+        if (chosen != null || backward)
         {
-            var way = Way(Angle(named, count));
-            var label = Layout(NameOf(level.Slots[named]), Brush("TipInk"));
+            var (name, way) = chosen is { } named ? (level.Slots[named].NameKey, Way(Angle(named, count))) : ("RingBack", new Vector(0, 1));
+            var label = Layout(NameOf(name), Brush("TipInk"));
             var (w, h) = (label.WidthIncludingTrailingWhitespace + 16, label.Height + 8);
+            if (chosen == null && c.Y + Outer + 8 + h > Bounds.Height)
+                way = new Vector(0, -1);
             var reach = w / 2 * Math.Abs(way.X) + h / 2 * Math.Abs(way.Y);
             var beside = c + way * (Outer + 8 + reach);
             using (context.PushOpacity(appear))

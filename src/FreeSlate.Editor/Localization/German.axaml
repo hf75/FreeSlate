@@ -28,6 +28,7 @@
   <x:String x:Key="LevelSubpoint">Unterpunkt</x:String>
   <x:String x:Key="LevelMarginNote">Randnotiz</x:String>
   <x:String x:Key="RingRemove">Entfernen</x:String>
+  <x:String x:Key="RingBack">Zurück</x:String>
   <x:String x:Key="PictureInline">In der Zeile</x:String>
   <x:String x:Key="PictureFront">Vor dem Text</x:String>
   <x:String x:Key="PictureRight">Rechts, Text daneben</x:String>

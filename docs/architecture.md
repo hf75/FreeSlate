@@ -255,7 +255,10 @@ given with `GestureRing`, a marking menu whose fields share the circle in an ord
 taking one away): the right button held on the selection or a word, moved blindly or into a field; a short click opens it to be
 clicked; the left button held on the selection, or Space held, bring it too. A field may hold a ring of its own (a second level,
 a picture's places on the page, later inserting tables and more), which opens where the pointer leaves the field, on a click, by
-a turn of a blind stroke, or by Enter. The ring is always of one size and shows signs only, light, set by their ink, each in the middle of its
+a turn of a blind stroke, or by Enter. Its middle is the way back: the sign of the field that holds it on a button of glass there
+while no field is pointed at, lit as a field where the pointer is in it, named "Back" below the ring; a click there, letting go
+there once the held pointer was on its fields, or Backspace bring the ring before again (let go there at once, it stays to be
+clicked). The ring is always of one size and shows signs only, light, set by their ink, each in the middle of its
 field with room all around and no lines between the fields: a band around an inner circle, the band's glass nearly whole and the
 middle clear; the field pointed at shows as a rounded part of the band, its name beside the ring. It lies over everything; brought
 on the text, it stands centred on the selection's part there, as far as the point it was brought at stays in its middle. The
