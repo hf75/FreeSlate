@@ -212,6 +212,8 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, markup, blocks and notes put in, each
   handling one step to undo, whose changes the document keeps as one version (typing on adds to it); what else a
   document offers (a Word document's versions of a section, its comments) goes through `Handle` as a handling of its own.
+  Word's units of the text are there too: the word a double click selects, with the spaces after it (`Editing/Words.Unit`),
+  the paragraph with its mark a triple click selects, and where Ctrl with the arrows, Home and End goes (`Move`).
 
 The rules of each change (where new text goes, which paragraph keeps its properties and its mark, what a tracked
 change records) were measured in Word and PowerPoint through COM, as the rendering rules were.

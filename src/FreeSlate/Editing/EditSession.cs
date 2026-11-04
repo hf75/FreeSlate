@@ -161,6 +161,84 @@ public sealed class EditSession(IEditableDocument document)
     }
 
     /// <summary>
+    /// Word's word a character stands in, which a double click on it selects (see Words.Unit): the place before the
+    /// character given; at a paragraph's end the last word. Null in an empty paragraph or one the document does not change.
+    /// </summary>
+    public (TextPlace Start, TextPlace End)? WordAround(TextPlace character)
+    {
+        if (!document.Contains(character.Paragraph) || document.Text(character.Paragraph) is not { Length: > 0 } text)
+            return null;
+        var (start, end) = Words.Unit(text, Math.Clamp(character.Offset, 0, text.Length - 1));
+        return (character with { Offset = start }, character with { Offset = end });
+    }
+
+    /// <summary>
+    /// The paragraph a place stands in with its mark, which a triple click selects: up to the start of the paragraph after it in
+    /// its body, cell or text box (see IEditableDocument.After), the last one's to its end. Typed over, the mark stays; Delete
+    /// and Backspace take the paragraph away, as in Word (measured by COM, scratch/KeyProbe against keys2.vbs).
+    /// </summary>
+    public (TextPlace Start, TextPlace End)? ParagraphAround(TextPlace place) =>
+        document.Contains(place.Paragraph)
+            ? (place with { Offset = 0 }, document.After(place.Paragraph) is { } next ? new TextPlace(next, 0) : place with { Offset = document.Text(place.Paragraph).Length })
+            : null;
+
+    /// <summary>
+    /// Selects over whole words or paragraphs from one to another, as dragging on after a double or triple click does: the start
+    /// of the one held stays where the other lies after it, its end where the other lies before it.
+    /// </summary>
+    public void SelectOver((TextPlace Start, TextPlace End) held, (TextPlace Start, TextPlace End) other)
+    {
+        Place(held.Start);
+        Place(other.End, extend: true);
+        // The other lies before: the selection so made runs back, or is none where the other ends where the held one starts.
+        if (other.Start != held.Start && (!Selecting || Plain().Start == Caret))
+        {
+            Place(held.End);
+            Place(other.Start, extend: true);
+        }
+    }
+
+    /// <summary>Where Ctrl with the arrows, Home and End takes the cursor (see Move).</summary>
+    public enum Jump { WordLeft, WordRight, ParagraphUp, ParagraphDown, StoryStart, StoryEnd }
+
+    /// <summary>
+    /// Moves the cursor as Ctrl with an arrow, Home or End does in Word (measured in Word 365 by COM, WordBasic.WordLeft and
+    /// its kin): <paramref name="extend"/>, the selection's moving end; without, from a selection's start back and from its end
+    /// on. By words to the start of the unit before the cursor and the end of the one after it (see Words.Unit), over a
+    /// paragraph's edge to the end of the one before and the start of the one after (in reading order, see
+    /// IEditableDocument.Next); by paragraphs to the start of the cursor's, at its start to the one before's, and to the start of
+    /// the one after, in the last one to its end; to the start and the end of the story.
+    /// </summary>
+    public void Move(Jump jump, bool extend)
+    {
+        if (!document.Contains(Caret.Paragraph))
+            return;
+        var back = jump is Jump.WordLeft or Jump.ParagraphUp or Jump.StoryStart;
+        var (paragraph, offset) = extend || !Selecting ? Caret : back ? Selection.Start : Selection.End;
+        var text = document.Text(paragraph);
+        TextPlace Last(int p) => new(p, document.Text(p).Length);
+        var to = jump switch
+        {
+            Jump.WordLeft => Words.Previous(text, offset) is { } start ? new TextPlace(paragraph, start)
+                : document.Previous(paragraph) is { } before ? Last(before) : new TextPlace(paragraph, 0),
+            Jump.WordRight => Words.Next(text, offset) is { } end ? new TextPlace(paragraph, end)
+                : document.Next(paragraph) is { } after ? new TextPlace(after, 0) : Last(paragraph),
+            Jump.ParagraphUp => offset == 0 && document.Previous(paragraph) is { } before ? new TextPlace(before, 0) : new TextPlace(paragraph, 0),
+            Jump.ParagraphDown => document.Next(paragraph) is { } after ? new TextPlace(after, 0) : Last(paragraph),
+            _ => Edge(paragraph, jump == Jump.StoryEnd),
+        };
+        Place(to, extend);
+    }
+
+    /// <summary>The first or the last place of the story a paragraph stands in, in reading order.</summary>
+    TextPlace Edge(int paragraph, bool end)
+    {
+        while ((end ? document.Next(paragraph) : document.Previous(paragraph)) is { } further)
+            paragraph = further;
+        return new TextPlace(paragraph, end ? document.Text(paragraph).Length : 0);
+    }
+
+    /// <summary>
     /// Types text at the cursor in place of the selection, in the format given for typing (Pending); line feeds and returns
     /// in it split paragraphs, tabs and line breaks ("\t", "\v") stand in them.
     /// </summary>
