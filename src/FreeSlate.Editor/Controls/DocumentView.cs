@@ -382,6 +382,7 @@ public sealed partial class DocumentView : Control
             Page(row.Index);
         }
         context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush), Fading()));
+        DrawGuides(context, visible);
         if (ShowsMeanings)
             DrawMeanings(context, visible);
         // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor; a picture cropped by
@@ -389,6 +390,7 @@ public sealed partial class DocumentView : Control
         DrawDrawing(context);
         DrawCrop(context);
         DrawTilt(context);
+        DrawLineDrag(context);
         // Where pictures dragged over the sheets would go.
         if (dropAt is var (dropPage, dropIndex, dropEnd) && BarAt(dropPage, dropIndex, dropEnd) is { Height: > 0 } bar)
             context.FillRectangle(DrawingBrush ?? CaretBrush ?? Brushes.Black, new Rect(bar.X - 1, bar.Y, 2, bar.Height));
@@ -807,6 +809,12 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (lineDrag != null)
+        {
+            LineDragTo(e.GetPosition(this), e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
         // Over a drawing the pointer shows that it can be moved, over a handle of the one selected that it can be sized; while cropping, the
         // marks and the picture; while tilting, the picture.
         if (cropping)
@@ -873,7 +881,7 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
-        if (e.ClickCount >= 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && HandleAt(point) == null && !OnDrawing(point)
+        if (e.ClickCount >= 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && HandleAt(point) == null && !OnDrawing(point) && TableLineAt(point) == null
             && SelectUnitsAt(point, words: e.ClickCount == 2, e.Pointer))
         {
             e.Handled = true;
@@ -940,6 +948,9 @@ public sealed partial class DocumentView : Control
                 BeginDrag(point, pointer);
             return true;
         }
+        // A line between cells of a table is dragged (see BeginLineDrag).
+        if ((modifiers & KeyModifiers.Shift) == 0 && dragging && BeginLineDrag(point, pointer))
+            return true;
         if (PlaceAt(point) is not var (page, at, end))
             return false;
         (caret, lineEnd) = ((page, at), end);
@@ -960,7 +971,7 @@ public sealed partial class DocumentView : Control
     /// </summary>
     public bool OnSelection(Point point)
     {
-        if (cropping || tilting)
+        if (cropping || tilting || TableLineAt(point) != null)
             return false;
         if (SelectedDrawing() is var (drawnPage, drawnAt))
             return Hits(drawnPage, drawnAt, point) && HandleAt(point) == null;
@@ -1064,6 +1075,13 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (lineDrag != null)
+        {
+            EndLineDrag(keep: true);
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (selecting)
         {
             (selecting, units) = (false, null);
@@ -1097,9 +1115,11 @@ public sealed partial class DocumentView : Control
             return null;
         var local = new SKPoint((float)((point.X - Left(best)) / factor), (float)(point.Y / factor - best.Top));
         var places = pictures.Places(Page(best.Index));
-        // In the text a drawing's box holds (a caption), a place of that text, not of the line the drawing stands in.
+        // In the text a drawing's box holds (a caption), a place of that text, not of the line the drawing stands in; in a table's cell, of
+        // that cell's text (an empty part of the cell is nearer to other cells' lines).
         Func<PlacesItem, bool>? among = TextHolder(places, local) is { } holder && session is { } editing
-            ? line => editing.Document.DrawingAround(line.Block) == holder : null;
+            ? line => editing.Document.DrawingAround(line.Block) == holder
+            : CellAt(best.Index, local) is { } cell ? line => cell.Paragraphs.Contains(line.Block) : null;
         return places.HitPlace(local, among) is var (spot, after) ? (best.Index, spot, after) : null;
     }
 
@@ -1114,11 +1134,18 @@ public sealed partial class DocumentView : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        // Escape while a drawing is dragged: it goes back.
+        // Escape while a drawing is dragged: it goes back; so a line between cells of a table.
         if (dragged is { } d && e.Key == Key.Escape)
         {
             EndDrag(keep: false);
             d.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+        if (lineDrag is { } line && e.Key == Key.Escape)
+        {
+            EndLineDrag(keep: false);
+            line.Pointer.Capture(null);
             e.Handled = true;
             return;
         }
@@ -1259,7 +1286,8 @@ public sealed partial class DocumentView : Control
         {
             Key.Left or Key.Right => Step(page, at, e.Key == Key.Right, story),
             Key.Home or Key.End when spots.Count > 0 => LineEdge(page, at, e.Key == Key.End),
-            Key.Up or Key.Down when spots.Count > 0 => LineAcross(page, at, e.Key == Key.Down, story) ?? (shift ? LineEdge(page, at, e.Key == Key.Down) : null),
+            Key.Up or Key.Down when spots.Count > 0 => (story == null ? CellAcross(page, at, e.Key == Key.Down) : null) ?? LineAcross(page, at, e.Key == Key.Down, story)
+                ?? (shift ? LineEdge(page, at, e.Key == Key.Down) : null),
             _ => null,
         };
         if (moved is not var (movedPage, movedAt, movedEnd))
@@ -1384,7 +1412,7 @@ public sealed partial class DocumentView : Control
     /// <summary>Scrolls the cursor into view where it is out of it; not while a drawing is dragged (the view goes with the pointer then).</summary>
     void Reveal((int Page, int At) place)
     {
-        if (scroller == null || place.Page >= rows.Count || dragged is { Moving: true })
+        if (scroller == null || place.Page >= rows.Count || dragged is { Moving: true } || lineDrag is { Moving: true })
             return;
         var row = rows[place.Page];
         var spots = pictures.Spots(Page(place.Page));

@@ -1,9 +1,10 @@
 <tone xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <!--
     Sachlich (plain): Inter, ragged right, a clear hierarchy, colour only where the text asks for attention. A tone defines the
-    styles of the levels and of the meanings and the lists they name, nothing else (see Tones); {Name} stands for the name of a
-    meaning or a level in the language of the interface. The editor's documents hyphenate (in Word a setting of the whole
-    document); a tone that does not suppresses it in its normal paragraph, which the others are based on.
+    styles of the levels, of the meanings, of tables and the text in their cells, and the lists they name, nothing else (see
+    Tones); {Name} stands for the name of a meaning, a level or a table style in the language of the interface. The editor's
+    documents hyphenate (in Word a setting of the whole document); a tone that does not suppresses it in its normal paragraph,
+    which the others are based on. Tables here have lines between their rows only, a darker one under the head.
   -->
   <w:styles>
     <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
@@ -63,6 +64,29 @@
       <w:qFormat />
       <w:pPr><w:spacing w:before="80" w:after="0" w:line="264" w:lineRule="auto" /><w:jc w:val="left" /></w:pPr>
       <w:rPr><w:color w:val="66645E" /><w:sz w:val="17" /><w:szCs w:val="17" /></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="TableText">
+      <w:name w:val="{TableText}" />
+      <w:qFormat />
+      <w:pPr><w:suppressAutoHyphens /><w:spacing w:before="0" w:after="0" w:line="288" w:lineRule="auto" /><w:jc w:val="left" /></w:pPr>
+      <w:rPr><w:sz w:val="20" /><w:szCs w:val="20" /></w:rPr>
+    </w:style>
+    <w:style w:type="table" w:styleId="Table">
+      <w:name w:val="{Table}" />
+      <w:qFormat />
+      <w:rPr><w:rFonts w:ascii="Inter" w:hAnsi="Inter" w:eastAsia="Inter" w:cs="Inter" /><w:color w:val="222222" /></w:rPr>
+      <w:tblPr>
+        <w:tblBorders><w:bottom w:val="single" w:sz="4" w:space="0" w:color="DDDAD3" /><w:insideH w:val="single" w:sz="4" w:space="0" w:color="DDDAD3" /></w:tblBorders>
+        <w:tblCellMar><w:top w:w="100" w:type="dxa" /><w:left w:w="108" w:type="dxa" /><w:bottom w:w="100" w:type="dxa" /><w:right w:w="108" w:type="dxa" /></w:tblCellMar>
+      </w:tblPr>
+      <w:tblStylePr w:type="firstRow">
+        <w:rPr><w:rFonts w:ascii="Inter SemiBold" w:hAnsi="Inter SemiBold" w:eastAsia="Inter SemiBold" w:cs="Inter SemiBold" /><w:color w:val="111111" /></w:rPr>
+        <w:tcPr><w:tcBorders><w:bottom w:val="single" w:sz="6" w:space="0" w:color="3A3936" /></w:tcBorders></w:tcPr>
+      </w:tblStylePr>
+      <w:tblStylePr w:type="firstCol">
+        <w:rPr><w:rFonts w:ascii="Inter SemiBold" w:hAnsi="Inter SemiBold" w:eastAsia="Inter SemiBold" w:cs="Inter SemiBold" /><w:color w:val="111111" /></w:rPr>
+        <w:tcPr><w:tcBorders><w:right w:val="single" w:sz="6" w:space="0" w:color="3A3936" /></w:tcBorders></w:tcPr>
+      </w:tblStylePr>
     </w:style>
     <w:style w:type="character" w:styleId="Important">
       <w:name w:val="{Important}" />

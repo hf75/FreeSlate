@@ -27,6 +27,8 @@
   <x:String x:Key="LevelPoint">Punkt</x:String>
   <x:String x:Key="LevelSubpoint">Unterpunkt</x:String>
   <x:String x:Key="LevelMarginNote">Randnotiz</x:String>
+  <x:String x:Key="StyleTable">Tabelle</x:String>
+  <x:String x:Key="StyleTableText">Tabellentext</x:String>
   <x:String x:Key="RingRemove">Entfernen</x:String>
   <x:String x:Key="RingBack">Zurück</x:String>
   <x:String x:Key="PictureInline">In der Zeile</x:String>
@@ -81,6 +83,12 @@
   <x:String x:Key="PictureDecorative">Nur Schmuck</x:String>
   <x:String x:Key="InsertPictureFile">Bild aus einer Datei</x:String>
   <x:String x:Key="InsertPictureClipboard">Bild aus der Zwischenablage</x:String>
+  <x:String x:Key="InsertTable">Tabelle</x:String>
+  <x:String x:Key="TableColumns2">2 Spalten</x:String>
+  <x:String x:Key="TableColumns3">3 Spalten</x:String>
+  <x:String x:Key="TableColumns4">4 Spalten</x:String>
+  <x:String x:Key="TableColumns5">5 Spalten</x:String>
+  <x:String x:Key="TableColumns6">6 Spalten</x:String>
   <x:String x:Key="PictureFiles">Bilder</x:String>
   <x:String x:Key="PlaceTop">Oben Mitte</x:String>
   <x:String x:Key="PlaceTopRight">Oben rechts</x:String>

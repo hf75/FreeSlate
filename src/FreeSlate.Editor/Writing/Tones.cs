@@ -5,20 +5,21 @@ namespace FreeSlate.Editor.Writing;
 
 /// <summary>
 /// A tone: how all of a document looks at once, where its text says only what it means. It is a set of style definitions for the
-/// levels of the paragraphs and the meanings (see Levels, Meanings) with the lists they name (Tones/{Key}.xml: a w:styles and a
-/// w:numbering element), which the document takes as Word takes a style set (IEditableDocument.DefineStyles); a hidden style "Tone"
-/// in it says which tone the document has.
+/// levels of the paragraphs and the meanings (see Levels, Meanings), for tables and the text in their cells (see Tables), with the
+/// lists they name (Tones/{Key}.xml: a w:styles and a w:numbering element), which the document takes as Word takes a style set
+/// (IEditableDocument.DefineStyles); a hidden style "Tone" in it says which tone the document has.
 /// </summary>
 public sealed record Tone(string Key, string NameKey)
 {
-    /// <summary>The style definitions and the lists' numbering definitions, the meanings' and levels' own styles named in the language of the interface.</summary>
+    /// <summary>The style definitions and the lists' numbering definitions, the meanings', levels' and tables' own styles named in the language of the interface.</summary>
     public (string Styles, string Numbering) Definitions()
     {
         using var stream = typeof(Tone).Assembly.GetManifestResourceStream($"FreeSlate.Editor.Tones.{Key}.xml")
             ?? throw new InvalidOperationException($"The tone {Key} has no styles.");
         using var reader = new StreamReader(stream);
         var markup = reader.ReadToEnd();
-        foreach (var (style, name) in Meanings.All.Select(m => (m.Style, Meanings.Name(m))).Concat(Levels.All.Select(l => (l.Style, Levels.Name(l)))))
+        foreach (var (style, name) in Meanings.All.Select(m => (m.Style, Meanings.Name(m))).Concat(Levels.All.Select(l => (l.Style, Levels.Name(l))))
+            .Concat(Tables.Styles.Select(s => (s.Style, Tables.Name(s)))))
         {
             if (style.Length > 0)
                 markup = markup.Replace("{" + style + "}", SecurityElement.Escape(name), StringComparison.Ordinal);

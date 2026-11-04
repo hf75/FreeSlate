@@ -1,7 +1,8 @@
 <tone xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <!--
     Notizbuch (notebook): Inter on a line pitch of 20 pt, a blank line between paragraphs, marks as with pens: important things
-    underlined in yellow, terms boxed, open questions in orange, margin notes beside a yellow bar.
+    underlined in yellow, terms boxed, open questions in orange, margin notes beside a yellow bar. Tables as a grid on the line
+    pitch, the head shaded.
   -->
   <w:styles>
     <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
@@ -61,6 +62,33 @@
       <w:qFormat />
       <w:pPr><w:spacing w:before="80" w:after="0" w:line="264" w:lineRule="auto" /></w:pPr>
       <w:rPr><w:color w:val="5C5C5C" /><w:sz w:val="17" /><w:szCs w:val="17" /></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="TableText">
+      <w:name w:val="{TableText}" />
+      <w:qFormat />
+      <w:pPr><w:suppressAutoHyphens /><w:spacing w:before="0" w:after="0" w:line="400" w:lineRule="exact" /><w:jc w:val="left" /></w:pPr>
+      <w:rPr><w:sz w:val="20" /><w:szCs w:val="20" /></w:rPr>
+    </w:style>
+    <w:style w:type="table" w:styleId="Table">
+      <w:name w:val="{Table}" />
+      <w:qFormat />
+      <w:rPr><w:rFonts w:ascii="Inter" w:hAnsi="Inter" w:eastAsia="Inter" w:cs="Inter" /><w:color w:val="2B2B2B" /></w:rPr>
+      <w:tblPr>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="4" w:space="0" w:color="C9C6BE" /><w:left w:val="single" w:sz="4" w:space="0" w:color="C9C6BE" />
+          <w:bottom w:val="single" w:sz="4" w:space="0" w:color="C9C6BE" /><w:right w:val="single" w:sz="4" w:space="0" w:color="C9C6BE" />
+          <w:insideH w:val="single" w:sz="4" w:space="0" w:color="C9C6BE" /><w:insideV w:val="single" w:sz="4" w:space="0" w:color="C9C6BE" />
+        </w:tblBorders>
+        <w:tblCellMar><w:top w:w="0" w:type="dxa" /><w:left w:w="108" w:type="dxa" /><w:bottom w:w="0" w:type="dxa" /><w:right w:w="108" w:type="dxa" /></w:tblCellMar>
+      </w:tblPr>
+      <w:tblStylePr w:type="firstRow">
+        <w:rPr><w:rFonts w:ascii="Inter SemiBold" w:hAnsi="Inter SemiBold" w:eastAsia="Inter SemiBold" w:cs="Inter SemiBold" /></w:rPr>
+        <w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="F6F4EE" /></w:tcPr>
+      </w:tblStylePr>
+      <w:tblStylePr w:type="firstCol">
+        <w:rPr><w:rFonts w:ascii="Inter SemiBold" w:hAnsi="Inter SemiBold" w:eastAsia="Inter SemiBold" w:cs="Inter SemiBold" /></w:rPr>
+        <w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="F6F4EE" /></w:tcPr>
+      </w:tblStylePr>
     </w:style>
     <w:style w:type="character" w:styleId="Important">
       <w:name w:val="{Important}" />

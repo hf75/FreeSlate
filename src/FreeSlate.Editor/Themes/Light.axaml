@@ -5,6 +5,8 @@
   <!-- The surface everything lies on. -->
   <SolidColorBrush x:Key="Canvas" Color="#F8F7F4" />
   <SolidColorBrush x:Key="Hairline" Color="#E4E2DC" />
+  <!-- The lines of a table's cells its look leaves out, faint over the page while one writes in it. -->
+  <SolidColorBrush x:Key="Guide" Color="#C9C6BE" />
 
   <!-- A sheet of the document on it. -->
   <SolidColorBrush x:Key="Sheet" Color="#FFFFFF" />

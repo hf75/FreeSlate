@@ -332,6 +332,7 @@
     <Setter Property="PointedBrush" Value="{DynamicResource Accent}" />
     <Setter Property="OnPointedBrush" Value="{DynamicResource OnAccent}" />
     <Setter Property="DrawingBrush" Value="{DynamicResource Accent}" />
+    <Setter Property="GuideBrush" Value="{DynamicResource Guide}" />
   </ControlTheme>
 
   <!-- A choice among few, written out: the chosen one stands out from the others. -->

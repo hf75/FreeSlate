@@ -143,6 +143,12 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   for it, `PlacesItem.Outlines`, `Docx/Drawings.TurnedOutline`); the SVG of `MarkupItem`s is drawn by its own SVG
   reader (`SvgDrawing`).
 
+A Word page's scene also says where the rows of its tables stand, drawing nothing (`TableRowItem`): the table's block, the
+row of its model, where its grid's lines stand, its top and bottom, what its height has beyond its at-least height, and
+whether it is a head row repeated on a later page. The table's layout gives each row its place in the table
+(`Layout/RowPlace`, kept through a row's parts and copies), the paginator collects the rows it places on each page
+(`PageBox.TableRows`); an editor finds a table's cells and lines on the page from them.
+
 ## Editing (`WordDocument`, `PresentationDocument`, `Editing/`)
 
 - `IEditableDocument` is a document whose text an editor changes paragraph by paragraph: paragraphs go by the ids the
@@ -212,6 +218,21 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   where it shows. `EditSession` turns by quarters and more (`TurnPicture`), mirrors (`FlipPicture`), tilts (`TiltPicture`)
   and stands a picture straight (`StraightenPicture`); `JoinSince` makes the steps since a point one, as an editor's
   handlings that belong together.
+- Tables are put in as Word's Insert Table puts them (`WordDocument.TableMarkup`, `EditSession.InsertTable`, measured in Word by
+  COM): the paragraph split where the cursor is (none at its start), columns of even width over the text's width less 10 twips,
+  a table style and here one for the text in its cells, the first row its head, repeated on later pages. Tab goes to the next
+  cell and selects its text, in the last a row like it is added (`NextCell`). A table is changed as a whole
+  (`WordDocument.TableEdits.cs`, `Docx/TextEdits.Tables.cs`): its shape is read as the rectangles of its grid its cells cover
+  (`TableShape`: merged across, w:gridSpan, down, w:vMerge), changed there and written back as Word writes tables, the
+  paragraphs moving with their cells: cells merged (the content of those not empty together), split along a line down or
+  across as Word's pen splits them (a new line of the grid, a new row, the neighbours spanning it), rows and columns put in,
+  taken out and moved (a table keeps its width where Word makes it wider or narrower), the rows sorted by a column (numbers
+  by value, in the document's language), rows turned into columns with the look's marks of the first row and column turned
+  too (a head row a head column), columns made even, a line of the grid moved as Word moves it (the column after it giving
+  way, the outside ones moving the table's edges) and a row made higher. A table is known by its block's id
+  (`TableOf`, `CellsOf` gives its cells), which it keeps; a change that makes more or fewer cells reads its paragraphs anew,
+  so each change names the paragraph to go on in (`EditSession.ChangeTable`). Tables with tracked changes, content controls
+  or custom markup among their rows, or the old way of merging across, are not changed so.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
@@ -331,6 +352,17 @@ the middles of the sides of the picture selected size it the same way, as a step
 side stretches it, the opposite side stays and an alignment there too, a side it moves lines up with the columns' edges and the
 margins. Near the view's top or bottom a drag scrolls the pages, the faster the nearer (a picture dragged or sized, or the
 selection, reaching on). The arrows move a floating picture a point, ten with Shift; arrows one after another are one step.
+A table goes in from the ring at an empty spot (down right): its own ring has the number of columns, each a preview with its
+three rows, the head and two more; Tab goes from cell to cell, a row more from the last one, Shift+Tab back. The tones give
+tables their look (`Writing/Tables`: a table style and a style for the text in cells, which has no other style below it so that
+the table style's fonts reach the text: lines between the rows in the plain tone, a book's rules in the magazine, a grid in the
+notebook, the head's look also for a head column). While the cursor is in a table, the lines of its cells show dashed and faint
+over the page (`DocumentView.Tables.cs`, from the scene's rows), so that a look without lines still shows its columns. Up and down
+go from a cell's first or last line to the cell above or below, at the column, and out of the table at its ends; a click in a
+cell's empty part goes into that cell. A line between cells is dragged where the pointer shows a sizing arrow over it: an upright
+one moves as in Word, the column after it giving way, the table's sides moving its edges, lined up with the text's edges and the
+lines of other tables (Alt held, not), one across makes the row above it higher; the length beside the pointer, a step that goes
+on as for pictures, Escape takes it back.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

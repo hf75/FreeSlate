@@ -47,6 +47,9 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     public static readonly string ClipboardIcon = Drawn(Frame(3, 1.6, 14, 14.4), Block(7, 0, 6, 3.2),
         "M5.6,13.6 L9,9.6 L11.2,12 L12.6,10.6 L14.4,13.6 Z");
 
+    /// <summary>The icon of a table: a frame of three columns and three rows.</summary>
+    public static readonly string TableIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
+
     /// <summary>The icon of a caption: a picture with two lines of text below it.</summary>
     public static readonly string CaptionIcon = Drawn(Frame(3, 0, 14, 9.8), Hills, Bar(3, 12.2, 14), Bar(3, 14.8, 9));
 

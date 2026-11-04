@@ -229,10 +229,18 @@ public sealed partial class EditorView : Panel
             Tilt("TiltLeft", "perspectiveLeft"),
             Field("TiltFlat", "", () => editing.TiltPicture(PictureTilt.Flat), icon: Placement.RectangleIcon),
         ];
-        // At a spot with nothing to act on (no picture, selection or word there): what goes in there, the cursor there.
+        // A table of so many columns, its head and two rows below it (Tab in its last cell adds more), in the tone's look; each a preview.
+        IReadOnlyList<Controls.GestureRing.Slot> newTable =
+        [
+            .. Tables.Columns.Select(n => Field($"TableColumns{n}", n.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                () => editing.InsertTable(n, Tables.Rows, Tables.Table.Style, Tables.Text.Style))),
+        ];
+        // At a spot with nothing to act on (no picture, selection or word there): what goes in there, the cursor there; a picture from a
+        // file up, a table down right, a picture from the clipboard down left.
         IReadOnlyList<Controls.GestureRing.Slot> insert =
         [
             new("InsertPictureFile", "", () => _ = Sheets.PickPictures(), Icon: Placement.PictureIcon),
+            new("InsertTable", "", Under: newTable, Icon: Placement.TableIcon),
             new("InsertPictureClipboard", "", () => _ = Sheets.PasteClipboardPictures(), Icon: Placement.ClipboardIcon),
         ];
         var inserting = false;
@@ -371,8 +379,9 @@ public sealed partial class EditorView : Panel
 
     /// <summary>
     /// The structure by the keys, while the sheets have them: Tab moves the paragraphs of the selection, or the cursor's, a level to the
-    /// right, Shift+Tab a level to the left (see Levels); Enter in an empty point or subpoint moves it a level to the left instead of
-    /// making another one. Enter after a heading or a margin note makes text, as their styles say (w:next).
+    /// right, Shift+Tab a level to the left (see Levels); in a table Tab goes to the next cell instead, Shift+Tab to the one before, as in
+    /// Word (see EditSession.NextCell). Enter in an empty point or subpoint moves it a level to the left instead of making another one.
+    /// Enter after a heading or a margin note makes text, as their styles say (w:next).
     /// </summary>
     void Structure(object? sender, KeyEventArgs e)
     {
@@ -396,7 +405,10 @@ public sealed partial class EditorView : Panel
         if (e.Key == Key.Tab && others == KeyModifiers.None)
         {
             e.Handled = true;
-            Shift(shift ? -1 : 1);
+            if (editing.Table != null)
+                Sheets.Edit(() => editing.NextCell(back: shift));
+            else
+                Shift(shift ? -1 : 1);
         }
         else if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None && !editing.Selecting
             && editing.Document.Text(editing.Caret.Paragraph).Length == 0 && Levels.Of(editing.Document.ParagraphStyle(editing.Caret.Paragraph)).Step is 1 or 2)
