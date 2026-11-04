@@ -102,9 +102,11 @@ public sealed partial class EditorView : Panel
     /// last, up left, taking the meaning away; on a picture, where it stands among the text (see Placement): in the line up, beside the
     /// text right and left, on its own down, in front of the text and behind it between them, a place on the page down right (a ring of
     /// the eight ways, top, top right …), and up left the picture itself (a ring: its caption, cropping it, its description, its colors,
-    /// the size it took when it was put in, another picture in its frame, removing it, a hairline round it); on a picture cropped by
-    /// hand, its whole, proportions and the circle; at a spot with nothing to act on, what goes in there, the cursor there: a picture
-    /// from a file up, one from the clipboard down. And its ways to the sheets. Space held on a selection brings it for the keyboard.
+    /// turning it (a ring: straight again, mirrored either way, a quarter turn either way, slanted, the size it took when it was put in,
+    /// tilting it in space by hand), another picture in its frame, removing it, a hairline round it); on a picture cropped by hand, its
+    /// whole, proportions and the circle; on one tilted by hand, Word's 3-D presets; at a spot with nothing to act on, what goes in there,
+    /// the cursor there: a picture from a file up, one from the clipboard down. And its ways to the sheets. Space held on a selection
+    /// brings it for the keyboard.
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
@@ -150,9 +152,24 @@ public sealed partial class EditorView : Panel
             Meaning("OpenQuestion", "?"),
             Field("RingRemove", "×", () => editing.Format(new TextFormatting { Style = "" })),
         ];
+        // Turning the picture, down in the ring of the picture itself, each a preview: straight up (neither turned, mirrored nor tilted),
+        // mirrored left for right up right, a quarter turn right on the right, slanted down right (Word's isometric view, the look of
+        // shearing it), the size it took when it was put in down, mirrored top for bottom down left, a quarter turn left on the left, and
+        // up left tilting it in space by hand (see DocumentView.BeginTilt).
+        IReadOnlyList<Controls.GestureRing.Slot> turning =
+        [
+            Field("TurnStraight", "", () => editing.StraightenPicture(), icon: Placement.StraightIcon),
+            Field("FlipAcross", "", () => editing.FlipPicture(across: true), icon: Placement.FlipAcrossIcon),
+            Field("TurnRight", "", () => editing.TurnPicture(90), icon: Placement.TurnRightIcon),
+            Field("TurnAskew", "", () => editing.TiltPicture(new PictureTilt("isometricRightUp")), icon: Placement.AskewIcon),
+            Field("PictureNaturalSize", "", () => editing.RestoreSize(), icon: Placement.NaturalSizeIcon),
+            Field("FlipDown", "", () => editing.FlipPicture(across: false), icon: Placement.FlipDownIcon),
+            Field("TurnLeft", "", () => editing.TurnPicture(-90), icon: Placement.TurnLeftIcon),
+            new("TiltByHand", "", () => Sheets.BeginTilt(), Icon: Placement.TiltByHandIcon),
+        ];
         // What is done with the picture itself, up left: a caption below it, the cursor then in it (or taking it away, a preview as the
-        // others), cropping it by hand, its description (a card under it), its colors (a strip under it), the size it took when it was put
-        // in, another picture in its frame, removing it, a hairline round it (or taking it away).
+        // others), cropping it by hand, its description (a card under it), its colors (a strip under it), turning it (a ring of its own),
+        // another picture in its frame, removing it, a hairline round it (or taking it away).
         IReadOnlyList<Controls.GestureRing.Slot> Itself(bool captioned, bool framed) =>
         [
             captioned
@@ -161,7 +178,7 @@ public sealed partial class EditorView : Panel
             new("PictureCrop", "", () => Sheets.BeginCrop(), Icon: Placement.CropIcon),
             new("PictureDescribe", "", Describe, Icon: Placement.DescriptionIcon),
             new("PictureRecolor", "", Recolor, Icon: Placement.RecolorIcon),
-            Field("PictureNaturalSize", "", () => editing.RestoreSize(), icon: Placement.NaturalSizeIcon),
+            new("PictureTurn", "", Under: turning, Icon: Placement.TurnIcon),
             new("PictureReplace", "", () => _ = Sheets.ReplacePicture(), Icon: Placement.ReplaceIcon),
             new("PictureRemove", "×", () => Sheets.Edit(() => editing.Delete())),
             framed
@@ -196,6 +213,22 @@ public sealed partial class EditorView : Panel
         ];
         var cropRings = new[] { false, true }.SelectMany(upright => new[] { false, true }.Select(round => (upright, round)))
             .ToDictionary(k => k, k => Cropped(k.upright, k.round));
+        // While a picture is tilted by hand: Word's 3-D Rotation presets, each in its direction as it shows the picture: from above up,
+        // slanted up right, facing right on the right, slanted down right, from below down, lying down left, facing left on the left, flat
+        // again up left.
+        Controls.GestureRing.Slot Tilt(string nameKey, string camera) =>
+            Field(nameKey, "", () => editing.TiltPicture(new PictureTilt(camera)), icon: Placement.TiltIcon(camera));
+        IReadOnlyList<Controls.GestureRing.Slot> tilted =
+        [
+            Tilt("TiltAbove", "perspectiveAbove"),
+            Tilt("TiltRising", "isometricRightUp"),
+            Tilt("TiltRight", "perspectiveRight"),
+            Tilt("TiltFalling", "isometricRightDown"),
+            Tilt("TiltBelow", "perspectiveBelow"),
+            Tilt("TiltLying", "perspectiveRelaxed"),
+            Tilt("TiltLeft", "perspectiveLeft"),
+            Field("TiltFlat", "", () => editing.TiltPicture(PictureTilt.Flat), icon: Placement.RectangleIcon),
+        ];
         // At a spot with nothing to act on (no picture, selection or word there): what goes in there, the cursor there.
         IReadOnlyList<Controls.GestureRing.Slot> insert =
         [
@@ -209,6 +242,8 @@ public sealed partial class EditorView : Panel
             inserting = false;
             if (empty)
                 return insert;
+            if (Sheets.Tilting)
+                return tilted;
             if (Sheets.Cropping && editing.PictureShown is { Crop: { } crop, Width: { } width, Height: { } height })
                 return cropRings[(width / crop.Wide < height / crop.High, editing.PictureShown.Shape == "ellipse")];
             return Sheets.DrawingSelected ? pictureRings[(editing.Caption != null, editing.PictureShown?.Outline > 0)] : null;

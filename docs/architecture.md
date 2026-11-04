@@ -198,6 +198,18 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   shows another picture in one's frame (`ReplacePicture`: a part of its own, the frame as it stands and shows, the new one
   filling it at its middle, `Filling`). `EditSession` crops to proportions about the middle of what shows, no larger than the
   room there (`CropPicture(double)`), and to a circle (`RoundPicture`); the size it took when it was put in is its part's.
+- How a picture turns, as Word's Rotate, Flip and 3-D Rotation write it (`DrawingFormatting` Rotation, FlipHorizontal,
+  FlipVertical, Tilt; a figure's picture turns in its frame, the caption staying level): a:xfrm rot, flipH and flipV of its
+  pic:spPr, and a:scene3d with a preset camera, X, Y and Z turns in place of the preset's and a perspective's field of view
+  (`PictureTilt`, its `Angles` the preset's where none are given), with Word's three-point light. Word gives a picture by
+  itself the effect extents of what it covers turned and seen through its camera, and lays it out by them (`Margins`,
+  measured in Word by COM: the box swapped from 45 up to 135 degrees, tops and bottoms up to the next 1.5 pt, a tilt about
+  3 pt more, a line by its whole width); a floating one whose effect extents reach above its offset stands above its
+  paragraph (`Paginator.Above`). Word and PowerPoint turn the picture a camera shows after the camera (`Camera.TurnsPicture`,
+  legacy cameras the shape before). Cropped, a turned or mirrored floating picture's box moves so that the part kept stays
+  where it shows. `EditSession` turns by quarters and more (`TurnPicture`), mirrors (`FlipPicture`), tilts (`TiltPicture`)
+  and stands a picture straight (`StraightenPicture`); `JoinSince` makes the steps since a point one, as an editor's
+  handlings that belong together.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
@@ -285,13 +297,23 @@ left, on its own between the text down, in front of the text and behind it betwe
 ring of the eight places round the margins, each in its direction), and up left the picture itself (a ring: a caption up, the
 cursor then in it, or taking it away; cropping it by hand; its description, written on a card under it with whether it is
 decoration only, `Controls/DescriptionCard`; its colors, chosen on a strip under it that shows the picture small in each look and
-the one pointed at on the picture itself, `Controls/RecolorStrip`, `Writing/Looks`; the size it took when it was put in; another
-picture from a file in its frame; removing it; a hairline round it, or taking it away). Their signs are icons, the picture a frame
+the one pointed at on the picture itself, `Controls/RecolorStrip`, `Writing/Looks`; turning it, a ring of its own; another
+picture from a file in its frame; removing it; a hairline round it, or taking it away). Turning has straight again up, mirrored
+across and down, a quarter turn right and left, slanted (Word's isometric view, the look of shearing, which Word does not have),
+the size it took when it was put in, and tilting it in space by hand. Their signs are icons, the picture a frame
 among lines of text. A double click on a picture, or the ring, crops it by hand (`DocumentView.Cropping.cs`): the whole picture
 faint over the page round its frame, marks at the frame's corners and sides that crop it there (Shift at a corner keeps the frame's
 proportions), the picture moved under its frame where it is pressed, each let go a step; the ring there offers the whole picture,
 proportions turned as the picture stands and a circle; Enter, Escape or a press elsewhere ends it. While a picture is cropped it is
-no selection for the ring's left hold, and the second press of a double click is the sheets'.
+no selection for the ring's left hold, and the second press of a double click is the sheets'. A turned or mirrored picture is
+cropped as it shows, its marks turned with it; a tilted one shows flat while it is cropped, as Office shows it, and is tilted again
+after, the flattening, the crops and the tilt one step (`EditSession.JoinSince`).
+A knob above a picture's frame turns it about its middle (`DocumentView.Turning.cs`): its angle beside the pointer, at the quarter
+turns it stays a little (Alt held, not), with Shift by 15 degrees, as a step that goes on, Escape takes it back; the frame and its
+handles turn with the picture, the handles sizing it along its own sides, the side opposite staying where it shows. Tilted by hand,
+a drag on the picture turns it in space as a trackball would, in perspective (across about its upright axis, up and down about its
+level one), a globe round it showing how; the ring there has Word's presets in their directions; Enter, Escape or a press
+elsewhere ends it. A preview that changes nothing makes no step and leaves nothing to take back.
 A caption is text where the pointer is in one of its lines, its picture selects the figure (`DocumentView.TextHolder`);
 the arrows keep to the text the cursor is in (a drawing's text box is a text of its own, `DocumentView.StoryAt`): the body passes
 over captions, up or left out of a caption select its picture, down from a picture selected in the line goes into its caption,

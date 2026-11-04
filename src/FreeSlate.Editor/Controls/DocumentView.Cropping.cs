@@ -12,7 +12,9 @@ namespace FreeSlate.Editor.Controls;
 /// over the page; marks at the corners and the middles of the sides of its frame crop it there (a corner two sides at once, with Shift in
 /// the frame's proportions), a press on the picture moves it under its frame. Letting go crops it so, a step of its own (see
 /// EditSession.CropPicture: a floating picture stays where it is, its frame going with the sides cropped). Enter, Escape or a press
-/// elsewhere ends it, as another selection does; Escape while a mark is dragged takes the drag back.
+/// elsewhere ends it, as another selection does; Escape while a mark is dragged takes the drag back. A picture turned or mirrored is
+/// cropped as it shows, its marks turned with it; one tilted in space shows flat while it is cropped, as Office shows it, and is tilted
+/// again after, the crops and that one step.
 /// </summary>
 public sealed partial class DocumentView
 {
@@ -34,21 +36,28 @@ public sealed partial class DocumentView
 
     /// <summary>
     /// A press while cropping: where, the mark pressed (none: the picture moves under its frame), the frame and the whole picture then in the
-    /// view's coordinates; once the pointer has moved, where they go.
+    /// view's coordinates (unturned, see CropTurn) and the way back from the view to them; once the pointer has moved, where they go.
     /// </summary>
-    sealed class CropDrag(Point start, IPointer pointer, (int Across, int Down)? mark, Rect frame, Rect whole)
+    sealed class CropDrag(Point start, IPointer pointer, (int Across, int Down)? mark, Rect frame, Rect whole, Matrix back)
     {
         public Point Start { get; } = start;
         public IPointer Pointer { get; } = pointer;
         public (int Across, int Down)? Mark { get; } = mark;
         public Rect StartFrame { get; } = frame;
         public Rect StartWhole { get; } = whole;
+        public Matrix Back { get; } = back;
         public Rect Frame { get; set; } = frame;
         public Rect Whole { get; set; } = whole;
         public bool Moving { get; set; }
     }
 
     CropDrag? cropDrag;
+
+    /// <summary>
+    /// A tilted picture being cropped: its tilt, which it shows without while it is (a step of its own), how many steps there were before
+    /// that one, and the document's changes after it (see Retilt).
+    /// </summary>
+    (PictureTilt Tilt, int Steps, int Changes)? cropTilt;
 
     /// <summary>Whether the picture selected is being cropped by hand (see BeginCrop).</summary>
     public bool Cropping => cropping && CropFrames() != null;
@@ -58,6 +67,13 @@ public sealed partial class DocumentView
     {
         if (CropFrames() == null)
             return false;
+        EndTilt();
+        if (session is { } editing && editing.PictureShown?.Tilt is { IsFlat: false } tilt)
+        {
+            var steps = editing.Steps;
+            Edit(() => editing.TiltPicture(PictureTilt.Flat));
+            cropTilt = editing.Steps > steps ? (tilt, steps, editing.Document.Changes) : null;
+        }
         (cropping, cropStale) = (true, true);
         Cursor = Grab;
         InvalidateVisual();
@@ -72,21 +88,55 @@ public sealed partial class DocumentView
         var drag = cropDrag;
         (cropping, cropDrag, cropWhole) = (false, null, null);
         drag?.Pointer.Capture(null);
+        Retilt();
         Cursor = Text;
         InvalidateVisual();
     }
 
     /// <summary>
-    /// The frame of the picture selected (its box; a picture with its caption, its picture's own) and the whole picture round it as it would
-    /// show uncropped, in the view's coordinates, and the part it shows; null where the selection holds no picture.
+    /// The tilted picture cropped tilted again (see cropTilt): shown flat and nothing more, as though that never was; cropped, the
+    /// flattening, the crops and the tilt one step.
+    /// </summary>
+    void Retilt()
+    {
+        if (cropTilt is not var (tilt, steps, changes) || session is not { } editing)
+            return;
+        cropTilt = null;
+        if (editing.Document.Changes == changes)
+            Edit(() => editing.TakeBack());
+        else
+        {
+            Edit(() =>
+            {
+                editing.TiltPicture(tilt);
+                editing.JoinSince(steps);
+            });
+        }
+    }
+
+    /// <summary>
+    /// The frame of the picture selected (its box, its own size about its middle where a turn swaps the box in the line; a picture with its
+    /// caption, its picture's own) and the whole picture round it as it would show uncropped, in the view's coordinates before the picture
+    /// is turned and mirrored (see CropTurn), and the part it shows; null where the selection holds no picture.
     /// </summary>
     (Rect Frame, Rect Whole, PictureCrop Crop)? CropFrames()
     {
-        if (session is not { } editing || editing.PictureShown is not { Crop: { Wide: > 0, High: > 0 } crop } || SelectedDrawing() is not var (page, at)
-            || PictureBox(page, at) is not { Width: > 0, Height: > 0 } frame)
+        if (session is not { } editing || editing.PictureShown is not { Crop: { Wide: > 0, High: > 0 } crop } shown || SelectedDrawing() is not var (page, at)
+            || PictureBox(page, at) is not { Width: > 0, Height: > 0 } box)
             return null;
+        var pt = factor * PxPerPt;
+        var frame = shown is { Rotation: not (null or 0), Width: double w, Height: double h } ? FrameAbout(box.Center, new Size(w * pt, h * pt)) : box;
         var (wide, high) = (frame.Width / crop.Wide, frame.Height / crop.High);
         return (frame, new Rect(frame.X - crop.Left * wide, frame.Y - crop.Top * high, wide, high), crop);
+    }
+
+    /// <summary>The picture selected mirrored and turned as it shows, about the middle of its frame: from its frame (see CropFrames) to the view.</summary>
+    Matrix CropTurn(Rect frame)
+    {
+        var shown = session?.PictureShown;
+        var middle = frame.Center;
+        return Matrix.CreateTranslation(-middle.X, -middle.Y) * Matrix.CreateScale(shown?.FlipHorizontal == true ? -1 : 1, shown?.FlipVertical == true ? -1 : 1)
+            * Matrix.CreateRotation((shown?.Rotation ?? 0) * Math.PI / 180) * Matrix.CreateTranslation(middle.X, middle.Y);
     }
 
     /// <summary>The box of the picture of the drawing among a page's characters (a picture with its caption, its picture's own) in the view's coordinates.</summary>
@@ -118,10 +168,12 @@ public sealed partial class DocumentView
     {
         if (CropFrames() is not var (frame, whole, _))
             return false;
-        var mark = CropMarkAt(point, frame);
-        if (mark == null && !whole.Contains(point))
+        var back = CropTurn(frame).Invert();
+        var local = point.Transform(back);
+        var mark = CropMarkAt(local, frame);
+        if (mark == null && !whole.Contains(local))
             return false;
-        cropDrag = new CropDrag(point, pointer, mark, frame, whole);
+        cropDrag = new CropDrag(point, pointer, mark, frame, whole, back);
         pointer.Capture(this);
         return true;
     }
@@ -133,10 +185,11 @@ public sealed partial class DocumentView
     void CropTo(Point point, KeyModifiers modifiers)
     {
         var d = cropDrag!;
-        var by = point - d.Start;
-        if (!d.Moving && ((Vector)by).Length < DragDistance)
+        if (!d.Moving && ((Vector)(point - d.Start)).Length < DragDistance)
             return;
         d.Moving = true;
+        // Along the picture's own sides, as it is turned and mirrored.
+        var by = point.Transform(d.Back) - d.Start.Transform(d.Back);
         var (f, w) = (d.StartFrame, d.StartWhole);
         if (d.Mark is not { } mark)
         {
@@ -184,13 +237,20 @@ public sealed partial class DocumentView
         InvalidateVisual();
     }
 
-    /// <summary>The cursor while cropping, no button held: a mark's way, the hand on the picture, the text's elsewhere.</summary>
-    Cursor CropCursorAt(Point point) =>
-        CropFrames() is not var (frame, whole, _) ? Text : CropMarkAt(point, frame) is { } mark ? CursorOf(mark) : whole.Contains(point) ? Grab : Text;
+    /// <summary>The cursor while cropping, no button held: a mark's way as it shows, the hand on the picture, the text's elsewhere.</summary>
+    Cursor CropCursorAt(Point point)
+    {
+        if (CropFrames() is not var (frame, whole, _))
+            return Text;
+        var turn = CropTurn(frame);
+        var local = point.Transform(turn.Invert());
+        return CropMarkAt(local, frame) is { } mark ? CursorOf(mark, turn) : whole.Contains(local) ? Grab : Text;
+    }
 
     /// <summary>
     /// The picture being cropped: the whole picture faint over the sheet where it is cut away, the part it would show while a mark or the
-    /// picture is dragged (the page shows the part it shows until then), the edge of the whole, the frame and its marks.
+    /// picture is dragged (the page shows the part it shows until then), the edge of the whole, the frame and its marks; turned and
+    /// mirrored as the picture is.
     /// </summary>
     void DrawCrop(DrawingContext context)
     {
@@ -198,9 +258,10 @@ public sealed partial class DocumentView
             return;
         if (CropFrames() is not var (startFrame, startWhole, _))
         {
-            cropping = false;
+            (cropping, cropTilt) = (false, null);
             return;
         }
+        using var turned = context.PushTransform(CropTurn(startFrame));
         var (frame, whole) = cropDrag is { Moving: true } d ? (d.Frame, d.Whole) : (startFrame, startWhole);
         var picture = WholePicture(whole);
         using (context.PushGeometryClip(new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(whole), new RectangleGeometry(frame))))

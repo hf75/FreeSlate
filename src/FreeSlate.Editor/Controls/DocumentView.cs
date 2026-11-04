@@ -388,6 +388,7 @@ public sealed partial class DocumentView : Control
         // hand whole round its frame.
         DrawDrawing(context);
         DrawCrop(context);
+        DrawTilt(context);
         // Where pictures dragged over the sheets would go.
         if (dropAt is var (dropPage, dropIndex, dropEnd) && BarAt(dropPage, dropIndex, dropEnd) is { Height: > 0 } bar)
             context.FillRectangle(DrawingBrush ?? CaretBrush ?? Brushes.Black, new Rect(bar.X - 1, bar.Y, 2, bar.Height));
@@ -757,6 +758,7 @@ public sealed partial class DocumentView : Control
     /// <summary>Selects the drawing a point of the view is on as a whole (see DrawingAt); false where it is on none.</summary>
     public bool SelectDrawingAt(Point point)
     {
+        Leave(point);
         if (DrawingAt(point) is not var (page, at))
             return false;
         (anchor, caret, lineEnd) = ((page, at), (page, at + 1), false);
@@ -790,10 +792,18 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (tiltDrag != null)
+        {
+            TiltTo(e.GetPosition(this));
+            e.Handled = true;
+            return;
+        }
         // Over a drawing the pointer shows that it can be moved, over a handle of the one selected that it can be sized; while cropping, the
-        // marks and the picture.
+        // marks and the picture; while tilting, the picture.
         if (cropping)
             Cursor = CropCursorAt(e.GetPosition(this));
+        else if (tilting)
+            Cursor = TiltsAt(e.GetPosition(this)) ? Grab : Text;
         else if (!selecting)
             Cursor = CursorAt(e.GetPosition(this));
         if (selecting)
@@ -821,7 +831,8 @@ public sealed partial class DocumentView : Control
     /// <summary>
     /// A click puts the cursor at the place nearest to it, with Shift selects up to there; dragging selects. A double click selects the
     /// word there, a triple click the paragraph, as Word does (see SelectUnitsAt); a double click on a picture crops it by hand (see
-    /// BeginCrop); while cropping, a press on its marks or on it crops it, one elsewhere ends that first.
+    /// BeginCrop); while cropping, a press on its marks or on it crops it, while tilting one on it tilts it (see BeginTilt), one
+    /// elsewhere ends that first.
     /// </summary>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -837,6 +848,15 @@ public sealed partial class DocumentView : Control
                 return;
             }
             EndCrop();
+        }
+        else if (tilting)
+        {
+            if (TiltPress(point, e.Pointer))
+            {
+                e.Handled = true;
+                return;
+            }
+            EndTilt();
         }
         else if (e.ClickCount == 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && SelectDrawingAt(point) && BeginCrop())
         {
@@ -927,11 +947,11 @@ public sealed partial class DocumentView : Control
 
     /// <summary>
     /// Whether a point of the view is on the selection (a drawing selected as a whole: on its box, not on a handle); a picture being cropped
-    /// is none, a press on it crops it.
+    /// or tilted is none, a press on it crops or tilts it.
     /// </summary>
     public bool OnSelection(Point point)
     {
-        if (cropping)
+        if (cropping || tilting)
             return false;
         if (SelectedDrawing() is var (drawnPage, drawnAt))
             return BoxOf(drawnPage, drawnAt) is { } box && box.Contains(point) && HandleAt(point) == null;
@@ -975,6 +995,7 @@ public sealed partial class DocumentView : Control
     /// <summary>Selects the word the character at a point of the view belongs to; false where it is no word's.</summary>
     public bool SelectWordAt(Point point)
     {
+        Leave(point);
         if (session is not { } editing)
             return false;
         foreach (var row in rows)
@@ -1021,6 +1042,12 @@ public sealed partial class DocumentView : Control
         {
             EndCropDrag(keep: true);
             e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+        if (tiltDrag != null)
+        {
+            EndTiltDrag(keep: true);
             e.Handled = true;
             return;
         }
@@ -1093,6 +1120,22 @@ public sealed partial class DocumentView : Control
                 return;
             }
             EndCrop();
+            if (e.Key is Key.Enter or Key.Escape)
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+        // While tilting, the same: Escape takes a drag back, else Enter and Escape end tilting; another key ends it and goes on.
+        if (tilting)
+        {
+            if (tiltDrag != null && e.Key == Key.Escape)
+            {
+                EndTiltDrag(keep: false);
+                e.Handled = true;
+                return;
+            }
+            EndTilt();
             if (e.Key is Key.Enter or Key.Escape)
             {
                 e.Handled = true;
@@ -1574,6 +1617,7 @@ public sealed partial class DocumentView : Control
     /// <summary>The cursor at the place a point of the view hits (see PlaceAt), the selection gone; false where there is no text.</summary>
     public bool PlaceCursorAt(Point point)
     {
+        Leave(point);
         if (PlaceAt(point) is not var (page, at, end))
             return false;
         (caret, anchor, lineEnd) = ((page, at), (page, at), end);

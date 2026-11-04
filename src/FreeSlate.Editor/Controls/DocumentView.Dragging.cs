@@ -47,6 +47,13 @@ public sealed partial class DocumentView
         public bool Floating { get; } = floating;
         public (int Across, int Down)? Handle { get; } = handle;
         public DrawingFormatting? Stood { get; } = stood;
+        /// <summary>Its frame unturned and how far it was turned then (see TurnedFrame); the angle the knob turns it to, and the one a step shows.</summary>
+        public Rect Frame { get; init; } = box;
+        public double Turn { get; init; }
+        public double? Angle { get; set; }
+        public double? ShownAngle { get; set; }
+        /// <summary>Where the pointer is now.</summary>
+        public Point At { get; set; } = start;
         public bool Moving { get; set; }
         public Goal? Target { get; set; }
         public Goal? Shown { get; set; }
@@ -184,23 +191,30 @@ public sealed partial class DocumentView
         if (SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
             return;
         var floating = pictures.Places(Page(page)).InlineBox(pictures.Spots(Page(page))[at]) == null;
-        dragged = new Dragged(point, pointer, page, box, floating, handle, session?.Drawing);
+        var (frame, turn) = TurnedFrame() ?? (box, 0);
+        dragged = new Dragged(point, pointer, page, box, floating, handle, session?.Drawing) { Frame = frame, Turn = turn };
         pointer.Capture(this);
     }
 
-    /// <summary>The handle of the drawing selected a point of the view is on, or null.</summary>
+    /// <summary>The handle of the drawing selected a point of the view is on (its frame turned as it shows, see TurnedFrame), the knob that turns a picture too, or null.</summary>
     (int Across, int Down)? HandleAt(Point point)
     {
-        if (dragged != null || cropping || SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
+        if (dragged != null || cropping || tilting || TurnedFrame() is not var (box, turn))
             return null;
-        var frame = box.Inflate(1.5);
+        var (frame, local) = (box.Inflate(1.5), Turned(point, box.Center, -turn));
+        if (TurnsHere && ((Vector)(local - KnobPoint(frame))).Length <= HandleReach)
+            return Knob;
         foreach (var handle in Handles)
         {
-            if (((Vector)(point - HandlePoint(frame, handle))).Length <= HandleReach)
+            if (((Vector)(local - HandlePoint(frame, handle))).Length <= HandleReach)
                 return handle;
         }
         return null;
     }
+
+    /// <summary>The pointer over a handle of a drawing turned so far: the way the handle sizes it on the screen; over the knob, turning.</summary>
+    static Cursor CursorOf((int Across, int Down) handle, double turn) =>
+        handle == Knob ? Turning : turn == 0 ? CursorOf(handle) : CursorOf(handle, TurnAbout(default, turn));
 
     static Point HandlePoint(Rect frame, (int Across, int Down) handle) =>
         new(frame.Center.X + handle.Across * frame.Width / 2, frame.Center.Y + handle.Down * frame.Height / 2);
@@ -223,7 +237,7 @@ public sealed partial class DocumentView
         BottomSide = new(StandardCursorType.BottomSide), LeftSide = new(StandardCursorType.LeftSide), RightSide = new(StandardCursorType.RightSide);
 
     /// <summary>The pointer over the sheets, no button held: the cursor of a handle, of a drawing that can be moved, or of the text.</summary>
-    Cursor CursorAt(Point point) => HandleAt(point) is { } handle ? CursorOf(handle) : DrawingAt(point) != null ? Grab : Text;
+    Cursor CursorAt(Point point) => HandleAt(point) is { } handle ? CursorOf(handle, TurnedFrame()?.Turn ?? 0) : DrawingAt(point) != null ? Grab : Text;
 
     /// <summary>The pointer moved while a drawing is pressed: once far enough, where the drawing goes, or how large it gets.</summary>
     void DragTo(Point point, KeyModifiers modifiers)
@@ -231,11 +245,20 @@ public sealed partial class DocumentView
         var d = dragged!;
         if (!d.Moving && ((Vector)(point - d.Start)).Length < DragDistance)
             return;
-        d.Moving = true;
+        (d.Moving, d.At) = (true, point);
+        if (d.Handle == Knob)
+        {
+            Cursor = Turning;
+            TurnTo(d, point, modifiers);
+            return;
+        }
         if (d.Handle is { } handle)
         {
-            Cursor = CursorOf(handle);
-            SizeTo(d, handle, point, modifiers);
+            Cursor = CursorOf(handle, d.Turn);
+            if (d.Turn != 0)
+                SizeTurned(d, handle, point);
+            else
+                SizeTo(d, handle, point, modifiers);
             return;
         }
         Cursor = d.Floating ? Grab : Cursor.Default;
@@ -339,6 +362,41 @@ public sealed partial class DocumentView
         Aim(d, new Goal(row.Index, (left - Left(row)) / pt, top / pt - row.Top / PxPerPt, (right - left) / pt, (bottom - top) / pt, alignAcross, alignDown));
     }
 
+    /// <summary>
+    /// A handle of a turned picture dragged: as SizeTo, along the picture's own sides (a corner keeps the proportions), the side opposite
+    /// staying where it stands on the screen; it lines up with nothing.
+    /// </summary>
+    void SizeTurned(Dragged d, (int Across, int Down) handle, Point point)
+    {
+        var f = d.Frame;
+        var by = Turned(point, f.Center, -d.Turn) - Turned(d.Start, f.Center, -d.Turn);
+        var (left, top, right, bottom) = (f.Left, f.Top, f.Right, f.Bottom);
+        if (handle.Across < 0)
+            left = Math.Min(left + by.X, right - Least);
+        else if (handle.Across > 0)
+            right = Math.Max(right + by.X, left + Least);
+        if (handle.Down < 0)
+            top = Math.Min(top + by.Y, bottom - Least);
+        else if (handle.Down > 0)
+            bottom = Math.Max(bottom + by.Y, top + Least);
+        if (handle.Across != 0 && handle.Down != 0)
+        {
+            var scale = Math.Max((right - left) / f.Width, (bottom - top) / f.Height);
+            var (w, h) = (f.Width * scale, f.Height * scale);
+            (left, right) = handle.Across < 0 ? (right - w, right) : (left, left + w);
+            (top, bottom) = handle.Down < 0 ? (bottom - h, bottom) : (top, top + h);
+        }
+        // Its new middle turned back onto the screen, so that the side opposite stays where it is.
+        var middle = Turned(new Point((left + right) / 2, (top + bottom) / 2), f.Center, d.Turn);
+        var (width, height) = (right - left, bottom - top);
+        d.Ghost = new Rect(middle.X - width / 2, middle.Y - height / 2, width, height);
+        d.Guides = (null, null);
+        if (RowNear(middle.Y) is not { } row)
+            return;
+        var pt = factor * PxPerPt;
+        Aim(d, new Goal(row.Index, (d.Ghost.X - Left(row)) / pt, d.Ghost.Y / pt - row.Top / PxPerPt, width / pt, height / pt, null, null));
+    }
+
     /// <summary>Where the drawing dragged is to go; the text goes round it there as soon as the pointer rests a moment (moves that come first go before).</summary>
     void Aim(Dragged d, Goal goal)
     {
@@ -359,6 +417,23 @@ public sealed partial class DocumentView
     /// <summary>The drawing dragged put where it goes, or sized as it gets, as a step of its own in place of the one that showed it before.</summary>
     void Preview(Dragged d)
     {
+        // Turned by its knob: the angle as a step of its own.
+        if (d.Handle == Knob)
+        {
+            if (session is not { } turning || d.Angle is not { } angle || d.ShownAngle == d.Angle)
+                return;
+            Edit(() =>
+            {
+                if (d.Previewed)
+                {
+                    turning.TakeBack();
+                    d.Previewed = false;
+                }
+                d.Previewed = Stepped(turning, () => turning.Format(new DrawingFormatting { Rotation = angle }));
+            });
+            d.ShownAngle = d.Angle;
+            return;
+        }
         if (session is not { } editing || d.Target is not { } goal || d.Shown == d.Target)
             return;
         Edit(() =>
@@ -370,9 +445,13 @@ public sealed partial class DocumentView
             }
             try
             {
-                d.Previewed = d.Handle != null
-                    ? editing.SizeDrawing(goal.Width, goal.Height, d.Floating ? (goal.Page, goal.X, goal.Y) : null, goal.Across, goal.Down)
-                    : editing.PlaceDrawing(goal.Page, goal.X, goal.Y, goal.Across);
+                d.Previewed = Stepped(editing, () =>
+                {
+                    if (d.Handle != null)
+                        editing.SizeDrawing(goal.Width, goal.Height, d.Floating ? (goal.Page, goal.X, goal.Y) : null, goal.Across, goal.Down);
+                    else
+                        editing.PlaceDrawing(goal.Page, goal.X, goal.Y, goal.Across);
+                });
             }
             catch (Exception e) when (e is NotSupportedException or ArgumentException)
             {
@@ -380,6 +459,14 @@ public sealed partial class DocumentView
             }
         });
         d.Shown = d.Target;
+    }
+
+    /// <summary>A change made as a preview: whether it made a step (one that changes nothing makes none, nothing to be taken back then).</summary>
+    static bool Stepped(EditSession editing, Action change)
+    {
+        var steps = editing.Steps;
+        change();
+        return editing.Steps > steps;
     }
 
     /// <summary>
@@ -431,21 +518,37 @@ public sealed partial class DocumentView
             EndDrag(keep: false);
         if (cropDrag is { } crop && ReferenceEquals(e.Pointer, crop.Pointer))
             EndCropDrag(keep: false);
+        if (tiltDrag is { } tilt && ReferenceEquals(e.Pointer, tilt.Pointer))
+            EndTiltDrag(keep: false);
     }
 
     /// <summary>
-    /// The drawing selected as a whole, framed a little outside its box, with its handles; while it is dragged floating or sized, the
-    /// frame where it goes and the lines it lines up with; floating, the mark of its anchor's paragraph in the margin.
+    /// The drawing selected as a whole, framed a little outside its box (a picture turned, its frame turned with it, see TurnedFrame),
+    /// with its handles and a picture's knob; while it is dragged floating or sized, the frame where it goes and the lines it lines up
+    /// with; turned by its knob, its frame as far as the pointer has it, the angle beside the pointer; floating, the mark of its
+    /// anchor's paragraph in the margin.
     /// </summary>
     void DrawDrawing(DrawingContext context)
     {
         var pen = new Pen(DrawingBrush, 1.5);
         if (dragged is { Moving: true } d && (d.Floating || d.Handle != null))
         {
-            var frame = d.Floating || d.Handle == null ? d.Ghost.Inflate(1.5) : (SelectedDrawing() is var (p, a) && BoxOf(p, a) is { } now ? now.Inflate(1.5) : d.Ghost.Inflate(1.5));
-            context.DrawRectangle(null, pen, frame, 2, 2);
-            if (d.Handle != null)
-                DrawHandles(context, frame);
+            // Floating, where it goes; else as it shows now (the line has it); turned as it was, or as the knob has it (a picture with its
+            // caption level).
+            var shows = TurnedFrame()?.Frame;
+            var (frame, turn) = d.Handle == Knob ? (shows ?? d.Frame, session?.Caption != null ? 0 : d.Angle ?? d.Turn)
+                : d.Floating ? (d.Turn != 0 && d.Handle == null ? FrameAbout(d.Ghost.Center, d.Frame.Size) : d.Ghost, d.Turn)
+                : (d.Turn != 0 ? shows ?? d.Ghost : SelectedDrawing() is var (p, a) && BoxOf(p, a) is { } now ? now : d.Ghost, d.Turn);
+            using (context.PushTransform(TurnAbout(frame.Center, turn)))
+            {
+                context.DrawRectangle(null, pen, frame.Inflate(1.5), 2, 2);
+                if (d.Handle != null)
+                    DrawHandles(context, frame.Inflate(1.5));
+                if (d.Handle == Knob)
+                    DrawKnob(context, frame.Inflate(1.5));
+            }
+            if (d.Handle == Knob)
+                DrawAngle(context, d, d.At);
             if (rows.FirstOrDefault(r => r.Index == d.Target?.Page) is { } row)
             {
                 var sheet = SheetRect(row);
@@ -457,14 +560,25 @@ public sealed partial class DocumentView
                     context.DrawLine(guide, new Point(sheet.Left, Math.Round(sheet.Top + y * pt) + 0.5), new Point(sheet.Right, Math.Round(sheet.Top + y * pt) + 0.5));
             }
         }
-        else if (!SelectionHidden && !cropping && SelectedDrawing() is var (page, at) && BoxOf(page, at) is { } box)
+        else if (!SelectionHidden && !cropping && !tilting && TurnedFrame() is var (box, turned))
         {
-            context.DrawRectangle(null, pen, box.Inflate(1.5), 2, 2);
+            using (context.PushTransform(TurnAbout(box.Center, turned)))
+            {
+                context.DrawRectangle(null, pen, box.Inflate(1.5), 2, 2);
+                if (dragged is not { Moving: true })
+                {
+                    DrawHandles(context, box.Inflate(1.5));
+                    if (TurnsHere)
+                        DrawKnob(context, box.Inflate(1.5));
+                }
+            }
             // In the line, dragged: its outline with the pointer, the bar where it goes (see Render).
             if (dragged is { Moving: true } inLine)
-                context.DrawRectangle(null, new Pen(DrawingBrush, 1, new DashStyle([4, 3], 0)), inLine.Ghost, 2, 2);
-            else
-                DrawHandles(context, box.Inflate(1.5));
+            {
+                var ghost = inLine.Turn != 0 ? FrameAbout(inLine.Ghost.Center, inLine.Frame.Size) : inLine.Ghost;
+                using (context.PushTransform(TurnAbout(ghost.Center, inLine.Turn)))
+                    context.DrawRectangle(null, new Pen(DrawingBrush, 1, new DashStyle([4, 3], 0)), ghost, 2, 2);
+            }
         }
         if (SelectedDrawing() is var (anchorPage, anchorAt) && anchorPage < rows.Count)
             DrawAnchor(context, anchorPage, anchorAt);
