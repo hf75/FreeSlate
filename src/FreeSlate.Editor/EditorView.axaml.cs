@@ -264,12 +264,24 @@ public sealed partial class EditorView : Panel
             Field("TableColumnRemove", "\u00D7", () => editing.RemoveColumn()),
             Field("TableColumnLeft", "", () => editing.InsertColumn(left: true), icon: Placement.ColumnLeftIcon),
         ];
+        // A table's look: the tone's own up, then the kinds round the ring (a grid, lines between the rows, a book's rules, a frame), its
+        // head down; each a preview.
+        Controls.GestureRing.Slot Look(TableKind kind) => Field("TableLook" + kind.Style[5..], "", () => editing.StyleTable(kind.Style), icon: kind.Icon);
+        IReadOnlyList<Controls.GestureRing.Slot> TableLooks(bool head) =>
+        [
+            Field("TableLookTone", "", () => editing.StyleTable(Tables.Table.Style), icon: Placement.LookToneIcon),
+            Look(Tables.Kinds[0]),
+            Look(Tables.Kinds[1]),
+            head ? Field("TableHeadRemove", "", () => editing.SetHead(false), icon: Placement.HeadRemoveIcon)
+                : Field("TableHead", "", () => editing.SetHead(true), icon: Placement.HeadIcon),
+            Look(Tables.Kinds[2]),
+            Look(Tables.Kinds[3]),
+        ];
         IReadOnlyList<Controls.GestureRing.Slot> TableWhole(bool head) =>
         [
             Field("TableTranspose", "", () => editing.TransposeTable(), icon: Placement.TransposeIcon),
             Field("TableDistribute", "", () => editing.DistributeColumns(), icon: Placement.DistributeIcon),
-            head ? Field("TableHeadRemove", "", () => editing.SetHead(false), icon: Placement.HeadRemoveIcon)
-                : Field("TableHead", "", () => editing.SetHead(true), icon: Placement.HeadIcon),
+            new("TableLook", "", Under: TableLooks(head), Icon: Placement.LookIcon),
             Field("TableRemove", "\u00D7", () => editing.RemoveTable()),
         ];
         var cellRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)

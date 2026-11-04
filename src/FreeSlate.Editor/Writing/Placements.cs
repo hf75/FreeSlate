@@ -77,6 +77,15 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>The icon of columns made even: three columns of one width, a short line across each at the top.</summary>
     public static readonly string DistributeIcon = Drawn(Frame(0, 3, 20, 13), Block(6.3, 3, Weight, 13), Block(12.5, 3, Weight, 13), Bar(1.4, 0, 3.4), Bar(8.2, 0, 3.4), Bar(15.2, 0, 3.4));
 
+    /// <summary>The icons of a table's looks: the tone's own (its inside lines broken), lines between rows, a book's rules, a frame with its head's line.</summary>
+    public static readonly string LookToneIcon = Drawn(Frame(0, 1, 20, 14), Bar(1.6, 5.4, 3.6), Bar(8.2, 5.4, 3.6), Bar(14.8, 5.4, 3.6), Bar(1.6, 9.6, 3.6), Bar(8.2, 9.6, 3.6), Bar(14.8, 9.6, 3.6));
+    public static readonly string LookRowsIcon = Drawn(Bar(0, 1, 20), Block(0, 4.8, 20, 1.6), Bar(0, 9.6, 20), Bar(0, 14.2, 20));
+    public static readonly string LookBookIcon = Drawn(Block(0, 0.6, 20, 2.2), Bar(0, 5.6, 20), Block(0, 13.2, 20, 2.2));
+    public static readonly string LookFrameIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20));
+
+    /// <summary>The icon of a table's look: a brush's tip over a table's frame.</summary>
+    public static readonly string LookIcon = Drawn(Frame(0, 6, 20, 10), Bar(0, 10.6, 20), Outline((9, 6.6), (12.6, 0.4), (16.2, 2.4), (12.6, 8.6)));
+
     /// <summary>The icons of a head row and of none: the table, its first row filled, or empty and the frame broken above.</summary>
     public static readonly string HeadIcon = Drawn(Frame(0, 1, 20, 14), Block(0, 1, 20, 4.8), Bar(0, 9.6, 20), Block(6.3, 5, Weight, 10), Block(12.5, 5, Weight, 10));
     public static readonly string HeadRemoveIcon = Drawn(Frame(0, 5.4, 20, 9.6), Bar(0, 9.6, 20), Block(6.3, 5.4, Weight, 9.6), Block(12.5, 5.4, Weight, 9.6),

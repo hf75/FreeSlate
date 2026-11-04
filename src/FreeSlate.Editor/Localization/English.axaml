@@ -108,6 +108,16 @@
   <x:String x:Key="TableHead">Head row</x:String>
   <x:String x:Key="TableHeadRemove">No head</x:String>
   <x:String x:Key="TableRemove">Remove table</x:String>
+  <x:String x:Key="TableLook">Look</x:String>
+  <x:String x:Key="TableLookTone">As the tone</x:String>
+  <x:String x:Key="TableLookLines">Grid</x:String>
+  <x:String x:Key="TableLookRows">Rows</x:String>
+  <x:String x:Key="TableLookBook">Book</x:String>
+  <x:String x:Key="TableLookFrame">Frame</x:String>
+  <x:String x:Key="StyleTableLines">Table grid</x:String>
+  <x:String x:Key="StyleTableRows">Table rows</x:String>
+  <x:String x:Key="StyleTableBook">Table book</x:String>
+  <x:String x:Key="StyleTableFrame">Table frame</x:String>
   <x:String x:Key="PictureFiles">Pictures</x:String>
   <x:String x:Key="PlaceTop">Top center</x:String>
   <x:String x:Key="PlaceTopRight">Top right</x:String>

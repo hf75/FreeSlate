@@ -108,6 +108,16 @@
   <x:String x:Key="TableHead">Kopfzeile</x:String>
   <x:String x:Key="TableHeadRemove">Ohne Kopf</x:String>
   <x:String x:Key="TableRemove">Tabelle entfernen</x:String>
+  <x:String x:Key="TableLook">Aussehen</x:String>
+  <x:String x:Key="TableLookTone">Wie die Haltung</x:String>
+  <x:String x:Key="TableLookLines">Gitter</x:String>
+  <x:String x:Key="TableLookRows">Zeilen</x:String>
+  <x:String x:Key="TableLookBook">Buch</x:String>
+  <x:String x:Key="TableLookFrame">Kasten</x:String>
+  <x:String x:Key="StyleTableLines">Tabelle Gitter</x:String>
+  <x:String x:Key="StyleTableRows">Tabelle Zeilen</x:String>
+  <x:String x:Key="StyleTableBook">Tabelle Buch</x:String>
+  <x:String x:Key="StyleTableFrame">Tabelle Kasten</x:String>
   <x:String x:Key="PictureFiles">Bilder</x:String>
   <x:String x:Key="PlaceTop">Oben Mitte</x:String>
   <x:String x:Key="PlaceTopRight">Oben rechts</x:String>

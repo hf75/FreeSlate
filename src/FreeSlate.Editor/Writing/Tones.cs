@@ -27,6 +27,12 @@ public sealed record Tone(string Key, string NameKey)
         var tone = XElement.Parse(markup);
         XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
         var styles = tone.Element(w + "styles")!;
+        // The kinds of table look beside the tone's own, made of it with other lines (see Tables.Kinds), in the tone's colours for lines.
+        if (styles.Elements(w + "style").FirstOrDefault(s => (string?)s.Attribute(w + "styleId") == Tables.Table.Style) is { } own)
+        {
+            foreach (var kind in Tables.Kinds)
+                styles.Add(Tables.Made(own, kind, (string?)tone.Attribute("lines") ?? "BFBFBF", (string?)tone.Attribute("rules") ?? "404040"));
+        }
         styles.Add(new XElement(w + "style", new XAttribute(w + "type", "character"), new XAttribute(w + "customStyle", "1"), new XAttribute(w + "styleId", "Tone"),
             new XElement(w + "name", new XAttribute(w + "val", "Tone " + Key)), new XElement(w + "hidden"), new XElement(w + "semiHidden")));
         return (styles.ToString(SaveOptions.DisableFormatting), tone.Element(w + "numbering")!.ToString(SaveOptions.DisableFormatting));

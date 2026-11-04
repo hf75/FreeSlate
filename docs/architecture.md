@@ -231,7 +231,8 @@ whether it is a head row repeated on a later page. The table's layout gives each
   too (a head row a head column), columns made even, a line of the grid moved as Word moves it (the column after it giving
   way, the outside ones moving the table's edges) and a row made higher, a line between cells taken away as Word's eraser
   takes it (`EraseLine`: each stretch of it merges the cells on either side, into the smallest rectangle that holds them,
-  `Enclosing`), a head row put on or taken off (`SetHead`: the look's mark and the repeat on later pages). A table is known by its block's id
+  `Enclosing`), a head row put on or taken off (`SetHead`: the look's mark and the repeat on later pages), another table style
+  (`StyleTable`). A table is known by its block's id
   (`TableOf`, `CellsOf` gives its cells), which it keeps; a change that makes more or fewer cells reads its paragraphs anew,
   so each change names the paragraph to go on in (`EditSession.ChangeTable`). Tables with tracked changes, content controls
   or custom markup among their rows, or the old way of merging across, are not changed so.
@@ -372,8 +373,11 @@ stroke along a line takes it away and merges the cells beside it; the line and t
 let go it is one step, Escape takes a stroke back. Enter, Escape or a press beside the table ends it. The ring in a table's cell
 (at a spot with nothing to act on) has the cell's row up (a row above, below, the row's cells merged, the row taken away), its
 column right (sorted up or down by it, a column left or right, taken away), shaping the table by hand down, and the table left
-(rows turned into columns, columns made even, a head row or none, the table taken away), each laid out as the table is and each
-a preview.
+(rows turned into columns, columns made even, its look, the table taken away), each laid out as the table is and each a preview.
+Its look's ring has the tone's own up, round it the kinds (a grid of light lines, light lines between the rows, a book's rules, a
+frame) and a head row or none down (`Writing/Tables.Kinds`): each kind is the tone's table style with other lines, made when the tone
+is (`Tables.Made`, in the tone's colours for lines and for rules, `lines` and `rules` on `Tones/*.xml`), so it keeps the tone's type,
+margins and head and changes with the tone.
 Beside the table the pointer is at its rows and columns have grips, left of the row and above the column, faint, in the accent
 where the pointer is on one, a plus between two (`DocumentView.Grips.cs`): a click on a grip selects its row or column (Shift
 another one up to it; Delete or Backspace takes them away), dragged along the table it moves them before another (rows and
