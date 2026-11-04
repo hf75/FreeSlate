@@ -241,7 +241,10 @@ The editor is a word processor of its own on top of the engine, the same on ever
 interface, `FreeSlate.Editor.Desktop` and `FreeSlate.Editor.Browser` only start it (in the browser `Settings.Read` and `Write`
 go to the page's storage, and the engine gets the app's Inter as its only font). It opens on a new document
 (`WordDocument.New`) in `DocumentView`, which draws the sheets from their scenes with Skia and sends keys, typed text and an
-input method's text to an `EditSession`. It neither opens nor saves files yet.
+input method's text to an `EditSession`. It neither opens nor saves files yet. Text is selected as in Word: a double click takes
+the word, a triple click the paragraph, the pointer held on from there whole ones; Shift with the arrows, Home and End moves the
+selection's moving end, with Ctrl by words and paragraphs and to the text's start and end; without Shift an arrow leaves a
+selection at its start or end, and up and down keep the column they started from.
 
 A document says what its text means, not how it looks (`Writing/`): a meaning is a character style (`Meanings`), and a tone
 (`Tones`, the style sets in `Tones/*.xml`) gives the meanings and the paragraphs' levels their look, the whole document at once,

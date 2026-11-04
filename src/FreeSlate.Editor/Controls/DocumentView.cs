@@ -83,6 +83,19 @@ public sealed partial class DocumentView : Control
 
     bool selecting, fromSession, layingOut, blink = true;
 
+    /// <summary>
+    /// The word or the paragraph a double or triple click selected, while the pointer held on from there selects by whole ones (see
+    /// SelectUnitsAt); null otherwise.
+    /// </summary>
+    ((TextPlace Start, TextPlace End) Unit, bool Words)? units;
+
+    /// <summary>
+    /// Where across its page the cursor goes to as it goes up and down, kept from where it started as long as it goes on only so (Word's
+    /// column, measured by COM: over a shorter line and back it stands where it started); null otherwise. Set as it goes so (across).
+    /// </summary>
+    float? goal;
+    bool across;
+
     /// <summary>Where pictures dragged over the sheets would go while they are (a page and a place among its characters, as the cursor's).</summary>
     (int Page, int At, bool End)? dropAt;
 
@@ -783,13 +796,11 @@ public sealed partial class DocumentView : Control
             Cursor = CropCursorAt(e.GetPosition(this));
         else if (!selecting)
             Cursor = CursorAt(e.GetPosition(this));
-        if (selecting && PlaceAt(e.GetPosition(this)) is var (page, at, end))
-        {
-            (caret, lineEnd) = ((page, at), end);
-            Moved();
-        }
         if (selecting)
+        {
+            SelectTo(e.GetPosition(this));
             Hold(e.GetPosition(this), e.KeyModifiers);
+        }
         else if (!selecting && MeaningAt(e.GetPosition(this)) is var mark && !ReferenceEquals(mark, pointed))
         {
             pointed = mark;
@@ -808,8 +819,9 @@ public sealed partial class DocumentView : Control
     }
 
     /// <summary>
-    /// A click puts the cursor at the place nearest to it, with Shift selects up to there; dragging selects. A double click on a picture
-    /// crops it by hand (see BeginCrop); while cropping, a press on its marks or on it crops it, one elsewhere ends that first.
+    /// A click puts the cursor at the place nearest to it, with Shift selects up to there; dragging selects. A double click selects the
+    /// word there, a triple click the paragraph, as Word does (see SelectUnitsAt); a double click on a picture crops it by hand (see
+    /// BeginCrop); while cropping, a press on its marks or on it crops it, one elsewhere ends that first.
     /// </summary>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -832,8 +844,51 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (e.ClickCount >= 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && HandleAt(point) == null && !OnDrawing(point)
+            && SelectUnitsAt(point, words: e.ClickCount == 2, e.Pointer))
+        {
+            e.Handled = true;
+            return;
+        }
         if (Press(point, e.Pointer, e.KeyModifiers))
             e.Handled = true;
+    }
+
+    /// <summary>
+    /// A double click selects Word's word the character at a point stands in (see EditSession.WordAround), a triple click its paragraph
+    /// with its mark (ParagraphAround); the pointer held on from there selects on by whole words or paragraphs (see SelectTo). Whether
+    /// there was text there to select.
+    /// </summary>
+    bool SelectUnitsAt(Point point, bool words, IPointer pointer)
+    {
+        if (session is not { } editing || CharacterAt(point) is not { } character
+            || (words ? editing.WordAround(character) : editing.ParagraphAround(character)) is not { } unit)
+            return false;
+        Focus();
+        editing.Place(unit.Start);
+        editing.Place(unit.End, extend: true);
+        Show(editing.Caret, editing.Anchor);
+        (units, selecting) = ((unit, words), true);
+        pointer.Capture(this);
+        return true;
+    }
+
+    /// <summary>The selection dragged to a point of the view: the cursor at the place there, by whole words or paragraphs after a double or triple click.</summary>
+    void SelectTo(Point point)
+    {
+        if (units is var (held, words) && session is { } editing)
+        {
+            if (CharacterAt(point) is { } character && (words ? editing.WordAround(character) : editing.ParagraphAround(character)) is { } unit)
+            {
+                editing.SelectOver(held, unit);
+                Show(editing.Caret, editing.Anchor, reveal: false);
+            }
+        }
+        else if (PlaceAt(point) is var (page, at, end))
+        {
+            (caret, lineEnd) = ((page, at), end);
+            Moved();
+        }
     }
 
     /// <summary>
@@ -971,7 +1026,7 @@ public sealed partial class DocumentView : Control
         }
         if (selecting)
         {
-            selecting = false;
+            (selecting, units) = (false, null);
             e.Pointer.Capture(null);
         }
     }
@@ -980,7 +1035,14 @@ public sealed partial class DocumentView : Control
     /// The place a point of the view hits, on the page nearest to it: the character it is over or the nearest one, before it or after it
     /// (see TextPlaces.HitPlace), and whether that is after a line's last character; null without text.
     /// </summary>
-    (int Page, int At, bool End)? PlaceAt(Point point)
+    (int Page, int At, bool End)? PlaceAt(Point point) => Hit(point) is var (page, spot, after) ? Placed(page, spot, after) : null;
+
+    /// <summary>The place before the character a point of the view hits, the one it is over or the nearest one (see PlaceAt); null without text.</summary>
+    TextPlace? CharacterAt(Point point) =>
+        Hit(point) is var (page, spot, _) && pictures.Places(Page(page)).PlaceAt(spot, false) is var (block, offset) ? new TextPlace(block, offset) : null;
+
+    /// <summary>The character a point of the view hits on the page nearest to it, and whether the point is after it (see TextPlaces.HitPlace).</summary>
+    (int Page, TextPlaces.Spot Spot, bool After)? Hit(Point point)
     {
         Row? best = null;
         var bestDistance = double.MaxValue;
@@ -998,7 +1060,7 @@ public sealed partial class DocumentView : Control
         // In the text a drawing's box holds (a caption), a place of that text, not of the line the drawing stands in.
         Func<PlacesItem, bool>? among = TextHolder(places, local) is { } holder && session is { } editing
             ? line => editing.Document.DrawingAround(line.Block) == holder : null;
-        return places.HitPlace(local, among) is var (spot, after) ? Placed(best.Index, spot, after) : null;
+        return places.HitPlace(local, among) is var (spot, after) ? (best.Index, spot, after) : null;
     }
 
     /// <summary>The place before or after a character of a page, and whether that is after its line's last one.</summary>
@@ -1081,6 +1143,28 @@ public sealed partial class DocumentView : Control
             Edit(edit);
             return;
         }
+        // Ctrl with the arrows, Home and End: by words and paragraphs, to the story's start and end, as Word goes (see EditSession.Move);
+        // the paragraph of a picture with its caption is no place for the cursor, the picture is selected instead.
+        if (control && (e.KeyModifiers & KeyModifiers.Alt) == 0 && e.Key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End)
+        {
+            e.Handled = true;
+            editing.Move(e.Key switch
+            {
+                Key.Left => EditSession.Jump.WordLeft,
+                Key.Right => EditSession.Jump.WordRight,
+                Key.Up => EditSession.Jump.ParagraphUp,
+                Key.Down => EditSession.Jump.ParagraphDown,
+                Key.Home => EditSession.Jump.StoryStart,
+                _ => EditSession.Jump.StoryEnd,
+            }, extend: shift);
+            if (!shift && editing.CaptionedPicture(editing.Caret.Paragraph) is var (paragraph, offset))
+            {
+                editing.Place(new TextPlace(paragraph, offset));
+                editing.Place(new TextPlace(paragraph, offset + 1), extend: true);
+            }
+            Show(editing.Caret, editing.Anchor);
+            return;
+        }
         // A floating drawing selected: the arrows move it (see Nudge).
         if (!control && (e.KeyModifiers & KeyModifiers.Alt) == 0 && e.Key is Key.Left or Key.Right or Key.Up or Key.Down && Nudge(e.Key, shift))
         {
@@ -1095,32 +1179,57 @@ public sealed partial class DocumentView : Control
             Show(editing.Caret, editing.Anchor);
             return;
         }
+        // A selection, and an arrow, Home or End without Shift: Left and Right put the cursor at its start or its end, Up and Home go
+        // on from its start, Down and End from its end (measured in Word 365 by COM, WordBasic.CharLeft and its kin).
+        if (!shift && editing.Selecting && e.Key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End)
+        {
+            var (start, end) = editing.Selection;
+            var from = e.Key is Key.Left or Key.Up or Key.Home ? start : end;
+            if (e.Key is Key.Left or Key.Right)
+            {
+                e.Handled = true;
+                editing.Place(from);
+                Show(editing.Caret, editing.Anchor);
+                return;
+            }
+            if (Locate(from, page) is var (fromPage, fromAt, fromEnd))
+                (page, at, lineEnd, goal) = (fromPage, fromAt, fromEnd, null);
+        }
         var spots = pictures.Spots(Page(page));
-        // The arrows keep to the text the cursor is in, the page's own or a drawing's (see StoryAt).
+        // The arrows keep to the text the cursor is in, the page's own or a drawing's (see StoryAt). Up and down keep to the column they
+        // started from (see goal); with Shift, in the first line and the last they go to its start or end (measured by COM).
         var story = spots.Count > 0 ? StoryAt(page, CaretSpot(spots, at).Spot) : null;
         (int Page, int At, bool End)? moved = e.Key switch
         {
             Key.Left or Key.Right => Step(page, at, e.Key == Key.Right, story),
             Key.Home or Key.End when spots.Count > 0 => LineEdge(page, at, e.Key == Key.End),
-            Key.Up or Key.Down when spots.Count > 0 => LineAcross(page, at, e.Key == Key.Down, story),
+            Key.Up or Key.Down when spots.Count > 0 => LineAcross(page, at, e.Key == Key.Down, story) ?? (shift ? LineEdge(page, at, e.Key == Key.Down) : null),
             _ => null,
         };
         if (moved is not var (movedPage, movedAt, movedEnd))
             return;
         e.Handled = true;
-        // The paragraph of a picture with its caption is no place for the cursor: the picture is selected instead.
-        if (!shift && CaptionedPictureAt(movedPage, movedAt) is { } picture)
+        across = e.Key is Key.Up or Key.Down;
+        try
         {
-            (anchor, caret, lineEnd) = ((movedPage, picture), (movedPage, picture + 1), false);
+            // The paragraph of a picture with its caption is no place for the cursor: the picture is selected instead.
+            if (!shift && CaptionedPictureAt(movedPage, movedAt) is { } picture)
+            {
+                (anchor, caret, lineEnd) = ((movedPage, picture), (movedPage, picture + 1), false);
+                Moved();
+                Reveal((movedPage, picture));
+                return;
+            }
+            (caret, lineEnd) = ((movedPage, movedAt), movedEnd);
+            if (!shift)
+                anchor = (movedPage, movedAt);
             Moved();
-            Reveal((movedPage, picture));
-            return;
+            Reveal((movedPage, movedAt));
         }
-        (caret, lineEnd) = ((movedPage, movedAt), movedEnd);
-        if (!shift)
-            anchor = (movedPage, movedAt);
-        Moved();
-        Reveal((movedPage, movedAt));
+        finally
+        {
+            across = false;
+        }
     }
 
     /// <summary>
@@ -1187,15 +1296,15 @@ public sealed partial class DocumentView : Control
     }
 
     /// <summary>
-    /// The place in the line above or below the cursor's that stands nearest to it, on the next page over its edge, of the text the cursor
-    /// is in (see StoryAt): out of a drawing's text on from the line the drawing stands in.
+    /// The place in the line above or below the cursor's that stands nearest to the column it goes up and down to (see goal), on the next
+    /// page over its edge, of the text the cursor is in (see StoryAt): out of a drawing's text on from the line the drawing stands in.
     /// </summary>
     (int Page, int At, bool End)? LineAcross(int page, int at, bool down, (int Paragraph, int Offset)? story)
     {
         var places = pictures.Places(Page(page));
         var spots = pictures.Spots(Page(page));
         var (current, currentAfter) = CaretSpot(spots, at);
-        var x = places.CaretAt(current, currentAfter).Top.X;
+        var x = goal ??= places.CaretAt(current, currentAfter).Top.X;
         bool Ours(PlacesItem line) => session?.Document.DrawingAround(line.Block) == story;
         // The nearest line beside this one of the same text, in the page's order of lines.
         var lineIndex = current.Line + (down ? 1 : -1);
@@ -1234,11 +1343,16 @@ public sealed partial class DocumentView : Control
             scroller.Offset = new Vector(scroller.Offset.X, y2 - scroller.Viewport.Height + 24);
     }
 
-    /// <summary>The cursor moved: it shows and blinks again from there, the input method learns where it stands, the session follows.</summary>
+    /// <summary>
+    /// The cursor moved: it shows and blinks again from there, the input method learns where it stands, the session follows; the column
+    /// it goes up and down to is forgotten unless it went so (see goal).
+    /// </summary>
     void Moved()
     {
         Blink();
         ime.Moved();
+        if (!across)
+            goal = null;
         if (session == null || fromSession || caret is not var (page, at) || page >= scenes.Count || anchor is not var (anchorPage, anchorAt)
             || anchorPage >= scenes.Count || pictures.Spots(Page(page)) is not { Count: > 0 } spots || pictures.Spots(Page(anchorPage)) is not { Count: > 0 } anchorSpots)
             return;
@@ -1372,8 +1486,11 @@ public sealed partial class DocumentView : Control
             InvalidateVisual();
     }
 
-    /// <summary>Puts the cursor and the selection's anchor at places of the document's text, on the pages that show them.</summary>
-    void Show(TextPlace caretAt, TextPlace anchorAt)
+    /// <summary>
+    /// Puts the cursor and the selection's anchor at places of the document's text, on the pages that show them, the cursor scrolled into
+    /// view (not while the pointer selects, which scrolls as it holds near an edge).
+    /// </summary>
+    void Show(TextPlace caretAt, TextPlace anchorAt, bool reveal = true)
     {
         var near = caret?.Page ?? 0;
         if (Locate(caretAt, near) is not var (page, at, end))
@@ -1389,7 +1506,8 @@ public sealed partial class DocumentView : Control
         {
             fromSession = false;
         }
-        Reveal((page, at));
+        if (reveal)
+            Reveal((page, at));
     }
 
     /// <summary>

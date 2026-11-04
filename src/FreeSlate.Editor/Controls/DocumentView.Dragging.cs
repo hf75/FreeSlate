@@ -120,10 +120,9 @@ public sealed partial class DocumentView
         var point = inView + scroller.Offset;
         if (dragged != null)
             DragTo(point, modifiers);
-        else if (PlaceAt(point) is var (page, at, end))
+        else
         {
-            (caret, lineEnd) = ((page, at), end);
-            Moved();
+            SelectTo(point);
             InvalidateVisual();
         }
     }
