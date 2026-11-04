@@ -87,7 +87,7 @@ public sealed partial class DocumentView
     /// </summary>
     void DrawGuides(DrawingContext context, IReadOnlyList<(Row Row, double Left)> visible)
     {
-        if (GuideBrush is not { } brush || CursorTable is not { } cells)
+        if (GuideBrush is not { } brush || shaping != null || CursorTable is not { } cells)
             return;
         var pen = new Pen(brush, 1, new DashStyle([2, 3], 0));
         foreach (var (row, left) in visible)

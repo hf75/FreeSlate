@@ -523,6 +523,8 @@ public sealed partial class DocumentView
             EndTiltDrag(keep: false);
         if (lineDrag is { } line && ReferenceEquals(e.Pointer, line.Pointer))
             EndLineDrag(keep: false);
+        if (stroke is { } drawn && ReferenceEquals(e.Pointer, drawn.Pointer))
+            EndStroke(keep: false);
     }
 
     /// <summary>

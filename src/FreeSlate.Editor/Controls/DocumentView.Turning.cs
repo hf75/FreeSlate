@@ -178,6 +178,8 @@ public sealed partial class DocumentView
             EndCrop();
             EndTilt();
         }
+        if (shaping != null && !OnShaped(point))
+            EndShape();
     }
 
     /// <summary>A press of the main button while tilting: on the picture it tilts it from there; false elsewhere.</summary>

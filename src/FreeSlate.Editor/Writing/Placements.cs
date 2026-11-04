@@ -50,6 +50,38 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>The icon of a table: a frame of three columns and three rows.</summary>
     public static readonly string TableIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
 
+    /// <summary>The icon of a table's row: the table, its middle row filled.</summary>
+    public static readonly string RowIcon = Drawn(Frame(0, 1, 20, 14), Block(0, 5.4, 20, 4.4), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
+
+    /// <summary>The icon of a table's column: the table, its middle column filled.</summary>
+    public static readonly string ColumnIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20), Block(6.3, 1, 7.4, 14));
+
+    /// <summary>The icon of shaping a table by hand: a pen, its tip down left.</summary>
+    public static readonly string PenIcon = Drawn(Outline((1.4, 15.4), (3.4, 9.8), (13.2, 0), (17.2, 4), (7, 13.8)), "M1.4,15.4 L3.4,9.8 L7,13.8 Z", Stroke(10.6, 2.6, 14.6, 6.6));
+
+    /// <summary>The icons of a row put in above or below: the new row filled, the table's rows a frame beside it.</summary>
+    public static readonly string RowAboveIcon = Drawn(Block(0, 0, 20, 4.2), Frame(0, 6, 20, 10), Bar(0, 10.4, 20));
+    public static readonly string RowBelowIcon = Drawn(Frame(0, 0, 20, 10), Bar(0, 4.4, 20), Block(0, 11.8, 20, 4.2));
+
+    /// <summary>The icons of a column put in left or right: the new column filled, the table's columns a frame beside it.</summary>
+    public static readonly string ColumnLeftIcon = Drawn(Block(0, 1, 4.6, 14), Frame(6.6, 1, 13.4, 14), Block(12.7, 1, Weight, 14));
+    public static readonly string ColumnRightIcon = Drawn(Frame(0, 1, 13.4, 14), Block(6.1, 1, Weight, 14), Block(15.4, 1, 4.6, 14));
+
+    /// <summary>The icon of a row's cells merged: a row of one cell between two rows of three.</summary>
+    public static readonly string RowMergeIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20), Block(6.3, 1, Weight, 4.4), Block(12.5, 1, Weight, 4.4),
+        Block(6.3, 10.8, Weight, 4.2), Block(12.5, 10.8, Weight, 4.2));
+
+    /// <summary>The icon of rows turned into columns: a frame cut by its diagonal, a row's mark above it and a column's below.</summary>
+    public static readonly string TransposeIcon = Drawn(Frame(0, 0, 20, 16), Stroke(0.6, 0.6, 19.4, 15.4), Bar(9, 3.6, 7.6), Block(3.4, 7.6, Weight, 6.2));
+
+    /// <summary>The icon of columns made even: three columns of one width, a short line across each at the top.</summary>
+    public static readonly string DistributeIcon = Drawn(Frame(0, 3, 20, 13), Block(6.3, 3, Weight, 13), Block(12.5, 3, Weight, 13), Bar(1.4, 0, 3.4), Bar(8.2, 0, 3.4), Bar(15.2, 0, 3.4));
+
+    /// <summary>The icons of a head row and of none: the table, its first row filled, or empty and the frame broken above.</summary>
+    public static readonly string HeadIcon = Drawn(Frame(0, 1, 20, 14), Block(0, 1, 20, 4.8), Bar(0, 9.6, 20), Block(6.3, 5, Weight, 10), Block(12.5, 5, Weight, 10));
+    public static readonly string HeadRemoveIcon = Drawn(Frame(0, 5.4, 20, 9.6), Bar(0, 9.6, 20), Block(6.3, 5.4, Weight, 9.6), Block(12.5, 5.4, Weight, 9.6),
+        Bar(0, 1, 4), Bar(8, 1, 4), Bar(16, 1, 4));
+
     /// <summary>The icon of a caption: a picture with two lines of text below it.</summary>
     public static readonly string CaptionIcon = Drawn(Frame(3, 0, 14, 9.8), Hills, Bar(3, 12.2, 14), Bar(3, 14.8, 9));
 

@@ -243,13 +243,53 @@ public sealed partial class EditorView : Panel
             new("InsertTable", "", Under: newTable, Icon: Placement.TableIcon),
             new("InsertPictureClipboard", "", () => _ = Sheets.PasteClipboardPictures(), Icon: Placement.ClipboardIcon),
         ];
+        // In a table's cell, at a spot with nothing to act on: its row up, its column right, shaping the table by hand down, the table
+        // left; each a ring of its own laid out as the table is (above up, below down, beside left and right), each field a preview.
+        IReadOnlyList<Controls.GestureRing.Slot> tableRow =
+        [
+            Field("TableRowAbove", "", () => editing.InsertRow(above: true), icon: Placement.RowAboveIcon),
+            Field("TableRowMerge", "", () => editing.MergeRow(), icon: Placement.RowMergeIcon),
+            Field("TableRowBelow", "", () => editing.InsertRow(above: false), icon: Placement.RowBelowIcon),
+            Field("TableRowRemove", "\u00D7", () => editing.RemoveRow()),
+        ];
+        IReadOnlyList<Controls.GestureRing.Slot> tableSort =
+        [
+            Field("TableSortUp", "A\u2013Z", () => editing.SortRows(descending: false)),
+            Field("TableSortDown", "Z\u2013A", () => editing.SortRows(descending: true)),
+        ];
+        IReadOnlyList<Controls.GestureRing.Slot> tableColumn =
+        [
+            new("TableSort", "A\u2013Z", Under: tableSort),
+            Field("TableColumnRight", "", () => editing.InsertColumn(left: false), icon: Placement.ColumnRightIcon),
+            Field("TableColumnRemove", "\u00D7", () => editing.RemoveColumn()),
+            Field("TableColumnLeft", "", () => editing.InsertColumn(left: true), icon: Placement.ColumnLeftIcon),
+        ];
+        IReadOnlyList<Controls.GestureRing.Slot> TableWhole(bool head) =>
+        [
+            Field("TableTranspose", "", () => editing.TransposeTable(), icon: Placement.TransposeIcon),
+            Field("TableDistribute", "", () => editing.DistributeColumns(), icon: Placement.DistributeIcon),
+            head ? Field("TableHeadRemove", "", () => editing.SetHead(false), icon: Placement.HeadRemoveIcon)
+                : Field("TableHead", "", () => editing.SetHead(true), icon: Placement.HeadIcon),
+            Field("TableRemove", "\u00D7", () => editing.RemoveTable()),
+        ];
+        var cellRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)
+        [
+            new("TableRow", "", Under: tableRow, Icon: Placement.RowIcon),
+            new("TableColumn", "", Under: tableColumn, Icon: Placement.ColumnIcon),
+            new("TableShape", "", () =>
+            {
+                if (editing.Table is { } table)
+                    Sheets.BeginShape(table.Table);
+            }, Icon: Placement.PenIcon),
+            new("TableWhole", "", Under: TableWhole(head), Icon: Placement.TableIcon),
+        ]);
         var inserting = false;
         ring.Choose = () =>
         {
             var empty = inserting;
             inserting = false;
             if (empty)
-                return insert;
+                return editing.Table is { } table ? cellRings[table.HeadRow || table.HeadColumn] : insert;
             if (Sheets.Tilting)
                 return tilted;
             if (Sheets.Cropping && editing.PictureShown is { Crop: { } crop, Width: { } width, Height: { } height })

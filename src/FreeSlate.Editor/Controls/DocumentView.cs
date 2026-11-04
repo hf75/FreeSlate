@@ -383,6 +383,7 @@ public sealed partial class DocumentView : Control
         }
         context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush), Fading()));
         DrawGuides(context, visible);
+        DrawShaping(context, visible);
         if (ShowsMeanings)
             DrawMeanings(context, visible);
         // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor; a picture cropped by
@@ -815,10 +816,18 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (stroke != null)
+        {
+            StrokeTo(e.GetPosition(this));
+            e.Handled = true;
+            return;
+        }
         // Over a drawing the pointer shows that it can be moved, over a handle of the one selected that it can be sized; while cropping, the
         // marks and the picture; while tilting, the picture.
         if (cropping)
             Cursor = CropCursorAt(e.GetPosition(this));
+        else if (shaping is { } shaped)
+            Cursor = OnShaped(e.GetPosition(this)) ? ToolCursor(TableLineAt(e.GetPosition(this)) is { } on && on.Table == shaped) : Text;
         else if (tilting)
             Cursor = TiltsAt(e.GetPosition(this)) ? Grab : Text;
         else if (!selecting)
@@ -857,6 +866,15 @@ public sealed partial class DocumentView : Control
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
         var point = e.GetPosition(this);
+        if (shaping != null)
+        {
+            if (ShapePress(point, e.Pointer))
+            {
+                e.Handled = true;
+                return;
+            }
+            EndShape();
+        }
         if (cropping)
         {
             if (CropPress(point, e.Pointer))
@@ -876,6 +894,13 @@ public sealed partial class DocumentView : Control
             EndTilt();
         }
         else if (e.ClickCount == 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && SelectDrawingAt(point) && BeginCrop())
+        {
+            Focus();
+            e.Handled = true;
+            return;
+        }
+        // A double click on a line between a table's cells shapes the table by hand (see BeginShape).
+        else if (e.ClickCount == 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && TableLineAt(point) is { } line && BeginShape(line.Table))
         {
             Focus();
             e.Handled = true;
@@ -971,7 +996,7 @@ public sealed partial class DocumentView : Control
     /// </summary>
     public bool OnSelection(Point point)
     {
-        if (cropping || tilting || TableLineAt(point) != null)
+        if (cropping || tilting || shaping != null || TableLineAt(point) != null)
             return false;
         if (SelectedDrawing() is var (drawnPage, drawnAt))
             return Hits(drawnPage, drawnAt, point) && HandleAt(point) == null;
@@ -1082,6 +1107,13 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (stroke != null)
+        {
+            EndStroke(keep: true);
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (selecting)
         {
             (selecting, units) = (false, null);
@@ -1148,6 +1180,23 @@ public sealed partial class DocumentView : Control
             line.Pointer.Capture(null);
             e.Handled = true;
             return;
+        }
+        // While shaping a table: Escape takes a stroke back, else Enter and Escape end shaping; another key ends it and goes on.
+        if (shaping != null)
+        {
+            if (stroke is { } drawn && e.Key == Key.Escape)
+            {
+                EndStroke(keep: false);
+                drawn.Pointer.Capture(null);
+                e.Handled = true;
+                return;
+            }
+            EndShape();
+            if (e.Key is Key.Enter or Key.Escape)
+            {
+                e.Handled = true;
+                return;
+            }
         }
         // While cropping: Escape takes a mark dragged back, else Enter and Escape end cropping; another key ends it and goes on.
         if (cropping)

@@ -229,7 +229,9 @@ whether it is a head row repeated on a later page. The table's layout gives each
   taken out and moved (a table keeps its width where Word makes it wider or narrower), the rows sorted by a column (numbers
   by value, in the document's language), rows turned into columns with the look's marks of the first row and column turned
   too (a head row a head column), columns made even, a line of the grid moved as Word moves it (the column after it giving
-  way, the outside ones moving the table's edges) and a row made higher. A table is known by its block's id
+  way, the outside ones moving the table's edges) and a row made higher, a line between cells taken away as Word's eraser
+  takes it (`EraseLine`: each stretch of it merges the cells on either side, into the smallest rectangle that holds them,
+  `Enclosing`), a head row put on or taken off (`SetHead`: the look's mark and the repeat on later pages). A table is known by its block's id
   (`TableOf`, `CellsOf` gives its cells), which it keeps; a change that makes more or fewer cells reads its paragraphs anew,
   so each change names the paragraph to go on in (`EditSession.ChangeTable`). Tables with tracked changes, content controls
   or custom markup among their rows, or the old way of merging across, are not changed so.
@@ -363,6 +365,15 @@ cell's empty part goes into that cell. A line between cells is dragged where the
 one moves as in Word, the column after it giving way, the table's sides moving its edges, lined up with the text's edges and the
 lines of other tables (Alt held, not), one across makes the row above it higher; the length beside the pointer, a step that goes
 on as for pictures, Escape takes it back.
+A table is shaped by hand after a double click on a line between its cells, or from its ring (`DocumentView.Shaping.cs`): it is
+framed in the accent and all its cells' lines show; the pointer is a pen over its cells and an eraser over its lines. A stroke
+across cells draws a line from side to side of each and splits them (at a line of the grid within reach, else at a new one), a
+stroke along a line takes it away and merges the cells beside it; the line and the cells it touches show lit while it is drawn,
+let go it is one step, Escape takes a stroke back. Enter, Escape or a press beside the table ends it. The ring in a table's cell
+(at a spot with nothing to act on) has the cell's row up (a row above, below, the row's cells merged, the row taken away), its
+column right (sorted up or down by it, a column left or right, taken away), shaping the table by hand down, and the table left
+(rows turned into columns, columns made even, a head row or none, the table taken away), each laid out as the table is and each
+a preview.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 
