@@ -23,7 +23,7 @@ public sealed record Fragment(string Text, IReadOnlyList<string>? Markup, IEdita
 /// one body, cell or text box, and the rows of a table it reaches into from outside (see IEditableDocument.RemoveAcross),
 /// as Word does; one over cells of a table alone is refused (Word clears them or takes them away).
 /// </summary>
-public sealed class EditSession(IEditableDocument document)
+public sealed partial class EditSession(IEditableDocument document)
 {
     /// <summary>A handling: the changes it made in the document, and the cursor and the selection's anchor before and after it.</summary>
     sealed record Step(int Changes, TextPlace CaretBefore, TextPlace AnchorBefore, TextPlace CaretAfter, TextPlace AnchorAfter, bool Typing);

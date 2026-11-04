@@ -167,6 +167,12 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         foreach (var (text, x, y, w, h) in page.Alternatives)
             items.Add(new AltTextItem(text, x, y, w, h));
+        // The rows of tables, for an editor (on a page of vertical text they stand turned: none there).
+        if (!turned)
+        {
+            foreach (var row in page.TableRows)
+                items.Add(new TableRowItem(row.Table, row.Row, row.Lines, row.Top, row.Top + row.Height, row.Extra, row.Repeated));
+        }
         foreach (var (name, x, y) in page.Bookmarks)
             items.Add(new BookmarkItem(name, x, y));
         if (defs.Length > 0)

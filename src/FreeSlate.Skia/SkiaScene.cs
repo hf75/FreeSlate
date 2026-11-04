@@ -492,7 +492,7 @@ public static class SkiaScene
                     }
                     canvas.Restore();
                     break;
-                case AltTextItem or BookmarkItem or HiddenTextItem or HiddenSpanItem or SvgTextItem { Hidden: true }:
+                case AltTextItem or BookmarkItem or HiddenTextItem or HiddenSpanItem or SvgTextItem { Hidden: true } or TableRowItem:
                     break;
                 case PlacesItem line:
                     if (places != null && page.TryInvert(out var linesToPage))

@@ -241,11 +241,22 @@ public sealed class CellPart
 /// the shading and vertical lines that run through it, the lines at its top and the lines below it where the table
 /// ends or breaks after it.
 /// </summary>
+/// <summary>
+/// Where a laid-out row stands in its table, for an editor that changes the table by its rows, cells and lines: its row of the
+/// table's model (hidden rows counted), where the grid's lines stand, from the left of the column the table is laid out in, points
+/// (the middle of a line drawn on them), and what its height has beyond its at-least height (w:trHeight): its top line and its
+/// cells' top and bottom margins.
+/// </summary>
+public sealed record RowPlace(int Row, double[] Lines, double Extra);
+
 public sealed class RowBox
 {
     public double Height { get; set; }
     public bool Header { get; init; }
     public bool CantSplit { get; init; }
+
+    /// <summary>Where the row stands in its table (see RowPlace); null for rows of tables with cell spacing and those laid out for other uses.</summary>
+    public RowPlace? Place { get; init; }
 
     /// <summary>Whether the row has an exact height (w:hRule="exact").</summary>
     public bool Exact { get; init; }
@@ -286,7 +297,7 @@ public sealed class RowBox
         var copy = new RowBox
         {
             Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, AnchorsReach = AnchorsReach, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
-            PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
+            PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth, Place = Place,
         };
         copy.Shading.AddRange(Shading);
         copy.Verticals.AddRange(Verticals);
@@ -616,7 +627,7 @@ public sealed class RowBox
         var copy = new RowBox
         {
             Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, AnchorsReach = AnchorsReach, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
-            PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth,
+            PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth, Place = Place,
         };
         copy.Shading.AddRange(Shading);
         copy.Verticals.AddRange(Verticals);
@@ -1056,7 +1067,16 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 heights[last] += needed - have;
         }
 
-        // Row boxes.
+        // Row boxes, each knowing its row of the model (hidden rows counted) and where the grid's lines stand.
+        var gridLines = new double[x.Length];
+        for (var k = 0; k < x.Length; k++)
+            gridLines[k] = X(x[k] + shift);
+        var modelRows = new int[rows.Count];
+        for (int k = 0, m = 0; m < table.Rows.Count; m++)
+        {
+            if (!table.Rows[m].Format.Hidden)
+                modelRows[k++] = m;
+        }
         for (var r = 0; r < rows.Count; r++)
         {
             var row = rows[r];
@@ -1066,7 +1086,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r],
                 Exact = specified > 0 && row.Format.HeightRule == "exact",
                 Least = row.Format.HeightRule == "exact" || specified <= 0 ? 0 : rowEdges[r].Top + specified + rowEdges[r].Bottom,
-                AnchorsReach = context.Profile.AnchorsReachPastCut,
+                AnchorsReach = context.Profile.AnchorsReachPastCut, Place = new RowPlace(modelRows[r], gridLines, topWidths[r] + rowEdges[r].Top + rowEdges[r].Bottom),
             };
             // Shading of every cell the row passes through, also cells merged from above.
             for (var k = 0; k < columns; k++)

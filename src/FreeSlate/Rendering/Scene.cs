@@ -251,6 +251,15 @@ public sealed record AltTextItem(string Text, double X, double Y, double Width, 
 public sealed record BookmarkItem(string Name, double X, double Y) : SceneItem;
 
 /// <summary>
+/// A row of a table in the body placed on the page (or the part of one a page break cuts), drawing nothing: for an editor that
+/// changes the table by its rows, cells and lines. The table's block, the row of its model (hidden rows counted), where the grid's
+/// lines stand (the middle of a line drawn on them), its top and bottom, points from the page's top left; what its height has beyond
+/// its at-least height (w:trHeight: its top line and its cells' margins), and whether it is a head row repeated at the top of a later
+/// page.
+/// </summary>
+public sealed record TableRowItem(int Table, int Row, double[] Lines, double Top, double Bottom, double Extra, bool Repeated) : SceneItem;
+
+/// <summary>
 /// A run of text set in its font by the backend (in HTML by the browser, which shapes it), its characters on the
 /// baseline Y at their places from X (Positions: each UTF-16 unit's, a piece's end after them), in its color unless it
 /// has a paint of its own; right-to-left text is set whole from its right end (X + Width), its spaces wider by

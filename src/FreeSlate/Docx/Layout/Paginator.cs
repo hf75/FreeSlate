@@ -86,6 +86,14 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
     public bool DeviceTurned { get; init; }
 }
 
+/// <summary>
+/// A row of a table in the body placed on a page (or a part of one a page break cuts), for an editor that changes the table by its
+/// rows, cells and lines: the table's block, its row of the table's model (hidden rows counted), where the grid's lines stand on the
+/// page, its top and its height (its top line with it), points, what its height has beyond its at-least height (see RowPlace), and
+/// whether it is a head row repeated at the top of a later page.
+/// </summary>
+public sealed record PlacedRow(int Table, int Row, double[] Lines, double Top, double Height, double Extra, bool Repeated);
+
 /// <summary>A page of the laid-out document.</summary>
 public sealed class PageBox
 {
@@ -172,6 +180,9 @@ public sealed class PageBox
     /// </summary>
     public List<(string Text, double X, double Y, double Width, double Height)> Alternatives { get; } = [];
 
+    /// <summary>The rows of tables in the body the page holds, where they stand, for an editor (see PlacedRow).</summary>
+    public List<PlacedRow> TableRows { get; } = [];
+
     public double Width => Section.PageWidth;
     public double Height => Section.PageHeight;
 
@@ -255,6 +266,7 @@ public sealed class PageBox
         copy.LineNumbers.AddRange(LineNumbers);
         copy.Bookmarks.AddRange(Bookmarks);
         copy.Alternatives.AddRange(Alternatives);
+        copy.TableRows.AddRange(TableRows);
         return copy;
     }
 }
@@ -4588,7 +4600,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 // content top again, however far its part here went below its drawings.
                 if (!moves && Split(row, y, force: columnEmpty) is { } parts)
                 {
-                    PlaceRow(parts.Head, left);
+                    PlaceRow(parts.Head, left, table.Id);
                     AddNotes(NotesOf(parts.Head));
                     last = parts.Head;
                     row = down > 0 ? parts.Tail.Lowered(-down) : parts.Tail;
@@ -4605,7 +4617,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 {
                     foreach (var header in headers)
                     {
-                        PlaceRow(header, left);
+                        PlaceRow(header, left, table.Id, repeated: true);
                         last = header;
                     }
                 }
@@ -4633,7 +4645,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 if (k > r && k < Math.Min(box.Rows.Count, r + along.Rows))
                     row = row.With(cell, along.Part(reach - y - row.TopWidth));
             }
-            PlaceRow(row, left);
+            PlaceRow(row, left, table.Id);
             AddNotes(NotesOf(row));
             last = row;
         }
@@ -5263,7 +5275,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     double Mirror(ParagraphFormat format) =>
         format.MirrorIndents == true && page!.DisplayNumber % 2 == 0 ? (format.Right ?? 0) - (format.Left ?? 0) : 0;
 
-    void PlaceRow(RowBox row, double left)
+    /// <summary>A table's row placed at the current position, from the column's left; the page knows it as the table's (see PlacedRow).</summary>
+    void PlaceRow(RowBox row, double left, int table, bool repeated = false)
     {
         // Lines of cells merged down that end below a table row go on with the next (RowBox.Overflow).
         if (!row.Header)
@@ -5277,6 +5290,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         }
         var anchors = new List<CellAnchor>();
         TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+        if (row.Place is { } place)
+            page.TableRows.Add(new PlacedRow(table, place.Row, [.. place.Lines.Select(x => left + x)], y, row.Height, place.Extra, repeated));
         foreach (var anchor in anchors)
             page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, left, page.TextWidth, anchor, anchor.CharacterX));
         y += row.Height;
