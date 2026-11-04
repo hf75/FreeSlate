@@ -371,8 +371,10 @@ public sealed partial class DocumentView : Control
         context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush), Fading()));
         if (ShowsMeanings)
             DrawMeanings(context, visible);
-        // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor.
+        // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor; a picture cropped by
+        // hand whole round its frame.
         DrawDrawing(context);
+        DrawCrop(context);
         // Where pictures dragged over the sheets would go.
         if (dropAt is var (dropPage, dropIndex, dropEnd) && BarAt(dropPage, dropIndex, dropEnd) is { Height: > 0 } bar)
             context.FillRectangle(DrawingBrush ?? CaretBrush ?? Brushes.Black, new Rect(bar.X - 1, bar.Y, 2, bar.Height));
@@ -769,8 +771,17 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
-        // Over a drawing the pointer shows that it can be moved, over a handle of the one selected that it can be sized.
-        if (!selecting)
+        if (cropDrag != null)
+        {
+            CropTo(e.GetPosition(this), e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
+        // Over a drawing the pointer shows that it can be moved, over a handle of the one selected that it can be sized; while cropping, the
+        // marks and the picture.
+        if (cropping)
+            Cursor = CropCursorAt(e.GetPosition(this));
+        else if (!selecting)
             Cursor = CursorAt(e.GetPosition(this));
         if (selecting && PlaceAt(e.GetPosition(this)) is var (page, at, end))
         {
@@ -796,11 +807,32 @@ public sealed partial class DocumentView : Control
         }
     }
 
-    /// <summary>A click puts the cursor at the place nearest to it, with Shift selects up to there; dragging selects.</summary>
+    /// <summary>
+    /// A click puts the cursor at the place nearest to it, with Shift selects up to there; dragging selects. A double click on a picture
+    /// crops it by hand (see BeginCrop); while cropping, a press on its marks or on it crops it, one elsewhere ends that first.
+    /// </summary>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && Press(e.GetPosition(this), e.Pointer, e.KeyModifiers))
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+        var point = e.GetPosition(this);
+        if (cropping)
+        {
+            if (CropPress(point, e.Pointer))
+            {
+                e.Handled = true;
+                return;
+            }
+            EndCrop();
+        }
+        else if (e.ClickCount == 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && SelectDrawingAt(point) && BeginCrop())
+        {
+            Focus();
+            e.Handled = true;
+            return;
+        }
+        if (Press(point, e.Pointer, e.KeyModifiers))
             e.Handled = true;
     }
 
@@ -838,9 +870,14 @@ public sealed partial class DocumentView : Control
         return true;
     }
 
-    /// <summary>Whether a point of the view is on the selection (a drawing selected as a whole: on its box, not on a handle).</summary>
+    /// <summary>
+    /// Whether a point of the view is on the selection (a drawing selected as a whole: on its box, not on a handle); a picture being cropped
+    /// is none, a press on it crops it.
+    /// </summary>
     public bool OnSelection(Point point)
     {
+        if (cropping)
+            return false;
         if (SelectedDrawing() is var (drawnPage, drawnAt))
             return BoxOf(drawnPage, drawnAt) is { } box && box.Contains(point) && HandleAt(point) == null;
         foreach (var (page, from, count) in Selected())
@@ -925,6 +962,13 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (cropDrag != null)
+        {
+            EndCropDrag(keep: true);
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (selecting)
         {
             selecting = false;
@@ -975,6 +1019,23 @@ public sealed partial class DocumentView : Control
             d.Pointer.Capture(null);
             e.Handled = true;
             return;
+        }
+        // While cropping: Escape takes a mark dragged back, else Enter and Escape end cropping; another key ends it and goes on.
+        if (cropping)
+        {
+            if (cropDrag is { } crop && e.Key == Key.Escape)
+            {
+                EndCropDrag(keep: false);
+                crop.Pointer.Capture(null);
+                e.Handled = true;
+                return;
+            }
+            EndCrop();
+            if (e.Key is Key.Enter or Key.Escape)
+            {
+                e.Handled = true;
+                return;
+            }
         }
         if (e.Handled || session is not { } editing || caret is not var (page, at) || page >= scenes.Count)
             return;
@@ -1206,6 +1267,8 @@ public sealed partial class DocumentView : Control
         {
             return;
         }
+        // A picture being cropped may show anew.
+        cropStale = cropping;
         Update(editing.Document.Scenes());
         Show(editing.Caret, editing.Anchor);
         CheckEmpty();
@@ -1415,6 +1478,33 @@ public sealed partial class DocumentView : Control
         });
         if (PictureFilesOf(files) is { Count: > 0 } pictures)
             InsertPictures(await Read(pictures));
+        Focus();
+    }
+
+    /// <summary>
+    /// A picture chosen from a file shows in the frame of the picture selected (see EditSession.ReplacePicture: as it stands and shows, the
+    /// new one filling it), made ready first as one put in (see InsertPictures) for the size it fills the frame at.
+    /// </summary>
+    public async Task ReplacePicture()
+    {
+        if (session is not { } editing || editing.PictureShown is not { Width: { } width, Height: { } height }
+            || TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage)
+            return;
+        string Text(string key, string fallback) => this.TryFindResource(key, out var text) && text is string s ? s : fallback;
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = Text("PictureReplace", "Replace"),
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType(Text("PictureFiles", "Pictures")) { Patterns = [.. PictureFiles.Select(e => "*" + e)] }],
+        });
+        if (PictureFilesOf(files) is { Count: > 0 } chosen && (await Read(chosen)) is [var (bytes, _), ..])
+        {
+            var upright = PictureFit.Upright(bytes) ?? AsPng(bytes) ?? bytes;
+            var (pixelsWide, pixelsHigh) = Html.ImageInfo.Size(upright);
+            // As large as it is shown filling the frame, its middle in it.
+            var part = WordDocument.Filling(width, height, pixelsWide, pixelsHigh);
+            Edit(() => editing.ReplacePicture(PictureFit.Fitted(upright, width / Math.Max(0.01, part.Wide), height / Math.Max(0.01, part.High))));
+        }
         Focus();
     }
 

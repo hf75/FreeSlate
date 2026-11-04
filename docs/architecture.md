@@ -273,9 +273,16 @@ frames it instead of tinting it; the frame is the drawing's own box, which the r
 picture the ring has the picture's fields (`GestureRing.Choose`, `Writing/Placements`): in the line up, beside the text right and
 left, on its own between the text down, in front of the text and behind it between them, a place on the page down right (a
 ring of the eight places round the margins, each in its direction), and up left the picture itself (a ring: a caption up, the
-cursor then in it, or taking it away; its description, written on a card under it with whether it is decoration only,
-`Controls/DescriptionCard`; the size it took when it was put in; removing it). Their signs are icons, the picture a frame among
-lines of text. A caption is text where the pointer is in one of its lines, its picture selects the figure (`DocumentView.TextHolder`);
+cursor then in it, or taking it away; cropping it by hand; its description, written on a card under it with whether it is
+decoration only, `Controls/DescriptionCard`; its colors, chosen on a strip under it that shows the picture small in each look and
+the one pointed at on the picture itself, `Controls/RecolorStrip`, `Writing/Looks`; the size it took when it was put in; another
+picture from a file in its frame; removing it; a hairline round it, or taking it away). Their signs are icons, the picture a frame
+among lines of text. A double click on a picture, or the ring, crops it by hand (`DocumentView.Cropping.cs`): the whole picture
+faint over the page round its frame, marks at the frame's corners and sides that crop it there (Shift at a corner keeps the frame's
+proportions), the picture moved under its frame where it is pressed, each let go a step; the ring there offers the whole picture,
+proportions turned as the picture stands and a circle; Enter, Escape or a press elsewhere ends it. While a picture is cropped it is
+no selection for the ring's left hold, and the second press of a double click is the sheets'.
+A caption is text where the pointer is in one of its lines, its picture selects the figure (`DocumentView.TextHolder`);
 the arrows keep to the text the cursor is in (a drawing's text box is a text of its own, `DocumentView.StoryAt`): the body passes
 over captions, up or left out of a caption select its picture, down from a picture selected in the line goes into its caption,
 down or right past a caption's end back to the text after the picture; Backspace at an empty caption's start takes it away. The

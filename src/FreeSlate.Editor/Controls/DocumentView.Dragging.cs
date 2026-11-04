@@ -192,7 +192,7 @@ public sealed partial class DocumentView
     /// <summary>The handle of the drawing selected a point of the view is on, or null.</summary>
     (int Across, int Down)? HandleAt(Point point)
     {
-        if (dragged != null || SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
+        if (dragged != null || cropping || SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
             return null;
         var frame = box.Inflate(1.5);
         foreach (var handle in Handles)
@@ -430,6 +430,8 @@ public sealed partial class DocumentView
         base.OnPointerCaptureLost(e);
         if (dragged is { } d && ReferenceEquals(e.Pointer, d.Pointer))
             EndDrag(keep: false);
+        if (cropDrag is { } crop && ReferenceEquals(e.Pointer, crop.Pointer))
+            EndCropDrag(keep: false);
     }
 
     /// <summary>
@@ -456,7 +458,7 @@ public sealed partial class DocumentView
                     context.DrawLine(guide, new Point(sheet.Left, Math.Round(sheet.Top + y * pt) + 0.5), new Point(sheet.Right, Math.Round(sheet.Top + y * pt) + 0.5));
             }
         }
-        else if (!SelectionHidden && SelectedDrawing() is var (page, at) && BoxOf(page, at) is { } box)
+        else if (!SelectionHidden && !cropping && SelectedDrawing() is var (page, at) && BoxOf(page, at) is { } box)
         {
             context.DrawRectangle(null, pen, box.Inflate(1.5), 2, 2);
             // In the line, dragged: its outline with the pointer, the bar where it goes (see Render).

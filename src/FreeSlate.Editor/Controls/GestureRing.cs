@@ -145,7 +145,8 @@ public sealed class GestureRing : Control
             || OperatingSystem.IsMacOS() && properties.IsLeftButtonPressed && (e.KeyModifiers & KeyModifiers.Control) != 0;
         if (right && Target?.Invoke(point) == true)
             Begin(Mode.Waiting, point, e.Pointer, RestTime);
-        else if (!right && properties.IsLeftButtonPressed && e.KeyModifiers == KeyModifiers.None && OnSelection?.Invoke(point) == true)
+        // The second press of a double click is the sheets' (on a picture, it crops it).
+        else if (!right && properties.IsLeftButtonPressed && e.ClickCount < 2 && e.KeyModifiers == KeyModifiers.None && OnSelection?.Invoke(point) == true)
             Begin(Mode.Holding, point, e.Pointer, HoldTime);
         else
             return;

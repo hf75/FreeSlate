@@ -67,9 +67,15 @@ public sealed partial class EditorView : Panel
         Sheets.Open(editing);
         Lever.Attach(Sheets, editing);
         Join(Ring);
-        // The card of a picture's description: a press on the sheets keeps what is written there; closed, the keys go back to them.
+        // The card of a picture's description: a press on the sheets keeps what is written there; the strip of its looks closes as it was.
+        // Closed, the keys go back to the sheets.
         Card.Closed += () => Sheets.Focus();
-        Sheets.AddHandler(PointerPressedEvent, (_, _) => Card.Close(kept: true), Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+        Strip.Closed += () => Sheets.Focus();
+        Sheets.AddHandler(PointerPressedEvent, (_, _) =>
+        {
+            Card.Close(kept: true);
+            Strip.Close();
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         FollowTone();
         Loaded += (_, _) =>
         {
@@ -95,9 +101,10 @@ public sealed partial class EditorView : Panel
     /// The gesture ring's fields, sharing the circle from the top clockwise in an order that stays (the hand learns it): the meanings, and
     /// last, up left, taking the meaning away; on a picture, where it stands among the text (see Placement): in the line up, beside the
     /// text right and left, on its own down, in front of the text and behind it between them, a place on the page down right (a ring of
-    /// the eight ways, top, top right …), and up left the picture itself (a ring: its description, the size it took when it was put in,
-    /// removing it); at a spot with nothing to act on, what goes in there, the cursor there: a picture from a file up, one from the
-    /// clipboard down. And its ways to the sheets. Space held on a selection brings it for the keyboard.
+    /// the eight ways, top, top right …), and up left the picture itself (a ring: its caption, cropping it, its description, its colors,
+    /// the size it took when it was put in, another picture in its frame, removing it, a hairline round it); on a picture cropped by
+    /// hand, its whole, proportions and the circle; at a spot with nothing to act on, what goes in there, the cursor there: a picture
+    /// from a file up, one from the clipboard down. And its ways to the sheets. Space held on a selection brings it for the keyboard.
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
@@ -144,17 +151,24 @@ public sealed partial class EditorView : Panel
             Field("RingRemove", "×", () => editing.Format(new TextFormatting { Style = "" })),
         ];
         // What is done with the picture itself, up left: a caption below it, the cursor then in it (or taking it away, a preview as the
-        // others), its description (a card under it), the size it took when it was put in, removing it.
-        IReadOnlyList<Controls.GestureRing.Slot> Itself(bool captioned) =>
+        // others), cropping it by hand, its description (a card under it), its colors (a strip under it), the size it took when it was put
+        // in, another picture in its frame, removing it, a hairline round it (or taking it away).
+        IReadOnlyList<Controls.GestureRing.Slot> Itself(bool captioned, bool framed) =>
         [
             captioned
                 ? Field("PictureCaptionRemove", "", () => editing.RemoveCaption(), icon: Placement.CaptionRemoveIcon)
                 : new("PictureCaption", "", () => Sheets.Edit(() => editing.AddCaption()), Icon: Placement.CaptionIcon),
+            new("PictureCrop", "", () => Sheets.BeginCrop(), Icon: Placement.CropIcon),
             new("PictureDescribe", "", Describe, Icon: Placement.DescriptionIcon),
+            new("PictureRecolor", "", Recolor, Icon: Placement.RecolorIcon),
             Field("PictureNaturalSize", "", () => editing.RestoreSize(), icon: Placement.NaturalSizeIcon),
+            new("PictureReplace", "", () => _ = Sheets.ReplacePicture(), Icon: Placement.ReplaceIcon),
             new("PictureRemove", "×", () => Sheets.Edit(() => editing.Delete())),
+            framed
+                ? Field("PictureFrameRemove", "", () => editing.Format(new DrawingFormatting { Outline = 0 }), icon: Placement.FrameRemoveIcon)
+                : Field("PictureFrame", "", () => editing.Format(new DrawingFormatting { Outline = Placement.FrameWidth, OutlineColor = Placement.FrameColor }), icon: Placement.FrameIcon),
         ];
-        IReadOnlyList<Controls.GestureRing.Slot> Picture(bool captioned) =>
+        IReadOnlyList<Controls.GestureRing.Slot> Picture(bool captioned, bool framed) =>
         [
             Placed(Placement.Inline),
             Placed(Placement.Front),
@@ -163,9 +177,25 @@ public sealed partial class EditorView : Panel
             Placed(Placement.Own),
             Placed(Placement.Behind),
             Placed(Placement.Left),
-            new("PictureMore", "", Under: Itself(captioned), Icon: Placement.PictureIcon),
+            new("PictureMore", "", Under: Itself(captioned, framed), Icon: Placement.PictureIcon),
         ];
-        var (bare, withCaption) = (Picture(captioned: false), Picture(captioned: true));
+        var pictureRings = new[] { false, true }.SelectMany(captioned => new[] { false, true }.Select(framed => (captioned, framed)))
+            .ToDictionary(k => k, k => Picture(k.captioned, k.framed));
+        // While a picture is cropped by hand: the whole picture up, the proportions round the ring (turned as the picture stands, upright
+        // or lying), and up left the circle, or back to the rectangle.
+        IReadOnlyList<Controls.GestureRing.Slot> Cropped(bool upright, bool round) =>
+        [
+            Field("CropWhole", "", () => editing.CropPicture(0.0), icon: Placement.PictureIcon),
+            Field("CropSquare", "1:1", () => editing.CropPicture(1.0)),
+            upright ? Field("CropThreeFour", "3:4", () => editing.CropPicture(3 / 4.0)) : Field("CropFourThree", "4:3", () => editing.CropPicture(4 / 3.0)),
+            upright ? Field("CropTwoThree", "2:3", () => editing.CropPicture(2 / 3.0)) : Field("CropThreeTwo", "3:2", () => editing.CropPicture(3 / 2.0)),
+            upright ? Field("CropTall", "9:16", () => editing.CropPicture(9 / 16.0)) : Field("CropWide", "16:9", () => editing.CropPicture(16 / 9.0)),
+            round
+                ? Field("CropRectangle", "", () => editing.RoundPicture(false), icon: Placement.RectangleIcon)
+                : Field("CropCircle", "", () => editing.RoundPicture(true), icon: Placement.CircleIcon),
+        ];
+        var cropRings = new[] { false, true }.SelectMany(upright => new[] { false, true }.Select(round => (upright, round)))
+            .ToDictionary(k => k, k => Cropped(k.upright, k.round));
         // At a spot with nothing to act on (no picture, selection or word there): what goes in there, the cursor there.
         IReadOnlyList<Controls.GestureRing.Slot> insert =
         [
@@ -177,7 +207,11 @@ public sealed partial class EditorView : Panel
         {
             var empty = inserting;
             inserting = false;
-            return empty ? insert : Sheets.DrawingSelected ? editing.Caption != null ? withCaption : bare : null;
+            if (empty)
+                return insert;
+            if (Sheets.Cropping && editing.PictureShown is { Crop: { } crop, Width: { } width, Height: { } height })
+                return cropRings[(width / crop.Wide < height / crop.High, editing.PictureShown.Shape == "ellipse")];
+            return Sheets.DrawingSelected ? pictureRings[(editing.Caption != null, editing.PictureShown?.Outline > 0)] : null;
         };
         ring.Preview = slot =>
         {
@@ -244,6 +278,42 @@ public sealed partial class EditorView : Panel
         {
             if (text != description || isDecorative != decorative)
                 Sheets.Edit(() => editing.Format(new DrawingFormatting { Description = text, Decorative = isDecorative }));
+        });
+    }
+
+    /// <summary>
+    /// The colors of the picture selected chosen on a strip under it (see RecolorStrip): the picture small in each look, the one the pointer
+    /// or the keys are on showing on the picture itself (a step taken back as they go on), the one chosen kept as one step.
+    /// </summary>
+    void Recolor()
+    {
+        if (editing.PictureShown is not { } shown || editing.PictureBytes is not { } bytes || Sheets.SelectionAreas() is not [var box])
+            return;
+        var current = shown.Recolor ?? "none";
+        var part = shown.Crop ?? PictureCrop.None;
+        var looks = Looks.All.Select(l => (l.Recolor, l.NameKey, Looks.Shown(bytes, part, l.Recolor, 168, 112))).ToList();
+        // The look shown on the picture for a preview, a step of its own; null where none is.
+        string? previewed = null;
+        void Show(string? look)
+        {
+            if (look == previewed)
+                return;
+            if (previewed != null)
+                Sheets.Edit(() => editing.TakeBack());
+            previewed = null;
+            if (look == null || look == current)
+                return;
+            var before = editing.Document.Changes;
+            Sheets.Edit(() => editing.Format(new DrawingFormatting { Recolor = look }));
+            if (editing.Document.Changes != before)
+                previewed = look;
+        }
+        Strip.Open(box, looks, current, Show, look =>
+        {
+            // The preview of the look chosen is its step; another one goes first.
+            if (look != previewed)
+                Show(look);
+            previewed = null;
         });
     }
 

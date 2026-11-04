@@ -63,6 +63,36 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
         Bar(0, 0, 4), Block(0, 0, Weight, 4), Bar(16, 0, 4), Block(20 - Weight, 0, Weight, 4),
         Bar(0, 16 - Weight, 4), Block(0, 12, Weight, 4), Bar(16, 16 - Weight, 4), Block(20 - Weight, 12, Weight, 4));
 
+    /// <summary>The icon of cropping a picture: the two angles of a cropping frame, one round the other.</summary>
+    public static readonly string CropIcon = Drawn(Block(5, 0, Weight, 12.2), Bar(5, 11, 13), Bar(2, 4, 12.6), Block(13.4, 4, Weight, 12));
+
+    /// <summary>The icon of a picture's colors: a circle, its right half filled.</summary>
+    public static readonly string RecolorIcon = Drawn(Ring(10, 8, 7.2), "M10,2 A6,6 0 0 1 10,14 Z");
+
+    /// <summary>The icon of another picture in a picture's frame: two arrows turning round each other.</summary>
+    public static readonly string ReplaceIcon = Drawn(Turn(10, 8, 5.4, 200, 320), Turn(10, 8, 5.4, 20, 140));
+
+    /// <summary>The icon of a hairline round a picture: a picture in a frame of its own.</summary>
+    public static readonly string FrameIcon = Drawn(Frame(0, 0, 20, 16), Frame(2.8, 2.8, 14.4, 10.4), FramedHills);
+
+    /// <summary>The icon of taking the hairline round a picture away: the picture, its frame broken where it was.</summary>
+    public static readonly string FrameRemoveIcon = Drawn(Frame(2.8, 2.8, 14.4, 10.4), FramedHills,
+        Bar(0, 0, 3), Bar(8.5, 0, 3), Bar(17, 0, 3), Bar(0, 16 - Weight, 3), Bar(8.5, 16 - Weight, 3), Bar(17, 16 - Weight, 3),
+        Block(0, 0, Weight, 3), Block(0, 6.5, Weight, 3), Block(0, 13, Weight, 3), Block(20 - Weight, 0, Weight, 3), Block(20 - Weight, 6.5, Weight, 3), Block(20 - Weight, 13, Weight, 3));
+
+    /// <summary>The hills of the picture in a frame of its own (see FrameIcon).</summary>
+    const string FramedHills = "M5,11.4 L8.2,8 L10.4,10.2 L12,8.6 L15,11.4 Z";
+
+    /// <summary>The icon of a picture shown in a circle: a ring.</summary>
+    public static readonly string CircleIcon = Drawn(Ring(10, 8, 7.4));
+
+    /// <summary>The icon of a picture shown in its rectangle again: a frame.</summary>
+    public static readonly string RectangleIcon = Drawn(Frame(1, 2, 18, 12));
+
+    /// <summary>The hairline the gesture ring puts round a picture (see DrawingFormatting.Outline): half a point, in a quarter's grey.</summary>
+    public const double FrameWidth = 0.5;
+    public const string FrameColor = "BFBFBF";
+
     /// <summary>The icon of the places on the page: a page with nine dots.</summary>
     public static readonly string PlacesIcon = Drawn(Frame(4, 0, 12, 16),
         Block(6, 2.6, 1.6, 1.6), Block(9.2, 2.6, 1.6, 1.6), Block(12.4, 2.6, 1.6, 1.6),
@@ -121,6 +151,31 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>A filled circle.</summary>
     static string Circle(double x, double y, double radius) =>
         $"M{N(x - radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 0 {N(x + radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 0 {N(x - radius)},{N(y)} Z";
+
+    /// <summary>A ring as thick as a line of text, its outside as large as given: a circle less its inside, which goes the other way round.</summary>
+    static string Ring(double x, double y, double radius)
+    {
+        var inner = radius - Weight;
+        return Circle(x, y, radius)
+            + $" M{N(x - inner)},{N(y)} A{N(inner)},{N(inner)} 0 1 1 {N(x + inner)},{N(y)} A{N(inner)},{N(inner)} 0 1 1 {N(x - inner)},{N(y)} Z";
+    }
+
+    /// <summary>
+    /// An arc as thick as a line of text round a centre, clockwise from one angle to another (degrees, 0 to the right, as the y axis goes
+    /// down), and at its end a head pointing on the way it turns.
+    /// </summary>
+    static string Turn(double x, double y, double radius, double from, double to)
+    {
+        (double X, double Y) At(double r, double degrees) => (x + r * Math.Cos(degrees * Math.PI / 180), y + r * Math.Sin(degrees * Math.PI / 180));
+        var (outer, inner) = (radius + Weight / 2, radius - Weight / 2);
+        var large = to - from > 180 ? 1 : 0;
+        var (a, b, c, d) = (At(outer, from), At(outer, to), At(inner, to), At(inner, from));
+        // The head: across the arc's end, twice as wide as the arc, its tip ahead along the circle.
+        var (wide, tip) = (At(radius + 2.2, to), At(radius, to + 3.2 / radius * 180 / Math.PI));
+        var narrow = At(radius - 2.2, to);
+        return $"M{N(a.X)},{N(a.Y)} A{N(outer)},{N(outer)} 0 {large} 1 {N(b.X)},{N(b.Y)} L{N(c.X)},{N(c.Y)} A{N(inner)},{N(inner)} 0 {large} 0 {N(d.X)},{N(d.Y)} Z"
+            + $" M{N(wide.X)},{N(wide.Y)} L{N(tip.X)},{N(tip.Y)} L{N(narrow.X)},{N(narrow.Y)} Z";
+    }
 
     static string N(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 }

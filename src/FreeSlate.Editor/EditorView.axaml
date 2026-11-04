@@ -51,6 +51,7 @@
       <c:DocumentView x:Name="Sheets" />
       <c:LevelLever x:Name="Lever" />
       <c:DescriptionCard x:Name="Card" />
+      <c:RecolorStrip x:Name="Strip" />
     </Panel>
   </ScrollViewer>
 
