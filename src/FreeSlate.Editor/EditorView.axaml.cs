@@ -279,14 +279,17 @@ public sealed partial class EditorView : Panel
             Look(Tables.Kinds[2]),
             Look(Tables.Kinds[3]),
         ];
-        // Where the table stands between the text's edges: in the middle up, at the right, across the text again down, at the left; each a
-        // preview.
+        // Where the table stands: in the text between its edges, in the middle up, at the right down right, across the text again down, at the
+        // left down left; or floating beside the text, which goes round it, at the right up right and at the left up left (see
+        // EditSession.FloatTable; its handle then moves it anywhere); each a preview.
         IReadOnlyList<Controls.GestureRing.Slot> tableAlign =
         [
             Field("TableAlignCenter", "", () => editing.AlignTable("center"), icon: Placement.AlignCenterIcon),
+            Field("TableFloatRight", "", () => editing.FloatTable("right"), icon: Placement.FloatRightIcon),
             Field("TableAlignRight", "", () => editing.AlignTable("right"), icon: Placement.AlignRightIcon),
             Field("TableWiden", "", () => editing.WidenTable(), icon: Placement.WidenIcon),
             Field("TableAlignLeft", "", () => editing.AlignTable(null), icon: Placement.AlignLeftIcon),
+            Field("TableFloatLeft", "", () => editing.FloatTable(null), icon: Placement.FloatLeftIcon),
         ];
         IReadOnlyList<Controls.GestureRing.Slot> TableWhole(bool head) =>
         [
@@ -532,35 +535,48 @@ public sealed partial class EditorView : Panel
     }
 
     /// <summary>
-    /// Where the text stands in the cells acted on (those selected, else the cursor's), chosen on a pad under them (see PlacePad): the place
-    /// the pointer or the keys are on showing in the cells (a step taken back as they go on), the one chosen kept as one step.
+    /// Where the text stands in the cells acted on (those selected, else the cursor's) and the way it runs, chosen on a pad under them (see
+    /// PlacePad): the choice the pointer or the keys are on showing in the cells (a step taken back as they go on), the one chosen kept as one
+    /// step; a way kept, the pad shows the places running so.
     /// </summary>
     void PlaceText()
     {
-        if (editing.CellPlace is not { } current || Sheets.CellsActedArea() is not { } box)
+        if (editing.CellPlace is not { } place || Sheets.CellsActedArea() is not { } box)
             return;
-        // The place shown in the cells for a preview, a step of its own; null where none is.
-        (string Vertical, string Horizontal)? previewed = null;
-        void Show((string Vertical, string Horizontal)? place)
+        var way = editing.CellDirection ?? "across";
+        // The choice shown in the cells for a preview, a step of its own; null where none is. The cells' own place and way show no preview.
+        Controls.PlacePad.Choice? previewed = null;
+        void Show(Controls.PlacePad.Choice? choice)
         {
-            if (place == previewed)
+            if (choice == previewed)
                 return;
             if (previewed != null)
                 Sheets.Edit(() => editing.TakeBack());
             previewed = null;
-            if (place is not { } shown || shown == current)
+            if (choice is not { } shown || shown.Place == place || shown.Way == way)
                 return;
             var before = editing.Document.Changes;
-            Sheets.Edit(() => editing.PlaceText(shown.Vertical, shown.Horizontal));
+            Sheets.Edit(() =>
+            {
+                if (shown.Place is var (vertical, horizontal))
+                    editing.PlaceText(vertical, horizontal);
+                else
+                    editing.TurnText(shown.Way == "across" ? null : shown.Way);
+            });
             if (editing.Document.Changes != before)
                 previewed = shown;
         }
-        Pad.Open(box, current, Placement.CellPlaceIcon, Show, place =>
+        Pad.Open(box, place, way, Placement.CellPlaceIcon, Placement.CellWayIcon, Show, choice =>
         {
-            // The preview of the place chosen is its step; another one goes first.
-            if (place != previewed)
-                Show(place);
+            // The preview of the choice is its step; another one goes first.
+            if (choice != previewed)
+                Show(choice);
             previewed = null;
+            if (choice.Way != null && editing.CellPlace is { } now)
+            {
+                (place, way) = (now, editing.CellDirection ?? "across");
+                Pad.Turned(place, way);
+            }
         });
     }
 

@@ -90,10 +90,11 @@ public sealed partial class DocumentView : Control
     ((TextPlace Start, TextPlace End) Unit, bool Words)? units;
 
     /// <summary>
-    /// Where across its page the cursor goes to as it goes up and down, kept from where it started as long as it goes on only so (Word's
-    /// column, measured by COM: over a shorter line and back it stands where it started); null otherwise. Set as it goes so (across).
+    /// Where the cursor goes to as it goes up and down, kept from where it started as long as it goes on only so (Word's column, measured by
+    /// COM: over a shorter line and back it stands where it started): the top of its bar then on the page, of which the place along each
+    /// line counts (across the page, or down it for text turned in a cell); null otherwise. Set as it goes so (across).
     /// </summary>
-    float? goal;
+    SKPoint? goal;
     bool across;
 
     /// <summary>Where pictures dragged over the sheets would go while they are (a page and a place among its characters, as the cursor's).</summary>
@@ -386,6 +387,7 @@ public sealed partial class DocumentView : Control
         DrawGuides(context, visible);
         DrawShaping(context, visible);
         DrawGrips(context, visible, pointerAt);
+        DrawTableHandle(context, pointerAt);
         if (ShowsMeanings)
             DrawMeanings(context, visible);
         // A drawing selected as a whole: framed, a little outside its box, without the selection's tint and the cursor; a picture cropped by
@@ -683,7 +685,7 @@ public sealed partial class DocumentView : Control
         return marks;
     }
 
-    /// <summary>The cursor's bar in the view's coordinates (its top to its bottom, a pixel wide), or an empty rectangle.</summary>
+    /// <summary>The cursor's bar in the view's coordinates (its top to its bottom, a pixel wide; lying in text turned), or an empty rectangle.</summary>
     Rect CaretRect() => caret is var (page, at) ? BarAt(page, at, lineEnd) : default;
 
     /// <summary>The bar of a place as the cursor's would be there (see CaretRect, SpotAt), or an empty rectangle.</summary>
@@ -695,7 +697,8 @@ public sealed partial class DocumentView : Control
         var (spot, after) = SpotAt(spots, at, end);
         var (top, bottom) = pictures.Places(Page(page)).CaretAt(spot, after);
         var (y1, y2) = ((row.Top + top.Y) * factor, (row.Top + bottom.Y) * factor);
-        return new Rect(Left(row) + top.X * factor, Math.Min(y1, y2), 1, Math.Abs(y2 - y1));
+        var (x1, x2) = (Left(row) + top.X * factor, Left(row) + bottom.X * factor);
+        return new Rect(Math.Min(x1, x2), Math.Min(y1, y2), Math.Max(1, Math.Abs(x2 - x1)), Math.Max(Math.Abs(x2 - x1) > 1 ? 1 : 0, Math.Abs(y2 - y1)));
     }
 
     /// <summary>The drawing the selection holds alone, selected as a whole: its page and its place among the page's characters; else null.</summary>
@@ -843,6 +846,12 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (tableDrag != null)
+        {
+            TableDragTo(e.GetPosition(this), e.KeyModifiers);
+            e.Handled = true;
+            return;
+        }
         pointerAt = e.GetPosition(this);
         if (!selecting)
             PointAtTable(e.GetPosition(this));
@@ -924,7 +933,13 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
-        // A grip of a table's row or column selects it, moves it or takes it away; a plus puts one in (see GripPress).
+        // A table's handle selects the table or moves it (see TablePress); a grip of a table's row or column selects it, moves it or takes it
+        // away; a plus puts one in (see GripPress).
+        if (e.ClickCount == 1 && TablePress(point, e.Pointer))
+        {
+            e.Handled = true;
+            return;
+        }
         if (e.ClickCount == 1 && GripPress(point, e.Pointer, e.KeyModifiers))
         {
             e.Handled = true;
@@ -1173,6 +1188,13 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
+        if (tableDrag != null)
+        {
+            EndTableDrag(keep: true);
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
         if (selecting)
         {
             (selecting, units) = (false, null);
@@ -1244,6 +1266,13 @@ public sealed partial class DocumentView : Control
         {
             EndGripDrag(keep: false);
             grip.Pointer.Capture(null);
+            e.Handled = true;
+            return;
+        }
+        if (tableDrag is { } carried && e.Key == Key.Escape)
+        {
+            EndTableDrag(keep: false);
+            carried.Pointer.Capture(null);
             e.Handled = true;
             return;
         }
@@ -1366,10 +1395,12 @@ public sealed partial class DocumentView : Control
         }
         // Ctrl with the arrows, Home and End: by words and paragraphs, to the story's start and end, as Word goes (see EditSession.Move);
         // the paragraph of a picture with its caption is no place for the cursor, the picture is selected instead.
+        // In a cell whose text runs up or down the page, the arrows go as the page shows it (see TurnedKey).
+        var key = TurnedKey(e.Key);
         if (control && (e.KeyModifiers & KeyModifiers.Alt) == 0 && e.Key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End)
         {
             e.Handled = true;
-            editing.Move(e.Key switch
+            editing.Move(key switch
             {
                 Key.Left => EditSession.Jump.WordLeft,
                 Key.Right => EditSession.Jump.WordRight,
@@ -1405,8 +1436,8 @@ public sealed partial class DocumentView : Control
         if (!shift && editing.Selecting && e.Key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End)
         {
             var (start, end) = editing.Selection;
-            var from = e.Key is Key.Left or Key.Up or Key.Home ? start : end;
-            if (e.Key is Key.Left or Key.Right)
+            var from = key is Key.Left or Key.Up or Key.Home ? start : end;
+            if (key is Key.Left or Key.Right)
             {
                 e.Handled = true;
                 editing.Place(from);
@@ -1420,7 +1451,7 @@ public sealed partial class DocumentView : Control
         // The arrows keep to the text the cursor is in, the page's own or a drawing's (see StoryAt). Up and down keep to the column they
         // started from (see goal); with Shift, in the first line and the last they go to its start or end (measured by COM).
         var story = spots.Count > 0 ? StoryAt(page, CaretSpot(spots, at).Spot) : null;
-        (int Page, int At, bool End)? moved = e.Key switch
+        (int Page, int At, bool End)? moved = key != e.Key ? TurnedMove(page, at, e.Key, key) : e.Key switch
         {
             Key.Left or Key.Right => Step(page, at, e.Key == Key.Right, story),
             Key.Home or Key.End when spots.Count > 0 => LineEdge(page, at, e.Key == Key.End),
@@ -1431,7 +1462,7 @@ public sealed partial class DocumentView : Control
         if (moved is not var (movedPage, movedAt, movedEnd))
             return;
         e.Handled = true;
-        across = e.Key is Key.Up or Key.Down;
+        across = key is Key.Up or Key.Down;
         try
         {
             // The paragraph of a picture with its caption is no place for the cursor: the picture is selected instead.
@@ -1526,7 +1557,7 @@ public sealed partial class DocumentView : Control
         var places = pictures.Places(Page(page));
         var spots = pictures.Spots(Page(page));
         var (current, currentAfter) = CaretSpot(spots, at);
-        var x = goal ??= places.CaretAt(current, currentAfter).Top.X;
+        var aim = goal ??= places.CaretAt(current, currentAfter).Top;
         bool Ours(PlacesItem line) => session?.Document.DrawingAround(line.Block) == story;
         // The nearest line beside this one of the same text, in the page's order of lines.
         var lineIndex = current.Line + (down ? 1 : -1);
@@ -1542,9 +1573,11 @@ public sealed partial class DocumentView : Control
             var nextSpots = pictures.Spots(Page(next));
             return nextSpots.Count == 0 ? null : (next, down ? 0 : nextSpots.Count, !down);
         }
+        // The goal's place along that line, in its middle across.
         var (toPage, line) = places.Lines[lineIndex];
-        var middle = toPage.MapPoint((float)(line.Starts[0] * PxPerPt), (float)((line.Top + line.Bottom) / 2 * PxPerPt));
-        return places.HitPlace(new SKPoint(x, middle.Y), Ours) is var (spot, after) ? Placed(page, spot, after) : null;
+        var along = toPage.TryInvert(out var toLine) ? toLine.MapPoint(aim).X : aim.X;
+        var target = toPage.MapPoint(along, (float)((line.Top + line.Bottom) / 2 * PxPerPt));
+        return places.HitPlace(target, Ours) is var (spot, after) ? Placed(page, spot, after) : null;
     }
 
     /// <summary>Scrolls the cursor into view where it is out of it; not while a drawing is dragged (the view goes with the pointer then).</summary>

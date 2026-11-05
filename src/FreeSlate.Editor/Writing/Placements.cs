@@ -111,16 +111,40 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// The icons of where text stands in a cell: a cell, two lines of text at its top, in its middle or at its bottom, and at its left, in
     /// its middle or at its right (see EditSession.PlaceText).
     /// </summary>
-    public static string CellPlaceIcon(string vertical, string horizontal)
+    public static string CellPlaceIcon(string vertical, string horizontal) => CellPlaceIcon(vertical, horizontal, "across");
+
+    /// <summary>
+    /// The icons of where text stands in a cell as the page shows it (see CellPlaceIcon), the text running across, up the page (btLr: its lines
+    /// upright, the first at the left, ending together at the bottom where they begin there) or down it (tbRl: the first at the right).
+    /// </summary>
+    public static string CellPlaceIcon(string vertical, string horizontal, string way)
     {
-        var x = horizontal switch { "left" => 2.8, "center" => 6, _ => 9.2 };
-        var y = vertical switch { "top" => 3, "center" => 5.8, _ => 8.6 };
-        var shorter = horizontal switch { "left" => x, "center" => x + 1.4, _ => x + 2.8 };
-        return Drawn(Frame(0, 0, 20, 16), Bar(x, y, 8), Bar(shorter, y + 3.2, 5.2));
+        if (way is not ("btLr" or "tbRl"))
+        {
+            var x = horizontal switch { "left" => 2.8, "center" => 6, _ => 9.2 };
+            var y = vertical switch { "top" => 3, "center" => 5.8, _ => 8.6 };
+            var shorter = horizontal switch { "left" => x, "center" => x + 1.4, _ => x + 2.8 };
+            return Drawn(Frame(0, 0, 20, 16), Bar(x, y, 8), Bar(shorter, y + 3.2, 5.2));
+        }
+        var left = horizontal switch { "left" => 3.0, "center" => 7.8, _ => 12.6 };
+        var (top, shortTop) = vertical switch { "top" => (2.6, 2.6), "center" => (4.0, 5.4), _ => (5.4, 8.2) };
+        var (first, second) = way == "btLr" ? (left, left + 3.2) : (left + 3.2, left);
+        return Drawn(Frame(0, 0, 20, 16), Block(first, top, Weight, 8), Block(second, shortTop, Weight, 5.2));
     }
 
     /// <summary>The icon of where text stands in cells: the text in the middle of a cell.</summary>
     public static readonly string CellPlaceFieldIcon = CellPlaceIcon("center", "center");
+
+    /// <summary>
+    /// The icons of the ways text runs in a cell: across (two lines, the first ending in a head to the right), up the page (two upright lines,
+    /// the first at the left with a head up) and down it (the first at the right with a head down).
+    /// </summary>
+    public static string CellWayIcon(string way) => way switch
+    {
+        "btLr" => Drawn(Block(7, 5.2, Weight, 9.6), Block(11, 9, Weight, 5.8), "M4.4,5.6 L7.6,1 L10.8,5.6 Z"),
+        "tbRl" => Drawn(Block(11.8, 1.2, Weight, 9.6), Block(7.8, 1.2, Weight, 5.8), "M9.2,10.4 L12.4,15 L15.6,10.4 Z"),
+        _ => Drawn(Bar(1.2, 6.4, 11.6), Bar(1.2, 10.4, 7.6), "M13.2,3.8 L17.8,7 L13.2,10.2 Z"),
+    };
 
     /// <summary>The icon of cells merged: a cell, two heads pointing to its middle.</summary>
     public static readonly string MergeIcon = Drawn(Frame(0, 1, 20, 14), "M3.4,4.8 L8.2,8 L3.4,11.2 Z", "M16.6,4.8 L16.6,11.2 L11.8,8 Z");
@@ -130,6 +154,10 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     public static readonly string AlignCenterIcon = Aligned(5.5, 9);
     public static readonly string AlignRightIcon = Aligned(8.6, 9);
     public static readonly string WidenIcon = Aligned(2.4, 15.2);
+
+    /// <summary>The icons of a table floating beside the text: the table at the right or at the left, lines of text beside it.</summary>
+    public static readonly string FloatRightIcon = Drawn(Frame(10, 2, 10, 12), Bar(10, 7.4, 10), Bar(0, 2.6, 7.6), Bar(0, 5.8, 7.6), Bar(0, 9, 7.6), Bar(0, 12.2, 7.6));
+    public static readonly string FloatLeftIcon = Drawn(Frame(0, 2, 10, 12), Bar(0, 7.4, 10), Bar(12.4, 2.6, 7.6), Bar(12.4, 5.8, 7.6), Bar(12.4, 9, 7.6), Bar(12.4, 12.2, 7.6));
 
     static string Aligned(double x, double width) => Drawn(Block(0, 0, Weight, 16), Block(18.8, 0, Weight, 16), Frame(x, 4, width, 8), Bar(x, 7.4, width));
 

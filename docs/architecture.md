@@ -239,7 +239,15 @@ over each grid column at its top and bottom, as the layout resolves the cells' a
   rectangle's sides and inside lines, `SetLines`), cells shaded (`ShadeCells`, w:shd), the table centered or right in the table's
   and each row's w:jc (`AlignTable`, its indent gone; a centered table's outside lines move both edges) or as wide as the text
   again (`WidenTable`), the text's place in cells as the nine buttons of Word's Layout tab set it (`PlaceText`: w:vAlign and the
-  paragraphs' w:jc, neither where it is the top or the left unless the styles give another place; `CellPlace` reads it). Cells
+  paragraphs' w:jc, neither where it is the top or the left unless the styles give another place; `CellPlace` reads it; both also as
+  the page shows it in a turned cell, where vAlign moves the lines across and jc along), cells' text turned as Word's Text Direction
+  turns it (`TurnText`: w:textDirection btLr or tbRl, the paragraphs 113 twips in at either end of their lines, the row at least
+  1134 twips high and kept on one page; turned back, all of it gone again; `CellDirection` reads it), the table floating beside
+  the text as Word's text wrapping "Around" writes it (`FloatTable`: w:tblpPr 141 twips from the text, at its column's left, right
+  or middle, below the top of the paragraph after it, w:tblOverlap never; one wider than 60 % of its column half as wide;
+  `TableFloat` reads it), a floating table put where its top left is to stand on a page as Word puts one dragged by its handle
+  (`PlaceTable`: offsets from its column and from the paragraph after it, the table going before the body's paragraph at its top,
+  measured as laid out and corrected once), a table moved in the text before another paragraph (`MoveTable`). Cells
   are copied as a table of their own (`CopyCells`) and put over cells from a place on as Word's Overwrite Cells puts them
   (`PasteCells`: rows and columns added as they need, each cell taking the content, colour and place up and down of the copied
   cells that begin in it, the table's lines staying its own), a spreadsheet's rows of text so too (`PasteTexts`). A table is known
@@ -397,8 +405,11 @@ in two or three columns or rows), and the table left (rows turned into columns, 
 text's edges, its look, the table taken away), each laid out as the table is and each a preview; between them the cell's colour
 (soft swatches, `Tables.Fills`, drawn as discs in the ring, `GestureRing.Slot.Swatch`), what goes in it (a picture), its lines
 (its frame's look) and where its text stands. That opens a pad under the cells (`Controls/PlacePad`): the nine places three by
-three as a cell shows them, the cells' own marked, the one pointed at named below; the pointer or the arrows on one show it in
-the cells, a click or Enter keeps it, as a picture's colours are chosen. On cells selected together the ring has their rows and
+three as the page shows them, and below them the ways the text runs (across, turned up, turned down), the places drawn running
+so, the cells' own marked, the one pointed at named below; the pointer or the arrows on one show it in the cells, a click or
+Enter keeps it, as a picture's colours are chosen (a way kept, the pad stays open). In a turned cell the cursor lies across the
+lines and the arrows go as the page shows them (`DocumentView.TurnedKey`, `TurnedMove`): along the lines to the next character,
+across them to the line beside, from the cell's ends and outer lines to the cell beside it that way. On cells selected together the ring has their rows and
 columns, their colour, merging them, their text's meaning, their lines (which ones, each in its direction, then how they look)
 and where their text stands; Delete empties them, Ctrl+X cuts them (rows or columns selected by their grips go). On a line itself (right-clicked within reach) the ring is
 the line's: hidden, fine, strong, double, dotted, dashed (`Tables.Lines`, in the tone's colours) or as the table's look gives it,
@@ -411,7 +422,12 @@ Beside the table the pointer is at its rows and columns have grips, left of the 
 where the pointer is on one, a plus between two (`DocumentView.Grips.cs`): a click on a grip selects its row or column (Shift
 another one up to it, their cells selected together for the ring; Delete or Backspace takes them away), dragged along the table it moves them before another (rows and
 columns of their own, a bar showing where), dragged out of the table it takes them away (tinted as going), a plus puts a row or a
-column in there; each one step. The level lever does not show beside a table.
+column in there; each one step. The level lever does not show beside a table. Off the table's top left corner a handle shows
+with the grips (`DocumentView.TableMoving.cs`): a click selects the whole table; dragged, a floating table follows the pointer
+over the pages, the text going round it as it goes, lined up with the columns' edges and middles (a step that goes on as for
+pictures, Escape takes it back), and one in the text goes between its paragraphs where a bar shows. The table's position ring
+has the places in the text (middle up, right down right, across down, left down left) and floating beside the text (right up
+right, left up left).
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 

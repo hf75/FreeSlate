@@ -123,6 +123,8 @@
   <x:String x:Key="TableAlignRight">Right</x:String>
   <x:String x:Key="TableAlignLeft">Left</x:String>
   <x:String x:Key="TableWiden">Full width</x:String>
+  <x:String x:Key="TableFloatLeft">Left, text beside it</x:String>
+  <x:String x:Key="TableFloatRight">Right, text beside it</x:String>
   <x:String x:Key="CellFill">Color</x:String>
   <x:String x:Key="FillNone">No color</x:String>
   <x:String x:Key="FillGray">Gray</x:String>
@@ -151,6 +153,9 @@
   <x:String x:Key="CellPlaceBottomLeft">Bottom left</x:String>
   <x:String x:Key="CellPlaceBottomCenter">Bottom center</x:String>
   <x:String x:Key="CellPlaceBottomRight">Bottom right</x:String>
+  <x:String x:Key="CellWayAcross">Across</x:String>
+  <x:String x:Key="CellWayUp">Turned up</x:String>
+  <x:String x:Key="CellWayDown">Turned down</x:String>
   <x:String x:Key="CellLinesTop">Top</x:String>
   <x:String x:Key="CellLinesOutside">All around</x:String>
   <x:String x:Key="CellLinesRight">Right</x:String>

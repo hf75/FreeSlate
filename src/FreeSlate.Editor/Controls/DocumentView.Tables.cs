@@ -299,7 +299,7 @@ public sealed partial class DocumentView
         var block = places.Lines[current.Line].Line.Block;
         if (word.TableOf(block) is not { } table || word.CellsOf(table) is not { } cells || cells.Cells.FirstOrDefault(c => c.Paragraphs.Contains(block)) is not { } cell)
             return null;
-        var x = goal ??= places.CaretAt(current, after).Top.X;
+        var x = (goal ??= places.CaretAt(current, after).Top).X;
         var step = down ? 1 : -1;
         bool Holds(TextPlaces places, int line, ISet<int> paragraphs) => places.Lines[line].Line.Offsets.Length > 0 && paragraphs.Contains(places.Lines[line].Line.Block);
         // Another line of the cell that way: the lines in their order.
@@ -346,6 +346,132 @@ public sealed partial class DocumentView
         }
         return null;
     }
+
+    /// <summary>
+    /// The table's cell the cursor stands in where its line is turned a quarter (text running up or down the page, see TableLayout), with its
+    /// table's cells and the line's place on the page (see TextPlaces.Lines); null elsewhere.
+    /// </summary>
+    (TableCells Cells, TableCell Cell, SKMatrix ToPage)? TurnedCell(int page, int at)
+    {
+        if (session?.Document is not WordDocument word || page >= scenes.Count || pictures.Spots(Page(page)) is not { Count: > 0 } spots)
+            return null;
+        var (toPage, line) = pictures.Places(Page(page)).Lines[CaretSpot(spots, at).Spot.Line];
+        var along = toPage.MapVector(1, 0);
+        if (Math.Abs(along.Y) <= Math.Abs(along.X) || word.TableOf(line.Block) is not { } table || word.CellsOf(table) is not { } cells
+            || cells.Cells.FirstOrDefault(c => c.Paragraphs.Contains(line.Block)) is not { } cell)
+            return null;
+        return (cells, cell, toPage);
+    }
+
+    /// <summary>
+    /// An arrow as the text at the cursor runs, in a table's cell whose text is turned (see TurnedCell): the one that points along its lines
+    /// on the page as Left or Right go along lines across (Down in text running down goes on to the next character), the one that points across
+    /// them as Up or Down go (to the line before or after); other keys, and elsewhere, the key itself.
+    /// </summary>
+    Key TurnedKey(Key key)
+    {
+        if (key is not (Key.Left or Key.Right or Key.Up or Key.Down) || caret is not var (page, at) || TurnedCell(page, at) is not var (_, _, toPage))
+            return key;
+        var (along, next) = (toPage.MapVector(1, 0), toPage.MapVector(0, 1));
+        var (x, y) = key switch { Key.Left => (-1f, 0f), Key.Right => (1f, 0f), Key.Up => (0f, -1f), _ => (0f, 1f) };
+        return Math.Abs(x * along.X + y * along.Y) > 1e-3 ? (x * along.X + y * along.Y > 0 ? Key.Right : Key.Left) : x * next.X + y * next.Y > 0 ? Key.Down : Key.Up;
+    }
+
+    /// <summary>
+    /// Where an arrow takes the cursor in a table's cell whose text is turned, as the page shows it (<paramref name="key"/> the arrow pressed,
+    /// <paramref name="logical"/> as the text runs, see TurnedKey): along the lines to the character before or after, across them to the line
+    /// beside, within the cell's text; from its ends and its outer lines on to the cell beside it that way on the page, at the place there
+    /// nearest the cursor (out of the table above or below it to the text before or after it). Null where it goes nowhere.
+    /// </summary>
+    (int Page, int At, bool End)? TurnedMove(int page, int at, Key key, Key logical)
+    {
+        if (session?.Document is not WordDocument word || TurnedCell(page, at) is not var (cells, cell, _))
+            return null;
+        var own = cell.Paragraphs.ToHashSet();
+        var places = pictures.Places(Page(page));
+        var spots = pictures.Spots(Page(page));
+        var (spot, after) = CaretSpot(spots, at);
+        var (top, bottom) = places.CaretAt(spot, after);
+        var point = new SKPoint((top.X + bottom.X) / 2, (top.Y + bottom.Y) / 2);
+        if (logical is Key.Left or Key.Right)
+        {
+            if (Step(page, at, logical == Key.Right, null) is var (toPage, toAt, _) && toPage == page && BlockAt(toPage, toAt) is { } block && own.Contains(block))
+                return (toPage, toAt, false);
+        }
+        else
+        {
+            // The cell's line before or after the cursor's on the page, at the place along it the cursor goes to (see goal).
+            var aim = goal ??= top;
+            var step = logical == Key.Down ? 1 : -1;
+            for (var k = spot.Line + step; k >= 0 && k < places.Lines.Count; k += step)
+            {
+                var (toLine, line) = places.Lines[k];
+                if (line.Offsets.Length == 0 || !own.Contains(line.Block))
+                    continue;
+                var along = toLine.TryInvert(out var inverse) ? inverse.MapPoint(aim).X : aim.X;
+                var onLine = toLine.MapPoint(along, (float)((line.Top + line.Bottom) / 2 * PxPerPt));
+                return places.HitPlace(onLine, l => ReferenceEquals(l, line)) is var (hit, hitAfter) ? Placed(page, hit, hitAfter) : null;
+            }
+        }
+        // The cell beside it that way: in the row at the cursor's height left or right, in the column at its place across up or down.
+        var (row, column) = key switch
+        {
+            Key.Left or Key.Right => (RowsOf(page, cells.Table).FirstOrDefault(r => !r.Repeated && r.Top <= point.Y / PxPerPt && point.Y / PxPerPt < r.Bottom)?.Row ?? cell.Top,
+                key == Key.Left ^ cells.FromRight ? cell.Left - 1 : cell.Right),
+            _ => (key == Key.Up ? cell.Top - 1 : cell.Bottom, ColumnAt(page, cells.Table, point.X / PxPerPt) ?? cell.Left),
+        };
+        if (key is Key.Up or Key.Down && (row < 0 || row >= cells.Rows))
+        {
+            // Out of the table: the first line that way that is none of its cells', in the page's own text.
+            var all = cells.Cells.SelectMany(c => c.Paragraphs).ToHashSet();
+            var lines = places.Lines.Select((l, k) => (l.Line, k)).Where(l => l.Line.Offsets.Length > 0 && !l.Line.Floating && !all.Contains(l.Line.Block)
+                && word.DrawingAround(l.Line.Block) == null && (key == Key.Down ? l.Line.Top * PxPerPt > point.Y : l.Line.Bottom * PxPerPt < point.Y)).ToList();
+            var line = key == Key.Down ? lines.MinBy(l => l.Line.Top) : lines.MaxBy(l => l.Line.Bottom);
+            return line.Line != null ? HitOn(page, line.k, point.X, new HashSet<int> { line.Line.Block }) : null;
+        }
+        if (cells.Cells.FirstOrDefault(c => c.Top <= row && row < c.Bottom && c.Left <= column && column < c.Right) is not { } beside)
+            return null;
+        var target = beside.Paragraphs.ToHashSet();
+        return places.HitPlace(point, l => target.Contains(l.Block)) is var (found, foundAfter) ? Placed(page, found, foundAfter) : null;
+    }
+
+    static Cursor? lying;
+
+    /// <summary>
+    /// The pointer over the text: an I-beam, lying across in a table's cell whose text runs up or down the page (drawn for the screen, white
+    /// round black as the system's).
+    /// </summary>
+    Cursor TextCursorAt(Point point)
+    {
+        if (session?.Document is not WordDocument word || OnPage(point) is not var (page, _, _) || rows.FirstOrDefault(r => r.Index == page) is not { } row)
+            return Text;
+        var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
+        if (CellAt(page, local) is not { } cell || word.TableOf(cell.First) is not { } table || word.CellDirection(table, cell.Top, cell.Left) == null)
+            return Text;
+        try
+        {
+            return lying ??= Lying();
+        }
+        catch (Exception)
+        {
+            return Text;
+        }
+        static Cursor Lying()
+        {
+            var bitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(32, 32));
+            using (var context = bitmap.CreateDrawingContext())
+            {
+                var beam = Geometry.Parse("M9,12.5 Q11,12.5 11,16 Q11,19.5 9,19.5 M23,12.5 Q21,12.5 21,16 Q21,19.5 23,19.5 M11,16 H21");
+                context.DrawGeometry(null, new Pen(Brushes.White, 3, lineCap: PenLineCap.Round), beam);
+                context.DrawGeometry(null, new Pen(Brushes.Black, 1.2, lineCap: PenLineCap.Round), beam);
+            }
+            return new Cursor(bitmap, new PixelPoint(16, 16));
+        }
+    }
+
+    /// <summary>The paragraph a place of a page stands in.</summary>
+    int? BlockAt(int page, int at) => page < scenes.Count && pictures.Spots(Page(page)) is { Count: > 0 } spots
+        ? pictures.Places(Page(page)).PlaceAt(SpotAt(spots, at, false).Spot, false).Block : null;
 
     /// <summary>The place nearest to a column in a line of a page, among the lines of some paragraphs.</summary>
     (int Page, int At, bool End)? HitOn(int page, int line, float x, ISet<int> paragraphs)
