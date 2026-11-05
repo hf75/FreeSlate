@@ -88,6 +88,7 @@
   <x:String x:Key="TableColumnFewer">Eine Spalte weniger</x:String>
   <x:String x:Key="TableRowMore">Eine Zeile mehr</x:String>
   <x:String x:Key="TableRowFewer">Eine Zeile weniger</x:String>
+  <x:String x:Key="TableTake">Übernehmen</x:String>
   <x:String x:Key="TableSizeColumn">{0} Spalte</x:String>
   <x:String x:Key="TableSizeColumns">{0} Spalten</x:String>
   <x:String x:Key="TableSizeRow">{0} Zeile</x:String>

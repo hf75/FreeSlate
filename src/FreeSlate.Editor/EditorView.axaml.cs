@@ -233,8 +233,8 @@ public sealed partial class EditorView : Panel
         ];
         // A new table, in the tone's look, its size stepped in a split ring: its columns on the right, one more up and one fewer down, its
         // rows on the left alike. It shows at the cursor as it would go in from the moment that ring comes, growing and shrinking with
-        // each step, and goes in as the ring closes beside it (a click into the text, Enter); Escape and the way back take it away. Chosen
-        // blindly, a step puts in a table of the size it makes.
+        // each step, and goes in with a click in the ring's middle (a tick there) or beside it, or Enter; Escape and Backspace (the way
+        // back) take it away. Chosen blindly, a step puts in a table of the size it makes.
         var size = (Columns: Tables.Columns, Rows: Tables.Rows);
         var tableShown = false;
         Controls.GestureRing.Slot? newTable = null;
@@ -268,7 +268,7 @@ public sealed partial class EditorView : Panel
             new("TableRowFewer", "", () => Step(0, -1), Icon: Placement.RowFewerIcon, Steps: true),
             new("TableRowMore", "", () => Step(0, 1), Icon: Placement.RowMoreIcon, Steps: true),
         ];
-        newTable = new("InsertTable", "", Under: tableSize, Icon: Placement.TableIcon, Split: true,
+        newTable = new("InsertTable", "", Under: tableSize, Icon: Placement.TableIcon, Split: true, Done: "TableTake",
             Opened: () =>
             {
                 (size, tableShown) = ((Tables.Columns, Tables.Rows), false);
