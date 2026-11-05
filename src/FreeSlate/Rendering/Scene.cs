@@ -254,10 +254,11 @@ public sealed record BookmarkItem(string Name, double X, double Y) : SceneItem;
 /// A row of a table in the body placed on the page (or the part of one a page break cuts), drawing nothing: for an editor that
 /// changes the table by its rows, cells and lines. The table's block, the row of its model (hidden rows counted), where the grid's
 /// lines stand (the middle of a line drawn on them), its top and bottom, points from the page's top left; what its height has beyond
-/// its at-least height (w:trHeight: its top line and its cells' margins), and whether it is a head row repeated at the top of a later
-/// page.
+/// its at-least height (w:trHeight: its top line and its cells' margins), whether it is a head row repeated at the top of a later
+/// page, and which of its lines show: upright on each line of the grid, across over each grid column at its top and at its bottom.
 /// </summary>
-public sealed record TableRowItem(int Table, int Row, double[] Lines, double Top, double Bottom, double Extra, bool Repeated) : SceneItem;
+public sealed record TableRowItem(int Table, int Row, double[] Lines, double Top, double Bottom, double Extra, bool Repeated, bool[] Uprights, bool[] Over, bool[] Under)
+    : SceneItem;
 
 /// <summary>
 /// A run of text set in its font by the backend (in HTML by the browser, which shapes it), its characters on the

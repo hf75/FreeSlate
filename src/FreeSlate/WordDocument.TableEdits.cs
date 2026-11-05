@@ -48,9 +48,9 @@ public sealed partial class WordDocument
 
     /// <summary>
     /// The width of the text a paragraph of the body stands in, points: its section's column (columns of even width); in a table's
-    /// cell the cell's width less its margins.
+    /// cell the cell's width less its margins (Word's of 5.4 points each side).
     /// </summary>
-    double TextWidth(int paragraph)
+    public double TextWidth(int paragraph)
     {
         if (TableOf(paragraph) is { } table && CellsOf(table) is { } cells && cells.Cells.FirstOrDefault(c => c.Paragraphs.Contains(paragraph)) is { } cell)
         {
@@ -59,6 +59,12 @@ public sealed partial class WordDocument
             var width = Enumerable.Range(cell.Left, cell.Right - cell.Left).Sum(k => k < grid.Count ? grid[k] : 0);
             return Math.Max(36, width - 2 * 5.4);
         }
+        return ColumnWidth(paragraph);
+    }
+
+    /// <summary>The width of the column of its section a paragraph of the body stands in, points (columns of even width), in a table's cell or not.</summary>
+    double ColumnWidth(int paragraph)
+    {
         var section = SectionOf(paragraph);
         var count = Math.Max(1, section.Columns ?? 1);
         return Math.Max(36, ((section.PageWidth ?? 595.3) - (section.Left ?? 72) - (section.Right ?? 72) - (section.Gutter ?? 0) - (count - 1) * (section.ColumnSpace ?? 36)) / count);
@@ -266,6 +272,14 @@ public sealed partial class WordDocument
             .OrderBy(c => c.Left).FirstOrDefault());
 
     /// <summary>
+    /// Splits the cell covering a place of a table's grid into so many of even width side by side, or (<paramref name="across"/>) one
+    /// below the other, as the pen splits cells (see TextEdits.TableShape.Split); returns its first paragraph.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The cell spans rows that do not part so evenly; nothing changes.</exception>
+    public int SplitCell(int table, int row, int column, bool across, int parts) =>
+        Reshape(table, shape => shape.Split(shape.At(row, column) ?? throw new ArgumentException("No cell covers the place.", nameof(row)), across, parts));
+
+    /// <summary>
     /// Takes a line between a table's cells away, as Word's eraser does (see TextEdits.TableShape.Erase): an upright one, grid line
     /// <paramref name="line"/>, through rows from <paramref name="from"/> to before <paramref name="to"/>; one across, the line before
     /// row <paramref name="line"/>, through grid columns; the cells on either side merge. Returns the first paragraph of the first cell
@@ -299,11 +313,81 @@ public sealed partial class WordDocument
         var delta = InTwips(model.Table.Format.BidiVisual ? -by : by);
         Reshape(table, shape =>
         {
-            var at = line == 0 ? delta : shape.Line(line) + delta;
+            // A table centered grows and shrinks on both sides alike: its side moved goes as far as the pointer twice as wide.
+            var moved = shape.Alignment == "center" && (line == 0 || line == shape.Columns) ? 2 * delta : delta;
+            var at = line == 0 ? moved : shape.Line(line) + moved;
             shape.MoveLine(line, at, InTwips(least));
             return null;
         }, widths: true);
     }
+
+    /// <summary>
+    /// Gives a stretch of a line of a table's grid a line of its own, as Word does where a side of cells is given one (see
+    /// TextEdits.TableShape.SetLine): an upright one, grid line <paramref name="line"/>, through rows from <paramref name="from"/> to
+    /// before <paramref name="to"/>; one across, the line before row <paramref name="line"/>, through grid columns; null, the line as
+    /// the table's look gives it. The paragraphs stay as they are.
+    /// </summary>
+    public void SetLine(int table, bool upright, int line, int from, int to, CellBorder? border) =>
+        Reshape(table, shape =>
+        {
+            shape.SetLine(upright, line, from, to, border);
+            return null;
+        }, widths: true);
+
+    /// <summary>
+    /// Gives lines of a rectangle of a table's grid a line of their own, as Word's Borders of cells selected do (see
+    /// TextEdits.TableShape.SetLines); null, the lines as the table's look gives them. The paragraphs stay as they are.
+    /// </summary>
+    public void SetLines(int table, int top, int bottom, int left, int right, CellLines which, CellBorder? border) =>
+        Reshape(table, shape =>
+        {
+            shape.SetLines(top, bottom, left, right, which, border);
+            return null;
+        }, widths: true);
+
+    /// <summary>
+    /// The cells reaching into a rectangle of a table's grid shaded with a color (hex RRGGBB), as Word's Shading of cells writes it;
+    /// null, without a shading of their own (see TextEdits.TableShape.Shade). The paragraphs stay as they are.
+    /// </summary>
+    public void ShadeCells(int table, int top, int bottom, int left, int right, string? fill) =>
+        Reshape(table, shape =>
+        {
+            shape.Shade(top, bottom, left, right, fill);
+            return null;
+        }, widths: true);
+
+    /// <summary>
+    /// A table aligned between the text's edges: centered ("center"), right ("right"), or left (null), as Word's Rows.Alignment does
+    /// (see TextEdits.TableShape.Align). The paragraphs stay as they are.
+    /// </summary>
+    public void AlignTable(int table, string? alignment) =>
+        Reshape(table, shape =>
+        {
+            shape.Align(alignment);
+            return null;
+        }, widths: true);
+
+    /// <summary>
+    /// A table as wide as the text of its section's column again, less 10 twips as Word puts one in (see TableMarkup), its columns in
+    /// proportion, at the text's left edge. The paragraphs stay as they are.
+    /// </summary>
+    public void WidenTable(int table)
+    {
+        var cells = CellsOf(table) ?? throw new ArgumentException("No table of the body has the id.", nameof(table));
+        var whole = (int)Math.Round(ColumnWidth(cells.Cells[0].First) * 20) - 10;
+        Reshape(table, shape =>
+        {
+            shape.Widen(Math.Max(shape.Columns * 20, whole));
+            return null;
+        }, widths: true);
+    }
+
+    /// <summary>
+    /// What the cells reaching into a rectangle of a table's grid hold taken away, as Word's Delete over cells selected (see
+    /// TextEdits.TableShape.Clear); returns the first paragraph of the first of them.
+    /// </summary>
+    public int ClearCells(int table, int top, int bottom, int left, int right) =>
+        Reshape(table, shape => shape.Clear(top, bottom, left, right), widths: true);
 
     /// <summary>A table's row at least so high, points (Word's trHeight without a rule); 0, as high as its text. The paragraphs stay as they are.</summary>
     public void SetRowHeight(int table, int row, double height) =>
@@ -396,3 +480,34 @@ public sealed record TableCell(int Top, int Bottom, int Left, int Right, int Fir
 /// (w:bidiVisual), and whether its look marks its first row or its first column as its head (w:tblLook).
 /// </summary>
 public sealed record TableCells(int Table, int Rows, int Columns, IReadOnlyList<TableCell> Cells, bool FromRight, bool HeadRow, bool HeadColumn);
+
+/// <summary>
+/// Cells of a table selected together, as Word selects them when a selection reaches from one cell into another: the rectangle of the
+/// table's grid they cover (rows from Top to before Bottom, grid columns from Left to before Right), each cell reaching into it whole.
+/// </summary>
+public sealed record CellRange(int Table, int Top, int Bottom, int Left, int Right);
+
+/// <summary>
+/// A line of a table's cells as an editor gives it to a side of them (w:tcBorders): Word's kind of line (w:val: single, double, dotted,
+/// dashed; nil for none), its width in points and its color (hex RRGGBB, or auto).
+/// </summary>
+public sealed record CellBorder(string Kind, double Width = 0.5, string Color = "auto")
+{
+    /// <summary>No line there, as Word takes a line away (nil).</summary>
+    public static readonly CellBorder None = new("nil", 0);
+}
+
+/// <summary>Which lines of a rectangle of cells (see WordDocument.SetLines): its four sides, the lines across within it and the upright ones.</summary>
+[Flags]
+public enum CellLines
+{
+    Top = 1,
+    Bottom = 2,
+    Left = 4,
+    Right = 8,
+    Across = 16,
+    Upright = 32,
+    Outside = Top | Bottom | Left | Right,
+    Inside = Across | Upright,
+    All = Outside | Inside,
+}

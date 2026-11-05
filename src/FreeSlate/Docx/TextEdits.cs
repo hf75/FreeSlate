@@ -2689,7 +2689,7 @@ static partial class TextEdits
                 ind.SetAttributeValue(w + "firstLineChars", had.FirstLineChars != null ? "0" : null);
             }
         }
-        if (format.Before != null || format.After != null || format.Lines != null)
+        if (format.Before != null || format.After != null || format.Lines != null || format.LinesAtLeast != null)
         {
             var spacing = Property(properties, "spacing", ParagraphOrder);
             var had = paragraph.Format;
@@ -2709,6 +2709,11 @@ static partial class TextEdits
             {
                 spacing.SetAttributeValue(w + "line", ((int)Math.Round(lines * 240)).ToString(System.Globalization.CultureInfo.InvariantCulture));
                 spacing.SetAttributeValue(w + "lineRule", "auto");
+            }
+            if (format.LinesAtLeast is { } least)
+            {
+                spacing.SetAttributeValue(w + "line", Twips(least));
+                spacing.SetAttributeValue(w + "lineRule", "atLeast");
             }
         }
     }

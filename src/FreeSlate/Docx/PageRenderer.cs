@@ -171,7 +171,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         if (!turned)
         {
             foreach (var row in page.TableRows)
-                items.Add(new TableRowItem(row.Table, row.Row, row.Lines, row.Top, row.Top + row.Height, row.Extra, row.Repeated));
+                items.Add(new TableRowItem(row.Table, row.Row, row.Lines, row.Top, row.Top + row.Height, row.Extra, row.Repeated, row.Uprights, row.Over, row.Under));
         }
         foreach (var (name, x, y) in page.Bookmarks)
             items.Add(new BookmarkItem(name, x, y));

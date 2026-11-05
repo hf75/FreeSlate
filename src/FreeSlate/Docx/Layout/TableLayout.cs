@@ -245,9 +245,10 @@ public sealed class CellPart
 /// Where a laid-out row stands in its table, for an editor that changes the table by its rows, cells and lines: its row of the
 /// table's model (hidden rows counted), where the grid's lines stand, from the left of the column the table is laid out in, points
 /// (the middle of a line drawn on them), and what its height has beyond its at-least height (w:trHeight): its top line and its
-/// cells' top and bottom margins.
+/// cells' top and bottom margins; which lines show: upright on each line of the grid through the row, across over each grid column at
+/// its top and at its bottom (none where cells meet without one, nor within a merged cell).
 /// </summary>
-public sealed record RowPlace(int Row, double[] Lines, double Extra);
+public sealed record RowPlace(int Row, double[] Lines, double Extra, bool[] Uprights, bool[] Over, bool[] Under);
 
 public sealed class RowBox
 {
@@ -1081,12 +1082,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         {
             var row = rows[r];
             var specified = row.Format.Height is { } rh && rh > 0 ? rh : 0;
+            var (uprights, over, under) = (new bool[columns + 1], new bool[columns], new bool[columns]);
+            for (var k = 0; k <= columns; k++)
+                uprights[k] = vertical[r, k] is { Visible: true };
+            for (var k = 0; k < columns; k++)
+                (over[k], under[k]) = (horizontal[r, k] is { Visible: true }, horizontal[r + 1, k] is { Visible: true });
             var rowBox = new RowBox
             {
                 Header = row.Format.Header, CantSplit = row.Format.CantSplit, TopWidth = topWidths[r], Height = topWidths[r] + heights[r],
                 Exact = specified > 0 && row.Format.HeightRule == "exact",
                 Least = row.Format.HeightRule == "exact" || specified <= 0 ? 0 : rowEdges[r].Top + specified + rowEdges[r].Bottom,
-                AnchorsReach = context.Profile.AnchorsReachPastCut, Place = new RowPlace(modelRows[r], gridLines, topWidths[r] + rowEdges[r].Top + rowEdges[r].Bottom),
+                AnchorsReach = context.Profile.AnchorsReachPastCut,
+                Place = new RowPlace(modelRows[r], gridLines, topWidths[r] + rowEdges[r].Top + rowEdges[r].Bottom, uprights, over, under),
             };
             // Shading of every cell the row passes through, also cells merged from above.
             for (var k = 0; k < columns; k++)

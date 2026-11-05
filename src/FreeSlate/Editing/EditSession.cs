@@ -275,6 +275,13 @@ public sealed partial class EditSession(IEditableDocument document)
     void Put(string text, bool typing)
     {
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+        // Over cells selected the text takes the first one's place, the others keeping theirs (measured in Word 365 by COM, scratchpad
+        // tables/looks.vbs: X typed over four cells stands alone in the first).
+        if (CellSelection is { } cells && CellsIn(cells) is [var first, ..])
+        {
+            Place(new TextPlace(first.First, 0));
+            Place(new TextPlace(first.Last, document.Text(first.Last).Length), extend: true);
+        }
         ActKeepingPlaces(typing && lines.Length == 1 && !Selecting, () =>
         {
             // Typed into what a content control shows as its placeholder (the cursor in it, or a selection within it), the
@@ -380,7 +387,9 @@ public sealed partial class EditSession(IEditableDocument document)
     /// IEditableDocument.InsertMarkup): a picture, a chart, a shape or WordArt, an equation, a field, with the parts it
     /// needs; the cursor then after it. Returns the ids of the paragraphs it brought (its text boxes'), to type into.
     /// </summary>
-    public IReadOnlyList<int> InsertMarkup(string markup, IReadOnlyList<NewPart>? parts = null)
+    public IReadOnlyList<int> InsertMarkup(string markup, IReadOnlyList<NewPart>? parts = null) => InsertMarkup(markup, parts, picture: false);
+
+    IReadOnlyList<int> InsertMarkup(string markup, IReadOnlyList<NewPart>? parts, bool picture)
     {
         IReadOnlyList<int> made = [];
         Act(false, () =>
@@ -388,6 +397,9 @@ public sealed partial class EditSession(IEditableDocument document)
             var at = DeleteSelection(typing: false);
             var length = document.Text(at.Paragraph).Length;
             made = document.InsertMarkup(at.Paragraph, at.Offset, markup, parts);
+            // A picture in lines exactly so high: they at least so high, as Word would cut it at their height (see WordDocument.OpenLines).
+            if (picture && document is WordDocument word)
+                word.OpenLines(at.Paragraph);
             return Same(at with { Offset = at.Offset + document.Text(at.Paragraph).Length - length });
         });
         return made;
@@ -419,7 +431,8 @@ public sealed partial class EditSession(IEditableDocument document)
     /// <summary>
     /// Puts a picture at the cursor in place of the selection, a handling of its own (see InsertMarkup), as Word puts one in
     /// from a file: in the line, at the size given (in points) or at the size it takes there (see PictureSize); named as given
-    /// (wp:docPr, which Word shows as the picture's name). The bytes are a PNG, JPEG, GIF, BMP or TIFF file, kept as they are
+    /// (wp:docPr, which Word shows as the picture's name); its paragraph's lines, where they are exactly so high, at least so high
+    /// (see WordDocument.OpenLines). The bytes are a PNG, JPEG, GIF, BMP or TIFF file, kept as they are
     /// (made ready before, see Skia.PictureFit, the size given is the one they were made smaller for). False, and nothing done,
     /// where they are none of those or the document takes no pictures so (slides).
     /// </summary>
@@ -438,7 +451,7 @@ public sealed partial class EditSession(IEditableDocument document)
             + "<pic:blipFill><a:blip r:embed=\"{picture}\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>"
             + $"<pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr>"
             + "</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>",
-            [new NewPart("picture", "/word/media/image1" + extension, type, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image", bytes)]);
+            [new NewPart("picture", "/word/media/image1" + extension, type, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image", bytes)], picture: true);
         return true;
     }
 
@@ -707,7 +720,7 @@ public sealed partial class EditSession(IEditableDocument document)
 
     /// <summary>
     /// The room for a picture in a paragraph of a Word document, in points: the width of its section's text column (columns of
-    /// even width) and the height of the page's text; in a note, header or footer the usual page's.
+    /// even width), of a table's cell its text's, and the height of the page's text; in a note, header or footer the usual page's.
     /// </summary>
     static (double Width, double Height) RoomFor(WordDocument word, int paragraph)
     {
@@ -722,6 +735,9 @@ public sealed partial class EditSession(IEditableDocument document)
         }
         var columns = Math.Max(1, section.Columns ?? 1);
         var width = ((section.PageWidth ?? 595.3) - (section.Left ?? 72) - (section.Right ?? 72) - (section.Gutter ?? 0) - (columns - 1) * (section.ColumnSpace ?? 36)) / columns;
+        // In a table's cell as wide as its text, so that the column keeps its width.
+        if (word.TableOf(paragraph) != null)
+            width = Math.Min(width, word.TextWidth(paragraph));
         var height = (section.PageHeight ?? 841.9) - Math.Abs(section.Top ?? 72) - Math.Abs(section.Bottom ?? 72);
         return (Math.Max(36, width), Math.Max(36, height));
     }
@@ -763,6 +779,8 @@ public sealed partial class EditSession(IEditableDocument document)
     /// </summary>
     public void Backspace() => Act(false, () =>
     {
+        if (ClearedCells() is { } cleared)
+            return Same(cleared);
         if (Selecting)
             return Same(DeleteSelection(typing: false));
         var (paragraph, offset) = Caret;
@@ -799,6 +817,8 @@ public sealed partial class EditSession(IEditableDocument document)
     /// </summary>
     public void Delete() => Act(false, () =>
     {
+        if (ClearedCells() is { } cleared)
+            return Same(cleared);
         if (Selecting)
             return Same(DeleteSelection(typing: false));
         var (paragraph, offset) = Caret;
@@ -1175,9 +1195,22 @@ public sealed partial class EditSession(IEditableDocument document)
         return (start, end, between);
     }
 
-    /// <summary>The selection's paragraphs with the stretch of each it covers, or the cursor's paragraph where nothing is selected.</summary>
+    /// <summary>
+    /// Over cells selected (see CellSelection) what they hold taken away, as Word's Delete and Backspace take it (measured in Word 365 by
+    /// COM, scratchpad tables/looks.vbs: each left empty, the cursor in the first); the place the cursor goes to, null without cells selected.
+    /// </summary>
+    TextPlace? ClearedCells() => CellSelection is { } cells && document is WordDocument word
+        ? new TextPlace(word.ClearCells(cells.Table, cells.Top, cells.Bottom, cells.Left, cells.Right), 0)
+        : null;
+
+    /// <summary>
+    /// The selection's paragraphs with the stretch of each it covers, or the cursor's paragraph where nothing is selected; over cells
+    /// selected (see CellSelection) all of theirs, whole.
+    /// </summary>
     List<(int Paragraph, int From, int To)> Stretches()
     {
+        if (CellSelection is { } cells)
+            return [.. CellsIn(cells).SelectMany(c => c.Paragraphs).Select(p => (p, 0, document.Text(p).Length))];
         if (!Selecting)
             return [(Caret.Paragraph, Caret.Offset, Caret.Offset)];
         var (start, end, between) = Ordered();

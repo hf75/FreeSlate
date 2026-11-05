@@ -89,10 +89,10 @@ public sealed record PlacedLine(Line Line, double Left, double Top, double Angle
 /// <summary>
 /// A row of a table in the body placed on a page (or a part of one a page break cuts), for an editor that changes the table by its
 /// rows, cells and lines: the table's block, its row of the table's model (hidden rows counted), where the grid's lines stand on the
-/// page, its top and its height (its top line with it), points, what its height has beyond its at-least height (see RowPlace), and
-/// whether it is a head row repeated at the top of a later page.
+/// page, its top and its height (its top line with it), points, what its height has beyond its at-least height and which of its lines
+/// show (see RowPlace), and whether it is a head row repeated at the top of a later page.
 /// </summary>
-public sealed record PlacedRow(int Table, int Row, double[] Lines, double Top, double Height, double Extra, bool Repeated);
+public sealed record PlacedRow(int Table, int Row, double[] Lines, double Top, double Height, double Extra, bool Repeated, bool[] Uprights, bool[] Over, bool[] Under);
 
 /// <summary>A page of the laid-out document.</summary>
 public sealed class PageBox
@@ -5291,7 +5291,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         var anchors = new List<CellAnchor>();
         TableLayout.Draw(row, row.Height, left, y, page!.Lines, page.Shading, page.Borders, page.Strokes, anchors);
         if (row.Place is { } place)
-            page.TableRows.Add(new PlacedRow(table, place.Row, [.. place.Lines.Select(x => left + x)], y, row.Height, place.Extra, repeated));
+            page.TableRows.Add(new PlacedRow(table, place.Row, [.. place.Lines.Select(x => left + x)], y, row.Height, place.Extra, repeated, place.Uprights, place.Over, place.Under));
         foreach (var anchor in anchors)
             page.Drawings.Add(PlaceAnchor(anchor.Anchor, page, anchor.ParagraphTop, anchor.LineTop, left, page.TextWidth, anchor, anchor.CharacterX));
         y += row.Height;

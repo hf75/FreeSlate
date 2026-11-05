@@ -274,6 +274,46 @@ static partial class TextEdits
         }
 
         /// <summary>
+        /// Splits a cell into so many of even width side by side, at the grid's lines where the parts end on one, else at new ones (see
+        /// SplitDown); or (<paramref name="across"/>) into so many one below the other: a cell of one row into as many rows, the other
+        /// cells of its row going on down through them (see SplitAcross), one of as many rows or a multiple at the lines between them.
+        /// Returns the cell, its first part.
+        /// </summary>
+        /// <exception cref="NotSupportedException">The cell spans rows that do not part so evenly.</exception>
+        public Cell Split(Cell cell, bool across, int parts)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(parts, 2);
+            if (across)
+            {
+                var span = cell.Bottom - cell.Top;
+                if (span == 1)
+                {
+                    for (var (k, last) = (1, cell); k < parts; k++)
+                        last = SplitAcross([last], last.Top, height: 1)[0];
+                }
+                else if (span % parts == 0)
+                {
+                    for (var k = parts - 1; k >= 1; k--)
+                        SplitAcross([cell], cell.Top + span * k / parts);
+                }
+                else
+                    throw new NotSupportedException("The cell's rows do not part so evenly.");
+                return cell;
+            }
+            var (left, right) = (Line(cell.Left), Line(cell.Right));
+            for (var k = parts - 1; k >= 1; k--)
+            {
+                var x = left + (right - left) * k / parts;
+                var column = Enumerable.Range(cell.Left, cell.Right - cell.Left).First(c => Line(c + 1) > x);
+                if (Line(column) == x)
+                    SplitDown([cell], column);
+                else
+                    SplitDown([cell], column, x - Line(column));
+            }
+            return cell;
+        }
+
+        /// <summary>
         /// Puts rows in before row <paramref name="at"/> (at the end where it is the count), each with cells like those of row
         /// <paramref name="like"/> (their spans, properties and paragraphs' marks, as Word's InsertRowsAbove and Below do), cells merged
         /// down over the place going on through them. Returns the first new row's cells.
@@ -625,10 +665,173 @@ static partial class TextEdits
         }
 
         /// <summary>
+        /// Gives a stretch of a line of the grid a line of its own, as Word does where a side of cells is given one (Borders' LineStyle,
+        /// LineWidth and Color, measured in Word 365 by COM, scratchpad tables/looks.vbs): an upright one (grid line
+        /// <paramref name="line"/>) through rows from <paramref name="from"/> to before <paramref name="to"/>, one across (the line before
+        /// row <paramref name="line"/>) through grid columns. Each cell on either side gets it on its side there (w:tcBorders, nil where
+        /// it is none): a cell merged down on an upright line in each row it passes, above a line across in its last row; the cell the
+        /// table's own side has alone. Null takes those sides away, the line as the table's look gives it again. Within a merged cell
+        /// there is no line.
+        /// </summary>
+        public void SetLine(bool upright, int line, int from, int to, CellBorder? border)
+        {
+            var (lines, along) = upright ? (Grid.Count, Rows.Count) : (Rows.Count, Grid.Count);
+            ArgumentOutOfRangeException.ThrowIfNegative(line);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(line, lines);
+            for (var k = Math.Max(0, from); k < Math.Min(to, along); k++)
+            {
+                var (before, after) = upright
+                    ? (line > 0 ? At(k, line - 1) : null, line < Grid.Count ? At(k, line) : null)
+                    : (line > 0 ? At(line - 1, k) : null, line < Rows.Count ? At(line, k) : null);
+                if (before != null && ReferenceEquals(before, after))
+                    continue;
+                if (before != null)
+                    Side(InRow(before, upright ? k : line - 1), upright ? "right" : "bottom", border);
+                if (after != null)
+                    Side(InRow(after, upright ? k : line), upright ? "left" : "top", border);
+            }
+        }
+
+        /// <summary>
+        /// Gives lines of a rectangle of the grid a line of their own (see SetLine): its sides, the lines across within it and the upright
+        /// ones, as Word's Borders of cells selected do.
+        /// </summary>
+        public void SetLines(int top, int bottom, int left, int right, CellLines which, CellBorder? border)
+        {
+            if (which.HasFlag(CellLines.Top))
+                SetLine(false, top, left, right, border);
+            if (which.HasFlag(CellLines.Bottom))
+                SetLine(false, bottom, left, right, border);
+            if (which.HasFlag(CellLines.Left))
+                SetLine(true, left, top, bottom, border);
+            if (which.HasFlag(CellLines.Right))
+                SetLine(true, right, top, bottom, border);
+            if (which.HasFlag(CellLines.Across))
+                for (var r = top + 1; r < bottom; r++)
+                    SetLine(false, r, left, right, border);
+            if (which.HasFlag(CellLines.Upright))
+                for (var k = left + 1; k < right; k++)
+                    SetLine(true, k, top, bottom, border);
+        }
+
+        /// <summary>The w:tc of a cell in one of its rows: the cell's own in its first, else the one going on with its merge down there.</summary>
+        XElement InRow(Cell cell, int row) => row > cell.Top && row - cell.Top - 1 < cell.Below.Count ? cell.Below[row - cell.Top - 1] : cell.Element;
+
+        /// <summary>A side of a cell (w:tcBorders' top, left, bottom, right) given a line, or none of its own (null).</summary>
+        void Side(XElement tc, string side, CellBorder? border)
+        {
+            var tcPr = tc.Element(w + "tcPr") ?? Made(tc, w + "tcPr");
+            var borders = tcPr.Element(w + "tcBorders");
+            // A side named by the direction of the text (start, end) goes too, which would stand for it beside the one written.
+            borders?.Elements().Where(e => e.Name.LocalName == side || e.Name.LocalName == side switch { "left" => "start", "right" => "end", _ => "" }).Remove();
+            if (border != null)
+            {
+                borders ??= Property(tcPr, "tcBorders", CellOrder);
+                var made = new XElement(w + side, new XAttribute(w + "val", border.Kind));
+                if (border.Kind is not ("nil" or "none"))
+                {
+                    made.Add(new XAttribute(w + "sz", ((int)Math.Round(border.Width * 8)).ToString(CultureInfo.InvariantCulture)),
+                        new XAttribute(w + "space", "0"), new XAttribute(w + "color", border.Color));
+                }
+                borders.Add(made);
+                Order(borders, BorderOrder);
+            }
+            if (borders is { HasElements: false, HasAttributes: false })
+                borders.Remove();
+        }
+
+        /// <summary>
+        /// The cells reaching into a rectangle of the grid shaded with a color (w:shd clear, its fill; hex RRGGBB), as Word's Shading of
+        /// cells writes it (measured in Word 365 by COM, scratchpad tables/looks.vbs); null, without a shading of their own.
+        /// </summary>
+        public void Shade(int top, int bottom, int left, int right, string? fill)
+        {
+            foreach (var cell in Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right))
+            {
+                foreach (var tc in cell.Below.Prepend(cell.Element))
+                {
+                    var tcPr = tc.Element(w + "tcPr") ?? Made(tc, w + "tcPr");
+                    if (fill == null)
+                    {
+                        tcPr.Element(w + "shd")?.Remove();
+                        continue;
+                    }
+                    var shd = Property(tcPr, "shd", CellOrder);
+                    shd.RemoveAttributes();
+                    shd.SetAttributeValue(w + "val", "clear");
+                    shd.SetAttributeValue(w + "color", "auto");
+                    shd.SetAttributeValue(w + "fill", fill);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The table aligned between the text's edges, as Word's Rows.Alignment writes it (measured in Word 365 by COM, scratchpad
+        /// tables/looks.vbs): centered or right (w:jc in the table's properties and in each row's), its indent gone; left (null), neither.
+        /// </summary>
+        public void Align(string? alignment)
+        {
+            var tblPr = table.Element(w + "tblPr") ?? Made(table, w + "tblPr");
+            tblPr.Element(w + "tblInd")?.Remove();
+            if (alignment == null)
+                tblPr.Element(w + "jc")?.Remove();
+            else
+                Property(tblPr, "jc", TableOrder).SetAttributeValue(w + "val", alignment);
+            foreach (var row in Rows)
+            {
+                if (alignment != null)
+                    Property(row.Element(w + "trPr") ?? Made(row, w + "trPr"), "jc", RowOrder).SetAttributeValue(w + "val", alignment);
+                else if (row.Element(w + "trPr") is { } trPr)
+                {
+                    trPr.Element(w + "jc")?.Remove();
+                    if (!trPr.HasElements && !trPr.HasAttributes)
+                        trPr.Remove();
+                }
+            }
+        }
+
+        /// <summary>How the table stands between the text's edges (w:jc): center, right (end), or null for left.</summary>
+        public string? Alignment => table.Element(w + "tblPr")?.Element(w + "jc")?.Attribute(w + "val")?.Value switch
+        {
+            "center" => "center",
+            "right" or "end" => "right",
+            _ => null,
+        };
+
+        /// <summary>
+        /// The table as wide as a width (twips), its columns in proportion, standing at the text's left edge (no indent, no alignment), as
+        /// a new table stands.
+        /// </summary>
+        public void Widen(int whole)
+        {
+            Fit(whole);
+            Align(null);
+        }
+
+        /// <summary>
+        /// What the cells reaching into a rectangle of the grid hold taken away, as Word's Delete does over cells selected (measured in
+        /// Word 365 by COM, scratchpad tables/looks.vbs): each left with an empty paragraph like its last one. Returns the first of them.
+        /// </summary>
+        public Cell? Clear(int top, int bottom, int left, int right)
+        {
+            Cell? first = null;
+            foreach (var cell in Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right).OrderBy(c => c.Top).ThenBy(c => c.Left))
+            {
+                first ??= cell;
+                var empty = EmptyLike(cell.Element);
+                foreach (var node in Content(cell).ToList())
+                    node.Remove();
+                cell.Element.Add(empty);
+            }
+            return first;
+        }
+
+        /// <summary>
         /// Moves a line of the grid to stand so many twips from the table's left edge, as dragging a line between columns does in Word
         /// (Columns.SetWidth with wdAdjustFirstColumn): the column right of it giving way, the table as wide as it was; the table's
-        /// right edge makes its last column wider or narrower; its left edge moves the table (its indent) and its first column's left.
-        /// No column narrower than <paramref name="least"/>.
+        /// right edge makes its last column wider or narrower; its left edge moves the table (its indent) and its first column's left,
+        /// in a table aligned centered or right its first column's alone (Word has no indent for it then). No column narrower than
+        /// <paramref name="least"/>.
         /// </summary>
         public void MoveLine(int line, int at, int least)
         {
@@ -636,7 +839,8 @@ static partial class TextEdits
             {
                 var moved = Math.Clamp(at, -Grid[0] * 4, Grid[0] - least);
                 Grid[0] -= moved;
-                Indent(moved);
+                if (Alignment == null)
+                    Indent(moved);
                 return;
             }
             var left = Line(line - 1);

@@ -840,6 +840,19 @@ public sealed partial class WordDocument : IEditableDocument
         Change(top, top, (stretch, tracking) => TextEdits.Format(stretch, p, format, tracking));
     }
 
+    /// <summary>
+    /// A paragraph whose lines are exactly so high (its own w:spacing or its style's, the rule exact) given lines at least so high, so
+    /// that a picture in its line shows whole: Word cuts it at the line's height (measured in Word 365, scratchpad tables/probe2: a
+    /// picture put in in a cell of the notebook's tone, its lines 20 points high, shows only its lowest part). Whether it was so.
+    /// </summary>
+    public bool OpenLines(int paragraph)
+    {
+        if (Find(paragraph).Paragraph.Format is not { LineRule: "exact", Line: { } line })
+            return false;
+        Format(paragraph, new ParagraphFormatting { LinesAtLeast = line / 20 });
+        return true;
+    }
+
     /// <summary>The stretches of a paragraph's text whose runs have a character style (w:rStyle), see IEditableDocument.CharacterStyles.</summary>
     public IReadOnlyList<(int Offset, int Length, string Style)> CharacterStyles(int paragraph)
     {

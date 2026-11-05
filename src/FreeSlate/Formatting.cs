@@ -73,6 +73,9 @@ public sealed record ParagraphFormatting
     public double? Before { get; init; }
     public double? After { get; init; }
     public double? Lines { get; init; }
+
+    /// <summary>The lines at least so high, in points (w:spacing, the rule atLeast); Word documents only.</summary>
+    public double? LinesAtLeast { get; init; }
 }
 
 /// <summary>
