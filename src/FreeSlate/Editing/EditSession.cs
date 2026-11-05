@@ -6,9 +6,11 @@ public readonly record struct TextPlace(int Paragraph, int Offset);
 /// <summary>
 /// A selection copied (see EditSession.Copy): its text, as the system's clipboard takes it, and where the document keeps
 /// more, its paragraphs in the document's own markup for pasting them with their formatting into it (see
-/// IEditableDocument.Copy), the document they are of (<paramref name="From"/>: another takes the text).
+/// IEditableDocument.Copy), the document they are of (<paramref name="From"/>: another takes the text); or, where it was
+/// cells of a table (<paramref name="Cells"/>), the text as a spreadsheet's rows and the cells as a table of their own (see
+/// WordDocument.CopyCells).
 /// </summary>
-public sealed record Fragment(string Text, IReadOnlyList<string>? Markup, IEditableDocument? From = null);
+public sealed record Fragment(string Text, IReadOnlyList<string>? Markup, IEditableDocument? From = null, bool Cells = false);
 
 /// <summary>
 /// An editor's work on a document without its surface: the cursor and the selection as places in its text, and what an
@@ -73,6 +75,8 @@ public sealed partial class EditSession(IEditableDocument document)
     {
         if (!Selecting)
             return new Fragment("", null);
+        if (CopiedCells() is { } cells)
+            return cells;
         var (start, end, _) = Ordered();
         return new Fragment(Selected, document.Copy(start.Paragraph, start.Offset, end.Paragraph, end.Offset), document);
     }
@@ -80,11 +84,14 @@ public sealed partial class EditSession(IEditableDocument document)
     /// <summary>
     /// Pastes what was copied at the cursor in place of the selection, a handling of its own: its markup with its
     /// formatting where it has some of this document's and the document takes it there (see IEditableDocument.Paste),
-    /// else its text (see Paste(string)).
+    /// else its text (see Paste(string)); cells copied over the cells from the cursor's or the selected ones' on, outside
+    /// tables as a table (see PasteCells).
     /// </summary>
     public void Paste(Fragment fragment)
     {
-        if (fragment.Markup is { } markup && ReferenceEquals(fragment.From, document))
+        if (fragment.Cells && PastedCells(fragment))
+            return;
+        if (fragment.Markup is { } markup && ReferenceEquals(fragment.From, document) && !fragment.Cells)
         {
             try
             {
@@ -269,8 +276,14 @@ public sealed partial class EditSession(IEditableDocument document)
     /// line feeds, tabs and breaks left out (other control characters and U+FFFC, which stands for an object; page and
     /// column breaks as the document has them, see IEditableDocument.Replace).
     /// </summary>
-    public void Paste(string text) =>
-        Put(new string([.. text.Where(c => (!char.IsControl(c) || c is '\n' or '\r' or '\t' or '\v' or '\f' or '\u000E') && c != '\uFFFC')]), typing: false);
+    public void Paste(string text)
+    {
+        var kept = new string([.. text.Where(c => (!char.IsControl(c) || c is '\n' or '\r' or '\t' or '\v' or '\f' or '\u000E') && c != '\uFFFC')]);
+        // A spreadsheet's rows go into a table's cells (see PastedTexts).
+        if (kept.Contains('\t', StringComparison.Ordinal) && PastedTexts(kept))
+            return;
+        Put(kept, typing: false);
+    }
 
     void Put(string text, bool typing)
     {

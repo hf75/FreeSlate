@@ -766,6 +766,48 @@ static partial class TextEdits
         }
 
         /// <summary>
+        /// Where the text stands in the cells reaching into a rectangle of the grid, as the nine buttons of Word's Layout tab set it
+        /// (measured in Word 365 by COM, scratchpad tables/align.vbs: Cell.VerticalAlignment and the paragraphs' Alignment): up and down
+        /// the cell, w:vAlign center or bottom, top none; along the lines, each of its paragraphs' w:jc center or right, left none (Word
+        /// writes neither where the place is the top or the left); <paramref name="spelled"/>, the top and the left written as well, for
+        /// cells whose styles give them another place. Null leaves either as it is.
+        /// </summary>
+        public void Place(int top, int bottom, int left, int right, string? vertical, string? horizontal, bool spelled = false)
+        {
+            foreach (var cell in Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right))
+            {
+                if (vertical != null)
+                {
+                    foreach (var tc in cell.Below.Prepend(cell.Element))
+                    {
+                        var tcPr = tc.Element(w + "tcPr") ?? Made(tc, w + "tcPr");
+                        if (vertical == "top" && !spelled)
+                            tcPr.Element(w + "vAlign")?.Remove();
+                        else
+                            Property(tcPr, "vAlign", CellOrder).SetAttributeValue(w + "val", vertical);
+                    }
+                }
+                if (horizontal == null)
+                    continue;
+                foreach (var p in Paragraphs(cell))
+                {
+                    if (horizontal != "left" || spelled)
+                        Property(p.Element(w + "pPr") ?? Made(p, w + "pPr"), "jc", ParagraphOrder).SetAttributeValue(w + "val", horizontal);
+                    else if (p.Element(w + "pPr") is { } pPr)
+                    {
+                        pPr.Element(w + "jc")?.Remove();
+                        if (!pPr.HasElements && !pPr.HasAttributes)
+                            pPr.Remove();
+                    }
+                }
+            }
+        }
+
+        /// <summary>The paragraphs of a cell's text, those of tables in it too, not those of text boxes in it.</summary>
+        IEnumerable<XElement> Paragraphs(Cell cell) => Content(cell).SelectMany(e => e.DescendantsAndSelf(w + "p"))
+            .Where(p => !p.Ancestors().TakeWhile(a => a != cell.Element).Any(a => a.Name.LocalName is "txbxContent" or "textbox"));
+
+        /// <summary>
         /// The table aligned between the text's edges, as Word's Rows.Alignment writes it (measured in Word 365 by COM, scratchpad
         /// tables/looks.vbs): centered or right (w:jc in the table's properties and in each row's), its indent gone; left (null), neither.
         /// </summary>
@@ -853,6 +895,130 @@ static partial class TextEdits
             var to = Math.Clamp(at, left + least, right - least);
             Grid[line - 1] = to - left;
             Grid[line] = right - to;
+        }
+
+        /// <summary>
+        /// A copy of the cells of a rectangle of the grid (each reaching into it whole, as cells selected do) as a table of their own: the
+        /// table's properties, the grid's columns there as wide as they are, the rows there with their properties, and those cells with
+        /// theirs and what they hold, as it reads with its tracked changes accepted (see Accepted). The table itself stays as it is.
+        /// </summary>
+        public XElement Part(int top, int bottom, int left, int right)
+        {
+            var copy = new XElement(table);
+            var shape = Of(copy);
+            var widths = shape.Grid.Skip(left).Take(right - left).ToList();
+            if (bottom < shape.Rows.Count)
+                shape.RemoveRows(bottom, shape.Rows.Count);
+            if (top > 0)
+                shape.RemoveRows(0, top);
+            if (right < shape.Columns)
+                shape.RemoveColumns(right, shape.Columns);
+            if (left > 0)
+                shape.RemoveColumns(0, left);
+            shape.Grid.Clear();
+            shape.Grid.AddRange(widths);
+            shape.Write();
+            foreach (var p in copy.Descendants(w + "p").ToList())
+                Accepted(p);
+            return copy;
+        }
+
+        /// <summary>
+        /// Cells copied (see Part) put over the cells from a place of the grid on, as Word's Overwrite Cells does: the rows and columns
+        /// they need added at the end, like the last ones; each cell there takes what the copied cells whose first place lies in it hold
+        /// (one after another where more do), with their color and their text's place up and down; one none lies in is left empty. The
+        /// table's lines stay its own. Returns the cell at the place.
+        /// </summary>
+        public Cell? Overwrite(int row, int column, TableShape copied)
+        {
+            var (bottom, right) = Grow(row + copied.Rows.Count, column + copied.Columns);
+            var given = new Dictionary<Cell, List<Cell>>();
+            foreach (var from in copied.Cells.OrderBy(c => c.Top).ThenBy(c => c.Left))
+            {
+                if (At(row + from.Top, column + from.Left) is { } to)
+                    (given.TryGetValue(to, out var list) ? list : given[to] = []).Add(from);
+            }
+            foreach (var cell in Cells.Where(c => c.Top < bottom && row < c.Bottom && c.Left < right && column < c.Right))
+            {
+                var froms = given.GetValueOrDefault(cell) ?? [];
+                var held = froms.Where(f => !copied.Empty(f)).ToList();
+                var content = (held.Count > 0 ? held : froms.Take(1)).SelectMany(f => copied.Content(f)).Select(e => new XElement(e)).ToList();
+                Fill(cell, content.Count > 0 ? content : [EmptyLike(cell.Element)]);
+                if (froms.FirstOrDefault() is not { } look)
+                    continue;
+                foreach (var tc in cell.Below.Prepend(cell.Element))
+                {
+                    var tcPr = tc.Element(w + "tcPr") ?? Made(tc, w + "tcPr");
+                    foreach (var name in new[] { "shd", "vAlign" })
+                    {
+                        tcPr.Element(w + name)?.Remove();
+                        if (look.Element.Element(w + "tcPr")?.Element(w + name) is { } own)
+                            Property(tcPr, name, CellOrder).ReplaceWith(new XElement(own));
+                    }
+                }
+            }
+            return At(row, column);
+        }
+
+        /// <summary>
+        /// Texts put over the cells from a place of the grid on (rows of cells, as a spreadsheet copies them), as Overwrite puts cells:
+        /// each cell there its text's lines as paragraphs like its last one, the text formatted as its mark is (as typing in it is).
+        /// Returns the cell at the place.
+        /// </summary>
+        public Cell? Overwrite(int row, int column, IReadOnlyList<IReadOnlyList<string>> texts)
+        {
+            var columns = texts.Count > 0 ? texts.Max(r => r.Count) : 0;
+            Grow(row + texts.Count, column + columns);
+            var given = new Dictionary<Cell, List<string>>();
+            for (var r = 0; r < texts.Count; r++)
+            {
+                for (var c = 0; c < texts[r].Count; c++)
+                {
+                    if (At(row + r, column + c) is { } to)
+                        (given.TryGetValue(to, out var list) ? list : given[to] = []).Add(texts[r][c]);
+                }
+            }
+            foreach (var (cell, held) in given)
+            {
+                var lines = held.Where(t => t.Length > 0).SelectMany(t => t.Split('\n')).ToList();
+                Fill(cell, lines.Count > 0 ? [.. lines.Select(line => Lettered(EmptyLike(cell.Element), line))] : [EmptyLike(cell.Element)]);
+            }
+            return At(row, column);
+        }
+
+        /// <summary>A paragraph (an empty one, see EmptyLike) with a text in a run formatted as its mark is.</summary>
+        XElement Lettered(XElement paragraph, string text)
+        {
+            if (text.Length == 0)
+                return paragraph;
+            var mark = paragraph.Element(w + "pPr")?.Element(w + "rPr") is { } rPr ? new XElement(rPr) : null;
+            mark?.Elements().Where(e => e.Name.LocalName is "ins" or "del" or "moveFrom" or "moveTo" or "rPrChange").Remove();
+            var t = new XElement(w + "t", text);
+            if (text.Trim().Length != text.Length)
+                t.SetAttributeValue(XNamespace.Xml + "space", "preserve");
+            paragraph.Add(new XElement(w + "r", mark is { HasElements: true } ? mark : null, t));
+            return paragraph;
+        }
+
+        /// <summary>A cell's content replaced: what it held taken away, the elements given in its place.</summary>
+        void Fill(Cell cell, IReadOnlyList<XElement> content)
+        {
+            foreach (var node in Content(cell).ToList())
+                node.Remove();
+            cell.Element.Add(content);
+        }
+
+        /// <summary>
+        /// The table grown to so many rows and columns at least, the rows added at its end like its last one, the columns at its right
+        /// like its last one (the table as wide as it was, see InsertColumns). Returns the counts asked for.
+        /// </summary>
+        (int Rows, int Columns) Grow(int rows, int columns)
+        {
+            if (rows > Rows.Count)
+                InsertRows(Rows.Count, rows - Rows.Count, Rows.Count - 1);
+            if (columns > Columns)
+                InsertColumns(Columns, columns - Columns, Columns - 1);
+            return (rows, columns);
         }
 
         /// <summary>A row at least so high (twips, Word's trHeight without a rule); none where it is 0.</summary>
@@ -1104,6 +1270,20 @@ static partial class TextEdits
 
     /// <summary>The order of a cell's lines in w:tcBorders (CT_TcBorders).</summary>
     static readonly string[] BorderOrder = ["top", "start", "left", "bottom", "end", "right", "insideH", "insideV", "tl2br", "tr2bl"];
+
+    /// <summary>
+    /// The cells of a rectangle of a table's grid in a stretch copied as a table of their own (see TableShape.Part), written with the
+    /// prefixes of the stretch. The stretch is not written back: it is the copy's.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The table is not one of plain rows and cells.</exception>
+    public static string CopyCells(Stretch stretch, TableBlock table, int top, int bottom, int left, int right)
+    {
+        var tbl = stretch.Find(table.Element) ?? throw new NotSupportedException("The table is not where it was read.");
+        var part = TableShape.Of(tbl).Part(top, bottom, left, right);
+        // Beside the table in the stretch, so that it is written with the stretch's prefixes.
+        tbl.AddAfterSelf(part);
+        return PartText.Xml(part);
+    }
 
     /// <summary>
     /// A table changed as a whole in a stretch (see TableShape): its shape read, changed by <paramref name="change"/>, and written back,

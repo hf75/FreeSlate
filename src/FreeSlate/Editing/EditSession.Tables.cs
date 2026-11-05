@@ -40,19 +40,177 @@ public sealed partial class EditSession
         var (from, to) = (cells.Cells.FirstOrDefault(c => c.Paragraphs.Contains(Anchor.Paragraph)), cells.Cells.FirstOrDefault(c => c.Paragraphs.Contains(Caret.Paragraph)));
         if (from == null || to == null || ReferenceEquals(from, to))
             return null;
-        var (top, bottom, left, right) = (Math.Min(from.Top, to.Top), Math.Max(from.Bottom, to.Bottom), Math.Min(from.Left, to.Left), Math.Max(from.Right, to.Right));
-        for (var grown = true; grown;)
+        return word.Enclosing(table, Math.Min(from.Top, to.Top), Math.Max(from.Bottom, to.Bottom), Math.Min(from.Left, to.Left), Math.Max(from.Right, to.Right));
+    }
+
+    /// <summary>Cells of a table selected together, the anchor at the start of the first and the cursor at the end of the last (as dragging over them leaves them).</summary>
+    public void Select(CellRange range)
+    {
+        if (CellsIn(range) is not [var first, .., var last])
+            return;
+        Place(new TextPlace(first.First, 0));
+        Place(new TextPlace(last.Last, document.Text(last.Last).Length), extend: true);
+    }
+
+    /// <summary>
+    /// The cells selected copied (see Copy): their text as a spreadsheet's rows (a tab between cells, a line feed after each row, a cell
+    /// of more lines or of tabs or quotes in quotes, its quotes doubled; a cell merged over more places at its first, the others empty),
+    /// and their markup as a table of their own (see WordDocument.CopyCells); null without cells selected, or where the document keeps
+    /// them so not.
+    /// </summary>
+    Fragment? CopiedCells()
+    {
+        if (CellSelection is not { } range || document is not WordDocument word || word.CopyCells(range.Table, range.Top, range.Bottom, range.Left, range.Right) is not { } markup)
+            return null;
+        var cells = CellsIn(range);
+        var text = new System.Text.StringBuilder();
+        for (var r = range.Top; r < range.Bottom; r++)
         {
-            grown = false;
-            foreach (var cell in cells.Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right))
+            for (var c = range.Left; c < range.Right; c++)
             {
-                if (cell.Top >= top && cell.Bottom <= bottom && cell.Left >= left && cell.Right <= right)
-                    continue;
-                (top, bottom, left, right) = (Math.Min(top, cell.Top), Math.Max(bottom, cell.Bottom), Math.Min(left, cell.Left), Math.Max(right, cell.Right));
-                grown = true;
+                if (c > range.Left)
+                    text.Append('\t');
+                if (cells.FirstOrDefault(k => k.Top == r && k.Left == c) is { } cell)
+                    text.Append(Field(string.Join("\n", cell.Paragraphs.Select(p => document.Text(p).Replace("￼", "", StringComparison.Ordinal)))));
             }
+            text.Append("\r\n");
         }
-        return new CellRange(table, top, bottom, left, right);
+        return new Fragment(text.ToString(), [markup], document, Cells: true);
+
+        static string Field(string text) => text.IndexOfAny(['\t', '\n', '"']) >= 0 ? "\"" + text.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"" : text;
+    }
+
+    /// <summary>
+    /// Cells copied of this document put in, a handling of its own: in a table over its cells from the first of the cells acted on on
+    /// (see WordDocument.PasteCells), the cells they went over selected then; at the start of a paragraph right after a table, as rows at
+    /// its end (the two would meet, and Word joins tables that meet); elsewhere in the body as a table of their own in place of the
+    /// selection, as a table is put in (see InsertTable), the cursor after it. False where they are another document's, or cannot go
+    /// there.
+    /// </summary>
+    bool PastedCells(Fragment fragment)
+    {
+        if (fragment.Markup is not [var markup] || !ReferenceEquals(fragment.From, document) || document is not WordDocument word)
+            return false;
+        try
+        {
+            if (CellsActed is { } at)
+            {
+                Act(false, () =>
+                {
+                    var went = word.PasteCells(at.Table, at.Top, at.Left, markup);
+                    return Spanning(went);
+                });
+                return true;
+            }
+            Act(false, () =>
+            {
+                var (paragraph, offset) = DeleteSelection(typing: false);
+                if (offset == 0 && word.TableBefore(paragraph) is { } above && word.CellsOf(above) is { } joined)
+                    return Spanning(word.PasteCells(above, joined.Rows, 0, markup));
+                if (offset > 0)
+                    paragraph = document.Split(paragraph, offset);
+                document.InsertBlocks(paragraph, markup, before: true);
+                return Same(new TextPlace(paragraph, 0));
+            });
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Text of a spreadsheet's rows (see CopiedCells) put over a table's cells from the first of the cells acted on on (see
+    /// WordDocument.PasteTexts), a handling of its own, the cells they went over selected then: rows of as many cells each, more than one,
+    /// apart by tabs, each row ended by a line end as a spreadsheet copies them, or more than one row. False outside tables, and for other
+    /// text (a tab in a line goes in as text, as Word puts it).
+    /// </summary>
+    bool PastedTexts(string text)
+    {
+        if (CellsActed is not { } at || document is not WordDocument word)
+            return false;
+        var rows = Rows(text);
+        if (rows.Count == 0 || rows[0].Count < 2 || rows.Any(r => r.Count != rows[0].Count) || rows.Count == 1 && !text.EndsWith('\n') && !text.EndsWith('\r'))
+            return false;
+        try
+        {
+            Act(false, () => Spanning(word.PasteTexts(at.Table, at.Top, at.Left, rows)));
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            // Taken back (see Act), as where changes are tracked: the text goes in as text.
+            return false;
+        }
+    }
+
+    /// <summary>The cursor and the anchor that select cells of a table together (see Select), as a handling leaves them.</summary>
+    (TextPlace Caret, TextPlace Anchor) Spanning(CellRange range)
+    {
+        if (CellsIn(range) is not [var first, ..] cells)
+            return (Caret, Anchor);
+        if (cells.Count == 1)
+            return Same(new TextPlace(first.First, 0));
+        var last = cells[^1];
+        return (new TextPlace(last.Last, document.Text(last.Last).Length), new TextPlace(first.First, 0));
+    }
+
+    /// <summary>
+    /// A spreadsheet's rows as their cells' texts (as Excel copies them): cells apart by tabs, rows by line ends (one at the end, none
+    /// after), a cell begun with a quote quoted up to its closing one (its tabs and line ends its own, a quote doubled one).
+    /// </summary>
+    static List<IReadOnlyList<string>> Rows(string text)
+    {
+        var rows = new List<IReadOnlyList<string>>();
+        var row = new List<string>();
+        var cell = new System.Text.StringBuilder();
+        var i = 0;
+        while (i < text.Length)
+        {
+            if (cell.Length == 0 && text[i] == '"')
+            {
+                // A quoted cell, up to its closing quote: its line ends one each.
+                var j = i + 1;
+                for (; j < text.Length; j++)
+                {
+                    if (text[j] == '"')
+                    {
+                        if (j + 1 >= text.Length || text[j + 1] != '"')
+                            break;
+                        j++;
+                    }
+                    else if (text[j] == '\r' && j + 1 < text.Length && text[j + 1] == '\n')
+                        continue;
+                    cell.Append(text[j] == '\r' ? '\n' : text[j]);
+                }
+                i = j + 1;
+                continue;
+            }
+            var c = text[i++];
+            if (c == '\t')
+            {
+                row.Add(cell.ToString());
+                cell.Clear();
+            }
+            else if (c is '\r' or '\n')
+            {
+                if (c == '\r' && i < text.Length && text[i] == '\n')
+                    i++;
+                row.Add(cell.ToString());
+                cell.Clear();
+                rows.Add(row);
+                row = [];
+            }
+            else
+                cell.Append(c);
+        }
+        if (cell.Length > 0 || row.Count > 0)
+        {
+            row.Add(cell.ToString());
+            rows.Add(row);
+        }
+        return rows;
     }
 
     /// <summary>The cells of a table that a rectangle of its grid holds, in reading order; none where the table is gone.</summary>
@@ -140,6 +298,20 @@ public sealed partial class EditSession
 
     /// <summary>The columns of the cells acted on taken away, the table as wide as it was (all of them, the table).</summary>
     public bool RemoveColumn() => CellsActed is { } cells && ChangeTable(word => word.RemoveColumns(cells.Table, cells.Left, cells.Right));
+
+    /// <summary>
+    /// Where the text stands in the cells acted on (see WordDocument.PlaceText): up and down, top, center or bottom, and along the lines,
+    /// left, center or right; null leaves either.
+    /// </summary>
+    public bool PlaceText(string? vertical, string? horizontal) => CellsActed is { } cells && ChangeTable(word =>
+    {
+        word.PlaceText(cells.Table, cells.Top, cells.Bottom, cells.Left, cells.Right, vertical, horizontal);
+        return null;
+    });
+
+    /// <summary>Where the text stands in the first of the cells acted on (see WordDocument.CellPlace); null outside tables.</summary>
+    public (string Vertical, string Horizontal)? CellPlace => document is WordDocument word && CellsActed is { } cells
+        && CellsIn(cells) is [var first, ..] ? word.CellPlace(cells.Table, first.Top, first.Left) : null;
 
     /// <summary>The cells of the rows of the cells acted on merged into one, with what reaches into them (see WordDocument.MergeAround).</summary>
     public bool MergeRow() => CellsActed is { } cells && Table is { } table && ChangeTable(word => word.MergeAround(cells.Table, cells.Top, cells.Bottom, 0, table.Columns));

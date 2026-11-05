@@ -93,6 +93,18 @@ public sealed partial class WordDocument
         return null;
     }
 
+    /// <summary>
+    /// The table of the body a paragraph of the body follows right after, nothing between them (a table put in before the paragraph would
+    /// join it, as Word joins tables that meet): its block's id; null where the paragraph follows none, or is not the body's own.
+    /// </summary>
+    public int? TableBefore(int paragraph)
+    {
+        if (!paragraphs.TryGetValue(paragraph, out var found) || found.Top is not ParagraphBlock)
+            return null;
+        var index = blocks.IndexOf(found.Top);
+        return index > 0 && blocks[index - 1] is TableBlock table ? table.Id : null;
+    }
+
     /// <summary>A table of the body by its block's id, with the block of the body it stands in (itself, or a table it is nested in).</summary>
     (TableBlock Table, Block Top) TableById(int table)
     {
@@ -388,6 +400,127 @@ public sealed partial class WordDocument
     /// </summary>
     public int ClearCells(int table, int top, int bottom, int left, int right) =>
         Reshape(table, shape => shape.Clear(top, bottom, left, right), widths: true);
+
+    /// <summary>
+    /// Where the text stands in the cells reaching into a rectangle of a table's grid, as the nine buttons of Word's Layout tab put it
+    /// (see TextEdits.TableShape.Place): <paramref name="vertical"/> top, center or bottom, <paramref name="horizontal"/> left, center or
+    /// right; null leaves either as it is. Where the styles would put a cell or a paragraph elsewhere than at the top or the left asked
+    /// for, these are written too, as Word writes what differs from the styles. The paragraphs stay as they are.
+    /// </summary>
+    public void PlaceText(int table, int top, int bottom, int left, int right, string? vertical, string? horizontal)
+    {
+        Reshape(table, shape =>
+        {
+            shape.Place(top, bottom, left, right, vertical, horizontal);
+            return null;
+        }, widths: true);
+        if (vertical != "top" && horizontal != "left" || CellsOf(table) is not { } cells)
+            return;
+        var (model, _) = TableById(table);
+        var spelled = cells.Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right)
+            .Select(c => (Cell: c, Up: vertical == "top" && CellModelAt(model, c) is { } m && m.Format.VerticalAlign is "center" or "bottom",
+                Along: horizontal == "left" && c.Paragraphs.Any(p => Find(p).Paragraph.Format.Justification is not (null or "left" or "start"))))
+            .Where(s => s.Up || s.Along).ToList();
+        if (spelled.Count == 0)
+            return;
+        Reshape(table, shape =>
+        {
+            foreach (var (cell, up, along) in spelled)
+                shape.Place(cell.Top, cell.Top + 1, cell.Left, cell.Left + 1, up ? "top" : null, along ? "left" : null, spelled: true);
+            return null;
+        }, widths: true);
+    }
+
+    /// <summary>
+    /// Where the text stands in a table's cell as its styles and its own properties put it: up and down (top, center or bottom) and along
+    /// its first paragraph's lines (left, center or right); null where no cell begins at the place.
+    /// </summary>
+    public (string Vertical, string Horizontal)? CellPlace(int table, int row, int column)
+    {
+        if (CellsOf(table)?.Cells.FirstOrDefault(c => c.Top == row && c.Left <= column && column < c.Right) is not { } cell)
+            return null;
+        var (model, _) = TableById(table);
+        var vertical = CellModelAt(model, cell)?.Format.VerticalAlign switch
+        {
+            "center" => "center",
+            "bottom" => "bottom",
+            _ => "top",
+        };
+        var horizontal = Find(cell.First).Paragraph.Format.Justification switch
+        {
+            "center" => "center",
+            "right" or "end" => "right",
+            _ => "left",
+        };
+        return (vertical, horizontal);
+    }
+
+    /// <summary>The model of a cell where it begins, the first row it covers.</summary>
+    static CellModel? CellModelAt(TableBlock model, TableCell cell) =>
+        cell.Top < model.Table.Rows.Count ? model.Table.Rows[cell.Top].Cells.FirstOrDefault(c => c.Column == cell.Left) : null;
+
+    /// <summary>
+    /// The cells of a rectangle of a table's grid (each reaching into it whole, as cells selected do) copied as a table of their own in
+    /// WordprocessingML (see TextEdits.TableShape.Part), to be put over cells again (see PasteCells) or in as a table (see InsertBlocks).
+    /// Null where the table is not one of plain rows and cells, and in a document of Strict names.
+    /// </summary>
+    public string? CopyCells(int table, int top, int bottom, int left, int right)
+    {
+        Read();
+        if (IsStrictPart(context.MainPart))
+            return null;
+        try
+        {
+            var (model, block) = TableById(table);
+            return TextEdits.CopyCells(StretchOf(IndexOf(block), IndexOf(block)), model, top, bottom, left, right);
+        }
+        catch (Exception e) when (e is NotSupportedException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Cells copied (see CopyCells) put over a table's cells from a place of its grid on, as Word's Overwrite Cells puts them (see
+    /// TextEdits.TableShape.Overwrite): rows and columns added as they need, the table's lines its own. Returns the cells they went over.
+    /// </summary>
+    public CellRange PasteCells(int table, int row, int column, string copied)
+    {
+        var (_, block) = TableById(table);
+        if (Elements(copied, RootOf(PartOf(block))) is not [{ Name.LocalName: "tbl" } tbl])
+            throw new ArgumentException("The markup is not a table.", nameof(copied));
+        var from = TextEdits.TableShape.Of(tbl);
+        Reshape(table, shape => shape.Overwrite(row, column, from));
+        return Enclosing(table, row, row + from.Rows.Count, column, column + from.Columns);
+    }
+
+    /// <summary>
+    /// Texts put over a table's cells from a place of its grid on, rows of cells as a spreadsheet copies them (see
+    /// TextEdits.TableShape.Overwrite): each cell its text's lines as paragraphs like its own. Returns the cells they went over.
+    /// </summary>
+    public CellRange PasteTexts(int table, int row, int column, IReadOnlyList<IReadOnlyList<string>> texts)
+    {
+        Reshape(table, shape => shape.Overwrite(row, column, texts));
+        return Enclosing(table, row, row + texts.Count, column, column + (texts.Count > 0 ? texts.Max(r => r.Count) : 0));
+    }
+
+    /// <summary>The smallest rectangle of a table's grid that holds another and that each cell reaching into it reaches into whole.</summary>
+    public CellRange Enclosing(int table, int top, int bottom, int left, int right)
+    {
+        var cells = CellsOf(table)?.Cells ?? [];
+        for (var grown = true; grown;)
+        {
+            grown = false;
+            foreach (var cell in cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right))
+            {
+                if (cell.Top >= top && cell.Bottom <= bottom && cell.Left >= left && cell.Right <= right)
+                    continue;
+                (top, bottom, left, right) = (Math.Min(top, cell.Top), Math.Max(bottom, cell.Bottom), Math.Min(left, cell.Left), Math.Max(right, cell.Right));
+                grown = true;
+            }
+        }
+        return new CellRange(table, top, bottom, left, right);
+    }
 
     /// <summary>A table's row at least so high, points (Word's trHeight without a rule); 0, as high as its text. The paragraphs stay as they are.</summary>
     public void SetRowHeight(int table, int row, double height) =>
