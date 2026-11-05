@@ -52,6 +52,7 @@
       <c:LevelLever x:Name="Lever" />
       <c:DescriptionCard x:Name="Card" />
       <c:RecolorStrip x:Name="Strip" />
+      <c:PlacePad x:Name="Pad" />
     </Panel>
   </ScrollViewer>
 

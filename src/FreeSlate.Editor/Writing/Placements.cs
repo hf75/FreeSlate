@@ -101,16 +101,29 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>The icon of a cell's lines: a cell, its left and bottom sides strong.</summary>
     public static readonly string CellLinesIcon = Drawn(Frame(0, 1, 20, 14), Block(0, 1, 2.6, 14), Block(0, 12.4, 20, 2.6));
 
-    /// <summary>The icons of a cell split (a cell, a broken line down its middle), into two or three side by side, or one below the other.</summary>
-    public static readonly string SplitIcon = Drawn(Frame(0, 1, 20, 14), Block(9.4, 3.2, Weight, 2.6), Block(9.4, 6.7, Weight, 2.6), Block(9.4, 10.2, Weight, 2.6));
+    /// <summary>The icons of a cell split, into two or three side by side, or one below the other.</summary>
     public static readonly string SplitColumns2Icon = Drawn(Frame(0, 1, 20, 14), Block(9.4, 1, Weight, 14));
     public static readonly string SplitColumns3Icon = Drawn(Frame(0, 1, 20, 14), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
     public static readonly string SplitRows2Icon = Drawn(Frame(0, 1, 20, 14), Bar(0, 7.4, 20));
     public static readonly string SplitRows3Icon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20));
 
-    /// <summary>The icons of cells merged (a cell, two heads pointing to its middle) and of what they hold taken away (a cell crossed in its middle).</summary>
+    /// <summary>
+    /// The icons of where text stands in a cell: a cell, two lines of text at its top, in its middle or at its bottom, and at its left, in
+    /// its middle or at its right (see EditSession.PlaceText).
+    /// </summary>
+    public static string CellPlaceIcon(string vertical, string horizontal)
+    {
+        var x = horizontal switch { "left" => 2.8, "center" => 6, _ => 9.2 };
+        var y = vertical switch { "top" => 3, "center" => 5.8, _ => 8.6 };
+        var shorter = horizontal switch { "left" => x, "center" => x + 1.4, _ => x + 2.8 };
+        return Drawn(Frame(0, 0, 20, 16), Bar(x, y, 8), Bar(shorter, y + 3.2, 5.2));
+    }
+
+    /// <summary>The icon of where text stands in cells: the text in the middle of a cell.</summary>
+    public static readonly string CellPlaceFieldIcon = CellPlaceIcon("center", "center");
+
+    /// <summary>The icon of cells merged: a cell, two heads pointing to its middle.</summary>
     public static readonly string MergeIcon = Drawn(Frame(0, 1, 20, 14), "M3.4,4.8 L8.2,8 L3.4,11.2 Z", "M16.6,4.8 L16.6,11.2 L11.8,8 Z");
-    public static readonly string ClearIcon = Drawn(Frame(0, 1, 20, 14), Stroke(7, 5, 13, 11), Stroke(13, 5, 7, 11));
 
     /// <summary>The icons of where a table stands between the text's edges: the edges, the table between them at the left, in the middle, at the right, or across.</summary>
     public static readonly string AlignLeftIcon = Aligned(2.4, 9);

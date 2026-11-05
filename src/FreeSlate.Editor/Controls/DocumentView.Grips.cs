@@ -273,7 +273,8 @@ public sealed partial class DocumentView
     {
         var accent = DrawingBrush is ISolidColorBrush { Color: var a } ? a : Colors.Orange;
         var faint = GuideBrush ?? Brushes.LightGray;
-        if (gripped is { } selected)
+        // Their cells selected show as cells selected do (see Marks); a band of one cell alone tinted here.
+        if (gripped is { } selected && session?.CellSelection == null)
             DrawBand(context, visible, selected, new SolidColorBrush(accent, 0.16));
         if (gripDrag is { Moving: true } d)
         {

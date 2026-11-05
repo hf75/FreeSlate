@@ -381,7 +381,8 @@ public sealed partial class DocumentView : Control
             // The document draws its pages when they are wanted, before the frame records them.
             Page(row.Index);
         }
-        context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush), Fading()));
+        context.Custom(new Drawing(new Rect(Bounds.Size), visible, factor, scenes, pictures, Marks(visible), Skia(SelectionBrush), Skia(CaretBrush),
+            Skia(DrawingBrush ?? CaretBrush), Fading()));
         DrawGuides(context, visible);
         DrawShaping(context, visible);
         DrawGrips(context, visible, pointerAt);
@@ -644,8 +645,11 @@ public sealed partial class DocumentView : Control
     static (TextPlaces.Spot Spot, bool After) SpotAt(List<TextPlaces.Spot> spots, int at, bool end) =>
         at >= spots.Count || at > 0 && end && spots[at - 1].Line != spots[at].Line ? (spots[Math.Min(at, spots.Count) - 1], true) : (spots[at], false);
 
-    /// <summary>What a page shows over its text: the areas of the selection and the cursor (from its top to its bottom), in CSS pixels of the page.</summary>
-    sealed record Mark(List<SKPoint[]> Areas, (SKPoint Top, SKPoint Bottom)? Caret);
+    /// <summary>
+    /// What a page shows over its text: the areas of the selection and the cursor (from its top to its bottom), in CSS pixels of the page;
+    /// whether the areas are cells selected together, which show darker in their own colours and framed (see Drawing).
+    /// </summary>
+    sealed record Mark(List<SKPoint[]> Areas, (SKPoint Top, SKPoint Bottom)? Caret, bool Cells = false);
 
     /// <summary>The selection and the cursor on the rows in view, by page.</summary>
     Dictionary<int, Mark> Marks(List<(Row Row, double Left)> visible)
@@ -654,14 +658,14 @@ public sealed partial class DocumentView : Control
         if (caret == null)
             return marks;
         var inView = visible.Select(v => v.Row.Index).ToHashSet();
-        // A drawing selected as a whole has its frame instead (see Render); rows or columns selected by their grips their band (see
-        // DrawGrips); cells selected together show whole, as Word shows them.
+        // A drawing selected as a whole has its frame instead (see Render); cells selected together show whole, as Word shows them (rows or
+        // columns selected by their grips so too, their cells selected with them; see DrawGrips).
         var drawing = SelectedDrawing() != null;
-        var cells = !SelectionHidden && !drawing && gripped == null && session?.CellSelection != null;
+        var cells = !SelectionHidden && !drawing && session?.CellSelection != null;
         foreach (var page in cells ? inView : [])
         {
             if (SelectedCellAreas(page) is { Count: > 0 } areas)
-                marks[page] = new Mark([.. areas.Select(a => new[] { new SKPoint(a.Left, a.Top), new SKPoint(a.Right, a.Top), new SKPoint(a.Right, a.Bottom), new SKPoint(a.Left, a.Bottom) })], null);
+                marks[page] = new Mark([.. areas.Select(a => new[] { new SKPoint(a.Left, a.Top), new SKPoint(a.Right, a.Top), new SKPoint(a.Right, a.Bottom), new SKPoint(a.Left, a.Bottom) })], null, Cells: true);
         }
         foreach (var (page, from, count) in SelectionHidden || drawing || cells || gripped != null ? [] : Selected())
         {
@@ -674,7 +678,7 @@ public sealed partial class DocumentView : Control
         {
             var (spot, after) = CaretSpot(all, at);
             var bar = pictures.Places(Page(cursorPage)).CaretAt(spot, after);
-            marks[cursorPage] = new Mark(marks.TryGetValue(cursorPage, out var selected) ? selected.Areas : [], bar);
+            marks[cursorPage] = marks.TryGetValue(cursorPage, out var selected) ? selected with { Caret = bar } : new Mark([], bar);
         }
         return marks;
     }
@@ -1243,7 +1247,8 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
-        // Rows or columns selected by their grips: Delete and Backspace take them away; Escape and any other key leave them.
+        // Rows or columns selected by their grips: Delete and Backspace take them away, cutting them too (see below); Escape and any other
+        // key leave them.
         if (gripped != null)
         {
             if (e.Key is Key.Delete or Key.Back && RemoveGripped() || e.Key == Key.Escape)
@@ -1253,8 +1258,11 @@ public sealed partial class DocumentView : Control
                 e.Handled = true;
                 return;
             }
-            gripped = null;
-            InvalidateVisual();
+            if (e.Key != Key.X || (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) == 0)
+            {
+                gripped = null;
+                InvalidateVisual();
+            }
         }
         // While shaping a table: Escape takes a stroke back, else Enter and Escape end shaping; another key ends it and goes on.
         if (shaping != null)
@@ -1326,8 +1334,14 @@ public sealed partial class DocumentView : Control
                 {
                     return;
                 }
-                if (e.Key == Key.X)
+                // Rows or columns cut whole go, as Word cuts whole rows; cells cut otherwise are left empty (see EditSession.Delete).
+                if (e.Key == Key.X && !RemoveGripped())
                     Edit(editing.Delete);
+            }
+            if (gripped != null)
+            {
+                gripped = null;
+                InvalidateVisual();
             }
             return;
         }
@@ -2065,11 +2079,18 @@ public sealed partial class DocumentView : Control
         }
     }
 
-    /// <summary>The rows in view drawn on Avalonia's Skia canvas, and over them the pages fading out (see Restyle).</summary>
+    /// <summary>
+    /// The rows in view drawn on Avalonia's Skia canvas, and over them the pages fading out (see Restyle). Cells selected together show
+    /// darker in their own colours (multiplied by a warm grey, so that a colour of theirs stays that colour), framed in the accent.
+    /// </summary>
     sealed class Drawing(Rect bounds, List<(Row Row, double Left)> rows, double factor, IReadOnlyList<PageScene> scenes,
-        Pictures pictures, Dictionary<int, Mark> marks, SKColor selection, SKColor caret,
+        Pictures pictures, Dictionary<int, Mark> marks, SKColor selection, SKColor caret, SKColor accent,
         (List<(SKRect Sheet, SKPicture Picture, float Factor)> Pages, float Opacity)? fading = null) : ICustomDrawOperation
     {
+        /// <summary>The grey cells selected are multiplied by, and the width of their frame in the view's pixels.</summary>
+        static readonly SKColor CellsShade = new(0xE4, 0xE1, 0xDA);
+        const float CellsFrame = 2;
+
         public Rect Bounds => bounds;
 
         public bool HitTest(Point p) => false;
@@ -2096,12 +2117,21 @@ public sealed partial class DocumentView : Control
                 GC.KeepAlive(page);
                 if (marks.TryGetValue(row.Index, out var mark))
                 {
-                    using var selected = new SKPaint { Color = selection, IsAntialias = true };
+                    using var selected = mark.Cells ? new SKPaint { Color = CellsShade, BlendMode = SKBlendMode.Multiply } : new SKPaint { Color = selection, IsAntialias = true };
                     foreach (var area in mark.Areas)
                     {
                         using var path = new SKPath();
                         path.AddPoly(area);
                         canvas.DrawPath(path, selected);
+                    }
+                    if (mark.Cells && mark.Areas.Count > 0)
+                    {
+                        // One frame round them on the page, a little outside the cells' lines.
+                        var around = mark.Areas.Select(a => new SKRect(a.Min(p => p.X), a.Min(p => p.Y), a.Max(p => p.X), a.Max(p => p.Y))).Aggregate((a, b) => SKRect.Union(a, b));
+                        var width = (float)(CellsFrame / factor);
+                        around.Inflate(width / 2, width / 2);
+                        using var frame = new SKPaint { Color = accent, Style = SKPaintStyle.Stroke, StrokeWidth = width, IsAntialias = true };
+                        canvas.DrawRoundRect(around, width, width, frame);
                     }
                     if (mark.Caret is var (top, bottom))
                     {

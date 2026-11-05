@@ -82,12 +82,32 @@ public sealed partial class DocumentView
     TableCells? CursorTable => session?.Table;
 
     /// <summary>The cells selected together (see EditSession.CellSelection) as a page shows them, each one's rectangle in CSS pixels of the page; none without.</summary>
-    List<SKRect> SelectedCellAreas(int page)
+    List<SKRect> SelectedCellAreas(int page) => session?.CellSelection is { } range ? RangeAreas(page, range) : [];
+
+    /// <summary>The cells of a rectangle of a table's grid as a page shows them, each one's rectangle in CSS pixels of the page.</summary>
+    List<SKRect> RangeAreas(int page, CellRange range) => CellsOn(page, range.Table) is { } cells
+        ? [.. CellAreas(page, cells).Where(a => a.Cell.Top >= range.Top && a.Cell.Bottom <= range.Bottom && a.Cell.Left >= range.Left && a.Cell.Right <= range.Right).Select(a => a.Area)]
+        : [];
+
+    /// <summary>
+    /// The cells acted on (those selected, else the cursor's; see EditSession.CellsActed) on the sheets in view, one rectangle of the view's
+    /// coordinates around them; null outside tables, or where none of them is in view.
+    /// </summary>
+    public Rect? CellsActedArea()
     {
-        if (session?.CellSelection is not { } range || CellsOn(page, range.Table) is not { } cells)
-            return [];
-        return [.. CellAreas(page, cells).Where(a => a.Cell.Top >= range.Top && a.Cell.Bottom <= range.Bottom && a.Cell.Left >= range.Left && a.Cell.Right <= range.Right)
-            .Select(a => a.Area)];
+        if (session?.CellsActed is not { } range)
+            return null;
+        var shown = Viewed();
+        Rect? around = null;
+        foreach (var row in rows.Where(r => r.Top * factor < shown.Bottom && (r.Top + r.Size.Height) * factor > shown.Top))
+        {
+            foreach (var a in RangeAreas(row.Index, range))
+            {
+                var area = new Rect(Left(row) + a.Left * factor, (row.Top + a.Top) * factor, a.Width * factor, a.Height * factor);
+                around = around is { } so ? so.Union(area) : area;
+            }
+        }
+        return around;
     }
 
     /// <summary>

@@ -71,10 +71,12 @@ public sealed partial class EditorView : Panel
         // Closed, the keys go back to the sheets.
         Card.Closed += () => Sheets.Focus();
         Strip.Closed += () => Sheets.Focus();
+        Pad.Closed += () => Sheets.Focus();
         Sheets.AddHandler(PointerPressedEvent, (_, _) =>
         {
             Card.Close(kept: true);
             Strip.Close();
+            Pad.Close();
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         FollowTone();
         Loaded += (_, _) =>
@@ -334,27 +336,37 @@ public sealed partial class EditorView : Panel
             new("InsertPictureFile", "", () => _ = Sheets.PickPictures(), Icon: Placement.PictureIcon),
             new("InsertPictureClipboard", "", () => _ = Sheets.PasteClipboardPictures(), Icon: Placement.ClipboardIcon),
         ];
-        Controls.GestureRing.Slot shape = new("TableShape", "", () =>
-        {
-            if (editing.Table is { } table)
-                Sheets.BeginShape(table.Table);
-        }, Icon: Placement.PenIcon);
-        // In a table's cell, at a spot with nothing to act on: its row up, its column right, shaping the table by hand down, the table left
-        // (each laid out as the table is: above up, below down, beside left and right); between them its colour, what goes in it, its
-        // lines (its frame's look) and splitting it.
+        // Shaping the table: by hand up (the pen and the eraser, see DocumentView.BeginShape), and the cell split evenly, in columns on the
+        // right, in rows on the left.
+        IReadOnlyList<Controls.GestureRing.Slot> shaping =
+        [
+            new("TableShapeByHand", "", () =>
+            {
+                if (editing.Table is { } table)
+                    Sheets.BeginShape(table.Table);
+            }, Icon: Placement.PenIcon),
+            .. cellSplit.Where(s => s.NameKey.Contains("Columns", StringComparison.Ordinal)),
+            .. cellSplit.Where(s => s.NameKey.Contains("Rows", StringComparison.Ordinal)).Reverse(),
+        ];
+        // Where the text stands in the cells, chosen on a pad under them (see PlaceText).
+        Controls.GestureRing.Slot placing = new("CellPlace", "", PlaceText, Icon: Placement.CellPlaceFieldIcon);
+        // In a table's cell, at a spot with nothing to act on: its row up, its column right, shaping the table down (by hand, or the cell
+        // split), the table left (each laid out as the table is: above up, below down, beside left and right); between them its colour,
+        // what goes in it, its lines (its frame's look) and where its text stands.
         var cellRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)
         [
             new("TableRow", "", Under: tableRow, Icon: Placement.RowIcon),
             new("CellFill", "", Under: fills, Icon: Placement.FillIcon),
             new("TableColumn", "", Under: tableColumn, Icon: Placement.ColumnIcon),
             new("CellInsert", "", Under: cellInsert, Icon: Placement.CellInsertIcon),
-            shape,
+            new("TableShape", "", Under: shaping, Icon: Placement.PenIcon),
             new("CellLines", "", Under: CellLooks(CellLines.Outside), Icon: Placement.CellLinesIcon),
             new("TableWhole", "", Under: TableWhole(head), Icon: Placement.TableIcon),
-            new("CellSplit", "", Under: cellSplit, Icon: Placement.SplitIcon),
+            placing,
         ]);
         // Cells selected together: their rows up and their columns right as for a cell, merging them down right, their text's meaning down,
-        // their lines (which, then how) down left, the table left, and what they hold taken away up left; their colour up right.
+        // their lines (which, then how) down left, the table left, and where their text stands up left; their colour up right. What they
+        // hold Delete takes away, as in Word.
         var cellsRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)
         [
             new("TableRow", "", Under: tableRow, Icon: Placement.RowIcon),
@@ -364,7 +376,7 @@ public sealed partial class EditorView : Panel
             new("CellsMeaning", "!", Under: ring.Slots),
             new("CellLines", "", Under: cellsLines, Icon: Placement.CellLinesIcon),
             new("TableWhole", "", Under: TableWhole(head), Icon: Placement.TableIcon),
-            Field("CellsClear", "", () => editing.ClearCells(), icon: Placement.ClearIcon),
+            placing,
         ]);
         // A line of a table under the pointer (see DocumentView.TargetLineAt), how it looks: hidden up, fine, strong, double; down its
         // stretch under the pointer alone (the same in a ring of its own); dotted, dashed, and as the table's look gives it. The whole line
@@ -515,6 +527,39 @@ public sealed partial class EditorView : Panel
             // The preview of the look chosen is its step; another one goes first.
             if (look != previewed)
                 Show(look);
+            previewed = null;
+        });
+    }
+
+    /// <summary>
+    /// Where the text stands in the cells acted on (those selected, else the cursor's), chosen on a pad under them (see PlacePad): the place
+    /// the pointer or the keys are on showing in the cells (a step taken back as they go on), the one chosen kept as one step.
+    /// </summary>
+    void PlaceText()
+    {
+        if (editing.CellPlace is not { } current || Sheets.CellsActedArea() is not { } box)
+            return;
+        // The place shown in the cells for a preview, a step of its own; null where none is.
+        (string Vertical, string Horizontal)? previewed = null;
+        void Show((string Vertical, string Horizontal)? place)
+        {
+            if (place == previewed)
+                return;
+            if (previewed != null)
+                Sheets.Edit(() => editing.TakeBack());
+            previewed = null;
+            if (place is not { } shown || shown == current)
+                return;
+            var before = editing.Document.Changes;
+            Sheets.Edit(() => editing.PlaceText(shown.Vertical, shown.Horizontal));
+            if (editing.Document.Changes != before)
+                previewed = shown;
+        }
+        Pad.Open(box, current, Placement.CellPlaceIcon, Show, place =>
+        {
+            // The preview of the place chosen is its step; another one goes first.
+            if (place != previewed)
+                Show(place);
             previewed = null;
         });
     }
