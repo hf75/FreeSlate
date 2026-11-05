@@ -197,6 +197,12 @@ public sealed class LayoutProfile(DocumentContext context, int mode)
     public bool DrawingsReachText { get; } = mode >= 15;
 
     /// <summary>
+    /// Whether the text of a turned cell aligned to its middle or its bottom moves across it by the room its margins leave too (see
+    /// TableLayout), not by the room its lines leave alone: from Word 2013 on.
+    /// </summary>
+    public bool TurnedAlignWithinMargins { get; } = mode >= 15;
+
+    /// <summary>
     /// Whether the paragraph mark goes to a line of its own after an object in a field that is wider than the line:
     /// before Word 2013.
     /// </summary>

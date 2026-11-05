@@ -807,11 +807,155 @@ static partial class TextEdits
         IEnumerable<XElement> Paragraphs(Cell cell) => Content(cell).SelectMany(e => e.DescendantsAndSelf(w + "p"))
             .Where(p => !p.Ancestors().TakeWhile(a => a != cell.Element).Any(a => a.Name.LocalName is "txbxContent" or "textbox"));
 
+        /// <summary>How far in from either end of its lines Word puts a turned cell's paragraphs, and how high at least its row, twips.</summary>
+        const int TurnedIndent = 113, TurnedHeight = 1134;
+
+        /// <summary>Whether a cell's text is turned a quarter (w:textDirection), down or up the page.</summary>
+        bool Turned(XElement tc) => tc.Element(w + "tcPr")?.Element(w + "textDirection")?.Attribute(w + "val")?.Value is "btLr" or "tbRl" or "tbRlV" or "tbLrV";
+
+        /// <summary>
+        /// The text of the cells reaching into a rectangle of the grid turned, as Word's Text Direction writes it (measured in Word 365 by
+        /// COM, scratchpad turn/turn.vbs: Range.Orientation): w:textDirection btLr (running up the page) or tbRl (running down it) in each
+        /// cell's properties; its paragraphs 113 twips in from either end of their lines where they had no indent of their own there; the
+        /// row the cell begins in at least 1134 twips high and kept on one page (w:trHeight, w:cantSplit) where it was not higher. Null
+        /// turns the text back across: the direction and those indents gone, and where no cell of the row stays turned the row's height
+        /// of 1134 twips and its keeping too, so that the row is as it was (Word keeps them).
+        /// </summary>
+        public void Turn(int top, int bottom, int left, int right, string? direction)
+        {
+            var rows = new HashSet<int>();
+            foreach (var cell in Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right))
+            {
+                var was = Turned(cell.Element);
+                foreach (var tc in cell.Below.Prepend(cell.Element))
+                {
+                    var tcPr = tc.Element(w + "tcPr") ?? Made(tc, w + "tcPr");
+                    if (direction == null)
+                        tcPr.Element(w + "textDirection")?.Remove();
+                    else
+                        Property(tcPr, "textDirection", CellOrder).SetAttributeValue(w + "val", direction);
+                }
+                if (was || direction != null)
+                    rows.Add(cell.Top);
+                if (was == (direction != null))
+                    continue;
+                foreach (var p in Paragraphs(cell))
+                {
+                    var pPr = p.Element(w + "pPr");
+                    var ind = pPr?.Element(w + "ind");
+                    if (direction != null)
+                    {
+                        if (ind?.Attributes().Any(a => a.Name.LocalName is "left" or "right" or "start" or "end") == true)
+                            continue;
+                        ind = Property(pPr ?? Made(p, w + "pPr"), "ind", ParagraphOrder);
+                        ind.SetAttributeValue(w + "left", TurnedIndent.ToString(CultureInfo.InvariantCulture));
+                        ind.SetAttributeValue(w + "right", TurnedIndent.ToString(CultureInfo.InvariantCulture));
+                    }
+                    else if (ind != null && Number(ind, "left") == TurnedIndent && Number(ind, "right") == TurnedIndent)
+                    {
+                        ind.SetAttributeValue(w + "left", null);
+                        ind.SetAttributeValue(w + "right", null);
+                        if (!ind.HasAttributes)
+                            ind.Remove();
+                        if (!pPr!.HasElements && !pPr.HasAttributes)
+                            pPr.Remove();
+                    }
+                }
+            }
+            foreach (var r in rows)
+            {
+                var row = Rows[r];
+                var height = row.Element(w + "trPr")?.Element(w + "trHeight");
+                var exact = height?.Attribute(w + "hRule")?.Value == "exact";
+                if (direction != null)
+                {
+                    var trPr = row.Element(w + "trPr") ?? Made(row, w + "trPr");
+                    Property(trPr, "cantSplit", RowOrder);
+                    if (!exact && Number(height) < TurnedHeight)
+                        SetHeight(r, TurnedHeight);
+                }
+                else if (!Cells.Any(c => c.Top <= r && r < c.Bottom && Turned(c.Element)) && !exact && Number(height) == TurnedHeight
+                         && row.Element(w + "trPr") is { } trPr)
+                {
+                    height!.Remove();
+                    trPr.Element(w + "cantSplit")?.Remove();
+                    if (!trPr.HasElements && !trPr.HasAttributes)
+                        trPr.Remove();
+                }
+            }
+        }
+
+        /// <summary>
+        /// The table floating beside the text, which goes round it on both sides, as Word's Table Properties write text wrapping "Around"
+        /// (measured in Word 365 by COM, scratchpad turn/float.vbs: Rows.WrapAroundText and HorizontalPosition): w:tblpPr 141 twips from
+        /// the text on either side, its top 1 twip below the top of the paragraph after it (vertAnchor text), at its column's left edge,
+        /// or aligned right or centered in it (w:tblpXSpec), and w:tblOverlap never; its alignment in the text and its indent gone. A table
+        /// floating already keeps its place down and its distances.
+        /// </summary>
+        public void Float(string? across)
+        {
+            var tblPr = table.Element(w + "tblPr") ?? Made(table, w + "tblPr");
+            if (tblPr.Element(w + "tblpPr") is not { } position)
+            {
+                position = Property(tblPr, "tblpPr", TableOrder);
+                position.SetAttributeValue(w + "leftFromText", "141");
+                position.SetAttributeValue(w + "rightFromText", "141");
+                position.SetAttributeValue(w + "vertAnchor", "text");
+                position.SetAttributeValue(w + "tblpY", "1");
+                Property(tblPr, "tblOverlap", TableOrder).SetAttributeValue(w + "val", "never");
+            }
+            position.SetAttributeValue(w + "horzAnchor", null);
+            position.SetAttributeValue(w + "tblpX", null);
+            position.SetAttributeValue(w + "tblpXSpec", across is null or "left" ? null : across);
+            Aligned(null);
+        }
+
+        /// <summary>
+        /// A floating table placed by offsets (twips): across from its column (horzAnchor text), the margin or the page, down from the top
+        /// of the paragraph after it (vertAnchor text), the margin or the page; or aligned across in its column (<paramref name="alignAcross"/>
+        /// left, center or right), as Word writes one dragged there.
+        /// </summary>
+        public void Position(string horizontalFrom, int x, string verticalFrom, int y, string? alignAcross = null)
+        {
+            var position = table.Element(w + "tblPr")?.Element(w + "tblpPr") ?? throw new InvalidOperationException("The table does not float.");
+            position.SetAttributeValue(w + "horzAnchor", horizontalFrom == "text" ? null : horizontalFrom);
+            position.SetAttributeValue(w + "tblpXSpec", alignAcross is null or "left" ? null : alignAcross);
+            position.SetAttributeValue(w + "tblpX", alignAcross != null || x == 0 ? null : x.ToString(CultureInfo.InvariantCulture));
+            position.SetAttributeValue(w + "vertAnchor", verticalFrom);
+            position.SetAttributeValue(w + "tblpYSpec", null);
+            position.SetAttributeValue(w + "tblpY", y.ToString(CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>The table in the text again where it floated: its position and its keeping off other tables gone (w:tblpPr, w:tblOverlap).</summary>
+        void Unfloat()
+        {
+            if (table.Element(w + "tblPr") is { } tblPr)
+            {
+                tblPr.Element(w + "tblpPr")?.Remove();
+                tblPr.Element(w + "tblOverlap")?.Remove();
+            }
+        }
+
+        /// <summary>The columns' widths scaled down to make up a width at most (twips), in proportion; a table narrower already stays.</summary>
+        public void Narrow(int whole)
+        {
+            if (Grid.Sum() > whole)
+                Fit(Math.Max(Columns * 20, whole));
+        }
+
         /// <summary>
         /// The table aligned between the text's edges, as Word's Rows.Alignment writes it (measured in Word 365 by COM, scratchpad
         /// tables/looks.vbs): centered or right (w:jc in the table's properties and in each row's), its indent gone; left (null), neither.
+        /// A table floating stands in the text again.
         /// </summary>
         public void Align(string? alignment)
+        {
+            Unfloat();
+            Aligned(alignment);
+        }
+
+        /// <summary>The table's alignment in the text (see Align), its indent gone, floating or not.</summary>
+        void Aligned(string? alignment)
         {
             var tblPr = table.Element(w + "tblPr") ?? Made(table, w + "tblPr");
             tblPr.Element(w + "tblInd")?.Remove();
@@ -1283,6 +1427,21 @@ static partial class TextEdits
         // Beside the table in the stretch, so that it is written with the stretch's prefixes.
         tbl.AddAfterSelf(part);
         return PartText.Xml(part);
+    }
+
+    /// <summary>
+    /// A table of the body moved in a stretch to stand right before an element of it (a paragraph of the body), its text as it was. The
+    /// stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The table or the element is not where it was read.</exception>
+    public static string MoveTable(Stretch stretch, TableBlock table, XElement before)
+    {
+        var tbl = stretch.Find(table.Element) ?? throw new NotSupportedException("The table is not where it was read.");
+        var target = stretch.Find(before) ?? throw new NotSupportedException("The paragraph is not where it was read.");
+        var start = stretch.Text.Start(tbl);
+        var end = stretch.Text.End(start);
+        var at = stretch.Text.Start(target);
+        return at == end ? stretch.Spliced([]) : stretch.Spliced([(start, end, ""), (at, at, stretch.Text.Text[start..end])]);
     }
 
     /// <summary>

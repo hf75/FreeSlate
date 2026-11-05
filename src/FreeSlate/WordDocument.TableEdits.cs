@@ -404,22 +404,27 @@ public sealed partial class WordDocument
     /// <summary>
     /// Where the text stands in the cells reaching into a rectangle of a table's grid, as the nine buttons of Word's Layout tab put it
     /// (see TextEdits.TableShape.Place): <paramref name="vertical"/> top, center or bottom, <paramref name="horizontal"/> left, center or
-    /// right; null leaves either as it is. Where the styles would put a cell or a paragraph elsewhere than at the top or the left asked
-    /// for, these are written too, as Word writes what differs from the styles. The paragraphs stay as they are.
+    /// right; null leaves either as it is. Where <paramref name="shown"/>, these say where the page shows the text, each cell's properties
+    /// set as its text runs (see Shown): in a cell turned up the page the place across is its vAlign and the place down its lines'
+    /// alignment. Where the styles would put a cell or a paragraph elsewhere than at the top or the left so asked for, these are written
+    /// too, as Word writes what differs from the styles. The paragraphs stay as they are.
     /// </summary>
-    public void PlaceText(int table, int top, int bottom, int left, int right, string? vertical, string? horizontal)
+    public void PlaceText(int table, int top, int bottom, int left, int right, string? vertical, string? horizontal, bool shown = false)
     {
+        var cells = CellsOf(table) ?? throw new ArgumentException("No table of the body has the id.", nameof(table));
+        var (model, _) = TableById(table);
+        var placed = cells.Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right)
+            .Select(c => (Cell: c, Place: Stored(vertical, horizontal, shown ? CellModelAt(model, c)?.Format.TextDirection : null))).ToList();
         Reshape(table, shape =>
         {
-            shape.Place(top, bottom, left, right, vertical, horizontal);
+            foreach (var (cell, (v, h)) in placed)
+                shape.Place(cell.Top, cell.Top + 1, cell.Left, cell.Left + 1, v, h);
             return null;
         }, widths: true);
-        if (vertical != "top" && horizontal != "left" || CellsOf(table) is not { } cells)
-            return;
-        var (model, _) = TableById(table);
-        var spelled = cells.Cells.Where(c => c.Top < bottom && top < c.Bottom && c.Left < right && left < c.Right)
-            .Select(c => (Cell: c, Up: vertical == "top" && CellModelAt(model, c) is { } m && m.Format.VerticalAlign is "center" or "bottom",
-                Along: horizontal == "left" && c.Paragraphs.Any(p => Find(p).Paragraph.Format.Justification is not (null or "left" or "start"))))
+        (model, _) = TableById(table);
+        var spelled = placed
+            .Select(s => (s.Cell, Up: s.Place.Vertical == "top" && CellModelAt(model, s.Cell) is { } m && m.Format.VerticalAlign is "center" or "bottom",
+                Along: s.Place.Horizontal == "left" && s.Cell.Paragraphs.Any(p => Find(p).Paragraph.Format.Justification is not (null or "left" or "start"))))
             .Where(s => s.Up || s.Along).ToList();
         if (spelled.Count == 0)
             return;
@@ -433,14 +438,16 @@ public sealed partial class WordDocument
 
     /// <summary>
     /// Where the text stands in a table's cell as its styles and its own properties put it: up and down (top, center or bottom) and along
-    /// its first paragraph's lines (left, center or right); null where no cell begins at the place.
+    /// its first paragraph's lines (left, center or right); where <paramref name="shown"/>, where the page shows it so as the cell runs its
+    /// text (see Shown). Null where no cell begins at the place.
     /// </summary>
-    public (string Vertical, string Horizontal)? CellPlace(int table, int row, int column)
+    public (string Vertical, string Horizontal)? CellPlace(int table, int row, int column, bool shown = false)
     {
         if (CellsOf(table)?.Cells.FirstOrDefault(c => c.Top == row && c.Left <= column && column < c.Right) is not { } cell)
             return null;
         var (model, _) = TableById(table);
-        var vertical = CellModelAt(model, cell)?.Format.VerticalAlign switch
+        var own = CellModelAt(model, cell);
+        var vertical = own?.Format.VerticalAlign switch
         {
             "center" => "center",
             "bottom" => "bottom",
@@ -452,12 +459,206 @@ public sealed partial class WordDocument
             "right" or "end" => "right",
             _ => "left",
         };
-        return (vertical, horizontal);
+        return shown ? Shown(vertical, horizontal, own?.Format.TextDirection) : (vertical, horizontal);
     }
+
+    /// <summary>
+    /// Where the page shows the text a cell's properties put up and down (vAlign) and along its lines (their jc), as the cell runs it (see
+    /// TableLayout: tbRl turns its lines clockwise, btLr counterclockwise): across, as they say; turned up the page (btLr), its lines going up
+    /// from the cell's bottom, the first at its left, so that the lines' left is the cell's bottom and vAlign's top its left; turned down it
+    /// (tbRl and the East Asian ways down), going down from its top, the first at its right, the lines' left its top and vAlign's top its right.
+    /// </summary>
+    static (string Vertical, string Horizontal) Shown(string vertical, string horizontal, string? direction) => direction switch
+    {
+        "btLr" => (horizontal switch { "left" => "bottom", "right" => "top", _ => "center" }, vertical switch { "top" => "left", "bottom" => "right", _ => "center" }),
+        "tbRl" or "tbRlV" or "tbLrV" => (horizontal switch { "left" => "top", "right" => "bottom", _ => "center" }, vertical switch { "top" => "right", "bottom" => "left", _ => "center" }),
+        _ => (vertical, horizontal),
+    };
+
+    /// <summary>The properties up and down (vAlign) and along the lines (jc) that put text where the page shows it (see Shown), as a cell runs it; null stays null.</summary>
+    static (string? Vertical, string? Horizontal) Stored(string? vertical, string? horizontal, string? direction) => direction switch
+    {
+        "btLr" => (horizontal switch { "left" => "top", "right" => "bottom", null => null, _ => "center" }, vertical switch { "bottom" => "left", "top" => "right", null => null, _ => "center" }),
+        "tbRl" or "tbRlV" or "tbLrV" => (horizontal switch { "right" => "top", "left" => "bottom", null => null, _ => "center" },
+            vertical switch { "top" => "left", "bottom" => "right", null => null, _ => "center" }),
+        _ => (vertical, horizontal),
+    };
 
     /// <summary>The model of a cell where it begins, the first row it covers.</summary>
     static CellModel? CellModelAt(TableBlock model, TableCell cell) =>
         cell.Top < model.Table.Rows.Count ? model.Table.Rows[cell.Top].Cells.FirstOrDefault(c => c.Column == cell.Left) : null;
+
+    /// <summary>
+    /// The text of the cells reaching into a rectangle of a table's grid turned a quarter, as Word's Text Direction turns it (see
+    /// TextEdits.TableShape.Turn): <paramref name="direction"/> btLr running up the page, tbRl running down it, null across again. The
+    /// paragraphs stay as they are.
+    /// </summary>
+    public void TurnText(int table, int top, int bottom, int left, int right, string? direction) =>
+        Reshape(table, shape =>
+        {
+            shape.Turn(top, bottom, left, right, direction);
+            return null;
+        }, widths: true);
+
+    /// <summary>
+    /// Which way a table's cell runs its text as its properties say (w:textDirection): btLr up the page, tbRl down it (tbRlV and tbLrV,
+    /// East Asian text set upright, down it too); null across, and where no cell begins at the place.
+    /// </summary>
+    public string? CellDirection(int table, int row, int column)
+    {
+        if (CellsOf(table)?.Cells.FirstOrDefault(c => c.Top == row && c.Left <= column && column < c.Right) is not { } cell)
+            return null;
+        var (model, _) = TableById(table);
+        return CellModelAt(model, cell)?.Format.TextDirection switch
+        {
+            "btLr" => "btLr",
+            "tbRl" or "tbRlV" or "tbLrV" => "tbRl",
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// A table of the body floating beside the text, which goes round it, at its column's left edge (null, left), or aligned right or
+    /// centered in it (see TextEdits.TableShape.Float), where it stood down; one wider than 60 % of its column made half as wide, its
+    /// columns in proportion, so that text goes beside it. The paragraphs stay as they are.
+    /// </summary>
+    public void FloatTable(int table, string? across)
+    {
+        var cells = CellsOf(table) ?? throw new ArgumentException("No table of the body has the id.", nameof(table));
+        var column = (int)Math.Round(ColumnWidth(cells.Cells[0].First) * 20);
+        Reshape(table, shape =>
+        {
+            if (shape.Grid.Sum() > column * 0.6)
+                shape.Narrow(column / 2);
+            shape.Float(across);
+            return null;
+        }, widths: true);
+    }
+
+    /// <summary>
+    /// How a table of the body floats beside the text (w:tblpPr): left, right or center where it is aligned so in its column (or left
+    /// where it stands at no offset from it), placed where it is put elsewhere; null for a table in the text.
+    /// </summary>
+    public string? TableFloat(int table)
+    {
+        var (model, _) = TableById(table);
+        var w = model.Element.Name.Namespace;
+        if (model.Element.Element(w + "tblPr")?.Element(w + "tblpPr") is not { } position)
+            return null;
+        if ((string?)position.Attribute(w + "horzAnchor") is not (null or "text"))
+            return "placed";
+        return (string?)position.Attribute(w + "tblpXSpec") switch
+        {
+            "right" => "right",
+            "center" => "center",
+            null when position.Attribute(w + "tblpX") is null or { Value: "0" } => "left",
+            _ => "placed",
+        };
+    }
+
+    /// <summary>Where a table of the body is laid out first: the page of its first row of its own, and that row's left line and top there (points).</summary>
+    (int Page, double Left, double Top)? TablePlaced(int table)
+    {
+        Scenes();
+        for (var k = 0; k < shown.Count; k++)
+        {
+            if (shown[k].TableRows.FirstOrDefault(r => r.Table == table && !r.Repeated && r.Lines.Length > 0) is { } row)
+                return (k, row.Lines.Min(), row.Top);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Puts a floating table of the body where its top left (its first row's top at its left line) is to stand at a point of a page, in
+    /// points from the page's top left, one change, as Word puts one dragged there by its handle: across by an offset from what it stands
+    /// from (its column, the margin or the page), or aligned left, centered or right in its column (<paramref name="alignAcross"/>);
+    /// down by an offset from the top of the paragraph after it, the table going before the paragraph of the body whose line stands at
+    /// its top where that is another (not one right after a table: tables that meet join). Where the layout holds it elsewhere (off
+    /// other tables, on the page), it stands as near as that lets it.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The table does not float, or stands in a table; nothing changes.</exception>
+    public void PlaceTable(int table, int page, double x, double y, string? alignAcross = null)
+    {
+        var start = version;
+        try
+        {
+            var (model, top) = TableById(table);
+            var w = model.Element.Name.Namespace;
+            if (!ReferenceEquals(model, top) || model.Element.Element(w + "tblPr")?.Element(w + "tblpPr") is not { } position)
+                throw new NotSupportedException("The table does not float in the body.");
+            Scenes();
+            if (page < 0 || page >= shown.Count)
+                throw new ArgumentOutOfRangeException(nameof(page), "The document has no such page laid out.");
+            if (ParagraphAt(page, x, y) is { } at && at != Next(Flat(model)[^1].Id) && TableBefore(at) == null)
+                Moved(table, at);
+            Scenes();
+            (model, _) = TableById(table);
+            var across = (string?)model.Element.Element(w + "tblPr")!.Element(w + "tblpPr")!.Attribute(w + "horzAnchor") ?? "text";
+            var after = Next(Flat(model)[^1].Id) ?? throw new NotSupportedException("No paragraph follows the table.");
+            var (offsetX, offsetY) = (x - AcrossFrom(across == "text" ? "column" : across, shown[page], x), y - DownFrom("paragraph", shown[page], after));
+            for (var pass = 0; pass < 2; pass++)
+            {
+                var (dx, dy) = (InTwips(offsetX), InTwips(offsetY));
+                Reshape(table, shape =>
+                {
+                    shape.Position(alignAcross != null ? "text" : across, dx, "text", dy, alignAcross);
+                    return null;
+                }, widths: true);
+                if (TablePlaced(table) is not var (on, left, rowTop) || on != page || pass == 1
+                    || Math.Abs(rowTop - y) < 0.05 && (alignAcross != null || Math.Abs(left - x) < 0.05))
+                    break;
+                (offsetX, offsetY) = (offsetX + x - left, offsetY + y - rowTop);
+            }
+            Combine(version - start);
+        }
+        catch
+        {
+            Back(start);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Moves a table of the body to stand right before a paragraph of the body, one change, as dragging it there by its handle moves it in
+    /// the text; where it stands already, nothing changes.
+    /// </summary>
+    /// <exception cref="NotSupportedException">
+    /// The table stands in a table, the paragraph is not the body's own, or the table would meet another (Word joins tables that meet);
+    /// nothing changes.
+    /// </exception>
+    public void MoveTable(int table, int before)
+    {
+        var start = version;
+        Moved(table, before);
+        Combine(version - start);
+    }
+
+    /// <summary>A table of the body moved before a paragraph of the body (see MoveTable), a change where it moves.</summary>
+    void Moved(int table, int before)
+    {
+        if (Author != null)
+            throw new NotSupportedException("A table is not moved as a tracked change.");
+        var (model, top) = TableById(table);
+        if (!ReferenceEquals(model, top))
+            throw new NotSupportedException("A table in a table moves with its cell.");
+        if (!paragraphs.TryGetValue(before, out var found) || !ReferenceEquals(found.Paragraph, found.Top))
+            throw new NotSupportedException("The paragraph is not one of the body's own.");
+        var (from, to) = (IndexOf(top), IndexOf(found.Top));
+        if (to == from + 1)
+            return;
+        if (to > 0 && blocks[to - 1] is TableBlock || from > 0 && from + 1 < blocks.Count && blocks[from - 1] is TableBlock && blocks[from + 1] is TableBlock)
+            throw new NotSupportedException("Tables that meet join.");
+        var target = (found.Paragraph.Parts ?? [found.Paragraph.Element])[0];
+        var (first, last) = from < to ? (top, found.Top) : (found.Top, top);
+        Change(first, last, (stretch, tracking) => tracking == null ? TextEdits.MoveTable(stretch, model, target)
+            : throw new NotSupportedException("A table moved is not tracked."), () =>
+        {
+            var order = blocks.ToList();
+            order.Remove(top);
+            order.Insert(order.IndexOf(found.Top), top);
+            return order;
+        });
+    }
 
     /// <summary>
     /// The cells of a rectangle of a table's grid (each reaching into it whole, as cells selected do) copied as a table of their own in

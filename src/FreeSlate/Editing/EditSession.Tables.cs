@@ -300,18 +300,82 @@ public sealed partial class EditSession
     public bool RemoveColumn() => CellsActed is { } cells && ChangeTable(word => word.RemoveColumns(cells.Table, cells.Left, cells.Right));
 
     /// <summary>
-    /// Where the text stands in the cells acted on (see WordDocument.PlaceText): up and down, top, center or bottom, and along the lines,
-    /// left, center or right; null leaves either.
+    /// Where the text stands in the cells acted on as the page shows them, whichever way each runs its text (see WordDocument.PlaceText):
+    /// up and down, top, center or bottom, and across, left, center or right; null leaves either.
     /// </summary>
     public bool PlaceText(string? vertical, string? horizontal) => CellsActed is { } cells && ChangeTable(word =>
     {
-        word.PlaceText(cells.Table, cells.Top, cells.Bottom, cells.Left, cells.Right, vertical, horizontal);
+        word.PlaceText(cells.Table, cells.Top, cells.Bottom, cells.Left, cells.Right, vertical, horizontal, shown: true);
         return null;
     });
 
-    /// <summary>Where the text stands in the first of the cells acted on (see WordDocument.CellPlace); null outside tables.</summary>
+    /// <summary>Where the page shows the text of the first of the cells acted on (see WordDocument.CellPlace); null outside tables.</summary>
     public (string Vertical, string Horizontal)? CellPlace => document is WordDocument word && CellsActed is { } cells
-        && CellsIn(cells) is [var first, ..] ? word.CellPlace(cells.Table, first.Top, first.Left) : null;
+        && CellsIn(cells) is [var first, ..] ? word.CellPlace(cells.Table, first.Top, first.Left, shown: true) : null;
+
+    /// <summary>The text of the cells acted on turned a quarter: btLr up the page, tbRl down it, null across again (see WordDocument.TurnText).</summary>
+    public bool TurnText(string? direction) => CellsActed is { } cells && ChangeTable(word =>
+    {
+        word.TurnText(cells.Table, cells.Top, cells.Bottom, cells.Left, cells.Right, direction);
+        return null;
+    });
+
+    /// <summary>Which way the first of the cells acted on runs its text (see WordDocument.CellDirection): btLr, tbRl, or null across; null outside tables too.</summary>
+    public string? CellDirection => document is WordDocument word && CellsActed is { } cells
+        && CellsIn(cells) is [var first, ..] ? word.CellDirection(cells.Table, first.Top, first.Left) : null;
+
+    /// <summary>The cursor's table floating beside the text, left (null), right or centered in its column (see WordDocument.FloatTable).</summary>
+    public bool FloatTable(string? across) => Table is { } table && ChangeTable(word =>
+    {
+        word.FloatTable(table.Table, across);
+        return null;
+    });
+
+    /// <summary>
+    /// A floating table put where its top left is to stand at a point of a page (see WordDocument.PlaceTable), a handling of its own; the
+    /// cursor and the selection stay. False where it does not float, or in other documents than Word's.
+    /// </summary>
+    public bool PlaceTable(int table, int page, double x, double y, string? alignAcross = null)
+    {
+        if (document is not WordDocument word || word.TableFloat(table) == null)
+            return false;
+        try
+        {
+            Act(false, () =>
+            {
+                word.PlaceTable(table, page, x, y, alignAcross);
+                return (Caret, Anchor);
+            });
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// A table moved in the text to stand right before a paragraph of the body (see WordDocument.MoveTable), a handling of its own; the
+    /// cursor and the selection stay. False where it cannot go there, or in other documents than Word's.
+    /// </summary>
+    public bool MoveTable(int table, int before)
+    {
+        if (document is not WordDocument word)
+            return false;
+        try
+        {
+            Act(false, () =>
+            {
+                word.MoveTable(table, before);
+                return (Caret, Anchor);
+            });
+            return true;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>The cells of the rows of the cells acted on merged into one, with what reaches into them (see WordDocument.MergeAround).</summary>
     public bool MergeRow() => CellsActed is { } cells && Table is { } table && ChangeTable(word => word.MergeAround(cells.Table, cells.Top, cells.Bottom, 0, table.Columns));

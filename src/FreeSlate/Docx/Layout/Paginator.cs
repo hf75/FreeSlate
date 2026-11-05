@@ -879,18 +879,22 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         // Where the part on the page began among the page's lines, fills, strokes and drawings, which move with it where
         // it moves off a drawing of the footer (see Close).
         var partFrom = PartFrom();
-        (int Lines, int Shading, int Borders, int Strokes, int Drawings) PartFrom() =>
-            (page!.Lines.Count, page.Shading.Count, page.Borders.Count, page.Strokes.Count, page.Drawings.Count);
+        (int Lines, int Shading, int Borders, int Strokes, int Drawings, int Rows) PartFrom() =>
+            (page!.Lines.Count, page.Shading.Count, page.Borders.Count, page.Strokes.Count, page.Drawings.Count, page.TableRows.Count);
         var onPage = 0;
         RowBox? last = null;
         var headers = box.Rows.TakeWhile(r => r.Header).ToList();
-        void Draw(RowBox row)
+        void Draw(RowBox row, bool repeated = false)
         {
             // Drawings anchored in the cells stand as in the rows of other tables (docx/external/libreoffice/
             // extras-ooxmlexport/fdo68607: a text box with the title above the table).
             var anchors = new List<CellAnchor>();
             var count = page!.Lines.Count;
             TableLayout.Draw(row, row.Height, x - box.Left, rowTop, page.Lines, page.Shading, page.Borders, page.Strokes, anchors);
+            // The page knows the row as the table's, as it knows the rows of tables in the text (see PlaceRow).
+            if (row.Place is { } place)
+                page.TableRows.Add(new PlacedRow(blocks[index].Id, place.Row, [.. place.Lines.Select(l => x - box.Left + l)], rowTop, row.Height, place.Extra, repeated,
+                    place.Uprights, place.Over, place.Under));
             // The table's lines stay where it stands when a table after it moves the text below itself (see Lower).
             for (var k = count; k < page.Lines.Count; k++)
                 frameLines.Add(page.Lines[k]);
@@ -937,6 +941,8 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     page.Strokes[k] = page.Strokes[k].Offset(0, -lift);
                 for (var k = partFrom.Drawings; k < page.Drawings.Count; k++)
                     page.Drawings[k] = page.Drawings[k] with { Y = page.Drawings[k].Y - lift };
+                for (var k = partFrom.Rows; k < page.TableRows.Count; k++)
+                    page.TableRows[k] = page.TableRows[k] with { Top = page.TableRows[k].Top - lift };
                 rowTop -= lift;
                 partTop -= lift;
             }
@@ -947,7 +953,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 x + tableWidth + Twips("rightFromText"), rowTop + row.BottomBorderWidth + Twips("bottomFromText"), false, "bothSides")
                 {
                     DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
-                    Banded = Math.Abs(partTop - top) < 0.01 ? banded : null,
+                    Banded = Math.Abs(partTop - top) < 0.01 ? banded : null, ReachesText = context.Profile.DrawingsReachText,
                 });
         }
         var split = false;
@@ -1060,7 +1066,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     x + tableWidth + Twips("rightFromText"), top + height + Twips("bottomFromText"), false, "bothSides")
                     {
                         DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
-                        Banded = banded,
+                        Banded = banded, ReachesText = context.Profile.DrawingsReachText,
                     });
         }
         // A part going on at the top of a page: its header rows first.
@@ -1072,7 +1078,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             if (!row.Header)
             {
                 foreach (var header in headers)
-                    Draw(header);
+                    Draw(header, repeated: true);
                 onPage = 0;
             }
             return row.Header || headers.Count == 0 ? row.AtPageTop() : row;

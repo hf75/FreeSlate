@@ -1211,12 +1211,18 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         var pivotY = down ? top : topWidths[cellRow] + total - margins.Bottom;
                         var turned = RotatedLines(scope, cell, laidOut, total - margins.Top - margins.Bottom, fields).ToList();
                         // Vertical alignment moves the lines across the cell, towards its right for btLr and its left for
-                        // tbRl, by the room the cell's width leaves beside its lines and side lines, its margins not
-                        // counted (measured with docx/local/rcv-*: 20, 40 and 80 pt cells of one and two lines of Calibri
-                        // 11, each line 13.78 pt across, centered and bottom aligned within 0.06 pt).
+                        // tbRl, by the room the cell's width leaves beside its lines and side lines (measured with
+                        // docx/local/rcv-*: 20, 40 and 80 pt cells of one and two lines of Calibri 11, each line 13.78 pt
+                        // across, centered and bottom aligned within 0.06 pt, in a table without a style); from Word 2013 on
+                        // beside the margins set for it too, not those a table without a style keeps (see DefaultMargin;
+                        // with margins of 5.4 pt in Word 365 by COM, scratchpad turn/: the text 5.4 pt left of where it stood
+                        // centered without them, 10.8 at the bottom; docx/local/vmt-15-*, vmu-15-mrg 3.0 to 0.5 pt from
+                        // Word, vmt-11-*, vmu-11-mrg 1.3 pt so and 2.2 with them).
                         if (!fromLeft && cell.Format.VerticalAlign is "center" or "bottom" && turned.Count > 0)
                         {
-                            var room = cellWidth - Width(vertical[cellRow, c0]) - Width(vertical[cellRow, c1]) - turned.Max(l => l.Top + l.Line.Height);
+                            var set = context.Profile.TurnedAlignWithinMargins ? format.Margins.Overlay(rows[cellRow].MarginExceptions).Overlay(cell.Format.Margins) : null;
+                            var room = cellWidth - Width(vertical[cellRow, c0]) - Width(vertical[cellRow, c1]) - (set?.Left ?? 0) - (set?.Right ?? 0)
+                                - turned.Max(l => l.Top + l.Line.Height);
                             var across = Math.Max(0, room) / (cell.Format.VerticalAlign == "center" ? 2 : 1);
                             pivotX += down ? -across : across;
                         }
