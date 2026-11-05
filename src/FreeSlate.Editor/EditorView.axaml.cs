@@ -231,18 +231,62 @@ public sealed partial class EditorView : Panel
             Tilt("TiltLeft", "perspectiveLeft"),
             Field("TiltFlat", "", () => editing.TiltPicture(PictureTilt.Flat), icon: Placement.RectangleIcon),
         ];
-        // A table of so many columns, its head and two rows below it (Tab in its last cell adds more), in the tone's look; each a preview.
-        IReadOnlyList<Controls.GestureRing.Slot> newTable =
+        // A new table, in the tone's look, its size stepped in a split ring: its columns on the right, one more up and one fewer down, its
+        // rows on the left alike. It shows at the cursor as it would go in from the moment that ring comes, growing and shrinking with
+        // each step, and goes in as the ring closes beside it (a click into the text, Enter); Escape and the way back take it away. Chosen
+        // blindly, a step puts in a table of the size it makes.
+        var size = (Columns: Tables.Columns, Rows: Tables.Rows);
+        var tableShown = false;
+        Controls.GestureRing.Slot? newTable = null;
+        // The table as large as the steps have it, a step of its own in place of the one that showed it before (none where it was refused).
+        void ShowTable() => Sheets.Edit(() =>
+        {
+            if (tableShown)
+                editing.TakeBack();
+            tableShown = false;
+            var steps = editing.Steps;
+            editing.InsertTable(size.Columns, size.Rows, Tables.Table.Style, Tables.Text.Style);
+            tableShown = editing.Steps > steps;
+        });
+        void Step(int columns, int rows)
+        {
+            size = (Math.Clamp(size.Columns + columns, 1, Tables.MostColumns), Math.Clamp(size.Rows + rows, 1, Tables.MostRows));
+            if (ReferenceEquals(ring.Holder, newTable))
+            {
+                ShowTable();
+                return;
+            }
+            Sheets.Edit(() => editing.InsertTable(size.Columns, size.Rows, Tables.Table.Style, Tables.Text.Style));
+            size = (Tables.Columns, Tables.Rows);
+        }
+        string Counted(string one, string more, int count) =>
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, this.TryFindResource(count == 1 ? one : more, out var text) && text is string format ? format : "{0}", count);
+        IReadOnlyList<Controls.GestureRing.Slot> tableSize =
         [
-            .. Tables.Columns.Select(n => Field($"TableColumns{n}", n.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                () => editing.InsertTable(n, Tables.Rows, Tables.Table.Style, Tables.Text.Style))),
+            new("TableColumnMore", "", () => Step(1, 0), Icon: Placement.ColumnMoreIcon, Steps: true),
+            new("TableColumnFewer", "", () => Step(-1, 0), Icon: Placement.ColumnFewerIcon, Steps: true),
+            new("TableRowFewer", "", () => Step(0, -1), Icon: Placement.RowFewerIcon, Steps: true),
+            new("TableRowMore", "", () => Step(0, 1), Icon: Placement.RowMoreIcon, Steps: true),
         ];
+        newTable = new("InsertTable", "", Under: tableSize, Icon: Placement.TableIcon, Split: true,
+            Opened: () =>
+            {
+                (size, tableShown) = ((Tables.Columns, Tables.Rows), false);
+                ShowTable();
+            },
+            Left: kept =>
+            {
+                if (!kept && tableShown)
+                    Sheets.Edit(() => editing.TakeBack());
+                tableShown = false;
+            },
+            Status: () => Counted("TableSizeColumn", "TableSizeColumns", size.Columns) + " \u00B7 " + Counted("TableSizeRow", "TableSizeRows", size.Rows));
         // At a spot with nothing to act on (no picture, selection or word there): what goes in there, the cursor there; a picture from a
         // file up, a table down right, a picture from the clipboard down left.
         IReadOnlyList<Controls.GestureRing.Slot> insert =
         [
             new("InsertPictureFile", "", () => _ = Sheets.PickPictures(), Icon: Placement.PictureIcon),
-            new("InsertTable", "", Under: newTable, Icon: Placement.TableIcon),
+            newTable,
             new("InsertPictureClipboard", "", () => _ = Sheets.PasteClipboardPictures(), Icon: Placement.ClipboardIcon),
         ];
         // In a table's cell, at a spot with nothing to act on: its row up, its column right, shaping the table by hand down, the table

@@ -50,6 +50,15 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>The icon of a table: a frame of three columns and three rows.</summary>
     public static readonly string TableIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
 
+    /// <summary>
+    /// The icons of a new table's size stepped: a table of columns with a plus or a minus right of it, one of rows with a plus or a minus
+    /// left of it (the rows on the left of the ring, the columns on its right).
+    /// </summary>
+    public static readonly string ColumnMoreIcon = Drawn(Frame(0, 1, 11.6, 14), Block(3.5, 1, Weight, 14), Block(6.9, 1, Weight, 14), Bar(13.6, 7.4, 6.4), Block(16.2, 4.8, Weight, 6.4));
+    public static readonly string ColumnFewerIcon = Drawn(Frame(0, 1, 11.6, 14), Block(3.5, 1, Weight, 14), Block(6.9, 1, Weight, 14), Bar(13.6, 7.4, 6.4));
+    public static readonly string RowMoreIcon = Drawn(Bar(0, 7.4, 6.4), Block(2.6, 4.8, Weight, 6.4), Frame(8.4, 1, 11.6, 14), Bar(8.4, 5.4, 11.6), Bar(8.4, 9.4, 11.6));
+    public static readonly string RowFewerIcon = Drawn(Bar(0, 7.4, 6.4), Frame(8.4, 1, 11.6, 14), Bar(8.4, 5.4, 11.6), Bar(8.4, 9.4, 11.6));
+
     /// <summary>The icon of a table's row: the table, its middle row filled.</summary>
     public static readonly string RowIcon = Drawn(Frame(0, 1, 20, 14), Block(0, 5.4, 20, 4.4), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
 

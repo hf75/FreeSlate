@@ -50,11 +50,11 @@ public static class Tables
 
     public static readonly IReadOnlyList<TableStyle> Styles = [Table, Text];
 
-    /// <summary>The numbers of columns a new table can have, in the ring that puts one in.</summary>
-    public static readonly IReadOnlyList<int> Columns = [2, 3, 4, 5, 6];
-
-    /// <summary>The rows a new table has: the head and two more; Tab in the last cell adds more.</summary>
-    public const int Rows = 3;
+    /// <summary>
+    /// The size a new table begins with in the ring that puts one in: its columns, and its rows (the head and two more); the ring steps
+    /// them up to the most it takes, and down to one (Tab in the last cell adds rows later).
+    /// </summary>
+    public const int Columns = 3, Rows = 3, MostColumns = 20, MostRows = 50;
 
     const string Light = "w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"{light}\"", Rule = "w:val=\"single\" w:sz=\"{size}\" w:space=\"0\" w:color=\"{dark}\"";
 

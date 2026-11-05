@@ -381,8 +381,11 @@ the middles of the sides of the picture selected size it the same way, as a step
 side stretches it, the opposite side stays and an alignment there too, a side it moves lines up with the columns' edges and the
 margins. Near the view's top or bottom a drag scrolls the pages, the faster the nearer (a picture dragged or sized, or the
 selection, reaching on). The arrows move a floating picture a point, ten with Shift; arrows one after another are one step.
-A table goes in from the ring at an empty spot (down right): its own ring has the number of columns, each a preview with its
-three rows, the head and two more; Tab goes from cell to cell, a row more from the last one, Shift+Tab back. The tones give
+A table goes in from the ring at an empty spot (down right): its own ring is split (`GestureRing.Slot.Split`), the columns on its
+right, one more up and one fewer down, the rows on its left alike, fields that step and leave the ring open (`Slot.Steps`). The table
+shows at the cursor as it would go in from the moment that ring comes (three columns, the head and two rows), growing and shrinking
+with each step, its size in a line under the ring (`Slot.Status`); a click beside the ring or Enter puts it in, one step, Escape and
+the way back take it away (`Slot.Opened`, `Slot.Left`). Tab goes from cell to cell, a row more from the last one, Shift+Tab back. The tones give
 tables their look (`Writing/Tables`: a table style and a style for the text in cells, which has no other style below it so that
 the table style's fonts reach the text: lines between the rows in the plain tone, a book's rules in the magazine, a grid in the
 notebook, the head's look also for a head column). While the cursor is in a table, the lines of its cells that do not show are
