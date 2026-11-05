@@ -15,8 +15,9 @@ namespace FreeSlate.Editor.Controls;
 /// glass, its middle clear: the text it acts on stands there as far as it can (see Measure), framed exactly around all of it, under
 /// the ring where the ring lies over it, and reads as the field pointed at would make it (Preview). The middle of a ring of a second
 /// level is the way back to the ring before: the sign of the field that holds it stands there while no field is pointed at, and it
-/// lights up as a field does where the pointer is in it. Where that field says so (Slot.Done), the middle instead closes the ring keeping
-/// what it shows, a tick there (a new table's size stepped); Backspace still goes back.
+/// lights up as a field does where the pointer is in it. Where that field says so (Slot.Settles), the middle is split as the ring is: its
+/// left half goes back keeping what the ring shows (a tick), its right half going back takes it away (a cross); a new table's size
+/// stepped.
 /// What it acts on may have fields of its own (see Choose), a picture its places among the text.
 /// The right button held on the selection, or on a word where there is none, brings it after a moment of rest; moved into a field and
 /// let go there, it does what the field does, let go in the middle nothing; moved on out of a field that holds a ring, that ring comes
@@ -75,24 +76,28 @@ public sealed class GestureRing : Control
     /// fields lie in two halves, right and left of a line through its middle, from the top round (one more up, one fewer down on each
     /// side, as a stepper has them); and it may show something of its own while that ring shows (Opened as it comes; Left as it goes,
     /// kept where it closed beside the ring, by a click there, Enter or letting go there, else taken back: Escape, the way back), with a
-    /// line about it under the ring while no field is pointed at (Status); and the middle of its ring may keep that and close the ring
-    /// instead of going back (Done, the key of its name).
+    /// line about it under the ring while no field is pointed at (Status); and the way back in the middle of its ring may be split, its
+    /// left half keeping what the ring shows, its right half taking it away (Settles).
     /// </summary>
     public sealed record Slot(string NameKey, string Sign, Action? Act = null, IReadOnlyList<Slot>? Under = null, bool Slanted = false, string? Icon = null,
         Color? Swatch = null, bool Steps = false, bool Split = false, Action? Opened = null, Action<bool>? Left = null, Func<string>? Status = null,
-        string? Done = null);
+        bool Settles = false);
 
     /// <summary>A ring as it shows: its fields, its centre, and the field of the ring before it that holds it (whose split and middle it has).</summary>
     sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent)
     {
         public bool Split => Parent?.Split == true;
 
-        /// <summary>Whether its middle keeps what it shows and closes it, not the way back (see Slot.Done).</summary>
-        public bool Keeps => Parent?.Done != null;
+        /// <summary>Whether its way back is split, keeping what it shows on the left and taking it away on the right (see Slot.Settles).</summary>
+        public bool Settles => Parent?.Settles == true;
     }
 
-    /// <summary>The tick in the middle of a ring that keeps what it shows there (see Slot.Done): a filled check, its ink about the origin.</summary>
+    /// <summary>
+    /// The signs of a split way back (see Slot.Settles), their ink about the origin: a filled tick for keeping what the ring shows, a filled
+    /// cross for taking it away.
+    /// </summary>
     static readonly Geometry Tick = Geometry.Parse("M-7.4,0.4 L-5,-2 L-1.8,1.2 L5,-5.6 L7.4,-3.2 L-1.8,6 Z");
+    static readonly Geometry Cross = Geometry.Parse("M-5.6,-4 L-4,-5.6 L0,-1.6 L4,-5.6 L5.6,-4 L1.6,0 L5.6,4 L4,5.6 L0,1.6 L-4,5.6 L-5.6,4 L-1.6,0 Z");
 
     enum Mode { None, Waiting, Blind, Held, Clicking, Gripped, Moving, Holding, KeysWaiting, Keys }
 
@@ -116,6 +121,8 @@ public sealed class GestureRing : Control
     /// way back in the middle of a ring that came where it is only once it went on from there.
     /// </summary>
     bool backward, visited;
+    /// <summary>Whether the pointer is in the left half of a split way back, which keeps what the ring shows (see Slot.Settles).</summary>
+    bool keeping;
     /// <summary>Where the middle of a ring to be clicked was pressed, and where its centre stood then: moved on, the ring goes with the pointer.</summary>
     (Point At, Point Centre) grip;
     long since;
@@ -245,11 +252,11 @@ public sealed class GestureRing : Control
         InvalidateVisual();
     }
 
-    /// <summary>Back to the ring before, which comes again where it stood; what the ring left showed of its own is taken back.</summary>
-    void Back()
+    /// <summary>Back to the ring before, which comes again where it stood; what the ring left showed of its own is kept, or taken back.</summary>
+    void Back(bool keep = false)
     {
         Aim(null);
-        levels[^1].Parent?.Left?.Invoke(false);
+        levels[^1].Parent?.Left?.Invoke(keep);
         levels.RemoveAt(levels.Count - 1);
         (since, visited) = (Environment.TickCount64, true);
         frames.Start();
@@ -351,6 +358,7 @@ public sealed class GestureRing : Control
                 return;
             case Mode.Held when Current is { } level:
                 Aim(Pointed(at), back: visited && Backward(at));
+                keeping = level.Settles && at.X < level.Centre.X;
                 // On out of a field that holds a ring: that ring, where the pointer is.
                 if (chosen is { } field && level.Slots[field].Under != null && Far(at, level.Centre) > Outer + 6)
                     Enter(level.Slots[field], at);
@@ -358,6 +366,7 @@ public sealed class GestureRing : Control
             case Mode.Clicking or Mode.Keys when Current is { } level:
                 if (mode != Mode.Keys || arrows.Count == 0)
                     Aim(mode == Mode.Clicking && Far(at, level.Centre) > Outer + 24 ? null : Pointed(at), back: mode == Mode.Clicking && Backward(at));
+                keeping = level.Settles && at.X < level.Centre.X;
                 break;
             case Mode.Gripped when Far(at, grip.At) > SelectDistance:
                 // Pressed in its middle and moved on, not clicked: the ring goes with the pointer.
@@ -415,14 +424,14 @@ public sealed class GestureRing : Control
                 }
                 if (chosen == null && levels.Count > 1)
                 {
-                    // Let go in the middle of a ring of a second level: on the way back, the ring before (or, where the middle keeps what
-                    // the ring shows, the ring closed keeping it); where that ring came to the pointer, that ring; to be clicked.
+                    // Let go in the middle of a ring of a second level: on the way back, the ring before (a split way back keeping what the
+                    // ring shows on its left half); where that ring came to the pointer, that ring; to be clicked.
                     (mode, IsHitTestVisible) = (Mode.Clicking, true);
                     e.Pointer.Capture(null);
-                    if (backward && level.Keeps)
-                        Close(keep: true);
-                    else if (backward)
-                        Back();
+                    if (backward)
+                        Back(keep: level.Settles && keeping);
+                    // Drawn again, so that it takes the clicks beside it too (see Render), not the text under it.
+                    InvalidateVisual();
                     break;
                 }
                 var held = chosen is { } done ? level.Slots[done] : null;
@@ -441,14 +450,12 @@ public sealed class GestureRing : Control
                     Do(held, null);
                 break;
             case Mode.Gripped:
-                // Let go in the middle where it was pressed, a click there: back to the ring before (or the ring closed keeping what it
-                // shows, where its middle does so), or the first one closed.
+                // Let go in the middle where it was pressed, a click there: back to the ring before (a split way back keeping what the
+                // ring shows on its left half), or the first one closed.
                 mode = Mode.Clicking;
                 e.Pointer.Capture(null);
-                if (Current is { Keeps: true })
-                    Close(keep: true);
-                else if (levels.Count > 1)
-                    Back();
+                if (levels.Count > 1)
+                    Back(keep: Current is { Settles: true } settling && grip.At.X < settling.Centre.X);
                 else
                     Close(keep: false);
                 break;
@@ -490,8 +497,8 @@ public sealed class GestureRing : Control
 
     /// <summary>
     /// A click while the ring waits for one: on a field it does that field (one with a ring opens it, one that steps steps and the ring
-    /// stays), elsewhere it closes (beside a split ring keeping what it shows); in the middle it is a click as it is let go there (back to
-    /// the ring before, or the first one closed), and the ring goes with the pointer moved on from there (see Shift).
+    /// stays), elsewhere it closes, what the rings show taken away; in the middle it is a click as it is let go there (back to the ring
+    /// before, or the first one closed), and the ring goes with the pointer moved on from there (see Shift).
     /// </summary>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -520,7 +527,7 @@ public sealed class GestureRing : Control
             return;
         }
         Aim(field);
-        Close(keep: field != null || level.Split);
+        Close(keep: field != null);
         if (field is { } given)
             Do(level.Slots[given], null);
     }
@@ -830,14 +837,35 @@ public sealed class GestureRing : Control
                 // A ring of a second level: in its middle the way back, the sign of the field that holds it; on a button of glass, so that
                 // it reads over the text, and lit as a field where the pointer is in it. While a field is pointed at it is away: the text
                 // there reads as that field would make it.
-                if (level.Parent is { } parent && (backward || chosen == null))
+                if (level.Parent != null && (backward || chosen == null) && level.Settles)
+                {
+                    // A split way back: the ring's line on through the middle, keeping what it shows on the left (a tick), taking it away
+                    // on the right (a cross), each half on a button of glass and lit as a field where the pointer is in it.
+                    context.DrawLine(hairline, new Point(c.X, c.Y - Inner), new Point(c.X, c.Y + Inner));
+                    foreach (var (side, sign) in new[] { (-1, Tick), (1, Cross) })
+                    {
+                        var lit = backward && keeping == side < 0;
+                        var middle = new Point(c.X + side * Inner / 2, c.Y);
+                        if (lit)
+                        {
+                            var area = side < 0 ? new Rect(c.X - Inner, c.Y - Inner, Inner - Gap / 2, 2 * Inner) : new Rect(c.X + Gap / 2, c.Y - Inner, Inner - Gap / 2, 2 * Inner);
+                            using (context.PushGeometryClip(new RectangleGeometry(area)))
+                                context.DrawEllipse(accent, null, c, Inner - Gap, Inner - Gap);
+                        }
+                        else
+                            context.DrawEllipse(surface, rim, middle, Hub - 2, Hub - 2);
+                        using (context.PushTransform(Matrix.CreateScale(HubSign, HubSign) * Matrix.CreateTranslation(middle.X, middle.Y)))
+                            context.DrawGeometry(lit ? onAccent : ink, null, sign);
+                    }
+                }
+                else if (level.Parent is { } parent && (backward || chosen == null))
                 {
                     if (backward)
                         context.DrawEllipse(accent, null, c, Inner - Gap, Inner - Gap);
                     else
                         context.DrawEllipse(surface, rim, c, Hub, Hub);
                     using (context.PushTransform(Matrix.CreateScale(HubSign, HubSign) * Matrix.CreateTranslation(c.X, c.Y)))
-                        context.DrawGeometry(backward ? onAccent : level.Keeps ? ink : faint, null, level.Keeps ? Tick : SignOf(parent));
+                        context.DrawGeometry(backward ? onAccent : faint, null, SignOf(parent));
                 }
             }
         }
@@ -847,7 +875,7 @@ public sealed class GestureRing : Control
         if (chosen != null || backward || status != null)
         {
             var (name, way) = chosen is { } named ? (NameOf(level.Slots[named].NameKey), Way(Angle(named, count, level.Split)))
-                : (status ?? NameOf(level.Parent?.Done ?? "RingBack"), new Vector(0, 1));
+                : (status ?? NameOf(!level.Settles ? "RingBack" : keeping ? "RingTake" : "RingDrop"), new Vector(0, 1));
             var label = Layout(name, Brush("TipInk"));
             var (w, h) = (label.WidthIncludingTrailingWhitespace + 16, label.Height + 8);
             if (chosen == null && c.Y + Outer + 8 + h > Bounds.Height)

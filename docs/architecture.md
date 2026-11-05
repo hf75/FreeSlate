@@ -384,8 +384,9 @@ selection, reaching on). The arrows move a floating picture a point, ten with Sh
 A table goes in from the ring at an empty spot (down right): its own ring is split (`GestureRing.Slot.Split`), the columns on its
 right, one more up and one fewer down, the rows on its left alike, fields that step and leave the ring open (`Slot.Steps`). The table
 shows at the cursor as it would go in from the moment that ring comes (three columns, the head and two rows), growing and shrinking
-with each step, its size in a line under the ring (`Slot.Status`); a click in the ring's middle (a tick there instead of the way
-back, `Slot.Done`) or beside it, or Enter, puts it in, one step; Escape and Backspace take it away (`Slot.Opened`, `Slot.Left`). Tab goes from cell to cell, a row more from the last one, Shift+Tab back. The tones give
+with each step, its size in a line under the ring (`Slot.Status`). The way back in the ring's middle is split as the ring is
+(`Slot.Settles`): its left half (a tick) puts the table in, one step, its right half (a cross) takes it away, either back at the ring
+before; Enter puts it in and closes the ring, a click beside the ring, Escape and Backspace take it away (`Slot.Opened`, `Slot.Left`). Tab goes from cell to cell, a row more from the last one, Shift+Tab back. The tones give
 tables their look (`Writing/Tables`: a table style and a style for the text in cells, which has no other style below it so that
 the table style's fonts reach the text: lines between the rows in the plain tone, a book's rules in the magazine, a grid in the
 notebook, the head's look also for a head column). While the cursor is in a table, the lines of its cells that do not show are
