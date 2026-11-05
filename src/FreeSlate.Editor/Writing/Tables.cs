@@ -14,6 +14,26 @@ public sealed record TableStyle(string Style, string NameKey);
 /// </summary>
 public sealed record TableKind(string Style, string NameKey, string Icon, string Borders, string Head);
 
+/// <summary>A colour for cells: its name's key and its fill (hex RRGGBB), soft enough for the text of any tone to read on it.</summary>
+public sealed record CellFill(string NameKey, string Fill)
+{
+    public Avalonia.Media.Color Color => Avalonia.Media.Color.Parse("#" + Fill);
+}
+
+/// <summary>
+/// A kind of line for a table's lines and its cells' sides: its name's key, its icon, Word's kind of line, its width (points), and
+/// whether it takes the tone's colour for rules, else the one for light lines.
+/// </summary>
+public sealed record LineKind(string NameKey, string Icon, string Kind, double Width, bool Rule)
+{
+    /// <summary>The line in a tone's colours.</summary>
+    public CellBorder Border(Tone? tone)
+    {
+        var (light, dark) = (tone ?? Tones.All[0]).LineColors();
+        return new CellBorder(Kind, Width, Rule ? dark : light);
+    }
+}
+
 /// <summary>
 /// Tables as the tones have them: a table style for the table itself (its lines, its head) and a paragraph style for the text in its
 /// cells, which every tone defines in its own way (see Tones), so that a table takes the look of the document it is in and changes
@@ -53,6 +73,28 @@ public static class Tables
         new("TableFrame", "StyleTableFrame", Placement.LookFrameIcon,
             $"<w:tblBorders><w:top {Rule.Replace("{size}", "4")} /><w:left {Rule.Replace("{size}", "4")} /><w:bottom {Rule.Replace("{size}", "4")} /><w:right {Rule.Replace("{size}", "4")} /></w:tblBorders>",
             $"<w:tcBorders><w:{{side}} {Rule.Replace("{size}", "4")} /></w:tcBorders>"),
+    ];
+
+    /// <summary>The colours cells can have beside none: soft ones, light enough for black text, from grey round the colours.</summary>
+    public static readonly IReadOnlyList<CellFill> Fills =
+    [
+        new("FillGray", "ECEAE5"),
+        new("FillYellow", "FAEEC0"),
+        new("FillOrange", "F9DFC8"),
+        new("FillGreen", "DDEBD3"),
+        new("FillBlue", "D9E6F2"),
+        new("FillRose", "F4DAD8"),
+        new("FillViolet", "E4DDEF"),
+    ];
+
+    /// <summary>The lines a table's lines can have beside none and their look's own: fine in the light colour, strong, double, dotted and dashed in the rules'.</summary>
+    public static readonly IReadOnlyList<LineKind> Lines =
+    [
+        new("LineFine", Placement.LineFineIcon, "single", 0.5, false),
+        new("LineStrong", Placement.LineStrongIcon, "single", 1.5, true),
+        new("LineDouble", Placement.LineDoubleIcon, "double", 0.5, true),
+        new("LineDotted", Placement.LineDottedIcon, "dotted", 1, true),
+        new("LineDashed", Placement.LineDashedIcon, "dashed", 0.5, true),
     ];
 
     /// <summary>

@@ -61,14 +61,18 @@ public sealed class GestureRing : Control
     /// </summary>
     const double SignHeight = 16, SignWidth = 22, SignArea = 14;
 
+    /// <summary>The radius of a swatch's disc, about as large as a sign.</summary>
+    const double SwatchRadius = 9;
+
     /// <summary>How long a ring takes to come, and how long the name of a field chosen blindly stays, in milliseconds.</summary>
     const double Appear = 120, Confirmation = 900;
 
     /// <summary>
     /// A field of the ring: its name's key among the texts (its name where there is none), its sign, and what it does or the ring it
-    /// holds. A sign is a few letters, or an icon: path data, drawn as it is given, centred.
+    /// holds. A sign is a few letters, or an icon: path data, drawn as it is given, centred; or a swatch, a disc of a colour.
     /// </summary>
-    public sealed record Slot(string NameKey, string Sign, Action? Act = null, IReadOnlyList<Slot>? Under = null, bool Slanted = false, string? Icon = null);
+    public sealed record Slot(string NameKey, string Sign, Action? Act = null, IReadOnlyList<Slot>? Under = null, bool Slanted = false, string? Icon = null,
+        Color? Swatch = null);
 
     /// <summary>A ring as it shows: its fields, its centre, and the field of the ring before it that holds it.</summary>
     sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent);
@@ -158,6 +162,9 @@ public sealed class GestureRing : Control
     public void Attach(Control sheets) => sheets.AddHandler(PointerPressedEvent, Pressed, RoutingStrategies.Tunnel);
 
     Level? Current => levels.Count > 0 ? levels[^1] : null;
+
+    /// <summary>The field whose ring shows, a ring of a second level or further; null for the first ring, or none.</summary>
+    public Slot? Holder => Current?.Parent;
 
     void Pressed(object? sender, PointerPressedEventArgs e)
     {
@@ -734,8 +741,14 @@ public sealed class GestureRing : Control
                     var slot = level.Slots[k];
                     var way = Way(Angle(k, count));
                     var place = c + way * Middle;
-                    using (context.PushTransform(Matrix.CreateTranslation(place.X, place.Y)))
-                        context.DrawGeometry(chosen == k ? onAccent : ink, null, SignOf(slot));
+                    // A swatch: its colour in a disc, ringed so that a pale one shows on the glass and on the accent.
+                    if (slot.Swatch is { } swatch)
+                        context.DrawEllipse(new SolidColorBrush(swatch), new Pen(chosen == k ? onAccent : faint, 1), place, SwatchRadius, SwatchRadius);
+                    else
+                    {
+                        using (context.PushTransform(Matrix.CreateTranslation(place.X, place.Y)))
+                            context.DrawGeometry(chosen == k ? onAccent : ink, null, SignOf(slot));
+                    }
                     // A field that holds a ring: a chevron between its sign and its outer edge, pointing on.
                     if (slot.Under != null)
                     {

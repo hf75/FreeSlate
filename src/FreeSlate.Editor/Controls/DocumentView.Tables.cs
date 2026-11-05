@@ -81,23 +81,165 @@ public sealed partial class DocumentView
     /// <summary>The table the cursor stands in, with its cells; null outside tables.</summary>
     TableCells? CursorTable => session?.Table;
 
+    /// <summary>The cells selected together (see EditSession.CellSelection) as a page shows them, each one's rectangle in CSS pixels of the page; none without.</summary>
+    List<SKRect> SelectedCellAreas(int page)
+    {
+        if (session?.CellSelection is not { } range || CellsOn(page, range.Table) is not { } cells)
+            return [];
+        return [.. CellAreas(page, cells).Where(a => a.Cell.Top >= range.Top && a.Cell.Bottom <= range.Bottom && a.Cell.Left >= range.Left && a.Cell.Right <= range.Right)
+            .Select(a => a.Area)];
+    }
+
     /// <summary>
-    /// The lines of the cells of the table the cursor stands in, dashed and faint over the pages in view: the shape of a table whose look
-    /// leaves lines out (see Tones), as Word's gridlines show it, only while one writes in it, a new one shown by the ring too.
+    /// A line of a table the ring acts on (see TargetLineAt): its table, whether it is upright, the line (upright, a line of the grid;
+    /// across, the one before a row), the stretch of it under the pointer between the lines that meet it there (rows or grid columns, from
+    /// one to before another), and the whole of it that goes on straight from there through the table.
+    /// </summary>
+    public sealed record LineTarget(int Table, bool Upright, int Line, int From, int To, int WholeFrom, int WholeTo);
+
+    LineTarget? lineTarget;
+
+    /// <summary>The line of a table the ring acts on; null where it acts on none.</summary>
+    public LineTarget? TargetedLine => lineTarget;
+
+    /// <summary>Whether the ring acts on the stretch of the line under the pointer alone, not on the whole line: what it frames.</summary>
+    public bool TargetPiece { get; set; }
+
+    /// <summary>The ring acts on no line now.</summary>
+    public void ForgetLine() => (lineTarget, TargetPiece) = (null, false);
+
+    /// <summary>
+    /// Makes the line of a table at a point of the view, the nearest within reach, the one the ring acts on (see LineTarget): an upright
+    /// one where cells of a row meet or the table's side is, one across where rows' cells meet or the table's top or bottom is; not where
+    /// a page cuts a row, nor on a head row repeated, nor within a merged cell. Whether there was one.
+    /// </summary>
+    public bool TargetLineAt(Point point)
+    {
+        ForgetLine();
+        if (session == null || shaping != null || cropping || tilting || rows.FirstOrDefault(r => point.Y / factor >= r.Top && point.Y / factor <= r.Top + r.Size.Height) is not { } row)
+            return false;
+        var page = row.Index;
+        var (x, y) = ((point.X - Left(row)) / factor / PxPerPt, (point.Y / factor - row.Top) / PxPerPt);
+        var reach = LineReach / factor / PxPerPt;
+        (int Table, bool Upright, int Line, int Along)? best = null;
+        var nearest = reach;
+        foreach (var part in Page(page).Items.OfType<TableRowItem>().Where(r => !r.Repeated && r.Lines.Length >= 2))
+        {
+            if (y < part.Top - reach || y > part.Bottom + reach || CellsOn(page, part.Table) is not { } cells)
+                continue;
+            if (y >= part.Top && y <= part.Bottom)
+            {
+                foreach (var k in cells.Cells.Where(c => c.Top <= part.Row && part.Row < c.Bottom && c.Right < part.Lines.Length).SelectMany(c => new[] { c.Left, c.Right }).Distinct())
+                {
+                    if (Math.Abs(x - part.Lines[k]) is var d && d < nearest)
+                        (best, nearest) = ((part.Table, true, k, part.Row), d);
+                }
+            }
+            if (x < part.Lines.Min() || x > part.Lines.Max() || ColumnAt(page, part.Table, x) is not { } column)
+                continue;
+            if (Math.Abs(y - part.Bottom) is var below && below < nearest && !Cut(page, part))
+                (best, nearest) = ((part.Table, false, part.Row + 1, column), below);
+            if (Math.Abs(y - part.Top) is var above && above < nearest && !(page > 0 && RowsOf(page - 1, part.Table).Any(r => r.Row == part.Row && !r.Repeated)))
+                (best, nearest) = ((part.Table, false, part.Row, column), above);
+        }
+        if (best is not var (table, upright, line, along) || CellsOn(page, table) is not { } all)
+            return false;
+        TableCell? At(int r, int c) => all.Cells.FirstOrDefault(cell => cell.Top <= r && r < cell.Bottom && cell.Left <= c && c < cell.Right);
+        (TableCell? Before, TableCell? After) Sides(int k) => upright
+            ? (line > 0 ? At(k, line - 1) : null, line < all.Columns ? At(k, line) : null)
+            : (line > 0 ? At(line - 1, k) : null, line < all.Rows ? At(line, k) : null);
+        // A line where cells meet, or a cell meets the outside; none within a merged cell, nor where no cell is.
+        bool Lined(int k) => Sides(k) is var (a, b) && (a != null || b != null) && !ReferenceEquals(a, b);
+        if (!Lined(along))
+            return false;
+        var (before, after) = Sides(along);
+        var (from, to) = upright
+            ? (Math.Max(before?.Top ?? 0, after?.Top ?? 0), Math.Min(before?.Bottom ?? int.MaxValue, after?.Bottom ?? int.MaxValue))
+            : (Math.Max(before?.Left ?? 0, after?.Left ?? 0), Math.Min(before?.Right ?? int.MaxValue, after?.Right ?? int.MaxValue));
+        var (wholeFrom, wholeTo) = (from, to);
+        while (wholeFrom > 0 && Lined(wholeFrom - 1))
+            wholeFrom--;
+        while (wholeTo < (upright ? all.Rows : all.Columns) && Lined(wholeTo))
+            wholeTo++;
+        lineTarget = new LineTarget(table, upright, line, from, to, wholeFrom, wholeTo);
+        return true;
+    }
+
+    /// <summary>
+    /// The line the ring acts on as the pages in view show it, thin boxes in the view's coordinates along its stretch under the pointer or
+    /// along the whole of it (see TargetPiece), where a page shows it.
+    /// </summary>
+    List<Rect> LineAreas()
+    {
+        if (lineTarget is not { } target)
+            return [];
+        var (from, to) = TargetPiece ? (target.From, target.To) : (target.WholeFrom, target.WholeTo);
+        var (areas, pt, view) = (new List<Rect>(), factor * PxPerPt, Viewed());
+        foreach (var row in rows)
+        {
+            if (row.Top * factor >= view.Bottom || (row.Top + row.Size.Height) * factor <= view.Top)
+                continue;
+            var parts = RowsOf(row.Index, target.Table).Where(r => !r.Repeated).ToList();
+            if (parts.Count == 0 || parts[0].Lines.Length <= Math.Max(target.Upright ? target.Line : to, 0))
+                continue;
+            if (target.Upright)
+            {
+                var on = parts.Where(p => p.Row >= from && p.Row < to).ToList();
+                if (on.Count == 0)
+                    continue;
+                var x = Left(row) + on[0].Lines[target.Line] * pt;
+                areas.Add(new Rect(x - 1.5, (row.Top / PxPerPt + on.Min(p => p.Top)) * pt, 3, (on.Max(p => p.Bottom) - on.Min(p => p.Top)) * pt));
+                continue;
+            }
+            // Across: below the row before it, or above the row after it, as each page shows it.
+            var y = parts.FirstOrDefault(p => p.Row == target.Line - 1) is { } above ? above.Bottom
+                : parts.FirstOrDefault(p => p.Row == target.Line) is { } below ? below.Top : (double?)null;
+            if (y is not { } at)
+                continue;
+            var lines = parts[0].Lines;
+            var (x1, x2) = (Math.Min(lines[from], lines[to]), Math.Max(lines[from], lines[to]));
+            areas.Add(new Rect(Left(row) + x1 * pt, (row.Top / PxPerPt + at) * pt - 1.5, (x2 - x1) * pt, 3));
+        }
+        return areas;
+    }
+
+    /// <summary>
+    /// The lines of the cells of the table the cursor stands in that do not show, dashed and faint over the pages in view: the shape of a
+    /// table whose look leaves lines out (see Tones) or whose lines were hidden, as Word's gridlines show it, only while one writes in it,
+    /// a new one shown by the ring too.
     /// </summary>
     void DrawGuides(DrawingContext context, IReadOnlyList<(Row Row, double Left)> visible)
     {
         if (GuideBrush is not { } brush || shaping != null || CursorTable is not { } cells)
             return;
         var pen = new Pen(brush, 1, new DashStyle([2, 3], 0));
+        var pt = factor * PxPerPt;
+        TableCell? At(int r, int c) => cells.Cells.FirstOrDefault(cell => cell.Top <= r && r < cell.Bottom && cell.Left <= c && c < cell.Right);
         foreach (var (row, left) in visible)
         {
-            foreach (var (_, area) in CellAreas(row.Index, cells))
+            // On whole pixels, half a pixel in, so that the dashes are sharp.
+            double X(double x) => Math.Round(left + x * pt) + 0.5;
+            double Y(double y) => Math.Round((row.Top / PxPerPt + y) * pt) + 0.5;
+            foreach (var part in RowsOf(row.Index, cells.Table))
             {
-                // On whole pixels, half a pixel in, so that the dashes are sharp.
-                var (x1, y1) = (Math.Round(left + area.Left * factor) + 0.5, Math.Round((row.Top + area.Top) * factor) + 0.5);
-                var (x2, y2) = (Math.Round(left + area.Right * factor) - 0.5, Math.Round((row.Top + area.Bottom) * factor) - 0.5);
-                context.DrawRectangle(null, pen, new Rect(new Point(x1, y1), new Point(x2, y2)));
+                // Upright where cells of the row meet or the table's side is; across at its top and bottom where cells of rows meet or the
+                // table's top or bottom is; neither within a merged cell, nor where a line shows.
+                for (var k = 0; k < part.Lines.Length; k++)
+                {
+                    var (before, after) = (k > 0 ? At(part.Row, k - 1) : null, At(part.Row, k));
+                    if (before == null && after == null || ReferenceEquals(before, after) || part.Uprights.ElementAtOrDefault(k))
+                        continue;
+                    context.DrawLine(pen, new Point(X(part.Lines[k]), Y(part.Top)), new Point(X(part.Lines[k]), Y(part.Bottom)));
+                }
+                for (var k = 0; k + 1 < part.Lines.Length; k++)
+                {
+                    if (At(part.Row, k) is not { } here)
+                        continue;
+                    if (!part.Over.ElementAtOrDefault(k) && !ReferenceEquals(At(part.Row - 1, k), here))
+                        context.DrawLine(pen, new Point(X(part.Lines[k]), Y(part.Top)), new Point(X(part.Lines[k + 1]), Y(part.Top)));
+                    if (!part.Under.ElementAtOrDefault(k) && !ReferenceEquals(At(part.Row + 1, k), here))
+                        context.DrawLine(pen, new Point(X(part.Lines[k]), Y(part.Bottom)), new Point(X(part.Lines[k + 1]), Y(part.Bottom)));
+                }
             }
         }
     }

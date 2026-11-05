@@ -654,9 +654,16 @@ public sealed partial class DocumentView : Control
         if (caret == null)
             return marks;
         var inView = visible.Select(v => v.Row.Index).ToHashSet();
-        // A drawing selected as a whole has its frame instead (see Render).
+        // A drawing selected as a whole has its frame instead (see Render); rows or columns selected by their grips their band (see
+        // DrawGrips); cells selected together show whole, as Word shows them.
         var drawing = SelectedDrawing() != null;
-        foreach (var (page, from, count) in SelectionHidden || drawing ? [] : Selected())
+        var cells = !SelectionHidden && !drawing && gripped == null && session?.CellSelection != null;
+        foreach (var page in cells ? inView : [])
+        {
+            if (SelectedCellAreas(page) is { Count: > 0 } areas)
+                marks[page] = new Mark([.. areas.Select(a => new[] { new SKPoint(a.Left, a.Top), new SKPoint(a.Right, a.Top), new SKPoint(a.Right, a.Bottom), new SKPoint(a.Left, a.Bottom) })], null);
+        }
+        foreach (var (page, from, count) in SelectionHidden || drawing || cells || gripped != null ? [] : Selected())
         {
             if (!inView.Contains(page))
                 continue;
@@ -981,6 +988,7 @@ public sealed partial class DocumentView : Control
     public bool Press(Point point, IPointer pointer, KeyModifiers modifiers, bool dragging = true)
     {
         Focus();
+        ForgetLine();
         // A handle of the drawing selected sizes it; a drawing pressed is selected as a whole, and may be dragged from there.
         if ((modifiers & KeyModifiers.Shift) == 0 && HandleAt(point) is { } handle)
         {
@@ -1021,6 +1029,16 @@ public sealed partial class DocumentView : Control
             return false;
         if (SelectedDrawing() is var (drawnPage, drawnAt))
             return Hits(drawnPage, drawnAt, point) && HandleAt(point) == null;
+        if (session?.CellSelection != null)
+        {
+            foreach (var row in rows)
+            {
+                var local = new SKPoint((float)((point.X - Left(row)) / factor), (float)(point.Y / factor - row.Top));
+                if (SelectedCellAreas(row.Index).Any(a => a.Contains(local)))
+                    return true;
+            }
+            return false;
+        }
         foreach (var (page, from, count) in Selected())
         {
             if (page >= rows.Count)
@@ -1042,6 +1060,15 @@ public sealed partial class DocumentView : Control
     /// </summary>
     public List<Rect> SelectionAreas()
     {
+        // A line of a table the ring acts on (see TargetLineAt), along it; cells selected together, whole.
+        if (lineTarget != null)
+            return LineAreas();
+        if (session?.CellSelection != null)
+        {
+            var shown = Viewed();
+            return [.. rows.Where(r => r.Top * factor < shown.Bottom && (r.Top + r.Size.Height) * factor > shown.Top)
+                .SelectMany(r => SelectedCellAreas(r.Index).Select(a => new Rect(Left(r) + a.Left * factor, (r.Top + a.Top) * factor, a.Width * factor, a.Height * factor)))];
+        }
         if (SelectionTurned() is var (frame, turn))
             return [new Rect(Turned(frame.TopLeft, frame.Center, turn), Turned(frame.BottomRight, frame.Center, turn))
                 .Union(new Rect(Turned(frame.TopRight, frame.Center, turn), Turned(frame.BottomLeft, frame.Center, turn)))];

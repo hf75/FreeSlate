@@ -142,6 +142,7 @@ public sealed partial class DocumentView
         if ((modifiers & KeyModifiers.Shift) != 0 && gripped is { } selected && selected.Table == grip.Table && selected.Rows == grip.Row)
         {
             gripped = selected with { From = Math.Min(selected.From, grip.Index), To = Math.Max(selected.To, grip.Index + 1) };
+            SelectBand(gripped, grip.Page);
             InvalidateVisual();
             return true;
         }
@@ -200,11 +201,7 @@ public sealed partial class DocumentView
             if (!d.Moving)
             {
                 gripped = moved;
-                if (CellsOn(d.Grip.Page, d.Grip.Table)?.Cells.FirstOrDefault(c => moved.Rows ? c.Top == moved.From : c.Left == moved.From) is { } first)
-                {
-                    editing.Place(new TextPlace(first.First, 0));
-                    Show(editing.Caret, editing.Anchor, reveal: false);
-                }
+                SelectBand(moved, d.Grip.Page);
             }
             else if (d.Out)
             {
@@ -218,6 +215,22 @@ public sealed partial class DocumentView
             }
         }
         InvalidateVisual();
+    }
+
+    /// <summary>
+    /// The cells of rows or columns selected by their grips selected together too (see EditSession.CellSelection), from the first one's
+    /// start to the last one's end, so that the ring acts on them (their colour, their lines); the band shows them.
+    /// </summary>
+    void SelectBand(GripSelection band, int page)
+    {
+        if (session is not { } editing || CellsOn(page, band.Table) is not { } cells)
+            return;
+        var inside = cells.Cells.Where(c => band.Rows ? c.Top >= band.From && c.Bottom <= band.To : c.Left >= band.From && c.Right <= band.To).ToList();
+        if (inside.Count == 0)
+            return;
+        editing.Place(new TextPlace(inside[0].First, 0));
+        editing.Place(new TextPlace(inside[^1].Last, editing.Document.Text(inside[^1].Last).Length), extend: true);
+        Show(editing.Caret, editing.Anchor, reveal: false);
     }
 
     /// <summary>The rows or columns selected by their grips taken away (Delete or Backspace); whether there were any.</summary>

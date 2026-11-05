@@ -133,9 +133,9 @@ public sealed partial class EditorView : Panel
         }
         // The fields that show what they do while they are pointed at, and their changes.
         var previews = new Dictionary<Controls.GestureRing.Slot, Action>();
-        Controls.GestureRing.Slot Field(string nameKey, string sign, Action change, bool slanted = false, string? icon = null)
+        Controls.GestureRing.Slot Field(string nameKey, string sign, Action change, bool slanted = false, string? icon = null, Avalonia.Media.Color? swatch = null)
         {
-            var slot = new Controls.GestureRing.Slot(nameKey, sign, () => Give(change), Slanted: slanted, Icon: icon);
+            var slot = new Controls.GestureRing.Slot(nameKey, sign, () => Give(change), Slanted: slanted, Icon: icon, Swatch: swatch);
             previews[slot] = change;
             return slot;
         }
@@ -277,31 +277,129 @@ public sealed partial class EditorView : Panel
             Look(Tables.Kinds[2]),
             Look(Tables.Kinds[3]),
         ];
+        // Where the table stands between the text's edges: in the middle up, at the right, across the text again down, at the left; each a
+        // preview.
+        IReadOnlyList<Controls.GestureRing.Slot> tableAlign =
+        [
+            Field("TableAlignCenter", "", () => editing.AlignTable("center"), icon: Placement.AlignCenterIcon),
+            Field("TableAlignRight", "", () => editing.AlignTable("right"), icon: Placement.AlignRightIcon),
+            Field("TableWiden", "", () => editing.WidenTable(), icon: Placement.WidenIcon),
+            Field("TableAlignLeft", "", () => editing.AlignTable(null), icon: Placement.AlignLeftIcon),
+        ];
         IReadOnlyList<Controls.GestureRing.Slot> TableWhole(bool head) =>
         [
             Field("TableTranspose", "", () => editing.TransposeTable(), icon: Placement.TransposeIcon),
             Field("TableDistribute", "", () => editing.DistributeColumns(), icon: Placement.DistributeIcon),
+            new("TableAlign", "", Under: tableAlign, Icon: Placement.AlignCenterIcon),
             new("TableLook", "", Under: TableLooks(head), Icon: Placement.LookIcon),
             Field("TableRemove", "\u00D7", () => editing.RemoveTable()),
         ];
+        // The colours of cells: none up, the colours round the ring as swatches; each a preview on the cells selected or the cursor's.
+        IReadOnlyList<Controls.GestureRing.Slot> fills =
+        [
+            Field("FillNone", "", () => editing.ShadeCells(null), icon: Placement.FillNoneIcon),
+            .. Tables.Fills.Select(f => Field(f.NameKey, "", () => editing.ShadeCells(f.Fill), swatch: f.Color)),
+        ];
+        // The lines of cells: none, fine, strong, double, dotted, dashed (see Tables.Lines), or as the table's look gives them; each a
+        // preview on the lines named of the cells selected or of the cursor's.
+        IReadOnlyList<Controls.GestureRing.Slot> CellLooks(CellLines which) =>
+        [
+            Field("LineHide", "", () => editing.SetCellLines(which, CellBorder.None), icon: Placement.LineHideIcon),
+            .. Tables.Lines.Select(l => Field(l.NameKey, "", () => editing.SetCellLines(which, l.Border(Tones.Of(editing.Document))), icon: l.Icon)),
+            Field("LineAsTable", "", () => editing.SetCellLines(which, null), icon: Placement.LookToneIcon),
+        ];
+        // Which lines of cells selected, each in its direction (the inside ones across down left, upright up left), then how they look.
+        IReadOnlyList<Controls.GestureRing.Slot> cellsLines =
+        [
+            new("CellLinesTop", "", Under: CellLooks(CellLines.Top), Icon: Placement.CellsTopIcon),
+            new("CellLinesOutside", "", Under: CellLooks(CellLines.Outside), Icon: Placement.CellsOutsideIcon),
+            new("CellLinesRight", "", Under: CellLooks(CellLines.Right), Icon: Placement.CellsRightIcon),
+            new("CellLinesAll", "", Under: CellLooks(CellLines.All), Icon: Placement.CellsAllIcon),
+            new("CellLinesBottom", "", Under: CellLooks(CellLines.Bottom), Icon: Placement.CellsBottomIcon),
+            new("CellLinesAcross", "", Under: CellLooks(CellLines.Across), Icon: Placement.CellsAcrossIcon),
+            new("CellLinesLeft", "", Under: CellLooks(CellLines.Left), Icon: Placement.CellsLeftIcon),
+            new("CellLinesUpright", "", Under: CellLooks(CellLines.Upright), Icon: Placement.CellsUprightIcon),
+        ];
+        // A cell split, laid out as the parts lie: in two rows up, in two columns right, in three rows down, in three columns left.
+        IReadOnlyList<Controls.GestureRing.Slot> cellSplit =
+        [
+            Field("CellSplitRows2", "", () => editing.SplitCell(across: true, 2), icon: Placement.SplitRows2Icon),
+            Field("CellSplitColumns2", "", () => editing.SplitCell(across: false, 2), icon: Placement.SplitColumns2Icon),
+            Field("CellSplitRows3", "", () => editing.SplitCell(across: true, 3), icon: Placement.SplitRows3Icon),
+            Field("CellSplitColumns3", "", () => editing.SplitCell(across: false, 3), icon: Placement.SplitColumns3Icon),
+        ];
+        // What goes into a cell: a picture from a file up, one from the clipboard down (a table in a table not).
+        IReadOnlyList<Controls.GestureRing.Slot> cellInsert =
+        [
+            new("InsertPictureFile", "", () => _ = Sheets.PickPictures(), Icon: Placement.PictureIcon),
+            new("InsertPictureClipboard", "", () => _ = Sheets.PasteClipboardPictures(), Icon: Placement.ClipboardIcon),
+        ];
+        Controls.GestureRing.Slot shape = new("TableShape", "", () =>
+        {
+            if (editing.Table is { } table)
+                Sheets.BeginShape(table.Table);
+        }, Icon: Placement.PenIcon);
+        // In a table's cell, at a spot with nothing to act on: its row up, its column right, shaping the table by hand down, the table left
+        // (each laid out as the table is: above up, below down, beside left and right); between them its colour, what goes in it, its
+        // lines (its frame's look) and splitting it.
         var cellRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)
         [
             new("TableRow", "", Under: tableRow, Icon: Placement.RowIcon),
+            new("CellFill", "", Under: fills, Icon: Placement.FillIcon),
             new("TableColumn", "", Under: tableColumn, Icon: Placement.ColumnIcon),
-            new("TableShape", "", () =>
-            {
-                if (editing.Table is { } table)
-                    Sheets.BeginShape(table.Table);
-            }, Icon: Placement.PenIcon),
+            new("CellInsert", "", Under: cellInsert, Icon: Placement.CellInsertIcon),
+            shape,
+            new("CellLines", "", Under: CellLooks(CellLines.Outside), Icon: Placement.CellLinesIcon),
             new("TableWhole", "", Under: TableWhole(head), Icon: Placement.TableIcon),
+            new("CellSplit", "", Under: cellSplit, Icon: Placement.SplitIcon),
         ]);
-        var inserting = false;
+        // Cells selected together: their rows up and their columns right as for a cell, merging them down right, their text's meaning down,
+        // their lines (which, then how) down left, the table left, and what they hold taken away up left; their colour up right.
+        var cellsRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)
+        [
+            new("TableRow", "", Under: tableRow, Icon: Placement.RowIcon),
+            new("CellFill", "", Under: fills, Icon: Placement.FillIcon),
+            new("TableColumn", "", Under: tableColumn, Icon: Placement.ColumnIcon),
+            Field("CellsMerge", "", () => editing.MergeCells(), icon: Placement.MergeIcon),
+            new("CellsMeaning", "!", Under: ring.Slots),
+            new("CellLines", "", Under: cellsLines, Icon: Placement.CellLinesIcon),
+            new("TableWhole", "", Under: TableWhole(head), Icon: Placement.TableIcon),
+            Field("CellsClear", "", () => editing.ClearCells(), icon: Placement.ClearIcon),
+        ]);
+        // A line of a table under the pointer (see DocumentView.TargetLineAt), how it looks: hidden up, fine, strong, double; down its
+        // stretch under the pointer alone (the same in a ring of its own); dotted, dashed, and as the table's look gives it. The whole line
+        // straight through the table, each a preview; a hidden one (a dashed guide) shows again as any of them.
+        void Lined(bool piece, CellBorder? border)
+        {
+            if (Sheets.TargetedLine is { } t)
+                editing.SetTableLine(t.Table, t.Upright, t.Line, piece ? t.From : t.WholeFrom, piece ? t.To : t.WholeTo, border);
+        }
+        IReadOnlyList<Controls.GestureRing.Slot> LineLooks(bool piece)
+        {
+            var lines = Tables.Lines.Select(l => Field(l.NameKey, "", () => Lined(piece, l.Border(Tones.Of(editing.Document))), icon: l.Icon)).ToList();
+            return
+            [
+                Field("LineHide", "", () => Lined(piece, CellBorder.None), icon: Placement.LineHideIcon),
+                .. lines.Take(3),
+                .. piece ? [] : new[] { new Controls.GestureRing.Slot("LinePiece", "", Under: LineLooks(true), Icon: Placement.LinePieceIcon) },
+                .. lines.Skip(3),
+                Field("LineAsTable", "", () => Lined(piece, null), icon: Placement.LookToneIcon),
+            ];
+        }
+        var lineRing = LineLooks(false);
+        var (inserting, lined) = (false, false);
         ring.Choose = () =>
         {
-            var empty = inserting;
-            inserting = false;
+            var (empty, line) = (inserting, lined);
+            (inserting, lined) = (false, false);
+            if (!line)
+                Sheets.ForgetLine();
+            else if (Sheets.TargetedLine != null)
+                return lineRing;
             if (empty)
                 return editing.Table is { } table ? cellRings[table.HeadRow || table.HeadColumn] : insert;
+            if (editing.CellSelection != null && editing.Table is { } selected)
+                return cellsRings[selected.HeadRow || selected.HeadColumn];
             if (Sheets.Tilting)
                 return tilted;
             if (Sheets.Cropping && editing.PictureShown is { Crop: { } crop, Width: { } width, Height: { } height })
@@ -325,16 +423,22 @@ public sealed partial class EditorView : Panel
             Sheets.SelectionHidden = true;
         };
         Avalonia.Point OnSheets(Avalonia.Point point) => ring.TranslatePoint(point, Sheets) ?? point;
-        ring.Selection = () => Sheets.TranslatePoint(default, ring) is { } shift
-            ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList()
-            : [];
+        ring.Selection = () =>
+        {
+            // A line's stretch under the pointer alone in its own ring, else the whole line.
+            Sheets.TargetPiece = ring.Holder?.NameKey == "LinePiece";
+            return Sheets.TranslatePoint(default, ring) is { } shift ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList() : [];
+        };
         ring.Turned = () => Sheets.SelectionTurned() is var (frame, turn) && Sheets.TranslatePoint(default, ring) is { } moved
             ? (frame.Translate((Vector)moved), turn)
             : null;
-        // A picture under the pointer first: it lies over the text, or is the text's; where nothing is, what goes in there.
+        // A line of a table under the pointer first (they are thin), then a picture: it lies over the text, or is the text's; where
+        // nothing is, what goes in there.
         ring.Target = point =>
         {
             var at = OnSheets(point);
+            if (Sheets.TargetLineAt(at))
+                return lined = true;
             if (Sheets.SelectDrawingAt(at) || Sheets.OnSelection(at) || Sheets.SelectWordAt(at))
                 return true;
             return inserting = Sheets.PlaceCursorAt(at);

@@ -144,8 +144,9 @@ drawn as (`MarkupItem`). `PptxConverter.ToScenes` and `DocxConverter.ToScenes` g
   reader (`SvgDrawing`).
 
 A Word page's scene also says where the rows of its tables stand, drawing nothing (`TableRowItem`): the table's block, the
-row of its model, where its grid's lines stand, its top and bottom, what its height has beyond its at-least height, and
-whether it is a head row repeated on a later page. The table's layout gives each row its place in the table
+row of its model, where its grid's lines stand, its top and bottom, what its height has beyond its at-least height,
+whether it is a head row repeated on a later page, and which of its lines show (upright on each line of the grid, across
+over each grid column at its top and bottom, as the layout resolves the cells' and the table's borders). The table's layout gives each row its place in the table
 (`Layout/RowPlace`, kept through a row's parts and copies), the paginator collects the rows it places on each page
 (`PageBox.TableRows`); an editor finds a table's cells and lines on the page from them.
 
@@ -232,10 +233,19 @@ whether it is a head row repeated on a later page. The table's layout gives each
   way, the outside ones moving the table's edges) and a row made higher, a line between cells taken away as Word's eraser
   takes it (`EraseLine`: each stretch of it merges the cells on either side, into the smallest rectangle that holds them,
   `Enclosing`), a head row put on or taken off (`SetHead`: the look's mark and the repeat on later pages), another table style
-  (`StyleTable`). A table is known by its block's id
+  (`StyleTable`), a cell split into two or three of even size (`SplitCell`), what cells hold taken away (`ClearCells`, as Word's
+  Delete over cells). Their look as Word writes it where cells' sides are given lines (measured by COM): a stretch of a line of
+  the grid given a line of its own or none on the cells' sides on either side of it (`SetLine`, w:tcBorders, nil for none; a
+  rectangle's sides and inside lines, `SetLines`), cells shaded (`ShadeCells`, w:shd), the table centered or right in the table's
+  and each row's w:jc (`AlignTable`, its indent gone; a centered table's outside lines move both edges) or as wide as the text
+  again (`WidenTable`). A table is known by its block's id
   (`TableOf`, `CellsOf` gives its cells), which it keeps; a change that makes more or fewer cells reads its paragraphs anew,
   so each change names the paragraph to go on in (`EditSession.ChangeTable`). Tables with tracked changes, content controls
-  or custom markup among their rows, or the old way of merging across, are not changed so.
+  or custom markup among their rows, or the old way of merging across, are not changed so. A selection reaching from one cell
+  into another selects whole cells, as Word does (`EditSession.CellSelection`, the rectangle holding both): Delete and Backspace
+  empty them, text typed over them takes the first one's place alone, formatting goes to all their text, and rows and columns
+  put in beside them are as many as they span. A picture put in in a cell is no wider than the cell's text; in lines exactly so
+  high (the notebook's) its paragraph's lines become at least so high (`WordDocument.OpenLines`), as Word cuts it at their height.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
@@ -359,8 +369,9 @@ A table goes in from the ring at an empty spot (down right): its own ring has th
 three rows, the head and two more; Tab goes from cell to cell, a row more from the last one, Shift+Tab back. The tones give
 tables their look (`Writing/Tables`: a table style and a style for the text in cells, which has no other style below it so that
 the table style's fonts reach the text: lines between the rows in the plain tone, a book's rules in the magazine, a grid in the
-notebook, the head's look also for a head column). While the cursor is in a table, the lines of its cells show dashed and faint
-over the page (`DocumentView.Tables.cs`, from the scene's rows), so that a look without lines still shows its columns. Up and down
+notebook, the head's look also for a head column). While the cursor is in a table, the lines of its cells that do not show are
+dashed and faint over the page (`DocumentView.Tables.cs`, from the scene's rows), so that a look without lines still shows its
+columns. Dragged from one cell into another, the selection takes whole cells and shows them whole. Up and down
 go from a cell's first or last line to the cell above or below, at the column, and out of the table at its ends; a click in a
 cell's empty part goes into that cell. A line between cells is dragged where the pointer shows a sizing arrow over it: an upright
 one moves as in Word, the column after it giving way, the table's sides moving its edges, lined up with the text's edges and the
@@ -373,14 +384,20 @@ stroke along a line takes it away and merges the cells beside it; the line and t
 let go it is one step, Escape takes a stroke back. Enter, Escape or a press beside the table ends it. The ring in a table's cell
 (at a spot with nothing to act on) has the cell's row up (a row above, below, the row's cells merged, the row taken away), its
 column right (sorted up or down by it, a column left or right, taken away), shaping the table by hand down, and the table left
-(rows turned into columns, columns made even, its look, the table taken away), each laid out as the table is and each a preview.
+(rows turned into columns, columns made even, where it stands between the text's edges, its look, the table taken away), each
+laid out as the table is and each a preview; between them the cell's colour (soft swatches, `Tables.Fills`, drawn as discs in
+the ring, `GestureRing.Slot.Swatch`), what goes in it (a picture), its lines (its frame's look) and splitting it. On cells
+selected together the ring has their rows and columns, their colour, merging them, their text's meaning, their lines (which
+ones, each in its direction, then how they look) and emptying them. On a line itself (right-clicked within reach) the ring is
+the line's: hidden, fine, strong, double, dotted, dashed (`Tables.Lines`, in the tone's colours) or as the table's look gives it,
+for the whole line straight through the table, framed in the accent, or in its own ring for the stretch under the pointer alone.
 Its look's ring has the tone's own up, round it the kinds (a grid of light lines, light lines between the rows, a book's rules, a
 frame) and a head row or none down (`Writing/Tables.Kinds`): each kind is the tone's table style with other lines, made when the tone
 is (`Tables.Made`, in the tone's colours for lines and for rules, `lines` and `rules` on `Tones/*.xml`), so it keeps the tone's type,
 margins and head and changes with the tone.
 Beside the table the pointer is at its rows and columns have grips, left of the row and above the column, faint, in the accent
 where the pointer is on one, a plus between two (`DocumentView.Grips.cs`): a click on a grip selects its row or column (Shift
-another one up to it; Delete or Backspace takes them away), dragged along the table it moves them before another (rows and
+another one up to it, their cells selected together for the ring; Delete or Backspace takes them away), dragged along the table it moves them before another (rows and
 columns of their own, a bar showing where), dragged out of the table it takes them away (tinted as going), a plus puts a row or a
 column in there; each one step. The level lever does not show beside a table.
 

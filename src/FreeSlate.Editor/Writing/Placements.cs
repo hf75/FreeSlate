@@ -91,6 +91,74 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     public static readonly string HeadRemoveIcon = Drawn(Frame(0, 5.4, 20, 9.6), Bar(0, 9.6, 20), Block(6.3, 5.4, Weight, 9.6), Block(12.5, 5.4, Weight, 9.6),
         Bar(0, 1, 4), Bar(8, 1, 4), Bar(16, 1, 4));
 
+    /// <summary>The icons of a cell's colour (the table, its middle cell filled) and of none (a cell crossed out).</summary>
+    public static readonly string FillIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14), Block(6.3, 5.4, 7.4, 5.4));
+    public static readonly string FillNoneIcon = Drawn(Frame(1, 1, 18, 14), Stroke(2.4, 13.6, 17.6, 2.4));
+
+    /// <summary>The icon of what goes into a cell: a cell with a plus in it.</summary>
+    public static readonly string CellInsertIcon = Drawn(Frame(0, 1, 20, 14), Block(9.4, 4.4, Weight, 7.2), Block(6.4, 7.4, 7.2, Weight));
+
+    /// <summary>The icon of a cell's lines: a cell, its left and bottom sides strong.</summary>
+    public static readonly string CellLinesIcon = Drawn(Frame(0, 1, 20, 14), Block(0, 1, 2.6, 14), Block(0, 12.4, 20, 2.6));
+
+    /// <summary>The icons of a cell split (a cell, a broken line down its middle), into two or three side by side, or one below the other.</summary>
+    public static readonly string SplitIcon = Drawn(Frame(0, 1, 20, 14), Block(9.4, 3.2, Weight, 2.6), Block(9.4, 6.7, Weight, 2.6), Block(9.4, 10.2, Weight, 2.6));
+    public static readonly string SplitColumns2Icon = Drawn(Frame(0, 1, 20, 14), Block(9.4, 1, Weight, 14));
+    public static readonly string SplitColumns3Icon = Drawn(Frame(0, 1, 20, 14), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
+    public static readonly string SplitRows2Icon = Drawn(Frame(0, 1, 20, 14), Bar(0, 7.4, 20));
+    public static readonly string SplitRows3Icon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20));
+
+    /// <summary>The icons of cells merged (a cell, two heads pointing to its middle) and of what they hold taken away (a cell crossed in its middle).</summary>
+    public static readonly string MergeIcon = Drawn(Frame(0, 1, 20, 14), "M3.4,4.8 L8.2,8 L3.4,11.2 Z", "M16.6,4.8 L16.6,11.2 L11.8,8 Z");
+    public static readonly string ClearIcon = Drawn(Frame(0, 1, 20, 14), Stroke(7, 5, 13, 11), Stroke(13, 5, 7, 11));
+
+    /// <summary>The icons of where a table stands between the text's edges: the edges, the table between them at the left, in the middle, at the right, or across.</summary>
+    public static readonly string AlignLeftIcon = Aligned(2.4, 9);
+    public static readonly string AlignCenterIcon = Aligned(5.5, 9);
+    public static readonly string AlignRightIcon = Aligned(8.6, 9);
+    public static readonly string WidenIcon = Aligned(2.4, 15.2);
+
+    static string Aligned(double x, double width) => Drawn(Block(0, 0, Weight, 16), Block(18.8, 0, Weight, 16), Frame(x, 4, width, 8), Bar(x, 7.4, width));
+
+    /// <summary>
+    /// The icons of a table's lines: taken away (a line crossed out), fine, strong, double, dotted, dashed, and a stretch of a line alone
+    /// (a line, two ticks across it round its middle).
+    /// </summary>
+    public static readonly string LineHideIcon = Drawn(Bar(0, 7.4, 20), Stroke(6.4, 14, 13.6, 2));
+    public static readonly string LineFineIcon = Drawn(Bar(0, 7.4, 20));
+    public static readonly string LineStrongIcon = Drawn(Block(0, 6.4, 20, 3.2));
+    public static readonly string LineDoubleIcon = Drawn(Bar(0, 5.6, 20), Bar(0, 9.2, 20));
+    public static readonly string LineDottedIcon = Drawn(Circle(1.2, 8, 1.2), Circle(5.6, 8, 1.2), Circle(10, 8, 1.2), Circle(14.4, 8, 1.2), Circle(18.8, 8, 1.2));
+    public static readonly string LineDashedIcon = Drawn(Bar(0, 7.4, 4.4), Bar(7.8, 7.4, 4.4), Bar(15.6, 7.4, 4.4));
+    public static readonly string LinePieceIcon = Drawn(Bar(0, 7.4, 20), Block(5.6, 3.8, Weight, 8.4), Block(13.2, 3.8, Weight, 8.4));
+
+    /// <summary>The icons of lines of cells selected: four cells, the lines named strong, the others dotted.</summary>
+    public static readonly string CellsTopIcon = Cells(CellLines.Top);
+    public static readonly string CellsOutsideIcon = Cells(CellLines.Outside);
+    public static readonly string CellsRightIcon = Cells(CellLines.Right);
+    public static readonly string CellsAllIcon = Cells(CellLines.All);
+    public static readonly string CellsBottomIcon = Cells(CellLines.Bottom);
+    public static readonly string CellsAcrossIcon = Cells(CellLines.Across);
+    public static readonly string CellsLeftIcon = Cells(CellLines.Left);
+    public static readonly string CellsUprightIcon = Cells(CellLines.Upright);
+
+    static string Cells(CellLines strong)
+    {
+        var parts = new List<string>();
+        foreach (var (side, across, at) in new[] { (CellLines.Top, true, 0.9), (CellLines.Across, true, 8.0), (CellLines.Bottom, true, 15.1),
+            (CellLines.Left, false, 2.9), (CellLines.Upright, false, 10.0), (CellLines.Right, false, 17.1) })
+        {
+            if (strong.HasFlag(side))
+                parts.Add(across ? Block(2, at - 0.9, 16, 1.8) : Block(at - 0.9, 0, 1.8, 16));
+            else
+            {
+                for (var k = 0; k <= 5; k++)
+                    parts.Add(across ? Block(2.4 + k * 3, at - 0.5, 1, 1) : Block(at - 0.5, 0.4 + k * 3, 1, 1));
+            }
+        }
+        return Drawn([.. parts]);
+    }
+
     /// <summary>The icon of a caption: a picture with two lines of text below it.</summary>
     public static readonly string CaptionIcon = Drawn(Frame(3, 0, 14, 9.8), Hills, Bar(3, 12.2, 14), Bar(3, 14.8, 9));
 

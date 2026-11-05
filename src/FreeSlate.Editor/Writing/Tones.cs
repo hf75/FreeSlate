@@ -14,10 +14,7 @@ public sealed record Tone(string Key, string NameKey)
     /// <summary>The style definitions and the lists' numbering definitions, the meanings', levels' and tables' own styles named in the language of the interface.</summary>
     public (string Styles, string Numbering) Definitions()
     {
-        using var stream = typeof(Tone).Assembly.GetManifestResourceStream($"FreeSlate.Editor.Tones.{Key}.xml")
-            ?? throw new InvalidOperationException($"The tone {Key} has no styles.");
-        using var reader = new StreamReader(stream);
-        var markup = reader.ReadToEnd();
+        var markup = Markup();
         foreach (var (style, name) in Meanings.All.Select(m => (m.Style, Meanings.Name(m))).Concat(Levels.All.Select(l => (l.Style, Levels.Name(l))))
             .Concat(Tables.Styles.Select(s => (s.Style, Tables.Name(s)))))
         {
@@ -36,6 +33,30 @@ public sealed record Tone(string Key, string NameKey)
         styles.Add(new XElement(w + "style", new XAttribute(w + "type", "character"), new XAttribute(w + "customStyle", "1"), new XAttribute(w + "styleId", "Tone"),
             new XElement(w + "name", new XAttribute(w + "val", "Tone " + Key)), new XElement(w + "hidden"), new XElement(w + "semiHidden")));
         return (styles.ToString(SaveOptions.DisableFormatting), tone.Element(w + "numbering")!.ToString(SaveOptions.DisableFormatting));
+    }
+
+    /// <summary>The tone's colours for light lines and for rules (Tones/{Key}.xml, its lines and rules), hex, which its tables' lines take.</summary>
+    public (string Light, string Dark) LineColors()
+    {
+        lock (Colors)
+        {
+            if (!Colors.TryGetValue(Key, out var known))
+            {
+                var tone = XElement.Parse(Markup());
+                Colors[Key] = known = ((string?)tone.Attribute("lines") ?? "BFBFBF", (string?)tone.Attribute("rules") ?? "404040");
+            }
+            return known;
+        }
+    }
+
+    static readonly Dictionary<string, (string Light, string Dark)> Colors = [];
+
+    string Markup()
+    {
+        using var stream = typeof(Tone).Assembly.GetManifestResourceStream($"FreeSlate.Editor.Tones.{Key}.xml")
+            ?? throw new InvalidOperationException($"The tone {Key} has no styles.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }
 
