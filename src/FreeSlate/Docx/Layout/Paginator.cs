@@ -1671,6 +1671,33 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix }).Height;
 
     /// <summary>
+    /// The heights a text box's text that begins with a table takes in linked boxes of a width (see TextBoxLayout.Lay), the first with
+    /// room for <paramref name="first"/> points, each after it for <paramref name="rest"/>: the table cut where a box ends (see
+    /// TableLayout.Cut), each part as high as its room, the last as high as what it holds; one part where all fits the first box.
+    /// </summary>
+    public List<double> TextParts(List<Block> text, double width, double first, double rest, PageBox page)
+    {
+        var fields = new PageFields(page.DisplayNumber, page.Section.PageNumberFormat, 0, 0) { Chapter = page.ChapterPrefix };
+        var boxSettings = settings with { GridCell = null };
+        var (parts, blocks, room) = (new List<double>(), text, first);
+        width = Math.Max(1, width);
+        // A part a page of room at least each, no more than the pages a long table takes.
+        while (parts.Count < 200)
+        {
+            var height = tables.Blocks(blocks, width, boxSettings, fields).Height;
+            if (height <= room + 0.01 || blocks is not [TableBlock table, ..] || tables.Cut(blocks, 0, room, width, boxSettings, fields) is not { } cut)
+            {
+                parts.Add(height);
+                break;
+            }
+            parts.Add(room);
+            blocks = [table with { Resume = cut.Resume }, .. blocks.Skip(1)];
+            room = Math.Max(rest, 12);
+        }
+        return parts;
+    }
+
+    /// <summary>
     /// The settings a run ended with, as what comes after it keeps them (the runs after it, Relayout, the text boxes drawn
     /// later): with the width of its column as it stood at the end, which the run's closure over its column gives from
     /// then on too, but would keep the run alive with all it holds (its pages, those of the run before it and that run's

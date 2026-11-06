@@ -327,8 +327,10 @@ public sealed partial class EditSession
     /// <summary>The cursor's table floating beside the text, left (null), right or centered in its column (see WordDocument.FloatTable).</summary>
     public bool FloatTable(string? across) => Table is { } table && ChangeTable(word =>
     {
-        word.FloatTable(table.Table, across);
-        return null;
+        // A table in a frame goes back into the text first, the cursor then in its first cell.
+        var id = Unframed(word, table.Table);
+        word.FloatTable(id, across);
+        return id != table.Table ? word.CellsOf(id)!.Cells[0].First : null;
     });
 
     /// <summary>
@@ -417,15 +419,19 @@ public sealed partial class EditSession
     /// <summary>The cursor's table aligned centered, right, or left (null; see WordDocument.AlignTable).</summary>
     public bool AlignTable(string? alignment) => Table is { } table && ChangeTable(word =>
     {
-        word.AlignTable(table.Table, alignment);
-        return null;
+        // A table in a frame goes back into the text first, the cursor then in its first cell.
+        var id = Unframed(word, table.Table);
+        word.AlignTable(id, alignment);
+        return id != table.Table ? word.CellsOf(id)!.Cells[0].First : null;
     });
 
     /// <summary>The cursor's table as wide as the text again, at its left edge (see WordDocument.WidenTable).</summary>
     public bool WidenTable() => Table is { } table && ChangeTable(word =>
     {
-        word.WidenTable(table.Table);
-        return null;
+        // A table in a frame goes back into the text first, the cursor then in its first cell.
+        var id = Unframed(word, table.Table);
+        word.WidenTable(id);
+        return id != table.Table ? word.CellsOf(id)!.Cells[0].First : null;
     });
 
     /// <summary>The rows after the head sorted by the column of the cursor's cell (see WordDocument.SortRows), the cursor then in the first row sorted.</summary>

@@ -384,7 +384,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var turn = Turn(shape, drawing.Body);
         if (drawing.Text is { Count: > 0 } || shape?.Element(Drawings.Wps + "linkedTxbx") != null)
             TextBox(laidOut != null ? laidOut.Text : boxes!.Lay(drawing.Text, drawing.Body, shape, drawing.Width, drawing.Height, page, scope.Settings, scope.StoryPage),
-                drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, scope, items, deviceShift: drawing.DeviceShift);
+                drawing.X, drawing.Y, drawing.Width, drawing.Height, turn, page, scope, items, deviceShift: drawing.DeviceShift, camera: Tilted(shape, drawing.Body));
         // The text boxes of the shapes in a group or canvas, in their shapes' places (and turns).
         // Groups of DrawingML (wpg), not those of VML (docx/external/libreoffice/extras-ooxmlexport/tdf164065: a v:group's
         // text box's table borders lines in Word's PDF).
@@ -411,6 +411,14 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         }
         return items;
     }
+
+    /// <summary>
+    /// The camera of a shape tilted in space (a:scene3d of its wps:spPr, not straight on) whose text tilts with it, as Word draws it
+    /// unless the body keeps the text flat (a:flatTx) or upright; null for others.
+    /// </summary>
+    static FreeSlate.Drawing.Camera? Tilted(XElement? shape, XElement? body) =>
+        body?.Element(Ns.A + "flatTx") == null && (string?)body?.Attribute("upright") is not ("1" or "true")
+        && FreeSlate.Drawing.Camera.Read(shape?.Element(Drawings.Wps + "spPr")?.Element(Ns.A + "scene3d")) is { Flat: false } camera ? camera : null;
 
     /// <summary>
     /// How far a shape turns its text with it: by its turn, unless the text stands upright or the shape is flipped
@@ -667,8 +675,9 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     /// </summary>
     /// <param name="grouped">Whether the box is a shape's in a group (wpg), whose shading and borders Word's PDF holds as a bitmap.</param>
     /// <param name="deviceShift">How far an inline box moved with its line onto Word's device (PlacedDrawing.DeviceShift).</param>
+    /// <param name="camera">The camera of a shape tilted in space whose text tilts with it (see Tilted), which sees the box turned by the rotation.</param>
     void TextBox(BoxText? laid, double x, double y, double w, double h, double rotation, PageBox page, BoxScope scope, List<SceneItem> items,
-        bool grouped = false, double deviceShift = 0)
+        bool grouped = false, double deviceShift = 0, FreeSlate.Drawing.Camera? camera = null)
     {
         if (laid == null)
             return;
@@ -676,7 +685,21 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var (l, t, r, b) = laid.Insets;
         var canvas = new CanvasItem(page.PaperWidth, page.PaperHeight, []);
         var drawn = canvas.Items;
-        if (rotation != 0)
+        // Whether the box stands level on the page: neither turned nor tilted.
+        var level = rotation == 0;
+        // A box tilted in space shows its text as its camera sees the box, turned with it: the box's corners taken where they show
+        // (Drawings.Shown, as the shape is drawn), its text through the projection that takes them there (measured in Word's PDF of a
+        // table in a text box tilted 40 and 25 degrees, its text tilted with it unless the body keeps it flat, a:flatTx).
+        if (camera != null && ProjectedItem.Through([(x, y), (x + w, y), (x + w, y + h), (x, y + h)],
+                [.. Drawings.Shown([(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)], rotation, camera).Select(p => (x + w / 2 + p.X, y + h / 2 + p.Y))])
+                is { } homography)
+        {
+            var projected = new ProjectedItem(homography, [(x, y), (x + w, y), (x + w, y + h), (x, y + h)], []);
+            canvas.Items.Add(projected);
+            drawn = projected.Items;
+            level = false;
+        }
+        else if (rotation != 0)
         {
             var rotated = new RotatedItem(rotation, x + w / 2, y + h / 2, []);
             canvas.Items.Add(rotated);
@@ -687,7 +710,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
         var inner = new List<PlacedDrawing>();
         // Text that does not fit an unturned box of horizontal text is cut as Word cuts it (TextBoxLayout.Clip), inside
         // the box's canvas (in SVG a nested viewport at its exact place, see HtmlScene).
-        if (vert == null && rotation == 0 && laid.Clip is (var clipTop, var clipBottom) && h - clipTop - clipBottom > 0 && laid.Overflows(h))
+        if (vert == null && level && laid.Clip is (var clipTop, var clipBottom) && h - clipTop - clipBottom > 0 && laid.Overflows(h))
         {
             var cut = new ClipItem(x, y + clipTop, w, h - clipTop - clipBottom, []);
             canvas.Items.Add(cut);
@@ -703,7 +726,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // 216 by 288 pt with insets of 3.6 pt a bitmap of 599 by 779 pixels from 3.6 pt below its top, also without a
             // fill; a box alone none; docx/external/libreoffice/extras-ooxmlexport/tdf66039: thin borders gray and
             // soft in the reference's raster).
-            if (grouped && rotation == 0 && placed.Count > 0 && h - t - b > 0)
+            if (grouped && level && placed.Count > 0 && h - t - b > 0)
             {
                 drawn.Add(FillBitmap(placed, x, y + t, w, h - t - b));
                 placed.Clear();
@@ -714,7 +737,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
             // inline box's counted from where it stood before its line moved onto the device, edge and inset rounded
             // together (docx/local/tbi-1417: a box at 1417 twips, 590.4 dots, on 590 has its text with unfilled lines of
             // 1, 1.5 and 2 pt on 595, 597 and 599, not 594, 596 and 598).
-            Lines(lines.Select(p => p with { Left = left - deviceShift + p.Left, Top = top + p.Top, BoxInset = l }), drawn, selection, rotation == 0 ? inner : [], onPage: rotation == 0);
+            Lines(lines.Select(p => p with { Left = left - deviceShift + p.Left, Top = top + p.Top, BoxInset = l }), drawn, selection, level ? inner : [], onPage: level);
         }
         else
         {
@@ -726,7 +749,7 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
                 _ => p with { Left = x + w - r - offset - p.Top, Top = y + t + p.Left, Angle = 90 },
             });
             // An unturned box's turned lines stand on Word's device too (see TurnedOnDots).
-            var device = rotation == 0 && vert is "vert" or "vert270" && DevicePlaced;
+            var device = level && vert is "vert" or "vert270" && DevicePlaced;
             Lines(device ? turnedLines.Select(p => TurnedOnDots(p, x, w, y, h, t, b, context.Profile.TurnedLinesAsWord2010)) : turnedLines, drawn, selection, [],
                 onPage: device);
         }

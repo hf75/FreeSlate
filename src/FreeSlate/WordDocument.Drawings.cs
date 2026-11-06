@@ -385,7 +385,7 @@ public sealed partial class WordDocument
         var wp = own.Name.Namespace;
         var docPr = own.Element(wp + "docPr");
         var (description, decorative) = ((string?)docPr?.Attribute("descr") ?? "", Decorative(docPr));
-        var shows = Shows(Pic(own.Element(A + "graphic")));
+        var shows = Shows(Pic(own.Element(A + "graphic")) ?? FrameShape(own.Element(A + "graphic")));
         if (own.Name.LocalName == "inline")
             return shows with { Width = width, Height = height, Wrap = "inline", Description = description, Decorative = decorative };
         var wrap = own.Elements().FirstOrDefault(e => e.Name.LocalName.StartsWith("wrap", StringComparison.Ordinal));
@@ -423,6 +423,17 @@ public sealed partial class WordDocument
         graphic?.Element(A + "graphicData") is { } data && (string?)data.Attribute("uri") == PictureUri
             ? data.Elements().FirstOrDefault(e => e.Name.LocalName == "pic")
             : FigurePicture(graphic)?.Element(A + "graphic") is { } inner ? Pic(inner) : null;
+
+    /// <summary>
+    /// The wps:wsp of a text box a drawing's graphic shows that is a frame of a table (see WordDocument.Frames) or one its story goes on in
+    /// (wps:linkedTxbx), which turns and tilts as a picture does; null for other graphics.
+    /// </summary>
+    static XElement? FrameShape(XElement? graphic) =>
+        graphic?.Element(A + "graphicData") is { } data && (string?)data.Attribute("uri") == ShapeUri && FigurePicture(graphic) == null
+        && data.Element(Drawings.Wps + "wsp") is { } shape
+        && (shape.Element(Drawings.Wps + "linkedTxbx") != null
+            || shape.Element(Drawings.Wps + "txbx")?.Elements().FirstOrDefault(e => e.Name.LocalName == "txbxContent") is { } content
+            && content.Elements().FirstOrDefault()?.Name.LocalName == "tbl") ? shape : null;
 
     /// <summary>How a picture's pic:pic has it show (see DrawingFormatting.Crop, Shape, Recolor, Outline, Rotation, Tilt); nothing where there is none.</summary>
     static DrawingFormatting Shows(XElement? pic)
@@ -691,6 +702,13 @@ public sealed partial class WordDocument
                     || format.Height != null || format.Crop != null)
                 && pic.Element(pic.Name.Namespace + "spPr")?.Elements().Any(e => e.Name.LocalName is "effectLst" or "effectDag" or "sp3d") != true)
                 effect = Margins(wp, width, height, pic);
+        }
+        // A table's frame turns and tilts as a picture does, its effect extents as Word gives a picture's (see Margins).
+        else if (FrameShape(graphic) is { } frame)
+        {
+            Show(frame, format with { Crop = null, Shape = null, Recolor = null, Outline = null, OutlineColor = null }, cropping: false);
+            if (format.Rotation != null || format.Tilt != null || format.Width != null || format.Height != null)
+                effect = Margins(wp, width, height, frame);
         }
         // A picture's own size goes with the drawing's (pic:spPr/a:xfrm/a:ext).
         if (graphic?.Elements().FirstOrDefault()?.Elements().FirstOrDefault()?.Elements().FirstOrDefault(e => e.Name.LocalName == "spPr")

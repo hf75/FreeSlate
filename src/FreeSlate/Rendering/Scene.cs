@@ -188,6 +188,111 @@ public sealed record MissingPictureItem(double Width, double Height, string? Mes
     public double TextLeft { get; init; } = 27.25;
 }
 
+/// <summary>
+/// Items drawn through a projection of the page's plane (points): a homography, row by row (a b c, d e f, g h i), that takes a point
+/// (x, y) to ((a x + b y + c) / w, (d x + e y + f) / w), w = g x + h y + i; the text of a text box tilted in space as its camera shows it
+/// (see PageRenderer.TextBox). Backends that cannot project draw the affine transform nearest to it on the corners it was made from
+/// (From, see Affine).
+/// </summary>
+public sealed record ProjectedItem(double[] Homography, (double X, double Y)[] From, List<SceneItem> Items) : SceneItem, IHoldsItems
+{
+    /// <summary>Where the homography takes a point.</summary>
+    public (double X, double Y) Map(double x, double y)
+    {
+        var h = Homography;
+        var w = h[6] * x + h[7] * y + h[8];
+        return ((h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w);
+    }
+
+    /// <summary>
+    /// The homography that takes four points to four others (each in order: corners of a rectangle to those of what shows), or null
+    /// where they give none (three in a line).
+    /// </summary>
+    public static double[]? Through((double X, double Y)[] from, (double X, double Y)[] to)
+    {
+        // a x + b y + c − g x u − h y u = u and d x + e y + f − g x v − h y v = v for each pair, i = 1.
+        var m = new double[8, 9];
+        for (var k = 0; k < 4; k++)
+        {
+            var ((x, y), (u, v)) = (from[k], to[k]);
+            double[] across = [x, y, 1, 0, 0, 0, -x * u, -y * u, u];
+            double[] down = [0, 0, 0, x, y, 1, -x * v, -y * v, v];
+            for (var c = 0; c < 9; c++)
+                (m[2 * k, c], m[2 * k + 1, c]) = (across[c], down[c]);
+        }
+        for (var c = 0; c < 8; c++)
+        {
+            var pivot = c;
+            for (var r = c + 1; r < 8; r++)
+            {
+                if (Math.Abs(m[r, c]) > Math.Abs(m[pivot, c]))
+                    pivot = r;
+            }
+            if (Math.Abs(m[pivot, c]) < 1e-12)
+                return null;
+            for (var k = 0; k < 9; k++)
+                (m[c, k], m[pivot, k]) = (m[pivot, k], m[c, k]);
+            for (var r = 0; r < 8; r++)
+            {
+                if (r == c)
+                    continue;
+                var f = m[r, c] / m[c, c];
+                for (var k = c; k < 9; k++)
+                    m[r, k] -= f * m[c, k];
+            }
+        }
+        var h = new double[9];
+        for (var r = 0; r < 8; r++)
+            h[r] = m[r, 8] / m[r, r];
+        h[8] = 1;
+        return h;
+    }
+
+    /// <summary>
+    /// The affine transform nearest the projection on the corners it was made from (least squares): x' = A x + C y + E, y' = B x + D y +
+    /// F, as SVG's matrix(A B C D E F) has it.
+    /// </summary>
+    public FreeSlate.Html.Matrix Affine()
+    {
+        // The normal equations of [x y 1] p = u over the corners, for x' and y' alike.
+        var n = new double[3, 3];
+        var (bu, bv) = (new double[3], new double[3]);
+        foreach (var (x, y) in From)
+        {
+            double[] row = [x, y, 1];
+            var (u, v) = Map(x, y);
+            for (var i = 0; i < 3; i++)
+            {
+                for (var j = 0; j < 3; j++)
+                    n[i, j] += row[i] * row[j];
+                bu[i] += row[i] * u;
+                bv[i] += row[i] * v;
+            }
+        }
+        var (pu, pv) = (Solve(n, bu, [1, 0, 0]), Solve(n, bv, [0, 1, 0]));
+        return new FreeSlate.Html.Matrix(pu[0], pv[0], pu[1], pv[1], pu[2], pv[2]);
+
+        // By Cramer's rule; where the corners give no solution (they do not, being a rectangle's), the fallback.
+        static double[] Solve(double[,] a, double[] b, double[] fallback)
+        {
+            static double Det(double[,] m) => m[0, 0] * (m[1, 1] * m[2, 2] - m[1, 2] * m[2, 1]) - m[0, 1] * (m[1, 0] * m[2, 2] - m[1, 2] * m[2, 0])
+                + m[0, 2] * (m[1, 0] * m[2, 1] - m[1, 1] * m[2, 0]);
+            var det = Det(a);
+            if (Math.Abs(det) < 1e-12)
+                return fallback;
+            var result = new double[3];
+            for (var c = 0; c < 3; c++)
+            {
+                var m = (double[,])a.Clone();
+                for (var r = 0; r < 3; r++)
+                    m[r, c] = b[r];
+                result[c] = Det(m) / det;
+            }
+            return result;
+        }
+    }
+}
+
 /// <summary>Items drawn transformed (in CSS pixels): a scaled, skewed or flipped shadow's copy of its shape, turned text.</summary>
 public sealed record TransformItem(Matrix Transform, List<SceneItem> Items) : SceneItem, IHoldsItems
 {

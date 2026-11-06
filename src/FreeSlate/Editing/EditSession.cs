@@ -591,7 +591,7 @@ public sealed partial class EditSession(IEditableDocument document)
     /// selected. False where the selection holds no picture.
     /// </summary>
     public bool TurnPicture(double by) =>
-        PictureShown is { } shown && Shows(new DrawingFormatting { Rotation = (((shown.Rotation ?? 0) + by) % 360 + 360) % 360 });
+        TurnShown is { } shown && Shows(new DrawingFormatting { Rotation = (((shown.Rotation ?? 0) + by) % 360 + 360) % 360 });
 
     /// <summary>
     /// Mirrors the picture the selection holds alone across, left for right, or down, top for bottom (back where it is mirrored so), a
@@ -602,10 +602,11 @@ public sealed partial class EditSession(IEditableDocument document)
 
     /// <summary>Stands the picture the selection holds alone straight, neither turned, mirrored nor tilted, a handling of its own. False where it holds no picture.</summary>
     public bool StraightenPicture() =>
-        PictureShown != null && Shows(new DrawingFormatting { Rotation = 0, FlipHorizontal = false, FlipVertical = false, Tilt = PictureTilt.Flat });
+        TurnShown != null && Shows(PictureShown != null ? new DrawingFormatting { Rotation = 0, FlipHorizontal = false, FlipVertical = false, Tilt = PictureTilt.Flat }
+            : new DrawingFormatting { Rotation = 0, Tilt = PictureTilt.Flat });
 
     /// <summary>Tilts the picture the selection holds alone in space as Word's 3-D Rotation does (see PictureTilt), a handling of its own. False where it holds no picture.</summary>
-    public bool TiltPicture(PictureTilt tilt) => PictureShown != null && Shows(new DrawingFormatting { Tilt = tilt });
+    public bool TiltPicture(PictureTilt tilt) => TurnShown != null && Shows(new DrawingFormatting { Tilt = tilt });
 
     bool Shows(DrawingFormatting format)
     {
@@ -1005,9 +1006,15 @@ public sealed partial class EditSession(IEditableDocument document)
         try
         {
             after = change();
-            // A picture's caption written in: the picture with it as high as they then are (see WordDocument.FitFigure).
+            // A picture's caption written in: the picture with it as high as they then are (see WordDocument.FitFigure); a table's frame
+            // changed in its table: as high as its table (see WordDocument.FitFrame).
             if (document.Changes > start && document is WordDocument word && word.FigureOf(after.Caret.Paragraph) is var (paragraph, offset, _))
                 word.FitFigure(paragraph, offset);
+            else if (document.Changes > start && document is WordDocument framed
+                && (framed.FrameOf(after.Caret.Paragraph) ?? (after.Caret.Paragraph == after.Anchor.Paragraph && Math.Abs(after.Caret.Offset - after.Anchor.Offset) == 1
+                    && framed.IsFrame(after.Caret.Paragraph, Math.Min(after.Caret.Offset, after.Anchor.Offset)) ? (after.Caret.Paragraph, Math.Min(after.Caret.Offset, after.Anchor.Offset)) : null))
+                is var (holder, at))
+                framed.FitFrame(holder, at);
         }
         catch
         {

@@ -433,6 +433,16 @@ public static class SkiaScene
                     Draw(rotated.Items);
                     canvas.Restore();
                     break;
+                case ProjectedItem projected:
+                {
+                    // The homography of points in pixels: S·H·S⁻¹ for the scale S of points to pixels.
+                    var (h, s) = (projected.Homography, PxPerPt);
+                    canvas.Save();
+                    Concat(new SKMatrix((float)h[0], (float)h[1], (float)(h[2] * s), (float)h[3], (float)h[4], (float)(h[5] * s), (float)(h[6] / s), (float)(h[7] / s), (float)h[8]));
+                    Draw(projected.Items);
+                    canvas.Restore();
+                    break;
+                }
                 case LinkItem link:
                     if (links == null)
                     {

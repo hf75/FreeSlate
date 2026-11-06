@@ -71,12 +71,13 @@ public sealed partial class WordDocument
     }
 
     /// <summary>
-    /// The table of the body a paragraph stands in, the innermost one where tables stand in cells of tables: its block's id; null for
-    /// a paragraph outside tables, in a text box, a note, a header or a footer.
+    /// The table of the body a paragraph stands in, the innermost one where tables stand in cells of tables, or in a text box of the body
+    /// (a table's frame, see WordDocument.FrameTable): its block's id; null for a paragraph outside tables, in a note, a header or a
+    /// footer.
     /// </summary>
     public int? TableOf(int paragraph)
     {
-        if (!paragraphs.TryGetValue(paragraph, out var found) || found.Top is not TableBlock)
+        if (!paragraphs.TryGetValue(paragraph, out var found) || ReferenceEquals(found.Top, found.Paragraph))
             return null;
         var path = PathOf(found.Top, found.Paragraph);
         for (var level = path.Count - 1; level >= 0; level--)
@@ -105,13 +106,22 @@ public sealed partial class WordDocument
         return index > 0 && blocks[index - 1] is TableBlock table ? table.Id : null;
     }
 
-    /// <summary>A table of the body by its block's id, with the block of the body it stands in (itself, or a table it is nested in).</summary>
+    /// <summary>
+    /// A table of the body by its block's id, with the block of the body it stands in (itself, a table it is nested in, or the paragraph
+    /// whose text box holds it, a table's frame).
+    /// </summary>
     (TableBlock Table, Block Top) TableById(int table)
     {
         TableBlock? Search(Block block) => block is TableBlock t && t.Id == table ? t : ModelReader.Inner(block).SelectMany(list => list).Select(Search).FirstOrDefault(found => found != null);
         foreach (var top in blocks)
         {
             if (top is TableBlock && Search(top) is { } found)
+                return (found, top);
+        }
+        // Not among the tables of the text: in a text box of one of its paragraphs.
+        foreach (var top in blocks)
+        {
+            if (top is ParagraphBlock paragraph && paragraph.Content.Any(i => i is DrawingInline { Text.Count: > 0 } or AnchorInline { Text.Count: > 0 }) && Search(top) is { } found)
                 return (found, top);
         }
         throw new ArgumentException("No table of the body has the id.", nameof(table));

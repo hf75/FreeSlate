@@ -223,6 +223,15 @@ public static class HtmlScene
                 case RuleItem rule:
                     html.Append($"<rect x=\"{Px(rule.X)}\" y=\"{Px(rule.Y)}\" width=\"{Px(rule.Width)}\" height=\"{Px(rule.Height)}\" fill=\"#000\"/>");
                     break;
+                case ProjectedItem projected:
+                {
+                    // SVG has no projection: the affine transform nearest it (see ProjectedItem.Affine), its shift in pixels.
+                    var near = projected.Affine();
+                    html.Append($"<g transform=\"{(near with { E = near.E * PxPerPt, F = near.F * PxPerPt }).Css()}\">");
+                    Write(projected.Items, html);
+                    html.Append("</g>");
+                    break;
+                }
                 case RotatedItem rotated:
                     html.Append($"<g transform=\"rotate({Units.Css(rotated.Angle)} {Px(rotated.PivotX)} {Px(rotated.PivotY)})\">");
                     Write(rotated.Items, html);
