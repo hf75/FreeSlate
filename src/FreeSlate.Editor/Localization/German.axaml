@@ -110,6 +110,7 @@
   <x:String x:Key="TableSortDown">Absteigend</x:String>
   <x:String x:Key="TableTranspose">Zeilen und Spalten tauschen</x:String>
   <x:String x:Key="TableDistribute">Spalten gleich breit</x:String>
+  <x:String x:Key="FrameToText">Zurück in den Text</x:String>
   <x:String x:Key="TableAcross">Auf Querseiten</x:String>
   <x:String x:Key="TableUpright">Zurück auf Hochseiten</x:String>
   <x:String x:Key="TableHead">Kopfzeile</x:String>

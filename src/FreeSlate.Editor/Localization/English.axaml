@@ -110,6 +110,7 @@
   <x:String x:Key="TableSortDown">Descending</x:String>
   <x:String x:Key="TableTranspose">Swap rows and columns</x:String>
   <x:String x:Key="TableDistribute">Even columns</x:String>
+  <x:String x:Key="FrameToText">Back into the text</x:String>
   <x:String x:Key="TableAcross">On landscape pages</x:String>
   <x:String x:Key="TableUpright">Back on upright pages</x:String>
   <x:String x:Key="TableHead">Head row</x:String>

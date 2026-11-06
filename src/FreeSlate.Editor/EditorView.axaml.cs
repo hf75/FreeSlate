@@ -200,6 +200,26 @@ public sealed partial class EditorView : Panel
         ];
         var pictureRings = new[] { false, true }.SelectMany(captioned => new[] { false, true }.Select(framed => (captioned, framed)))
             .ToDictionary(k => k, k => Picture(k.captioned, k.framed));
+        // A table's frame selected (see EditSession.FrameTable): as a picture's ring, its places in their directions, but up back into the
+        // text, and up left turning it (straight, a quarter turn right and left, tilted by hand).
+        IReadOnlyList<Controls.GestureRing.Slot> frameTurning =
+        [
+            Field("TurnStraight", "", () => editing.StraightenPicture(), icon: Placement.StraightIcon),
+            Field("TurnRight", "", () => editing.TurnPicture(90), icon: Placement.TurnRightIcon),
+            new("TiltByHand", "", () => Sheets.BeginTilt(), Icon: Placement.TiltByHandIcon),
+            Field("TurnLeft", "", () => editing.TurnPicture(-90), icon: Placement.TurnLeftIcon),
+        ];
+        IReadOnlyList<Controls.GestureRing.Slot> frameRing =
+        [
+            Field("FrameToText", "", () => editing.UnframeTable(), icon: Placement.Inline.Icon),
+            Placed(Placement.Front),
+            Placed(Placement.Right),
+            new("PicturePlaces", "", Under: [.. Placement.Places.Select(Placed)], Icon: Placement.PlacesIcon),
+            Placed(Placement.Own),
+            Placed(Placement.Behind),
+            Placed(Placement.Left),
+            new("PictureTurn", "", Under: frameTurning, Icon: Placement.TurnIcon),
+        ];
         // While a picture is cropped by hand: the whole picture up, the proportions round the ring (turned as the picture stands, upright
         // or lying), and up left the circle, or back to the rectangle.
         IReadOnlyList<Controls.GestureRing.Slot> Cropped(bool upright, bool round) =>
@@ -327,25 +347,42 @@ public sealed partial class EditorView : Panel
         // Where the table stands: in the text between its edges, in the middle up, at the right down right, across the text again down, at the
         // left down left; or floating beside the text, which goes round it, at the right up right and at the left up left (see
         // EditSession.FloatTable; its handle then moves it anywhere); each a preview.
+        // In front of the text down right and behind it down left, the table stands in a frame as a picture does (see EditSession.FrameTable).
         IReadOnlyList<Controls.GestureRing.Slot> tableAlign =
         [
             Field("TableAlignCenter", "", () => editing.AlignTable("center"), icon: Placement.AlignCenterIcon),
             Field("TableFloatRight", "", () => editing.FloatTable("right"), icon: Placement.FloatRightIcon),
             Field("TableAlignRight", "", () => editing.AlignTable("right"), icon: Placement.AlignRightIcon),
+            Field("PictureFront", "", () => editing.FrameTable(Placement.Front.Format), icon: Placement.Front.Icon),
             Field("TableWiden", "", () => editing.WidenTable(), icon: Placement.WidenIcon),
+            Field("PictureBehind", "", () => editing.FrameTable(Placement.Behind.Format), icon: Placement.Behind.Icon),
             Field("TableAlignLeft", "", () => editing.AlignTable(null), icon: Placement.AlignLeftIcon),
             Field("TableFloatLeft", "", () => editing.FloatTable(null), icon: Placement.FloatLeftIcon),
         ];
-        // The table as a whole: rows and columns swapped up, the columns made even up right, where it stands down right, its look down, on
-        // pages of its own turned across (landscape) down left or back on upright ones (see EditSession.TurnTablePages), taken away up left.
+        // Turning the table: straight up (back in the text, on upright pages), a quarter turn right up right and left up left (in a frame,
+        // see EditSession.FrameTable), on pages of its own turned across down right (or back), tilted in space by hand down left (in a frame).
+        IReadOnlyList<Controls.GestureRing.Slot> TableTurning(bool across) =>
+        [
+            Field("TurnStraight", "", () => editing.StraightenTable(), icon: Placement.StraightIcon),
+            Field("TurnRight", "", () => editing.FrameTable(new DrawingFormatting { Rotation = 90 }), icon: Placement.TurnRightIcon),
+            across ? Field("TableUpright", "", () => editing.TurnTablePages(false), icon: Placement.PagesUprightIcon)
+                : Field("TableAcross", "", () => editing.TurnTablePages(true), icon: Placement.PagesAcrossIcon),
+            new("TiltByHand", "", () =>
+            {
+                Sheets.Edit(() => editing.FrameTable());
+                Sheets.BeginTilt();
+            }, Icon: Placement.TiltByHandIcon),
+            Field("TurnLeft", "", () => editing.FrameTable(new DrawingFormatting { Rotation = 270 }), icon: Placement.TurnLeftIcon),
+        ];
+        // The table as a whole: rows and columns swapped up, the columns made even up right, where it stands down right, its look down,
+        // turning it down left (in a frame, or on pages of its own turned across, see EditSession.TurnTablePages), taken away up left.
         IReadOnlyList<Controls.GestureRing.Slot> TableWhole(bool head, bool across) =>
         [
             Field("TableTranspose", "", () => editing.TransposeTable(), icon: Placement.TransposeIcon),
             Field("TableDistribute", "", () => editing.DistributeColumns(), icon: Placement.DistributeIcon),
             new("TableAlign", "", Under: tableAlign, Icon: Placement.AlignCenterIcon),
             new("TableLook", "", Under: TableLooks(head), Icon: Placement.LookIcon),
-            across ? Field("TableUpright", "", () => editing.TurnTablePages(false), icon: Placement.PagesUprightIcon)
-                : Field("TableAcross", "", () => editing.TurnTablePages(true), icon: Placement.PagesAcrossIcon),
+            new("PictureTurn", "", Under: TableTurning(across), Icon: Placement.TurnIcon),
             Field("TableRemove", "\u00D7", () => editing.RemoveTable()),
         ];
         // The colours of cells: none up, the colours round the ring as swatches; each a preview on the cells selected or the cursor's.
@@ -468,6 +505,8 @@ public sealed partial class EditorView : Panel
                 return tilted;
             if (Sheets.Cropping && editing.PictureShown is { Crop: { } crop, Width: { } width, Height: { } height })
                 return cropRings[(width / crop.Wide < height / crop.High, editing.PictureShown.Shape == "ellipse")];
+            if (Sheets.DrawingSelected && editing.FrameSelected)
+                return frameRing;
             return Sheets.DrawingSelected ? pictureRings[(editing.Caption != null, editing.PictureShown?.Outline > 0)] : null;
         };
         ring.Preview = slot =>

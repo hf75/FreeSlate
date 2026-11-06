@@ -36,14 +36,14 @@ public sealed partial class DocumentView
     {
         if (SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box || session is not { } editing)
             return null;
-        if (editing.Caption != null || editing.PictureShown is not { Rotation: { } turn and not 0 } || editing.Drawing is not { Width: { } w, Height: { } h })
+        if (editing.Caption != null || editing.TurnShown is not { Rotation: { } turn and not 0 } || editing.Drawing is not { Width: { } w, Height: { } h })
             return (box, 0);
         var pt = factor * PxPerPt;
         return (FrameAbout(box.Center, new Size(w * pt, h * pt)), turn);
     }
 
-    /// <summary>Whether the drawing selected can be turned: a picture, by itself or with its caption.</summary>
-    bool TurnsHere => session?.PictureShown != null && !cropping && !tilting;
+    /// <summary>Whether the drawing selected can be turned: a picture, by itself or with its caption, or a table's frame (see EditSession.TurnShown).</summary>
+    bool TurnsHere => session?.TurnShown != null && !cropping && !tilting;
 
     /// <summary>The selection where it is a picture shown turned: its frame unturned and how far it is turned (see TurnedFrame); null otherwise.</summary>
     public (Rect Frame, double Turn)? SelectionTurned() => TurnedFrame() is var (frame, turn) && turn != 0 ? (frame, turn) : null;
@@ -138,12 +138,12 @@ public sealed partial class DocumentView
     TiltDrag? tiltDrag;
 
     /// <summary>Whether the picture selected is being tilted by hand (see BeginTilt).</summary>
-    public bool Tilting => tilting && session?.PictureShown != null && SelectedDrawing() != null;
+    public bool Tilting => tilting && session?.TurnShown != null && SelectedDrawing() != null;
 
     /// <summary>The picture selected is tilted by hand from here (see the class); false where the selection holds no picture.</summary>
     public bool BeginTilt()
     {
-        if (session?.PictureShown == null || SelectedDrawing() == null)
+        if (session?.TurnShown == null || SelectedDrawing() == null)
             return false;
         EndCrop();
         tilting = true;
@@ -185,7 +185,7 @@ public sealed partial class DocumentView
     /// <summary>A press of the main button while tilting: on the picture it tilts it from there; false elsewhere.</summary>
     bool TiltPress(Point point, IPointer pointer)
     {
-        if (session?.PictureShown is not { } shown || !TiltsAt(point))
+        if (session?.TurnShown is not { } shown || !TiltsAt(point))
             return false;
         tiltDrag = new TiltDrag(point, pointer, shown.Tilt ?? PictureTilt.Flat);
         pointer.Capture(this);
@@ -259,7 +259,7 @@ public sealed partial class DocumentView
     {
         if (!tilting)
             return;
-        if (session?.PictureShown is not { } shown || SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
+        if (session?.TurnShown is not { } shown || SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
         {
             tilting = false;
             return;

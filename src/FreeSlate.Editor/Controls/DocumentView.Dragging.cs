@@ -204,7 +204,8 @@ public sealed partial class DocumentView
         var (frame, local) = (box.Inflate(1.5), Turned(point, box.Center, -turn));
         if (TurnsHere && ((Vector)(local - KnobPoint(frame))).Length <= HandleReach)
             return Knob;
-        foreach (var handle in Handles)
+        // A table's frame is as large as its table: no handles to size it.
+        foreach (var handle in session?.FrameSelected == true ? [] : Handles)
         {
             if (((Vector)(local - HandlePoint(frame, handle))).Length <= HandleReach)
                 return handle;
@@ -576,7 +577,8 @@ public sealed partial class DocumentView
                 context.DrawRectangle(null, pen, box.Inflate(1.5), 2, 2);
                 if (dragged is not { Moving: true })
                 {
-                    DrawHandles(context, box.Inflate(1.5));
+                    if (session?.FrameSelected != true)
+                        DrawHandles(context, box.Inflate(1.5));
                     if (TurnsHere)
                         DrawKnob(context, box.Inflate(1.5));
                 }
