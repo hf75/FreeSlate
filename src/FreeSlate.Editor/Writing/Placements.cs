@@ -48,6 +48,10 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
         "M5.6,13.6 L9,9.6 L11.2,12 L12.6,10.6 L14.4,13.6 Z");
 
     /// <summary>The icon of a table: a frame of three columns and three rows.</summary>
+    /// <summary>A page turned across (landscape) and one upright (portrait), with lines on them: a table put on pages of its own turned across, and back.</summary>
+    public static readonly string PagesAcrossIcon = Drawn(Frame(0, 2.5, 20, 11), Bar(2.6, 5.4, 14.8), Bar(2.6, 8.4, 14.8));
+    public static readonly string PagesUprightIcon = Drawn(Frame(4, 0, 12, 16), Bar(6.6, 3.2, 6.8), Bar(6.6, 6.2, 6.8), Bar(6.6, 9.2, 6.8));
+
     public static readonly string TableIcon = Drawn(Frame(0, 1, 20, 14), Bar(0, 5.4, 20), Bar(0, 9.6, 20), Block(6.3, 1, Weight, 14), Block(12.5, 1, Weight, 14));
 
     /// <summary>

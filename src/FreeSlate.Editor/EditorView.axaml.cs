@@ -336,12 +336,16 @@ public sealed partial class EditorView : Panel
             Field("TableAlignLeft", "", () => editing.AlignTable(null), icon: Placement.AlignLeftIcon),
             Field("TableFloatLeft", "", () => editing.FloatTable(null), icon: Placement.FloatLeftIcon),
         ];
-        IReadOnlyList<Controls.GestureRing.Slot> TableWhole(bool head) =>
+        // The table as a whole: rows and columns swapped up, the columns made even up right, where it stands down right, its look down, on
+        // pages of its own turned across (landscape) down left or back on upright ones (see EditSession.TurnTablePages), taken away up left.
+        IReadOnlyList<Controls.GestureRing.Slot> TableWhole(bool head, bool across) =>
         [
             Field("TableTranspose", "", () => editing.TransposeTable(), icon: Placement.TransposeIcon),
             Field("TableDistribute", "", () => editing.DistributeColumns(), icon: Placement.DistributeIcon),
             new("TableAlign", "", Under: tableAlign, Icon: Placement.AlignCenterIcon),
             new("TableLook", "", Under: TableLooks(head), Icon: Placement.LookIcon),
+            across ? Field("TableUpright", "", () => editing.TurnTablePages(false), icon: Placement.PagesUprightIcon)
+                : Field("TableAcross", "", () => editing.TurnTablePages(true), icon: Placement.PagesAcrossIcon),
             Field("TableRemove", "\u00D7", () => editing.RemoveTable()),
         ];
         // The colours of cells: none up, the colours round the ring as swatches; each a preview on the cells selected or the cursor's.
@@ -401,7 +405,7 @@ public sealed partial class EditorView : Panel
         // In a table's cell, at a spot with nothing to act on: its row up, its column right, shaping the table down (by hand, or the cell
         // split), the table left (each laid out as the table is: above up, below down, beside left and right); between them its colour,
         // what goes in it, its lines (its frame's look) and where its text stands.
-        var cellRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)
+        var cellRings = new[] { (false, false), (true, false), (false, true), (true, true) }.ToDictionary(k => k, k => (IReadOnlyList<Controls.GestureRing.Slot>)
         [
             new("TableRow", "", Under: tableRow, Icon: Placement.RowIcon),
             new("CellFill", "", Under: fills, Icon: Placement.FillIcon),
@@ -409,13 +413,13 @@ public sealed partial class EditorView : Panel
             new("CellInsert", "", Under: cellInsert, Icon: Placement.CellInsertIcon),
             new("TableShape", "", Under: shaping, Icon: Placement.PenIcon),
             new("CellLines", "", Under: CellLooks(CellLines.Outside), Icon: Placement.CellLinesIcon),
-            new("TableWhole", "", Under: TableWhole(head), Icon: Placement.TableIcon),
+            new("TableWhole", "", Under: TableWhole(k.Item1, k.Item2), Icon: Placement.TableIcon),
             placing,
         ]);
         // Cells selected together: their rows up and their columns right as for a cell, merging them down right, their text's meaning down,
         // their lines (which, then how) down left, the table left, and where their text stands up left; their colour up right. What they
         // hold Delete takes away, as in Word.
-        var cellsRings = new[] { false, true }.ToDictionary(head => head, head => (IReadOnlyList<Controls.GestureRing.Slot>)
+        var cellsRings = new[] { (false, false), (true, false), (false, true), (true, true) }.ToDictionary(k => k, k => (IReadOnlyList<Controls.GestureRing.Slot>)
         [
             new("TableRow", "", Under: tableRow, Icon: Placement.RowIcon),
             new("CellFill", "", Under: fills, Icon: Placement.FillIcon),
@@ -423,7 +427,7 @@ public sealed partial class EditorView : Panel
             Field("CellsMerge", "", () => editing.MergeCells(), icon: Placement.MergeIcon),
             new("CellsMeaning", "!", Under: ring.Slots),
             new("CellLines", "", Under: cellsLines, Icon: Placement.CellLinesIcon),
-            new("TableWhole", "", Under: TableWhole(head), Icon: Placement.TableIcon),
+            new("TableWhole", "", Under: TableWhole(k.Item1, k.Item2), Icon: Placement.TableIcon),
             placing,
         ]);
         // A line of a table under the pointer (see DocumentView.TargetLineAt), how it looks: hidden up, fine, strong, double; down its
@@ -457,9 +461,9 @@ public sealed partial class EditorView : Panel
             else if (Sheets.TargetedLine != null)
                 return lineRing;
             if (empty)
-                return editing.Table is { } table ? cellRings[table.HeadRow || table.HeadColumn] : insert;
+                return editing.Table is { } table ? cellRings[(table.HeadRow || table.HeadColumn, editing.TableAcross)] : insert;
             if (editing.CellSelection != null && editing.Table is { } selected)
-                return cellsRings[selected.HeadRow || selected.HeadColumn];
+                return cellsRings[(selected.HeadRow || selected.HeadColumn, editing.TableAcross)];
             if (Sheets.Tilting)
                 return tilted;
             if (Sheets.Cropping && editing.PictureShown is { Crop: { } crop, Width: { } width, Height: { } height })
