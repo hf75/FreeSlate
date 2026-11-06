@@ -235,6 +235,9 @@ public sealed class TextBoxLayout(DocumentContext context, TableLayout blocks, D
         List<Stroke> strokes = [];
         double height;
         FillRect? lastShading = null;
+        // The settings and width the text is laid out under, for a cut through a table (see below).
+        TextSettings settings;
+        double width;
         var linked = shape?.Element(Drawings.Wps + "linkedTxbx");
         var story = (string?)shape?.Element(Drawings.Wps + "txbx")?.Attribute("id") ?? (string?)linked?.Attribute("id");
         var seq = linked != null && int.TryParse((string?)linked.Attribute("seq"), out var place) ? place : 0;
@@ -247,7 +250,7 @@ public sealed class TextBoxLayout(DocumentContext context, TableLayout blocks, D
         {
             // Vertical text has vertical lines; eaVert, mongolianVert and the WordArt kinds set East Asian characters
             // upright (measured with docx/local/vertical6).
-            var settings = outer with { Vertical = vert != null, TurnEastAsian = vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl" };
+            settings = outer with { Vertical = vert != null, TurnEastAsian = vert is "eaVert" or "mongolianVert" or "wordArtVert" or "wordArtVertRtl" };
             // A text box's lines keep its whole width before Word 2013 too, which the body's shrink to whole cells of the
             // character grid (measured with docx/local/gbx-both-14: right aligned text ends at the right inset of a box
             // 185.6 pt wide under cells of 20.265 pt, as in gbx-both-15).
@@ -259,7 +262,8 @@ public sealed class TextBoxLayout(DocumentContext context, TableLayout blocks, D
             var unwrapped = (string?)body?.Attribute("wrap") == "none" && vert == null;
             if (unwrapped)
                 settings = settings with { AlignIn = (1e5, Math.Max(1, areaWidth)) };
-            (lines, fills, strokes, height) = blocks.Blocks(text, unwrapped ? 1e5 : Math.Max(1, areaWidth), settings, fields);
+            width = unwrapped ? 1e5 : Math.Max(1, areaWidth);
+            (lines, fills, strokes, height) = blocks.Blocks(text, width, settings, fields);
             lastShading = blocks.LastShading;
         }
         else
@@ -278,13 +282,38 @@ public sealed class TextBoxLayout(DocumentContext context, TableLayout blocks, D
         // line 4.3 pt past the bottom inset).
         var last = story != null && shape?.Document is { } part && !part.Descendants(Drawings.Wps + "linkedTxbx").Any(l =>
             (string?)l.Attribute("id") == story && int.TryParse((string?)l.Attribute("seq"), out var later) && later > seq);
-        if (story != null && !last && (lost || lines.Any(p => p.Top + p.Line.FitHeight > areaHeight + 0.01 && p.Top > firstTop + 0.01)))
+        var overflows = story != null && !last && (lost || lines.Any(p => p.Top + p.Line.FitHeight > areaHeight + 0.01 && p.Top > firstTop + 0.01));
+        // A table of the story goes on in the next box from the row the box's end cuts, as a page cuts a table in the body:
+        // the rows that fit stay, a row is cut at a line of each cell, the table's bottom line closes the part, and the next
+        // box goes on with the rest of the row or the next one, at its top as on a new page, head rows not repeated
+        // (measured in Word's PDFs of tables in two linked text boxes: 14 rows of one line, 5 in a box of 150 pt and 9 in the
+        // next, also both boxes turned by 270°; a row of eight lines 4 and 4; text before and after the table going on with
+        // it; a head row and 14 rows, the second box beginning with the sixth).
+        // It is cut where its line is the first that does not fit, or, where no line reaches past the box, where its rows
+        // with their margins and lines do.
+        if (story != null && !last && !lost && text != null)
+        {
+            var first = overflows ? lines.Where(p => p.Top + p.Line.FitHeight > areaHeight + 0.01 && p.Top > firstTop + 0.01).MinBy(p => (Math.Round(p.Top, 2), p.Left)) : null;
+            var tables = first != null ? (first.Nest > 0 && first.Nest <= text.Count && text[first.Nest - 1] is TableBlock ? [first.Nest - 1] : [])
+                : height > areaHeight + 0.01 ? Enumerable.Range(0, text.Count).Where(k => text[k] is TableBlock).ToList() : [];
+            foreach (var index in tables)
+            {
+                if (blocks.Cut(text, index, areaHeight, width, settings, fields) is not { } cut)
+                    continue;
+                continued[(story!, seq + 1)] = [((TableBlock)text[index]) with { Resume = cut.Resume }, .. text.Skip(index + 1)];
+                (lines, fills, strokes) = (cut.Lines, cut.Fills, cut.Strokes);
+                height = Math.Max(lines.Count > 0 ? lines.Max(p => p.Top + p.Line.Height) : 0, fills.Count > 0 ? fills.Max(f => f.Y + f.Height) : 0);
+                (lastShading, overflows) = (null, false);
+                break;
+            }
+        }
+        if (overflows)
         {
             var kept = lost ? [] : lines.Where(p => p.Top + p.Line.FitHeight <= areaHeight + 0.01 || p.Top <= firstTop + 0.01).ToList();
             var over = lines.Except(kept).Where(p => !lost || p.Top > firstTop + 0.01).ToList();
             var shift = over.Count > 0 ? over.Min(p => p.Top) : double.MaxValue;
             if (over.Count > 0 && Resumed(text!, over.Where(p => p.Top <= shift + 0.01).MinBy(p => p.Left)!.Line) is { } resumed)
-                continued[(story, seq + 1)] = resumed;
+                continued[(story!, seq + 1)] = resumed;
             (lines, height) = (kept, kept.Count > 0 ? kept.Max(p => p.Top + p.Line.Height) : 0);
             fills = lost ? [] : fills.Where(f => f.Y < shift).ToList();
             strokes = lost ? [] : strokes.Where(s => s.Y1 < shift).ToList();

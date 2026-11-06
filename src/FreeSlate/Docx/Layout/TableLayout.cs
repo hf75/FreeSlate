@@ -299,6 +299,7 @@ public sealed class RowBox
         {
             Height = Height + delta, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, AnchorsReach = AnchorsReach, TopWidth = PageTopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth, Place = Place,
+            PageBottomBorders = PageBottomBorders, PageBottomStrokes = PageBottomStrokes, PageBottomWidth = PageBottomWidth,
         };
         copy.Shading.AddRange(Shading);
         copy.Verticals.AddRange(Verticals);
@@ -336,6 +337,21 @@ public sealed class RowBox
     public List<FillRect> BottomBorders { get; } = [];
     public List<Stroke> BottomStrokes { get; } = [];
     public double BottomBorderWidth { get; set; }
+
+    /// <summary>
+    /// The lines below the row where a page, a column or the end of a linked text box cuts its table after it (or in it):
+    /// the table's bottom line, a cell's own bottom line over it, as below the table's last row, and their height; null
+    /// where they are the row's own lines below it (the last row). Measured in Word's PDFs: docx/local/cb-5, a 3 pt outer
+    /// bottom line below the last row on page 1 of a table whose inside lines are 1 pt; tables in linked text boxes and
+    /// in the body of 3 pt outer and 0.5 pt inside lines closed by the 3 pt line where the box or the page ends.
+    /// </summary>
+    public List<FillRect>? PageBottomBorders { get; set; }
+    public List<Stroke>? PageBottomStrokes { get; set; }
+    public double PageBottomWidth { get; set; }
+
+    /// <summary>The lines that close the row's table where it is cut after the row (see PageBottomBorders), and their height.</summary>
+    public (List<FillRect> Borders, List<Stroke> Strokes, double Width) CutBottom =>
+        PageBottomBorders != null ? (PageBottomBorders, PageBottomStrokes ?? [], PageBottomWidth) : (BottomBorders, BottomStrokes, BottomBorderWidth);
 
     /// <summary>Lines and fills of rows laid out with cell spacing: each cell's own frame, through the row.</summary>
     public List<FillRect> Frames { get; } = [];
@@ -623,12 +639,29 @@ public sealed class RowBox
         return copy;
     }
 
+    /// <summary>
+    /// The row a table's part in a linked text box begins with where the table goes on from the box before (see
+    /// TableResume): the row cut as the boxes before cut it, each rest at the top of its box as a row that begins a part
+    /// is (AtPageTop). Head rows do not repeat there (measured in Word's PDF of a table of a head row and 14 rows in two
+    /// linked boxes: the second box begins with the sixth row, where the first box began with the head row).
+    /// </summary>
+    public RowBox Resumed(TableResume resume)
+    {
+        if (resume.Cuts.Count == 0)
+            return AtPageTop();
+        var row = resume.Started ? AtPageTop() : this;
+        foreach (var (available, force) in resume.Cuts)
+            row = (row.Split(available, force)?.Tail ?? row).AtPageTop();
+        return row;
+    }
+
     RowBox Copy(double height)
     {
         var copy = new RowBox
         {
             Height = height, Header = Header, CantSplit = CantSplit, Exact = Exact, Least = Least, AnchorsReach = AnchorsReach, TopWidth = TopWidth, BottomBorderWidth = BottomBorderWidth,
             PageTopBorders = PageTopBorders, PageTopStrokes = PageTopStrokes, PageTopWidth = PageTopWidth, Place = Place,
+            PageBottomBorders = PageBottomBorders, PageBottomStrokes = PageBottomStrokes, PageBottomWidth = PageBottomWidth,
         };
         copy.Shading.AddRange(Shading);
         copy.Verticals.AddRange(Verticals);
@@ -1333,6 +1366,22 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                     var (left, width) = Range(from, to);
                     Horizontal(below, left, width, 0, rowBox.BottomBorders, rowBox.BottomStrokes);
                     rowBox.BottomBorderWidth = Math.Max(rowBox.BottomBorderWidth, below.Total);
+                }
+            }
+            // Where a page, a column or the end of a linked text box cuts the table after the row (or in it), the table's
+            // bottom line closes the part, a cell's own bottom line over it (RowBox.PageBottomBorders).
+            if (r + 1 < rows.Count)
+            {
+                (rowBox.PageBottomBorders, rowBox.PageBottomStrokes) = ([], []);
+                for (var k = 0; k < columns; k++)
+                {
+                    if (at[r, k] is { } cell && Edge(cell.CellBorders.Bottom, null, TableBorder(row, format, b => b.Bottom), false) is { Visible: true } cut)
+                    {
+                        var (from, to) = Span(k, r);
+                        var (left, width) = Range(from, to);
+                        Horizontal(cut, left, width, 0, rowBox.PageBottomBorders, rowBox.PageBottomStrokes);
+                        rowBox.PageBottomWidth = Math.Max(rowBox.PageBottomWidth, cut.Total);
+                    }
                 }
             }
             // Vertical lines through the row, centered on their grid lines.
@@ -2425,6 +2474,21 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         return (content.Lines, content.Fills, content.Strokes, content.Height);
     }
 
+    /// <summary>
+    /// Blocks laid out as <see cref="Blocks"/> lays them out, their table at block <paramref name="table"/> cut where it
+    /// reaches past <paramref name="room"/> points down, as a page cuts a table in the body (the rows that fit, a row cut
+    /// at a line of each cell, the part closed by the table's bottom line): the lines, fills and strokes above the cut and
+    /// where the table goes on (TableBlock.Resume); null where the table reaches no further.
+    /// </summary>
+    public (List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, TableResume Resume)? Cut(List<Block> blocks, int table, double room, double width,
+        TextSettings settings, PageFields? fields)
+    {
+        var content = Content(new Scope(settings), blocks, width, fields, cuts: [new CellCut(table + 1, 0, 0, room)]);
+        if (content.Boundaries.Count == 0 || content.Boundaries[0] is not { Resume: { } resume } boundary)
+            return null;
+        return ([.. content.Lines.Take(boundary.Lines)], [.. content.Fills.Take(boundary.Fills)], [.. content.Strokes.Take(boundary.Strokes)], resume);
+    }
+
     /// <summary>A cell's content laid out: lines, fills and strokes relative to its text's top left, its height, its place.</summary>
     sealed record CellContent(List<PlacedLine> Lines, List<FillRect> Fills, List<Stroke> Strokes, double Height, double Left = 0, double Width = 0, double Thickness = 0)
     {
@@ -2453,9 +2517,10 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
 
     /// <summary>
     /// Where the part after a cut through a cell's nested table begins: its first line, fill, stroke and drawing in the
-    /// content's lists and how far down the content it begins.
+    /// content's lists and how far down the content it begins; and where the table goes on, for a linked text box (see
+    /// TableResume).
     /// </summary>
-    readonly record struct CellBoundary(int Lines, int Fills, int Strokes, int Anchors, double Origin);
+    readonly record struct CellBoundary(int Lines, int Fills, int Strokes, int Anchors, double Origin, TableResume? Resume = null);
 
     /// <summary>
     /// How far down a floating drawing in a cell reaches from the content's top, placed from its paragraph, its line or
@@ -2991,7 +3056,7 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                                 avoid = true;
                         }
                     }
-                    (y, var tableTop) = Rows(box, shift, y, b, avoid);
+                    (y, var tableTop) = Rows(box, shift, y, b, avoid, nested.Resume);
                     Frame(box, shift, tableTop, y, fills);
                     after = 0;
                     ownAfter = 0;
@@ -3017,13 +3082,24 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
         // floattable-anchor-height). Returns how far down the table reaches and where its last part begins. Rows that
         // avoid the floating tables of the cell go on below one they reach, as a part beginning with the table's top
         // line, the part before ending with the line below its last row.
-        (double Bottom, double Top) Rows(TableBox box, double left, double top, int b, bool avoid = false)
+        (double Bottom, double Top) Rows(TableBox box, double left, double top, int b, bool avoid = false, TableResume? resume = null)
         {
             var tableTop = top;
             RowBox? placed = null;
-            for (var r = 0; r < box.Rows.Count; r++)
+            // A table that goes on from a linked text box before begins with the row it goes on with, cut as the boxes before
+            // cut it (RowBox.Resumed).
+            var from = 0;
+            RowBox? resumed = null;
+            if (resume != null && resume.Row < box.Rows.Count)
             {
-                var row = box.Rows[r];
+                from = resume.Row;
+                resumed = box.Rows[from].Resumed(resume);
+            }
+            for (var r = from; r < box.Rows.Count; r++)
+            {
+                var row = r == from && resumed != null ? resumed : box.Rows[r];
+                // The cuts the boxes before made through the row, for a cut through it here (see TableResume).
+                var (started, made) = r == from && resume != null ? (resume.Started || resume.Cuts.Count == 0, resume.Cuts) : (false, (IReadOnlyList<(double, bool)>)[]);
                 while (avoid && around.FirstOrDefault(e => e.Top < top + row.Height - 0.01 && e.Bottom > top + 0.01
                     && e.Left < left + box.Left + box.Width - 0.01 && e.Right > left + box.Left + 0.01) is { } reached)
                 {
@@ -3040,8 +3116,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                 while (cuts != null && cutAt < cuts.Count && cuts[cutAt].Table == b + 1 && top + row.Height + row.BottomBorderWidth > cuts[cutAt].Room + 0.01)
                 {
                     var room = cuts[cutAt++].Room;
-                    if (row.Split(room - top - row.BottomBorderWidth, force: top <= partTop + 0.01) is { } parts)
+                    var (available, force) = (room - top - row.BottomBorderWidth, top <= partTop + 0.01);
+                    // Where the table goes on after the cut: the row cut in two, or moved whole as it stood.
+                    var goesOn = made.Count == 0 ? new TableResume(r, true, []) : new TableResume(r, started, made);
+                    if (row.Split(available, force: force) is { } parts)
                     {
+                        goesOn = new TableResume(r, started, [.. made, (available, force)]);
                         var drawn = lines.Count;
                         Draw(parts.Head, parts.Head.Height, left, top, lines, fills, fills, strokes, anchors);
                         Unit(drawn, parts.Head, top, b);
@@ -3053,12 +3133,13 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
                         row = row.AtPageTop();
                     if (placed != null)
                     {
-                        Close(placed, left, top);
-                        top += placed.BottomBorderWidth;
+                        Close(placed, left, top, cut: true);
+                        top += placed.CutBottom.Width;
                     }
-                    boundaries.Add(new CellBoundary(lines.Count, fills.Count, strokes.Count, anchors.Count, top));
+                    boundaries.Add(new CellBoundary(lines.Count, fills.Count, strokes.Count, anchors.Count, top, goesOn));
                     tableTop = partTop = top;
                     placed = null;
+                    (started, made) = (goesOn.Started || goesOn.Cuts.Count == 0, goesOn.Cuts);
                 }
                 var at = lines.Count;
                 Draw(row, row.Height, left, top, lines, fills, fills, strokes, anchors);
@@ -3074,10 +3155,12 @@ public sealed class TableLayout(DocumentContext context, ParagraphLayout paragra
             return (top, tableTop);
         }
 
-        void Close(RowBox row, double left, double top)
+        // The lines below a part's last row: where a cut ends the part, those that close the table there (RowBox.CutBottom).
+        void Close(RowBox row, double left, double top, bool cut = false)
         {
-            fills.AddRange(row.BottomBorders.Select(f => f with { X = left + f.X, Y = top + f.Y }));
-            strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(left, top)));
+            var (borders, lineStrokes, _) = cut ? row.CutBottom : (row.BottomBorders, row.BottomStrokes, row.BottomBorderWidth);
+            fills.AddRange(borders.Select(f => f with { X = left + f.X, Y = top + f.Y }));
+            strokes.AddRange(lineStrokes.Select(s => s.Offset(left, top)));
         }
 
         // The lines of a nested table's row go with what of the row has to stand together.

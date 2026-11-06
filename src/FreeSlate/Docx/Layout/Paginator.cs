@@ -910,8 +910,10 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             last = row;
             onPage++;
         }
-        void Close(RowBox row)
+        // A part the page cuts the table after ends with the line that closes it there (RowBox.CutBottom).
+        void Close(RowBox row, bool cut = false)
         {
+            var (bottomBorders, bottomStrokes, bottomWidth) = cut ? row.CutBottom : (row.BottomBorders, row.BottomStrokes, row.BottomBorderWidth);
             // From Word 2013 on a table that may not overlap others moves up off a drawing of the header or footer that
             // text goes around and that its part on the page reaches below the part's top, the part then ending at the
             // drawing's top, where it still begins on the page; else it stays (measured with docx/local/fto-*: a table
@@ -920,7 +922,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             // page, one at 240 pt where it would leave the page staying, not wrapped, without tblOverlap never or in mode
             // 14 staying; LibreOffice's extras-layout/floattable-footer-object).
             var (partLeft, partRight) = (x - Twips("leftFromText"), x + tableWidth + Twips("rightFromText"));
-            var partBottom = rowTop + row.BottomBorderWidth + Twips("bottomFromText");
+            var partBottom = rowTop + bottomWidth + Twips("bottomFromText");
             if (((TableBlock)blocks[index]).Table.Format.NoOverlap && context.Profile.FloatingTablesClearStoryDrawings
                 && page!.FloatingTables.Where(e => e.Story && e.Source != null && e.Top > partTop - Twips("topFromText") + 0.01 && e.Top < partBottom - 0.01
                     && e.Left < partRight - 0.01 && e.Right > partLeft + 0.01).Select(e => partBottom - e.Top).DefaultIfEmpty(0).Max() is var lift and > 0.01
@@ -946,11 +948,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 rowTop -= lift;
                 partTop -= lift;
             }
-            foreach (var fill in row.BottomBorders)
+            foreach (var fill in bottomBorders)
                 page!.Borders.Add(fill with { X = x - box.Left + fill.X, Y = rowTop + fill.Y });
-            page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
+            page!.Strokes.AddRange(bottomStrokes.Select(s => s.Offset(x - box.Left, rowTop)));
             page.FloatingTables.Add(new Exclusion(x - Twips("leftFromText"), partTop - Twips("topFromText"),
-                x + tableWidth + Twips("rightFromText"), rowTop + row.BottomBorderWidth + Twips("bottomFromText"), false, "bothSides")
+                x + tableWidth + Twips("rightFromText"), rowTop + bottomWidth + Twips("bottomFromText"), false, "bothSides")
                 {
                     DistanceLeft = Twips("leftFromText"), DistanceRight = Twips("rightFromText"), Anchor = index + 1 < blocks.Count ? blocks[index + 1] : null,
                     Banded = Math.Abs(partTop - top) < 0.01 ? banded : null, ReachesText = context.Profile.DrawingsReachText,
@@ -1039,7 +1041,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                     var withText = last == null && anchor == "text";
                     var samePlace = last == null && unbroken;
                     if (last != null)
-                        Close(last);
+                        Close(last, cut: true);
                     if (waits && last != null)
                     {
                         var (at, rest) = (r, row);
@@ -4471,7 +4473,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
         void Break()
         {
             if (last != null)
-                Below(last, left);
+                Below(last, left, cut: true);
             Describe();
             // A table that moves whole leaves no frame behind (docx/external/poi/bib-chernigovka.netdo.ru_download_docs_17459: a
             // zero-height frame line at page 1's bottom, the cell-spacing table on page 2).
@@ -5309,12 +5311,16 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>Lines of cells merged down below the table row placed last, for the next (RowBox.Overflow).</summary>
     readonly List<CellPart> mergedDown = [];
 
-    /// <summary>The lines below a row at the current position.</summary>
-    void Below(RowBox row, double left)
+    /// <summary>
+    /// The lines below a row at the current position: where the page or column cuts the table after it, those that close
+    /// its part there (RowBox.CutBottom).
+    /// </summary>
+    void Below(RowBox row, double left, bool cut = false)
     {
-        foreach (var fill in row.BottomBorders)
+        var (borders, strokes, _) = cut ? row.CutBottom : (row.BottomBorders, row.BottomStrokes, row.BottomBorderWidth);
+        foreach (var fill in borders)
             page!.Borders.Add(fill with { X = left + fill.X, Y = y + fill.Y });
-        page!.Strokes.AddRange(row.BottomStrokes.Select(s => s.Offset(left, y)));
+        page!.Strokes.AddRange(strokes.Select(s => s.Offset(left, y)));
     }
 
     /// <summary>

@@ -208,7 +208,19 @@ public sealed record ParagraphBlock(XElement Element, ParagraphFormat Format, Li
 }
 
 /// <summary>A table (catalog: table.structure); laid out by the table engine.</summary>
-public sealed record TableBlock(XElement Element, TableModel Table) : Block;
+public sealed record TableBlock(XElement Element, TableModel Table) : Block
+{
+    /// <summary>Where the table goes on in a linked text box after the box before cut it (see TableResume); null for the whole table.</summary>
+    public TableResume? Resume { get; init; }
+}
+
+/// <summary>
+/// Where a table goes on in the next linked text box after the box before cut it, as a page cuts a table in the body: the
+/// laid-out row its part there begins with, and the cuts the boxes before made through that row (the room each left the
+/// row's part above it, and whether the cut was forced), applied in turn; Started where the row began the part the first
+/// of them cut (it stood there as a row at a part's top does).
+/// </summary>
+public sealed record TableResume(int Row, bool Started, IReadOnlyList<(double Available, bool Force)> Cuts);
 
 /// <summary>Page and section properties of a section (w:sectPr, catalog: section.page, section.columns).</summary>
 public sealed class SectionProperties
