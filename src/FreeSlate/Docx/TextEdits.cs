@@ -2243,6 +2243,50 @@ static partial class TextEdits
     }
 
     /// <summary>
+    /// What a section has of its own that only the first of its parts keeps where it is split in parts (see
+    /// WordDocument.TurnTablePages): its header and footer references, its first page's own (w:titlePg), how it begins
+    /// (w:type) and the number of its first page (w:pgNumType's start).
+    /// </summary>
+    static bool OwnOfSection(XElement e) => e.Name.LocalName is "headerReference" or "footerReference" or "titlePg" or "type";
+
+    /// <summary>
+    /// A section's properties (see Section) given what another section's have of their own (see OwnOfSection): with
+    /// <paramref name="from"/> null they lose theirs, the section going on with the headers, footers and page numbers of
+    /// those before it and beginning on a new page; else they take copies of the other's in their places. Returns the
+    /// stretch's new text.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The section's properties are not in the stretch; nothing changes.</exception>
+    public static string TakeOwn(Stretch stretch, XElement? sectPr, XElement? from)
+    {
+        var (properties, written) = Section(stretch, sectPr);
+        var w = properties.Name.Namespace;
+        properties.Elements().Where(OwnOfSection).Remove();
+        if (properties.Element(w + "pgNumType") is { } numbers)
+        {
+            numbers.Attribute(w + "start")?.Remove();
+            if (!numbers.HasAttributes && !numbers.HasElements)
+                numbers.Remove();
+        }
+        if (from != null)
+        {
+            var references = from.Elements().Where(e => e.Name.LocalName is "headerReference" or "footerReference").ToList();
+            // The prefixes of the references' ids declared where they are not yet (a document of Word's namespace alone declares the
+            // relationships' where its first reference stands).
+            foreach (var space in references.SelectMany(e => e.Attributes()).Select(a => a.Name.Namespace).Where(n => n != XNamespace.None && n != w).Distinct())
+            {
+                if (properties.GetPrefixOfNamespace(space) == null)
+                    properties.SetAttributeValue(XNamespace.Xmlns + (from.GetPrefixOfNamespace(space) ?? "r"), space.NamespaceName);
+            }
+            properties.AddFirst(references.Select(e => new XElement(e)));
+            foreach (var own in from.Elements().Where(e => e.Name.LocalName is "titlePg" or "type"))
+                Property(properties, own.Name.LocalName, SectionOrder).ReplaceWith(new XElement(own));
+            if (from.Element(w + "pgNumType")?.Attribute(w + "start") is { } start)
+                Property(properties, "pgNumType", SectionOrder).SetAttributeValue(w + "start", start.Value);
+        }
+        return written();
+    }
+
+    /// <summary>
     /// A section's properties as the document read them (a paragraph's w:sectPr or the body's own) found in the stretch,
     /// or where the body has none, one made after the stretch's last child (which the body's last is then); and how the
     /// stretch's new text is written once they are changed.

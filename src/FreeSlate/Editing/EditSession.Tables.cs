@@ -464,6 +464,19 @@ public sealed partial class EditSession
     /// makes it and names the paragraph to go on in, the cursor then at its start; where it names none, the cursor stays (a table's
     /// lines moved keep its paragraphs). False in other documents than Word's.
     /// </summary>
+    /// <summary>Whether the cursor's table stands alone on pages turned across (see WordDocument.TableAcross); false outside tables.</summary>
+    public bool TableAcross => document is WordDocument word && Table is { } table && word.TableAcross(table.Table);
+
+    /// <summary>
+    /// The cursor's table put on pages of its own turned across (landscape), or back among the pages of the text around it (see
+    /// WordDocument.TurnTablePages); the cursor stays. False outside tables or in other documents than Word's.
+    /// </summary>
+    public bool TurnTablePages(bool across) => Table is { } table && ChangeTable(word =>
+    {
+        word.TurnTablePages(table.Table, across);
+        return null;
+    });
+
     public bool ChangeTable(Func<WordDocument, int?> change)
     {
         if (document is not WordDocument word)
