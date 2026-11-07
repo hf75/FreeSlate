@@ -11,14 +11,15 @@ namespace FreeSlate.Text;
 public sealed record ResolvedFont(FontData Data, bool SyntheticBold, bool SyntheticItalic, bool WidenedBold = false);
 
 /// <summary>
-/// Maps a typeface and style to a font file. Missing families fall back to Calibri like in PowerPoint, whatever
-/// their panose or pitch family say (measured: serif, monospaced, script and unknown fonts all become Calibri), else
-/// to its metric twin Carlito or a common sans serif, else to the system's own (FontLocator.SystemDefault); the
-/// fallback is written into the CSS, so the browser draws with the font the layout was measured with.
+/// Maps a typeface and style to a font file. A family the machine lacks is its metric twin where that is there (Carlito for
+/// Calibri, see MetricTwins); other missing families fall back to Calibri like in PowerPoint, whatever their panose or pitch
+/// family say (measured: serif, monospaced, script and unknown fonts all become Calibri), else to a common sans serif, else
+/// to the system's own (FontLocator.SystemDefault); the fallback is written into the CSS, so the browser draws with the
+/// font the layout was measured with.
 /// </summary>
 public sealed class FontResolver(FontLocator locator)
 {
-    static readonly string[] Fallbacks = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];
+    static readonly string[] Fallbacks = ["Calibri", "Arial", "Liberation Sans", "DejaVu Sans"];
 
     /// <summary>Font files, shared by all resolvers; a presentation's embedded fonts stay with its resolver.</summary>
     static readonly ConcurrentDictionary<string, FontData> Files = new(StringComparer.OrdinalIgnoreCase);
@@ -121,8 +122,11 @@ public sealed class FontResolver(FontLocator locator)
 
     ResolvedFont? Find(string family, bool bold, bool italic) => cache.GetOrAdd((family, bold, italic), key =>
     {
-        // Embedded fonts that cannot be decoded are skipped.
-        var faces = locator.Faces(key.Item1).Where(f => f.Embedded == null || f.Embedded.Value != null).ToList();
+        // A family the machine lacks is its metric twin where that is there, with the family's own metrics (see MetricTwins).
+        var faces = Usable(key.Item1);
+        var twin = faces.Count == 0 && MetricTwins.Of(key.Item1) is { } other ? other : null;
+        if (twin != null)
+            faces = Usable(twin);
         if (faces.Count == 0)
             return null;
         var exact = faces.FirstOrDefault(f => f.Bold == key.Item2 && f.Italic == key.Item3);
@@ -132,19 +136,30 @@ public sealed class FontResolver(FontLocator locator)
             : face.Variations is { } variations
                 ? Files.GetOrAdd($"{face.Path}#{face.Index}#{string.Join(',', variations)}", _ => new FontData(face.Path, face.Base ?? face.Family, face.Index, variations))
                 : Files.GetOrAdd($"{face.Path}#{face.Index}", _ => new FontData(face.Path, face.Family, face.Index));
+        var store = face.Embedded != null ? embedded : Files;
+        var known = $"{face.Path}#{face.Index}";
+        if (twin != null)
+        {
+            var own = data;
+            known += "#as " + key.Item1;
+            data = store.GetOrAdd(known, _ => own.StandingFor(MetricTwins.Metrics(key.Item1, face.Bold, face.Italic)));
+        }
         // Bold of a variable font is its weight axis at 700 (the Bold instance), also where the presentation embeds the
         // same file as its bold face: PowerPoint shows it so (seen with an embedded Wix Madefor Display). A named
         // instance is a family of its own, whose bold is its bold instance or else simulated.
         if (key.Item2 && face.Variations == null && data.WeightAxis is { Default: < 600, Max: >= 600 })
         {
-            var weighted = (face.Embedded != null ? embedded : Files).GetOrAdd($"{face.Path}#{face.Index}#wght700", _ => data.Weighted(700));
+            var weighted = store.GetOrAdd(known + "#wght700", _ => data.Weighted(700));
             return new ResolvedFont(weighted, false, key.Item3 && !face.Italic);
         }
         if (key.Item2 && !face.Bold && data.IsPostScript)
         {
-            var widened = (face.Embedded != null ? embedded : Files).GetOrAdd($"{face.Path}#{face.Index}#widened", _ => data.Widened(FontData.WidenedBold));
+            var widened = store.GetOrAdd(known + "#widened", _ => data.Widened(FontData.WidenedBold));
             return new ResolvedFont(widened, false, key.Item3 && !face.Italic, WidenedBold: true);
         }
         return new ResolvedFont(data, key.Item2 && !face.Bold, key.Item3 && !face.Italic);
     });
+
+    /// <summary>A family's faces, but embedded fonts that cannot be decoded.</summary>
+    List<FontFace> Usable(string family) => locator.Faces(family).Where(f => f.Embedded == null || f.Embedded.Value != null).ToList();
 }

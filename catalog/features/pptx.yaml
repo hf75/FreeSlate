@@ -3041,9 +3041,10 @@ areas:
         difficulty: 4
         status: done
         strategy: >-
-          Find installed and embedded fonts, metric-compatible substitutes (Carlito for Calibri, Liberation for
-          Arial and Times New Roman) and Office cloud fonts (Aptos); subset and embed them as WOFF2, so the browser
-          draws with exactly the font we measured.
+          Find installed and embedded fonts, metric twins standing in for missing Office fonts with the originals'
+          metrics (Carlito, Caladea, Gelasio, Arimo, Tinos and Cousine for Calibri, Cambria, Georgia, Arial, Times New
+          Roman and Courier New; see docx engine.fonts) and Office cloud fonts (Aptos); subset and embed them as WOFF2,
+          so the browser draws with exactly the font we measured.
         office: >-
           PowerPoint renders text from 30 pixels per em on unhinted (cap height and x-height exactly as
           designed), below that hinted with crisp horizontal edges on whole-pixel baselines (22 pt hinted, 23

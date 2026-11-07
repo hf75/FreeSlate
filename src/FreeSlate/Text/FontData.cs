@@ -70,11 +70,12 @@ public sealed class FontData : IDisposable
     }
 
     FontData(byte[] data, string path, string family, int index, bool inMemory, double advanceExtra = 0, float weight = 0,
-        IReadOnlyList<(string Axis, float Value)>? variations = null)
+        IReadOnlyList<(string Axis, float Value)>? variations = null, Fonts.FontMetrics? original = null)
     {
         Path = path;
         Family = family;
         Index = index;
+        standing = original;
         hhea = new(ReadHhea);
         eastAsian = new(ReadEastAsian);
         typo = new(ReadTypo);
@@ -122,6 +123,15 @@ public sealed class FontData : IDisposable
             ascent = BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(tables["hhea"] + 4));
             descent = -BinaryPrimitives.ReadInt16BigEndian(data.AsSpan(tables["hhea"] + 6));
         }
+        // A metric twin standing in for another font takes that font's line metrics, in its own units (see Fonts.MetricTwins).
+        if (original != null)
+        {
+            var scale = (UnitsPerEm == 0 ? 1000 : UnitsPerEm) / (double)original.UnitsPerEm;
+            (winAscent, winDescent) = (original.WinAscent * scale, original.WinDescent * scale);
+            (ascent, descent, lineGap) = original.UseTypoMetrics
+                ? (original.TypoAscender * scale, -original.TypoDescender * scale, original.TypoLineGap * scale)
+                : (winAscent, winDescent, 0);
+        }
         // The typo line gap goes above the text.
         var gapAbove = Math.Max(0, lineGap);
         AscentRatio = ascent + descent > 0 ? (gapAbove + ascent) / (gapAbove + ascent + descent) : 0.8;
@@ -158,6 +168,15 @@ public sealed class FontData : IDisposable
             (SubscriptSize, SubscriptOffset, SuperscriptSize, SuperscriptOffset) = (0.65, 0.14, 0.65, 0.48);
         if (UnderlineThickness <= 0) (UnderlinePosition, UnderlineThickness) = (0.1, 0.05);
         if (StrikeoutThickness <= 0) (StrikeoutPosition, StrikeoutThickness) = (0.3, 0.05);
+        if (original != null)
+        {
+            double Units(int value) => value / (double)original.UnitsPerEm;
+            (UnderlinePosition, UnderlineThickness) = (-Units(original.UnderlinePosition), Units(original.UnderlineThickness));
+            (StrikeoutPosition, StrikeoutThickness) = (Units(original.StrikeoutPosition), Units(original.StrikeoutSize));
+            (SubscriptSize, SubscriptOffset, SuperscriptSize, SuperscriptOffset) =
+                (Units(original.SubscriptSize), Units(original.SubscriptOffset), Units(original.SuperscriptSize), Units(original.SuperscriptOffset));
+            (CapHeight, AverageWidth) = (Units(original.CapHeight), Units(original.AverageWidth));
+        }
 
         blob = inMemory ? NativeBlob(data) : Blob.FromFile(path);
         face = new Face(blob, index);
@@ -313,7 +332,7 @@ public sealed class FontData : IDisposable
     public const double WidenedBold = 0.027;
 
     /// <summary>The same font with <paramref name="extra"/> em added to every glyph's advance (simulated bold of PostScript fonts).</summary>
-    public FontData Widened(double extra) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, extra, Weight, Variations);
+    public FontData Widened(double extra) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, extra, Weight, Variations, standing);
 
     /// <summary>The weight axis (wght) of a variable font: its lowest, default and highest weight; null for other fonts.</summary>
     public (float Min, float Default, float Max)? WeightAxis { get; }
@@ -333,7 +352,17 @@ public sealed class FontData : IDisposable
         : Weight > 0 ? "wght=" + Weight.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
 
     /// <summary>The same variable font set to another weight (wght axis).</summary>
-    public FontData Weighted(float weight) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, advanceExtra, weight);
+    public FontData Weighted(float weight) => new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, advanceExtra, weight, null, standing);
+
+    /// <summary>
+    /// The same font standing in for another, whose metrics it takes (a metric twin, see Fonts.MetricTwins): its own glyphs and
+    /// advances, the other's line metrics, underline, strikeout, subscripts and superscripts.
+    /// </summary>
+    public FontData StandingFor(Fonts.FontMetrics original) =>
+        new(memory ?? File.ReadAllBytes(Path), Path, Family, Index, memory != null, advanceExtra, Weight, Variations, original);
+
+    /// <summary>The metrics of the font this one stands in for (see StandingFor), else null.</summary>
+    readonly Fonts.FontMetrics? standing;
 
     // PostScript and variable fonts, which PowerPoint lays out as OpenType fonts: without a 'kern' table they are kerned
     // from GPOS (measured with an embedded CFF font, an embedded variable font, Bahnschrift, Segoe UI Variable and
@@ -391,7 +420,8 @@ public sealed class FontData : IDisposable
     /// </summary>
     public (int Ascent, int Descent) GdiMetrics(int ppem)
     {
-        vdmx ??= ReadVdmx();
+        // A font standing in for another has that one's win metrics, which its own VDMX does not describe.
+        vdmx ??= standing != null ? [] : ReadVdmx();
         if (ppem > 0 && ppem < vdmx.Length && vdmx[ppem] is { Ascent: > 0 } record)
             return record;
         return ((int)Math.Floor(WinAscent * ppem + 0.5), (int)Math.Floor(WinDescent * ppem + 0.5));
@@ -691,6 +721,8 @@ public sealed class FontData : IDisposable
 
     (double Ascender, double Descender, double LineGap) ReadHhea()
     {
+        if (standing is { } original)
+            return (original.HheaAscender / (double)original.UnitsPerEm, -original.HheaDescender / (double)original.UnitsPerEm, original.HheaLineGap / (double)original.UnitsPerEm);
         var table = Table("hhea");
         return table == null || table.Length < 10
             ? (Ascent, Descent, LineGap)
@@ -781,6 +813,9 @@ public sealed class FontData : IDisposable
 
     (double Ascender, double Descender, double LineGap, bool Use)? ReadTypo()
     {
+        if (standing is { } original)
+            return (original.TypoAscender / (double)original.UnitsPerEm, -original.TypoDescender / (double)original.UnitsPerEm,
+                original.TypoLineGap / (double)original.UnitsPerEm, original.UseTypoMetrics);
         var os2 = Table("OS/2");
         if (os2 == null || os2.Length < 78)
             return null;

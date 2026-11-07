@@ -29,7 +29,8 @@ namespace FreeSlate.Docx;
 /// Calibri, sans serif, monospaced (even with a fixed pitch and Courier's PANOSE), script and decorative alike. The
 /// PANOSE numbers and the document's theme fonts do not matter.</item>
 /// </list>
-/// Where Cambria and Calibri are missing too, their metric twins Caladea and Carlito stand in. Of a family's entries
+/// A family the machine lacks whose metric twin is there is that twin before all of this (Text.FontResolver, Fonts.MetricTwins:
+/// Caladea for Cambria, Carlito for Calibri, Gelasio for Georgia …), as Word draws it where it has the family. Of a family's entries
 /// the table's last one counts (docx/local/fontdup; docx/external/libreoffice/extras-ooxmlexport/
 /// tdf153526_commentInNumbering: OpenSymbol, first roman, then auto, prints in Calibri).
 /// </summary>
@@ -94,8 +95,8 @@ public sealed class FontTable
         ("Roboto", "Arial"), ("Arial", "Arial"),
     ];
 
-    static readonly string[] Serif = ["Cambria", "Caladea", "Times New Roman", "Liberation Serif", "DejaVu Serif"];
-    static readonly string[] Sans = ["Calibri", "Carlito", "Arial", "Liberation Sans", "DejaVu Sans"];
+    static readonly string[] Serif = ["Cambria", "Times New Roman", "Liberation Serif", "DejaVu Serif"];
+    static readonly string[] Sans = ["Calibri", "Arial", "Liberation Sans", "DejaVu Sans"];
 
     /// <summary>
     /// The font Word draws for a family in this style. A missing family that the font table gives an East Asian
