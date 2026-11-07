@@ -15,6 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The shelf's fonts beside the program, read when a document first needs them (EngineFonts). -->
+    <None Include="..\FreeSlate.Editor\Fonts\**\*.ttf;..\FreeSlate.Editor\Fonts\**\*.txt" Link="Fonts\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FreeSlate.Editor\FreeSlate.Editor.csproj" />
   </ItemGroup>
 

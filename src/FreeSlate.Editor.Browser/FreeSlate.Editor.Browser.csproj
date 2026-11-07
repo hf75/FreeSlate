@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <Content Include="..\FreeSlate.Editor\Assets\FreeSlate.ico" Link="wwwroot\favicon.ico" />
+    <!-- The shelf's fonts, which the page fetches when a document needs them (EngineFonts.Prepare). -->
+    <Content Include="..\FreeSlate.Editor\Fonts\**\*.ttf;..\FreeSlate.Editor\Fonts\**\*.txt" Link="wwwroot\fonts\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

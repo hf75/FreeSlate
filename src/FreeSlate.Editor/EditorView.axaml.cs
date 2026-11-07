@@ -82,6 +82,9 @@ public sealed partial class EditorView : Panel
         Loaded += (_, _) =>
         {
             Sheets.Focus();
+            // On a page the tones' fonts are fetched once the sheet is up, so that a tone is there at once when chosen.
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = EngineFonts.Prepare(Tones.All.SelectMany(t => t.Families())),
+                Avalonia.Threading.DispatcherPriority.Background);
             // In a window: its bar of full screen, which the line above the sheets comes and goes with there.
             if (this.FindAncestorOfType<Window>()?.GetVisualDescendants().OfType<Controls.CaptionBar>().FirstOrDefault(b => b.ForFullScreen) is { } bar)
             {
@@ -668,10 +671,16 @@ public sealed partial class EditorView : Panel
         });
     }
 
-    /// <summary>Gives the document a tone, one step to undo: what is in view fades into its new look.</summary>
-    void Take(Tone tone)
+    /// <summary>
+    /// Gives the document a tone, one step to undo: what is in view fades into its new look. On a page the tone's fonts come first (see
+    /// EngineFonts.Prepare), unless another tone was chosen meanwhile.
+    /// </summary>
+    async void Take(Tone tone)
     {
         if (Tones.Of(editing.Document) == tone)
+            return;
+        await EngineFonts.Prepare(tone.Families());
+        if (tones[tone].IsChecked != true || Tones.Of(editing.Document) == tone)
             return;
         var (styles, numbering) = tone.Definitions();
         Sheets.Restyle(() => editing.Handle(() =>

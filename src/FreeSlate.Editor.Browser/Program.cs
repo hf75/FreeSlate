@@ -3,12 +3,16 @@ using System.Runtime.Versioning;
 using Avalonia;
 using Avalonia.Browser;
 using Avalonia.Platform;
+using FreeSlate.Editor.Writing;
 
 [assembly: SupportedOSPlatform("browser")]
 
 namespace FreeSlate.Editor.Browser;
 
-/// <summary>The editor as a page: the settings lie in the page's storage, as a page has no lasting files.</summary>
+/// <summary>
+/// The editor as a page: the settings lie in the page's storage, as a page has no lasting files; the shelf's fonts lie beside it
+/// (fonts/), fetched when a document needs them (see EngineFonts.Prepare).
+/// </summary>
 static partial class Program
 {
     const string SettingsKey = "FreeSlate.Editor.Settings";
@@ -19,10 +23,20 @@ static partial class Program
     [JSImport("globalThis.localStorage.setItem")]
     private static partial void SetItem(string key, string value);
 
+    /// <summary>The page's address (main.js), against which its files are fetched.</summary>
+    [JSImport("page.address", "main.js")]
+    private static partial string Address();
+
     static Task Main()
     {
         Settings.Read = () => GetItem(SettingsKey);
         Settings.Write = text => SetItem(SettingsKey, text);
+        var page = new HttpClient { BaseAddress = new Uri(Address()) };
+        EngineFonts.Fetch = async file =>
+        {
+            using var response = await page.GetAsync("fonts/" + file);
+            return response.IsSuccessStatusCode ? await response.Content.ReadAsByteArrayAsync() : null;
+        };
         return AppBuilder.Configure<App>().WithInterFont().AfterSetup(_ => GiveFontsToTheEngine()).StartBrowserAppAsync("out");
     }
 

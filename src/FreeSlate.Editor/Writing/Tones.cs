@@ -51,6 +51,15 @@ public sealed record Tone(string Key, string NameKey)
 
     static readonly Dictionary<string, (string Light, string Dark)> Colors = [];
 
+    /// <summary>The families the tone's styles and lists set text in (their w:rFonts), which a page fetches before it takes the tone (see EngineFonts.Prepare).</summary>
+    public IEnumerable<string> Families()
+    {
+        XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        return XElement.Parse(Markup()).Descendants(w + "rFonts")
+            .SelectMany(fonts => fonts.Attributes().Where(a => a.Name.LocalName is "ascii" or "hAnsi" or "eastAsia" or "cs").Select(a => a.Value))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
     string Markup()
     {
         using var stream = typeof(Tone).Assembly.GetManifestResourceStream($"FreeSlate.Editor.Tones.{Key}.xml")
