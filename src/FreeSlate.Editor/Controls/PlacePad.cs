@@ -16,7 +16,8 @@ namespace FreeSlate.Editor.Controls;
 /// ways the text can run: across, up the page, down it, the places drawn running so. The place and the way the cells have are marked, the
 /// name of the one pointed at shows below. The pointer on one, or the arrows going to it, shows the cells so (a preview); a click on a
 /// place, or Enter, keeps it and closes the pad; one on a way keeps it, the pad staying open, its places then drawn running that way;
-/// Escape or a press elsewhere closes the pad as it was (what was kept staying).
+/// Escape or a press elsewhere closes the pad as it was (what was kept staying). It comes from the cells and goes back to them (see
+/// Fader).
 /// </summary>
 public sealed class PlacePad : Canvas
 {
@@ -33,6 +34,7 @@ public sealed class PlacePad : Canvas
     readonly Grid ways = new() { ColumnDefinitions = new("Auto,Auto,Auto"), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 7, 0, 0) };
     readonly TextBlock name = new() { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 0) };
     readonly Border card;
+    readonly Fader fader;
 
     /// <summary>
     /// What shows a choice in the cells (null: as they are), and what keeps one, while the pad is open; the icon of a place running a way;
@@ -45,8 +47,9 @@ public sealed class PlacePad : Canvas
 
     public PlacePad()
     {
-        card = new Border { Child = new StackPanel { Children = { places, ways, name } }, IsVisible = false };
+        card = new Border { Child = new StackPanel { Children = { places, ways, name } } };
         Children.Add(card);
+        fader = new Fader(card, new RelativePoint(0.5, 0, RelativeUnit.Relative));
         card.AddHandler(KeyDownEvent, Keyed, RoutingStrategies.Tunnel);
         name.FontSize = 11.5;
         // (A color of the theme is found through the theme's variant, as a dynamic resource finds it.)
@@ -60,7 +63,7 @@ public sealed class PlacePad : Canvas
     }
 
     /// <summary>Whether the pad is open.</summary>
-    public bool IsOpen => card.IsVisible;
+    public bool IsOpen => fader.IsShown;
 
     /// <summary>The pad closed: the keys go back where the editor wants them.</summary>
     public event Action? Closed;
@@ -104,7 +107,7 @@ public sealed class PlacePad : Canvas
         }
         Mark(current, way);
         name.Text = this.FindResource(NameKey(current.Vertical, current.Horizontal)) as string;
-        card.IsVisible = true;
+        fader.Show();
         card.Measure(Size.Infinity);
         var size = card.DesiredSize;
         SetLeft(card, Math.Clamp(box.Center.X - size.Width / 2, Edge, Math.Max(Edge, Bounds.Width - size.Width - Edge)));
@@ -147,7 +150,7 @@ public sealed class PlacePad : Canvas
     /// </summary>
     public void Turned((string Vertical, string Horizontal) current, string way)
     {
-        if (!card.IsVisible)
+        if (!fader.IsShown)
             return;
         own = way;
         Draw(way);
@@ -181,17 +184,20 @@ public sealed class PlacePad : Canvas
     /// <summary>Closes the pad, a choice kept where given, else the cells as they were (what was kept before staying).</summary>
     public void Close(Choice? kept = null)
     {
-        if (!card.IsVisible)
+        if (!fader.IsShown)
             return;
-        card.IsVisible = false;
+        // The places and ways go with the pad, unless it opens again before.
+        fader.Hide(() =>
+        {
+            places.Children.Clear();
+            ways.Children.Clear();
+        });
         var (shows, keeps) = (preview, keep);
         (preview, keep, placeIcon) = (null, null, null);
         if (kept is { } choice)
             keeps?.Invoke(choice);
         else
             shows?.Invoke(null);
-        places.Children.Clear();
-        ways.Children.Clear();
         Closed?.Invoke();
     }
 

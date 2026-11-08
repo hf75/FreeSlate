@@ -16,7 +16,8 @@ namespace FreeSlate.Editor.Controls;
 /// before it. Dragged sideways it moves the paragraph a level for every 32 pixels, to the left what weighs more, to the right what is
 /// subordinate: the page shows it at once, and a bar of all levels above the paragraph marks where it stands. Let go, that stays, one
 /// step to undo; Escape takes it back. Clicked, or invoked otherwise, the bar stays for a level to be chosen. The lever lies over the
-/// sheets in their coordinates (it scrolls with them) and takes the pointer only on its grip and its bar.
+/// sheets in their coordinates (it scrolls with them) and takes the pointer only on its grip and its bar. Grip, name and bar come and go
+/// as the cards do (see Fader), the grip and its name only fading, the bar growing from the grip's side.
 /// </summary>
 public sealed class LevelLever : Canvas
 {
@@ -33,6 +34,7 @@ public sealed class LevelLever : Canvas
     readonly TextBlock name = new() { FontSize = 11, TextAlignment = TextAlignment.Right, Width = 96, IsHitTestVisible = false };
     readonly StackPanel items = new() { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 1 };
     readonly Border bar;
+    readonly Fader gripFader, nameFader, barFader;
     readonly DispatcherTimer leaving = new() { Interval = TimeSpan.FromMilliseconds(500) };
     DocumentView? sheets;
     EditSession? editing;
@@ -54,10 +56,13 @@ public sealed class LevelLever : Canvas
 
     public LevelLever()
     {
-        bar = new Border { Child = items, IsVisible = false };
+        bar = new Border { Child = items };
         Children.Add(name);
         Children.Add(grip);
         Children.Add(bar);
+        gripFader = new Fader(grip, RelativePoint.Center, from: 1);
+        nameFader = new Fader(name, RelativePoint.Center, from: 1);
+        barFader = new Fader(bar, new RelativePoint(0, 1, RelativeUnit.Relative));
         foreach (var level in Levels.All)
         {
             var item = new Button { Tag = level, IsTabStop = false };
@@ -98,7 +103,7 @@ public sealed class LevelLever : Canvas
         }, RoutingStrategies.Bubble, handledEventsToo: true);
         view.Changed += () =>
         {
-            if (grip.IsVisible)
+            if (gripFader.IsShown)
                 Place();
         };
     }
@@ -133,7 +138,7 @@ public sealed class LevelLever : Canvas
             return;
         }
         leaving.Stop();
-        if (paragraph != at || !grip.IsVisible)
+        if (paragraph != at || !gripFader.IsShown)
         {
             paragraph = at;
             Place();
@@ -156,8 +161,9 @@ public sealed class LevelLever : Canvas
         SetLeft(name, x - name.Width + 8);
         SetTop(name, line.Center.Y - 8);
         AutomationProperties.SetName(grip, $"{Text("LevelChoice")}: {Levels.Name(level)}");
-        (grip.IsVisible, name.IsVisible) = (true, true);
-        if (bar.IsVisible)
+        gripFader.Show();
+        nameFader.Show();
+        if (barFader.IsShown)
         {
             foreach (var item in items.Children.OfType<Button>())
                 item.Classes.Set("current", item.Tag == level);
@@ -167,12 +173,18 @@ public sealed class LevelLever : Canvas
         }
     }
 
-    void Hide() => (grip.IsVisible, name.IsVisible, bar.IsVisible, choosing) = (false, false, false, false);
+    void Hide()
+    {
+        gripFader.Hide();
+        nameFader.Hide();
+        barFader.Hide();
+        choosing = false;
+    }
 
     void OpenBar()
     {
         choosing = true;
-        bar.IsVisible = true;
+        barFader.Show();
         Place();
     }
 
@@ -197,7 +209,7 @@ public sealed class LevelLever : Canvas
             // Now it is a drag: the bar shows all levels.
             dragged = true;
             choosing = false;
-            bar.IsVisible = true;
+            barFader.Show();
         }
         // A level for every step's width, the first after half of one; the grip follows the pointer as far as there are levels.
         var steps = (int)Math.Round(dx / Step);
@@ -218,7 +230,7 @@ public sealed class LevelLever : Canvas
         drag = null;
         if (dragged)
         {
-            bar.IsVisible = false;
+            barFader.Hide();
             Place();
             sheets?.Focus();
         }
@@ -240,7 +252,7 @@ public sealed class LevelLever : Canvas
             if (going.Previewed)
                 sheets?.Edit(() => editing?.Undo());
             drag = null;
-            bar.IsVisible = false;
+            barFader.Hide();
             Place();
             sheets?.Focus();
             return true;
@@ -248,7 +260,7 @@ public sealed class LevelLever : Canvas
         if (!choosing)
             return false;
         choosing = false;
-        bar.IsVisible = false;
+        barFader.Hide();
         sheets?.Focus();
         return true;
     }
@@ -279,7 +291,7 @@ public sealed class LevelLever : Canvas
                 return null;
             }));
         choosing = false;
-        bar.IsVisible = false;
+        barFader.Hide();
         Place();
         sheets?.Focus();
     }

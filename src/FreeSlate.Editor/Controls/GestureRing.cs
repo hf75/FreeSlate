@@ -29,6 +29,8 @@ namespace FreeSlate.Editor.Controls;
 /// Space held on a selection brings it at the pointer: the arrows choose the field nearest their direction (two together a diagonal),
 /// Enter opens a field's ring, Backspace goes back, letting go of Space does what is chosen, Escape nothing. It lies over the editor and
 /// takes the pointer only while it has a gesture.
+/// A ring comes and goes as the cards over the sheets do (see Motion): closed, it goes as it showed, the field done lit, the frame around
+/// the text with it; a ring giving way to another goes as that one comes, the frame staying.
 /// </summary>
 public sealed class GestureRing : Control
 {
@@ -66,8 +68,11 @@ public sealed class GestureRing : Control
     /// <summary>The radius of a swatch's disc, about as large as a sign.</summary>
     const double SwatchRadius = 9;
 
-    /// <summary>How long a ring takes to come, and how long the name of a field chosen blindly stays, in milliseconds.</summary>
-    const double Appear = 120, Confirmation = 900;
+    /// <summary>How long the name of a field chosen blindly stays, in milliseconds.</summary>
+    const double Confirmation = 900;
+
+    /// <summary>How small a ring is as it begins to come and as it is gone (see Motion), a share of its size.</summary>
+    const double Small = 0.92;
 
     /// <summary>
     /// A field of the ring: its name's key among the texts (its name where there is none), its sign, and what it does or the ring it
@@ -93,6 +98,20 @@ public sealed class GestureRing : Control
     }
 
     /// <summary>
+    /// A ring as it is drawn: its level, the field pointed at, whether its way back is pointed at (and the half that keeps), whether it is
+    /// moved, and the name beside it. A ring going has the time of the clock it began to go; one closed, the frame around the text it
+    /// acted on, which goes with it (one giving way to another leaves its frame to that).
+    /// </summary>
+    sealed record Look(Level Level, int? Chosen, bool Backward, bool Keeping, bool Moving, string? Label)
+    {
+        public long Left { get; init; }
+        public Framing? Frame { get; init; }
+    }
+
+    /// <summary>The frame around the text a ring acts on: the text's parts, or a drawing's frame turned; in the accent where a field is pointed at.</summary>
+    sealed record Framing(IReadOnlyList<Rect> Parts, (Rect Frame, double Turn)? Turned, bool Lit);
+
+    /// <summary>
     /// The signs of a split way back (see Slot.Settles), their ink about the origin: a filled tick for keeping what the ring shows, a filled
     /// cross for taking it away.
     /// </summary>
@@ -105,9 +124,11 @@ public sealed class GestureRing : Control
     static readonly Cursor Grab = new(StandardCursorType.SizeAll);
 
     readonly DispatcherTimer rest = new();
-    readonly DispatcherTimer frames = new() { Interval = TimeSpan.FromMilliseconds(15) };
+    readonly Frames frames;
     readonly HashSet<Key> arrows = [];
     readonly List<Level> levels = [];
+    /// <summary>Rings going (see Motion), the last one latest.</summary>
+    readonly List<Look> leaving = [];
     readonly List<Point> stroke = [];
     readonly Dictionary<Slot, Geometry> signs = [];
     /// <summary>The fields of the first ring of the gesture going (see Choose).</summary>
@@ -125,22 +146,25 @@ public sealed class GestureRing : Control
     bool keeping;
     /// <summary>Where the middle of a ring to be clicked was pressed, and where its centre stood then: moved on, the ring goes with the pointer.</summary>
     (Point At, Point Centre) grip;
-    long since;
+    /// <summary>When the ring there came, and when the first ring of the gesture did, with the frame around the text (on Motion's clock).</summary>
+    long since, opened;
     (string Name, Point At, long Since)? confirmed;
 
     public GestureRing()
     {
         IsHitTestVisible = false;
+        frames = new Frames(this, Step);
         rest.Tick += (_, _) => Rested();
-        frames.Tick += (_, _) =>
-        {
-            var now = Environment.TickCount64;
-            if (confirmed is { } c && now - c.Since > Confirmation)
-                confirmed = null;
-            if (confirmed == null && (levels.Count == 0 || now - since > Appear))
-                frames.Stop();
-            InvalidateVisual();
-        };
+    }
+
+    /// <summary>A frame while something of the ring moves: it is drawn again; false once nothing moves.</summary>
+    bool Step()
+    {
+        InvalidateVisual();
+        leaving.RemoveAll(look => Motion.Going(look.Left) <= 0);
+        if (confirmed is { } c && Motion.Since(c.Since) > Confirmation)
+            confirmed = null;
+        return leaving.Count > 0 || confirmed != null || Current != null && Motion.Coming(since) < 1;
     }
 
     /// <summary>The fields of the first ring, from the top clockwise; they share the circle evenly.</summary>
@@ -232,40 +256,57 @@ public sealed class GestureRing : Control
     void Open(Mode now, Point point)
     {
         (mode, confirmed) = (now, null);
+        // A new ring: what was going is gone.
+        leaving.Clear();
         levels.Clear();
         levels.Add(Measure(first, point, null, onText: true));
-        since = Environment.TickCount64;
+        since = opened = Motion.Now;
         IsHitTestVisible = mode == Mode.Clicking;
         Aim(mode == Mode.Keys ? null : Pointed(at));
         frames.Start();
         InvalidateVisual();
     }
 
-    /// <summary>The ring a field holds, at a point: the first level's direction chosen, the second's to come.</summary>
+    /// <summary>The ring a field holds, at a point: the first level's direction chosen, the second's to come; the ring there goes, that field lit.</summary>
     void Enter(Slot slot, Point point)
     {
+        Leave();
         Aim(null);
         levels.Add(Measure(slot.Under!, point, slot, onText: false));
-        (since, visited) = (Environment.TickCount64, false);
+        (since, visited) = (Motion.Now, false);
         slot.Opened?.Invoke();
         frames.Start();
         InvalidateVisual();
     }
 
-    /// <summary>Back to the ring before, which comes again where it stood; what the ring left showed of its own is kept, or taken back.</summary>
+    /// <summary>
+    /// Back to the ring before, which comes again where it stood, the ring there going; what the ring left showed of its own is kept, or
+    /// taken back.
+    /// </summary>
     void Back(bool keep = false)
     {
+        Leave();
         Aim(null);
         levels[^1].Parent?.Left?.Invoke(keep);
         levels.RemoveAt(levels.Count - 1);
-        (since, visited) = (Environment.TickCount64, true);
+        (since, visited) = (Motion.Now, true);
         frames.Start();
         InvalidateVisual();
     }
 
+    /// <summary>The ring there goes as it shows, another coming in its stead.</summary>
+    void Leave()
+    {
+        if (Showing() is not { } look)
+            return;
+        leaving.Add(look with { Left = Motion.Now });
+        frames.Start();
+    }
+
     /// <summary>
     /// Closes the ring: <paramref name="keep"/>, what the field pointed at does comes next and keeps its preview, and what the rings show of
-    /// their own stays (see Slot); else the preview goes, and what they show too.
+    /// their own stays (see Slot); else the preview goes, and what they show too. The ring goes as it showed, the field done lit, and the
+    /// frame around the text with it.
     /// </summary>
     void Close(bool keep)
     {
@@ -273,8 +314,15 @@ public sealed class GestureRing : Control
             Aim(null);
         rest.Stop();
         arrows.Clear();
+        // Its name as it reads before what the rings show is kept or taken back; the frame around the text as that reads after.
+        var going = Showing();
         for (var k = levels.Count - 1; k >= 0; k--)
             levels[k].Parent?.Left?.Invoke(keep);
+        if (going != null)
+        {
+            leaving.Add(going with { Left = Motion.Now, Frame = new Framing(Selection?.Invoke() ?? [], Turned?.Invoke(), going.Chosen != null) });
+            frames.Start();
+        }
         levels.Clear();
         (mode, chosen, pointer, backward) = (Mode.None, null, null, false);
         IsHitTestVisible = false;
@@ -551,7 +599,7 @@ public sealed class GestureRing : Control
         slot.Act?.Invoke();
         if (blindly is { } point)
         {
-            confirmed = (NameOf(slot.NameKey), point, Environment.TickCount64);
+            confirmed = (NameOf(slot.NameKey), point, Motion.Now);
             frames.Start();
             InvalidateVisual();
         }
@@ -751,20 +799,72 @@ public sealed class GestureRing : Control
             context.DrawEllipse(Brush("Accent"), null, start, 3, 3);
             context.DrawGeometry(null, new Pen(Brush("Accent"), 2, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round), trace);
         }
-        if (Current is { } level)
-            DrawRing(context, level);
+        // The frame around the text the ring acts on, under the rings: it comes with the first ring and stays while one gives way to another.
+        if (Current != null)
+            DrawFrame(context, Selection?.Invoke() ?? [], Turned?.Invoke(), chosen != null, Motion.Coming(opened));
+        // The rings going, under the one there; a ring closed takes its frame along.
+        foreach (var look in leaving)
+        {
+            var left = Motion.Going(look.Left);
+            if (look.Frame is { } frame)
+                DrawFrame(context, frame.Parts, frame.Turned, frame.Lit, left);
+            DrawRing(context, look, left);
+        }
+        if (Showing() is { } shown)
+            DrawRing(context, shown, Motion.Coming(since));
         if (confirmed is var (name, point2, given))
         {
-            var fading = Math.Clamp((Environment.TickCount64 - given) / Confirmation, 0, 1);
+            var fading = Math.Clamp(Motion.Since(given) / Confirmation, 0, 1);
             using (context.PushOpacity(1 - fading * fading))
                 Tip(context, name, point2 + new Vector(14, -28), Brush("Accent"), Brush("OnAccent"));
         }
     }
 
-    void DrawRing(DrawingContext context, Level level)
+    /// <summary>
+    /// The ring there as it shows now, null without one: the field pointed at, the way back, and the name beside it as it reads now (the
+    /// field's; else the way back's, or the line about what the ring shows, see Slot.Status).
+    /// </summary>
+    Look? Showing()
     {
-        var appear = Math.Clamp((Environment.TickCount64 - since) / Appear, 0, 1);
-        var scale = 0.92 + 0.08 * (1 - Math.Pow(1 - appear, 3));
+        if (Current is not { } level)
+            return null;
+        var status = chosen == null && !backward ? level.Parent?.Status?.Invoke() : null;
+        var label = chosen is { } named ? NameOf(level.Slots[named].NameKey)
+            : backward || status != null ? status ?? NameOf(!level.Settles ? "RingBack" : keeping ? "RingTake" : "RingDrop")
+            : null;
+        return new Look(level, chosen, backward, keeping, mode == Mode.Moving, label);
+    }
+
+    /// <summary>
+    /// The frame around the text a ring acts on, as far as it has come (0 to 1): in the ring's clear middle, and around it; in the accent
+    /// where a field is pointed at; a drawing turned, its frame turned with it.
+    /// </summary>
+    void DrawFrame(DrawingContext context, IReadOnlyList<Rect> parts, (Rect Frame, double Turn)? turned, bool lit, double presence)
+    {
+        if (presence <= 0)
+            return;
+        var framing = new Pen(lit ? Brush("Accent") : Brush("Hairline"), lit ? 1.5 : 1);
+        using (context.PushOpacity(presence))
+        {
+            if (turned is var (frame, turn))
+            {
+                var middle = frame.Center;
+                var turning = Matrix.CreateTranslation(-middle.X, -middle.Y) * Matrix.CreateRotation(turn * Math.PI / 180) * Matrix.CreateTranslation(middle.X, middle.Y);
+                using (context.PushTransform(turning))
+                    context.DrawGeometry(null, framing, Around([frame]));
+            }
+            else if (parts.Count > 0)
+                context.DrawGeometry(null, framing, Around(parts));
+        }
+    }
+
+    /// <summary>A ring as it shows, as far as it has come (0 to 1): growing to its size as it comes, shrinking from it as it goes.</summary>
+    void DrawRing(DrawingContext context, Look look, double presence)
+    {
+        if (presence <= 0)
+            return;
+        var level = look.Level;
+        var scale = Motion.Size(presence, Small);
         var c = level.Centre;
         var (count, half) = (level.Slots.Count, Math.PI / Math.Max(1, level.Slots.Count));
         var (line, ink, faint, accent, onAccent) = (Brush("Hairline"), Brush("Ink"), Brush("InkFaint"), Brush("Accent"), Brush("OnAccent"));
@@ -772,117 +872,100 @@ public sealed class GestureRing : Control
         var surface = Brush("Canvas") is ISolidColorBrush { Color: var tint } ? new SolidColorBrush(tint, Glass) : null;
         var hairline = new Pen(line, 1);
         var rim = new Pen(Brush("InkGhost") is ISolidColorBrush { Color: var ghost } ? new SolidColorBrush(ghost, 0.45) : line, 1);
-        // The text it acts on, all of it, as it reads now (with the preview).
-        var parts = Selection?.Invoke() ?? [];
-        using (context.PushOpacity(appear))
+        using (context.PushOpacity(presence))
+        using (context.PushTransform(Matrix.CreateTranslation(-c.X, -c.Y) * Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(c.X, c.Y)))
         {
-            // Its frame, under the ring: in the ring's clear middle, and around it; a drawing turned, its frame turned with it.
-            var framing = new Pen(chosen != null ? accent : line, chosen != null ? 1.5 : 1);
-            if (Turned?.Invoke() is var (frame, turn))
+            // The disc, of glass, raised over the page (a little higher while it is moved): the band of fields nearly whole, so that the
+            // signs read clearly; the middle clear, so that the text there shows as it is.
+            var everywhere = new RectangleGeometry(new Rect(Bounds.Size).Inflate(400));
+            var inside = new GeometryGroup { FillRule = FillRule.EvenOdd, Children = new GeometryCollection { everywhere, new EllipseGeometry(new Rect(c.X - Inner, c.Y - Inner, 2 * Inner, 2 * Inner)) } };
+            var (rise, blur, shade) = look.Moving ? (16, 36, (byte)0x28) : (10, 28, (byte)0x1E);
+            using (context.PushGeometryClip(inside))
+                context.DrawRectangle(surface, rim, new RoundedRect(new Rect(c.X - Outer, c.Y - Outer, 2 * Outer, 2 * Outer), Outer),
+                    new BoxShadows(new BoxShadow { OffsetY = rise, Blur = blur, Color = Color.FromArgb(shade, 0, 0, 0) },
+                        [new BoxShadow { OffsetY = 2, Blur = 6, Color = Color.FromArgb(0x12, 0, 0, 0) }]));
+            // The way back pointed at: the middle of glass too, a field as the others (see below).
+            if (look.Backward)
+                context.DrawEllipse(surface, null, c, Inner, Inner);
+            // The band of fields: its inner rim. No lines between the fields: the signs show them, and lines across the text's lines under
+            // the glass would read as strokes through the words.
+            context.DrawEllipse(null, hairline, c, Inner, Inner);
+            // A split ring: a line through its middle up and down, between its halves.
+            if (level.Split)
             {
-                var middle = frame.Center;
-                var turned = Matrix.CreateTranslation(-middle.X, -middle.Y) * Matrix.CreateRotation(turn * Math.PI / 180) * Matrix.CreateTranslation(middle.X, middle.Y);
-                using (context.PushTransform(turned))
-                    context.DrawGeometry(null, framing, Around([frame]));
+                context.DrawLine(hairline, new Point(c.X, c.Y - Outer + Gap), new Point(c.X, c.Y - Inner));
+                context.DrawLine(hairline, new Point(c.X, c.Y + Inner), new Point(c.X, c.Y + Outer - Gap));
             }
-            else if (parts.Count > 0)
-                context.DrawGeometry(null, framing, Around(parts));
-            using (context.PushTransform(Matrix.CreateTranslation(-c.X, -c.Y) * Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(c.X, c.Y)))
+            if (look.Chosen is { } pointed)
+                context.DrawGeometry(accent, null, Sector(c, Inner + Gap, Outer - Gap, Angle(pointed, count, level.Split), half, Gap, Round));
+            for (var k = 0; k < count; k++)
             {
-                // The disc, of glass, raised over the page (a little higher while it is moved): the band of fields nearly whole, so that
-                // the signs read clearly; the middle clear, so that the text there shows as it is.
-                var everywhere = new RectangleGeometry(new Rect(Bounds.Size).Inflate(400));
-                var inside = new GeometryGroup { FillRule = FillRule.EvenOdd, Children = new GeometryCollection { everywhere, new EllipseGeometry(new Rect(c.X - Inner, c.Y - Inner, 2 * Inner, 2 * Inner)) } };
-                var (rise, blur, shade) = mode == Mode.Moving ? (16, 36, (byte)0x28) : (10, 28, (byte)0x1E);
-                using (context.PushGeometryClip(inside))
-                    context.DrawRectangle(surface, rim, new RoundedRect(new Rect(c.X - Outer, c.Y - Outer, 2 * Outer, 2 * Outer), Outer),
-                        new BoxShadows(new BoxShadow { OffsetY = rise, Blur = blur, Color = Color.FromArgb(shade, 0, 0, 0) },
-                            [new BoxShadow { OffsetY = 2, Blur = 6, Color = Color.FromArgb(0x12, 0, 0, 0) }]));
-                // The way back pointed at: the middle of glass too, a field as the others (see below).
-                if (backward)
-                    context.DrawEllipse(surface, null, c, Inner, Inner);
-                // The band of fields: its inner rim. No lines between the fields: the signs show them, and lines across the text's lines
-                // under the glass would read as strokes through the words.
-                context.DrawEllipse(null, hairline, c, Inner, Inner);
-                // A split ring: a line through its middle up and down, between its halves.
-                if (level.Split)
+                var slot = level.Slots[k];
+                var way = Way(Angle(k, count, level.Split));
+                var place = c + way * Middle;
+                // A swatch: its colour in a disc, ringed so that a pale one shows on the glass and on the accent.
+                if (slot.Swatch is { } swatch)
+                    context.DrawEllipse(new SolidColorBrush(swatch), new Pen(look.Chosen == k ? onAccent : faint, 1), place, SwatchRadius, SwatchRadius);
+                else
                 {
-                    context.DrawLine(hairline, new Point(c.X, c.Y - Outer + Gap), new Point(c.X, c.Y - Inner));
-                    context.DrawLine(hairline, new Point(c.X, c.Y + Inner), new Point(c.X, c.Y + Outer - Gap));
+                    using (context.PushTransform(Matrix.CreateTranslation(place.X, place.Y)))
+                        context.DrawGeometry(look.Chosen == k ? onAccent : ink, null, SignOf(slot));
                 }
-                if (chosen is { } pointed)
-                    context.DrawGeometry(accent, null, Sector(c, Inner + Gap, Outer - Gap, Angle(pointed, count, level.Split), half, Gap, Round));
-                for (var k = 0; k < count; k++)
+                // A field that holds a ring: a chevron between its sign and its outer edge, pointing on.
+                if (slot.Under != null)
                 {
-                    var slot = level.Slots[k];
-                    var way = Way(Angle(k, count, level.Split));
-                    var place = c + way * Middle;
-                    // A swatch: its colour in a disc, ringed so that a pale one shows on the glass and on the accent.
-                    if (slot.Swatch is { } swatch)
-                        context.DrawEllipse(new SolidColorBrush(swatch), new Pen(chosen == k ? onAccent : faint, 1), place, SwatchRadius, SwatchRadius);
+                    var (tip, back, side) = (c + way * (Outer - Gap - 6), c + way * (Outer - Gap - 10.5), new Vector(-way.Y, way.X) * 3.5);
+                    var chevron = new Pen(look.Chosen == k ? onAccent : faint, 1.5, lineCap: PenLineCap.Round);
+                    context.DrawLine(chevron, back + side, tip);
+                    context.DrawLine(chevron, back - side, tip);
+                }
+            }
+            // A ring of a second level: in its middle the way back, the sign of the field that holds it; on a button of glass, so that it
+            // reads over the text, and lit as a field where the pointer is in it. While a field is pointed at it is away: the text there
+            // reads as that field would make it.
+            if (level.Parent != null && (look.Backward || look.Chosen == null) && level.Settles)
+            {
+                // A split way back: the ring's line on through the middle, keeping what it shows on the left (a tick), taking it away on
+                // the right (a cross), each half on a button of glass and lit as a field where the pointer is in it.
+                context.DrawLine(hairline, new Point(c.X, c.Y - Inner), new Point(c.X, c.Y + Inner));
+                foreach (var (side, sign) in new[] { (-1, Tick), (1, Cross) })
+                {
+                    var lit = look.Backward && look.Keeping == side < 0;
+                    var middle = new Point(c.X + side * Inner / 2, c.Y);
+                    if (lit)
+                    {
+                        var area = side < 0 ? new Rect(c.X - Inner, c.Y - Inner, Inner - Gap / 2, 2 * Inner) : new Rect(c.X + Gap / 2, c.Y - Inner, Inner - Gap / 2, 2 * Inner);
+                        using (context.PushGeometryClip(new RectangleGeometry(area)))
+                            context.DrawEllipse(accent, null, c, Inner - Gap, Inner - Gap);
+                    }
                     else
-                    {
-                        using (context.PushTransform(Matrix.CreateTranslation(place.X, place.Y)))
-                            context.DrawGeometry(chosen == k ? onAccent : ink, null, SignOf(slot));
-                    }
-                    // A field that holds a ring: a chevron between its sign and its outer edge, pointing on.
-                    if (slot.Under != null)
-                    {
-                        var (tip, back, side) = (c + way * (Outer - Gap - 6), c + way * (Outer - Gap - 10.5), new Vector(-way.Y, way.X) * 3.5);
-                        var chevron = new Pen(chosen == k ? onAccent : faint, 1.5, lineCap: PenLineCap.Round);
-                        context.DrawLine(chevron, back + side, tip);
-                        context.DrawLine(chevron, back - side, tip);
-                    }
+                        context.DrawEllipse(surface, rim, middle, Hub - 2, Hub - 2);
+                    using (context.PushTransform(Matrix.CreateScale(HubSign, HubSign) * Matrix.CreateTranslation(middle.X, middle.Y)))
+                        context.DrawGeometry(lit ? onAccent : ink, null, sign);
                 }
-                // A ring of a second level: in its middle the way back, the sign of the field that holds it; on a button of glass, so that
-                // it reads over the text, and lit as a field where the pointer is in it. While a field is pointed at it is away: the text
-                // there reads as that field would make it.
-                if (level.Parent != null && (backward || chosen == null) && level.Settles)
-                {
-                    // A split way back: the ring's line on through the middle, keeping what it shows on the left (a tick), taking it away
-                    // on the right (a cross), each half on a button of glass and lit as a field where the pointer is in it.
-                    context.DrawLine(hairline, new Point(c.X, c.Y - Inner), new Point(c.X, c.Y + Inner));
-                    foreach (var (side, sign) in new[] { (-1, Tick), (1, Cross) })
-                    {
-                        var lit = backward && keeping == side < 0;
-                        var middle = new Point(c.X + side * Inner / 2, c.Y);
-                        if (lit)
-                        {
-                            var area = side < 0 ? new Rect(c.X - Inner, c.Y - Inner, Inner - Gap / 2, 2 * Inner) : new Rect(c.X + Gap / 2, c.Y - Inner, Inner - Gap / 2, 2 * Inner);
-                            using (context.PushGeometryClip(new RectangleGeometry(area)))
-                                context.DrawEllipse(accent, null, c, Inner - Gap, Inner - Gap);
-                        }
-                        else
-                            context.DrawEllipse(surface, rim, middle, Hub - 2, Hub - 2);
-                        using (context.PushTransform(Matrix.CreateScale(HubSign, HubSign) * Matrix.CreateTranslation(middle.X, middle.Y)))
-                            context.DrawGeometry(lit ? onAccent : ink, null, sign);
-                    }
-                }
-                else if (level.Parent is { } parent && (backward || chosen == null))
-                {
-                    if (backward)
-                        context.DrawEllipse(accent, null, c, Inner - Gap, Inner - Gap);
-                    else
-                        context.DrawEllipse(surface, rim, c, Hub, Hub);
-                    using (context.PushTransform(Matrix.CreateScale(HubSign, HubSign) * Matrix.CreateTranslation(c.X, c.Y)))
-                        context.DrawGeometry(backward ? onAccent : faint, null, SignOf(parent));
-                }
+            }
+            else if (level.Parent is { } parent && (look.Backward || look.Chosen == null))
+            {
+                if (look.Backward)
+                    context.DrawEllipse(accent, null, c, Inner - Gap, Inner - Gap);
+                else
+                    context.DrawEllipse(surface, rim, c, Hub, Hub);
+                using (context.PushTransform(Matrix.CreateScale(HubSign, HubSign) * Matrix.CreateTranslation(c.X, c.Y)))
+                    context.DrawGeometry(look.Backward ? onAccent : faint, null, SignOf(parent));
             }
         }
         // The name of the field pointed at, beside the ring in its direction; the way back's below it, above where the view ends below;
         // with neither, the line about what the ring shows there (see Slot.Status).
-        var status = chosen == null && !backward ? level.Parent?.Status?.Invoke() : null;
-        if (chosen != null || backward || status != null)
+        if (look.Label is { } name)
         {
-            var (name, way) = chosen is { } named ? (NameOf(level.Slots[named].NameKey), Way(Angle(named, count, level.Split)))
-                : (status ?? NameOf(!level.Settles ? "RingBack" : keeping ? "RingTake" : "RingDrop"), new Vector(0, 1));
+            var way = look.Chosen is { } named ? Way(Angle(named, count, level.Split)) : new Vector(0, 1);
             var label = Layout(name, Brush("TipInk"));
             var (w, h) = (label.WidthIncludingTrailingWhitespace + 16, label.Height + 8);
-            if (chosen == null && c.Y + Outer + 8 + h > Bounds.Height)
+            if (look.Chosen == null && c.Y + Outer + 8 + h > Bounds.Height)
                 way = new Vector(0, -1);
             var reach = w / 2 * Math.Abs(way.X) + h / 2 * Math.Abs(way.Y);
             var beside = c + way * (Outer + 8 + reach);
-            using (context.PushOpacity(appear))
+            using (context.PushOpacity(presence))
                 Tip(context, label, new Point(beside.X - w / 2, beside.Y - h / 2), Brush("TipSurface"));
         }
     }

@@ -11,7 +11,8 @@ namespace FreeSlate.Editor.Controls;
 /// <summary>
 /// The strip where a picture's look is chosen (its colors, see Writing.Looks): under the picture, on the sheets in their coordinates (it
 /// scrolls with them), the picture small in each look, the one it has marked. The pointer on one, or the keys going to it, shows the
-/// picture so (a preview); a click on one, or Enter, keeps it, Escape or a press elsewhere closes the strip as it was.
+/// picture so (a preview); a click on one, or Enter, keeps it, Escape or a press elsewhere closes the strip as it was. It comes from the
+/// picture and goes back to it (see Fader).
 /// </summary>
 public sealed class RecolorStrip : Canvas
 {
@@ -20,6 +21,7 @@ public sealed class RecolorStrip : Canvas
 
     readonly StackPanel row = new() { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
     readonly Border card;
+    readonly Fader fader;
 
     /// <summary>What shows a look on the picture (null: as it is), and what keeps one, while the strip is open.</summary>
     Action<string?>? preview;
@@ -27,8 +29,9 @@ public sealed class RecolorStrip : Canvas
 
     public RecolorStrip()
     {
-        card = new Border { Child = row, IsVisible = false };
+        card = new Border { Child = row };
         Children.Add(card);
+        fader = new Fader(card, new RelativePoint(0.5, 0, RelativeUnit.Relative));
         card.AddHandler(KeyDownEvent, Keyed, RoutingStrategies.Tunnel);
     }
 
@@ -39,7 +42,7 @@ public sealed class RecolorStrip : Canvas
     }
 
     /// <summary>Whether the strip is open.</summary>
-    public bool IsOpen => card.IsVisible;
+    public bool IsOpen => fader.IsShown;
 
     /// <summary>The strip closed: the keys go back where the editor wants them.</summary>
     public event Action? Closed;
@@ -78,7 +81,7 @@ public sealed class RecolorStrip : Canvas
             button.Click += (_, _) => Close(look);
             row.Children.Add(button);
         }
-        card.IsVisible = true;
+        fader.Show();
         card.Measure(Size.Infinity);
         var size = card.DesiredSize;
         SetLeft(card, Math.Clamp(box.Center.X - size.Width / 2, Edge, Math.Max(Edge, Bounds.Width - size.Width - Edge)));
@@ -91,16 +94,16 @@ public sealed class RecolorStrip : Canvas
     /// <summary>Closes the strip, a look kept where given, else the picture as it was.</summary>
     public void Close(string? kept = null)
     {
-        if (!card.IsVisible)
+        if (!fader.IsShown)
             return;
-        card.IsVisible = false;
+        // The looks go with the strip, unless it opens again before.
+        fader.Hide(row.Children.Clear);
         var (shows, keeps) = (preview, keep);
         (preview, keep) = (null, null);
         if (kept != null)
             keeps?.Invoke(kept);
         else
             shows?.Invoke(null);
-        row.Children.Clear();
         Closed?.Invoke();
     }
 

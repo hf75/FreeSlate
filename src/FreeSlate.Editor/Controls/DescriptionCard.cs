@@ -11,7 +11,8 @@ namespace FreeSlate.Editor.Controls;
 /// <summary>
 /// The card where a picture's description is written (its alternative text, what screen readers read for it), and whether it is
 /// decoration only, which they pass over: under the picture, on the sheets in their coordinates (it scrolls with them). Enter keeps
-/// what is written (Shift+Enter begins a new line), and so does a click elsewhere (see Close); Escape closes it as it was.
+/// what is written (Shift+Enter begins a new line), and so does a click elsewhere (see Close); Escape closes it as it was. It comes from
+/// the picture and goes back to it (see Fader).
 /// </summary>
 public sealed class DescriptionCard : Canvas
 {
@@ -21,6 +22,7 @@ public sealed class DescriptionCard : Canvas
     readonly TextBox text = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Width = 320, MinHeight = 64, MaxHeight = 180 };
     readonly ToggleButton decorative = new() { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left };
     readonly Border card;
+    readonly Fader fader;
 
     /// <summary>What keeps what is written, while the card is open.</summary>
     Action<string, bool>? keep;
@@ -30,8 +32,9 @@ public sealed class DescriptionCard : Canvas
         var panel = new StackPanel { Spacing = 8 };
         panel.Children.Add(text);
         panel.Children.Add(decorative);
-        card = new Border { Child = panel, IsVisible = false };
+        card = new Border { Child = panel };
         Children.Add(card);
+        fader = new Fader(card, new RelativePoint(0.5, 0, RelativeUnit.Relative));
         text.AddHandler(KeyDownEvent, Keyed, RoutingStrategies.Tunnel);
         decorative.AddHandler(KeyDownEvent, Keyed, RoutingStrategies.Tunnel);
         // Decoration needs no description.
@@ -48,7 +51,7 @@ public sealed class DescriptionCard : Canvas
     }
 
     /// <summary>Whether the card is open.</summary>
-    public bool IsOpen => card.IsVisible;
+    public bool IsOpen => fader.IsShown;
 
     /// <summary>The card closed: the keys go back where the editor wants them.</summary>
     public event Action? Closed;
@@ -61,7 +64,7 @@ public sealed class DescriptionCard : Canvas
     {
         (text.Text, decorative.IsChecked, keep) = (description, isDecorative, kept);
         text.IsEnabled = !isDecorative;
-        card.IsVisible = true;
+        fader.Show();
         card.Measure(Size.Infinity);
         var size = card.DesiredSize;
         SetLeft(card, Math.Clamp(box.Center.X - size.Width / 2, Edge, Math.Max(Edge, Bounds.Width - size.Width - Edge)));
@@ -79,9 +82,9 @@ public sealed class DescriptionCard : Canvas
     /// <summary>Closes the card, what is written kept or not.</summary>
     public void Close(bool kept)
     {
-        if (!card.IsVisible)
+        if (!fader.IsShown)
             return;
-        card.IsVisible = false;
+        fader.Hide();
         var then = keep;
         keep = null;
         if (kept)
