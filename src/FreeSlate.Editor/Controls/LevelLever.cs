@@ -15,9 +15,11 @@ namespace FreeSlate.Editor.Controls;
 /// The lever of a paragraph's level (see Levels): a grip in the margin left of the paragraph the pointer is beside, its level's name
 /// before it. Dragged sideways it moves the paragraph a level for every 32 pixels, to the left what weighs more, to the right what is
 /// subordinate: the page shows it at once, and a bar of all levels above the paragraph marks where it stands. Let go, that stays, one
-/// step to undo; Escape takes it back. Clicked, or invoked otherwise, the bar stays for a level to be chosen. The lever lies over the
-/// sheets in their coordinates (it scrolls with them) and takes the pointer only on its grip and its bar. Grip, name and bar come and go
-/// as the cards do (see Fader), the grip and its name only fading, the bar growing from the grip's side.
+/// step to undo; Escape takes it back. Clicked, or invoked otherwise, the bar stays for a level to be chosen. Beside a paragraph of the
+/// selection it acts on all of the selection's paragraphs (see EditSession.SelectedParagraphs), each then at the level chosen, as Word
+/// gives a style to them all. The lever lies over the sheets in their coordinates (it scrolls with them) and takes the pointer only on
+/// its grip and its bar. Grip, name and bar come and go as the cards do (see Fader), the grip and its name only fading, the bar growing
+/// from the grip's side.
 /// </summary>
 public sealed class LevelLever : Canvas
 {
@@ -265,35 +267,48 @@ public sealed class LevelLever : Canvas
         return true;
     }
 
-    /// <summary>The paragraph at another level while the grip is dragged: the preview before taken back, this one a step of its own.</summary>
+    /// <summary>
+    /// The paragraphs at another level while the grip is dragged (the grip back where it was, as they were): the preview before taken
+    /// back, this one a step of its own.
+    /// </summary>
     void Preview(Level target)
     {
         if (drag is not var (start, from, _, previewed, by) || paragraph is not { } at || editing is not { } session || sheets is not { } view)
             return;
         if (previewed)
             view.Edit(() => session.Undo());
-        if (target != from)
-            view.Edit(() => session.Handle(() =>
-            {
-                session.Document.Format(at, new ParagraphFormatting { Style = target.Style });
-                return null;
-            }));
-        drag = (start, from, target, target != from, by);
+        drag = (start, from, target, target != from && Give(session, view, at, target), by);
     }
 
     /// <summary>A level chosen on the bar after a click: one step to undo.</summary>
     void Choose(Level level)
     {
-        if (paragraph is { } at && editing is { } session && sheets is { } view && Levels.Of(session.Document.ParagraphStyle(at)) != level)
-            view.Edit(() => session.Handle(() =>
-            {
-                session.Document.Format(at, new ParagraphFormatting { Style = level.Style });
-                return null;
-            }));
+        if (paragraph is { } at && editing is { } session && sheets is { } view)
+            Give(session, view, at, level);
         choosing = false;
         barFader.Hide();
         Place();
         sheets?.Focus();
+    }
+
+    /// <summary>
+    /// Gives a level to the paragraphs the lever acts on, those not at it already, as one step: the selection's, where the paragraph it
+    /// stands at is among them, else that one alone. Whether there was one to change.
+    /// </summary>
+    static bool Give(EditSession session, DocumentView view, int at, Level level)
+    {
+        var document = session.Document;
+        var acted = session.Selecting && session.SelectedParagraphs is var selected && selected.Contains(at) ? selected : [at];
+        var changing = acted.Where(p => Levels.Of(document.ParagraphStyle(p)) != level).ToList();
+        if (changing.Count == 0)
+            return false;
+        view.Edit(() => session.Handle(() =>
+        {
+            foreach (var paragraph in changing)
+                document.Format(paragraph, new ParagraphFormatting { Style = level.Style });
+            return null;
+        }));
+        return true;
     }
 
     string Text(string key) => this.TryFindResource(key, out var text) && text is string value ? value : key;

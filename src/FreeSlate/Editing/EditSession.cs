@@ -913,13 +913,29 @@ public sealed partial class EditSession(IEditableDocument document)
         Style = over.Style ?? format.Style,
     };
 
-    /// <summary>Gives the paragraphs of the selection, or the cursor's, paragraph formatting.</summary>
+    /// <summary>Gives the paragraphs of the selection, or the cursor's, paragraph formatting (see SelectedParagraphs).</summary>
     public void Format(ParagraphFormatting format) => Act(false, () =>
     {
-        foreach (var (paragraph, _, _) in Stretches())
+        foreach (var paragraph in SelectedParagraphs)
             document.Format(paragraph, format);
         return (Caret, Anchor);
     });
+
+    /// <summary>
+    /// The paragraphs paragraph formatting reaches, in reading order: the selection's, but not the last where the selection ends at its
+    /// start, as in Word (measured by COM: a selection from one paragraph to the start of the third styles two, a triple click's one);
+    /// the cursor's where nothing is selected; over cells selected all of theirs.
+    /// </summary>
+    public IReadOnlyList<int> SelectedParagraphs
+    {
+        get
+        {
+            var stretches = Stretches();
+            if (CellSelection == null && stretches.Count > 1 && stretches[^1] is (_, 0, 0))
+                stretches.RemoveAt(stretches.Count - 1);
+            return [.. stretches.Select(s => s.Paragraph)];
+        }
+    }
 
     /// <summary>
     /// A change the document offers beyond the handlings above (a Word document's versions of a section, its comments) as a

@@ -732,13 +732,15 @@ public sealed partial class EditorView : Panel
         }
     }
 
-    /// <summary>Moves the paragraphs of the selection, or the cursor's, so many levels, those that can go so far: one step to undo.</summary>
+    /// <summary>
+    /// Moves the paragraphs of the selection, or the cursor's (see EditSession.SelectedParagraphs), so many levels, those that can go so
+    /// far: one step to undo.
+    /// </summary>
     void Shift(int steps)
     {
         var document = editing.Document;
-        var (start, end) = editing.Selecting ? editing.Selection : (editing.Caret, editing.Caret);
         var moved = new List<(int Paragraph, Level To)>();
-        for (int? at = start.Paragraph; at is { } paragraph; at = paragraph == end.Paragraph ? null : document.Next(paragraph))
+        foreach (var paragraph in editing.SelectedParagraphs)
         {
             if (Levels.Beside(Levels.Of(document.ParagraphStyle(paragraph)), steps) is { } to)
                 moved.Add((paragraph, to));
