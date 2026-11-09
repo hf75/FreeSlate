@@ -230,6 +230,12 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
         Bar(0, 0, 4), Block(0, 0, Weight, 4), Bar(16, 0, 4), Block(20 - Weight, 0, Weight, 4),
         Bar(0, 16 - Weight, 4), Block(0, 12, Weight, 4), Bar(16, 16 - Weight, 4), Block(20 - Weight, 12, Weight, 4));
 
+    /// <summary>The icon of sizing a picture (the size ring): a frame with the grips at its corners.</summary>
+    public static readonly string SizeIcon = Drawn(Frame(2.4, 2.4, 15.2, 11.2), Dot(3, 3, 2.2), Dot(17, 3, 2.2), Dot(17, 13, 2.2), Dot(3, 13, 2.2));
+
+    /// <summary>The icon of sizing a picture from a side or a corner (−1, 0 or 1 across and down): a frame with the grip there.</summary>
+    public static string HandleIcon(int across, int down) => Drawn(Frame(2.4, 2.4, 15.2, 11.2), Dot(10 + across * 7, 8 + down * 5, 2.6));
+
     /// <summary>The icon of cropping a picture: the two angles of a cropping frame, one round the other.</summary>
     public static readonly string CropIcon = Drawn(Block(5, 0, Weight, 12.2), Bar(5, 11, 13), Bar(2, 4, 12.6), Block(13.4, 4, Weight, 12));
 
@@ -361,6 +367,10 @@ public sealed record Placement(string NameKey, string Icon, DrawingFormatting Fo
     /// <summary>A filled circle.</summary>
     static string Circle(double x, double y, double radius) =>
         $"M{N(x - radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 0 {N(x + radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 0 {N(x - radius)},{N(y)} Z";
+
+    /// <summary>A filled circle going round clockwise, as a box does, so that where it lies on a frame the two fill as one.</summary>
+    static string Dot(double x, double y, double radius) =>
+        $"M{N(x - radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 1 {N(x + radius)},{N(y)} A{N(radius)},{N(radius)} 0 1 1 {N(x - radius)},{N(y)} Z";
 
     /// <summary>A ring as thick as a line of text, its outside as large as given: a circle less its inside, which goes the other way round.</summary>
     static string Ring(double x, double y, double radius)

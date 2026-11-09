@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -11,21 +12,25 @@ namespace FreeSlate.Editor.Controls;
 /// there. A floating one follows the pointer over the pages, the text going round it as it goes (a step of its own, taken back as it
 /// goes on, kept where it is let go, Escape takes it back); its anchor goes to the paragraph under its top, which a mark in the margin
 /// shows. Near the columns' edges and middles and the margins it lines up with them, a line along each it lines up with (Alt held,
-/// not); at a column's edge or middle of a page of one column it stays aligned there. The handles at the corners and the middles of
-/// the sides of the drawing selected size it the same way: a corner keeps its proportions, a side stretches it; the opposite side
-/// stays, an alignment there too, and a side it moves lines up with the columns' edges and the margins.
+/// not); at a column's edge or middle of a page of one column it stays aligned there. The size ring sizes the drawing selected the same
+/// way (see Pull), as a handle at one of its corners or the middles of its sides dragged would: a corner keeps its proportions, a side
+/// stretches it; the opposite side stays, an alignment there too, and a side it moves lines up with the columns' edges and the margins.
+/// The handles do not show: the ring reaches them wherever the drawing lies, also where they would lie out of the view.
 /// </summary>
 public sealed partial class DocumentView
 {
     /// <summary>How far the pointer goes before a press on a drawing drags it, and how near an edge it lines up with it, in pixels.</summary>
     const double DragDistance = 4, SnapDistance = 6;
 
-    /// <summary>A handle's radius, how near the pointer is to take it, and the size a drawing keeps at least, in pixels.</summary>
+    /// <summary>The knob's radius less one (see DrawKnob), how near the pointer is to take it, and the size a drawing keeps at least, in pixels.</summary>
     const double HandleRadius = 4, HandleReach = 7, Least = 8;
 
     static readonly Cursor Grab = new(StandardCursorType.SizeAll);
 
-    /// <summary>The handles: the corners and the middles of the sides, as which way each moves (−1 left or up, 1 right or down, 0 neither).</summary>
+    /// <summary>
+    /// The handles a drawing is sized by (see Pull): the corners and the middles of the sides, as which way each moves (−1 left or up, 1
+    /// right or down, 0 neither).
+    /// </summary>
     static readonly (int Across, int Down)[] Handles = [(-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0)];
 
     /// <summary>An anchor, the mark of a floating drawing's paragraph: its outline on a box of 10 × 12, a ring above (see DrawAnchor).</summary>
@@ -38,10 +43,11 @@ public sealed partial class DocumentView
     /// A drawing pressed: where, its page, its box then in the view's coordinates, whether it floats, the handle pressed (none: it moves)
     /// and how it stood; once the pointer moves, where it goes, its outline there, the lines it lines up with, and whether a step shows it.
     /// </summary>
-    sealed class Dragged(Point start, IPointer pointer, int page, Rect box, bool floating, (int Across, int Down)? handle, DrawingFormatting? stood)
+    sealed class Dragged(Point start, IPointer? pointer, int page, Rect box, bool floating, (int Across, int Down)? handle, DrawingFormatting? stood)
     {
         public Point Start { get; } = start;
-        public IPointer Pointer { get; } = pointer;
+        /// <summary>The pointer that drags it; none where the size ring pulls a handle (see Pull).</summary>
+        public IPointer? Pointer { get; } = pointer;
         public int Page { get; } = page;
         public Rect Box { get; } = box;
         public bool Floating { get; } = floating;
@@ -185,33 +191,86 @@ public sealed partial class DocumentView
         held = null;
     }
 
-    /// <summary>A press on the drawing just selected, or on one of its handles: it may be dragged, or sized, from there.</summary>
+    /// <summary>A press on the drawing just selected, or on its knob: it may be dragged, or turned, from there.</summary>
     void BeginDrag(Point point, IPointer pointer, (int Across, int Down)? handle = null)
     {
-        if (SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
-            return;
-        var floating = pictures.Places(Page(page)).InlineBox(pictures.Spots(Page(page))[at]) == null;
-        var (frame, turn) = TurnedFrame() ?? (box, 0);
-        dragged = new Dragged(point, pointer, page, box, floating, handle, session?.Drawing) { Frame = frame, Turn = turn };
-        pointer.Capture(this);
+        if (Take(point, pointer, handle) != null)
+            pointer.Capture(this);
     }
 
-    /// <summary>The handle of the drawing selected a point of the view is on (its frame turned as it shows, see TurnedFrame), the knob that turns a picture too, or null.</summary>
-    (int Across, int Down)? HandleAt(Point point)
+    /// <summary>
+    /// The drawing selected taken at a point to be dragged, by a pointer (none for the size ring, see Pull), as a whole, by a handle or by
+    /// its knob; null where none is selected.
+    /// </summary>
+    Dragged? Take(Point point, IPointer? pointer, (int Across, int Down)? handle)
     {
-        if (dragged != null || cropping || tilting || TurnedFrame() is not var (box, turn))
+        if (SelectedDrawing() is not var (page, at) || BoxOf(page, at) is not { } box)
             return null;
-        var (frame, local) = (box.Inflate(1.5), Turned(point, box.Center, -turn));
-        if (TurnsHere && ((Vector)(local - KnobPoint(frame))).Length <= HandleReach)
-            return Knob;
-        // A table's frame is as large as its table: no handles to size it.
-        foreach (var handle in session?.FrameSelected == true ? [] : Handles)
-        {
-            if (((Vector)(local - HandlePoint(frame, handle))).Length <= HandleReach)
-                return handle;
-        }
-        return null;
+        var floating = pictures.Places(Page(page)).InlineBox(pictures.Spots(Page(page))[at]) == null;
+        var (frame, turn) = TurnedFrame() ?? (box, 0);
+        return dragged = new Dragged(point, pointer, page, box, floating, handle, session?.Drawing) { Frame = frame, Turn = turn };
     }
+
+    /// <summary>
+    /// The drawing selected sized by the size ring (see GestureRing.Slot.Pulls) as a handle dragged would size it: the handle that stands
+    /// that way on the screen (−1, 0 or 1 across and down; of a picture turned, the side or the corner, as the way is one, that stands
+    /// nearest that way), moved as far as the pull goes (see SizeTo, SizeTurned). Null where nothing is selected that is sized so (a
+    /// table's frame is as large as its table), or while something else is dragged.
+    /// </summary>
+    public GestureRing.IPull? Pull((int Across, int Down) way)
+    {
+        if (dragged != null || cropping || tilting || session?.FrameSelected == true || TurnedFrame() is not var (frame, turn))
+            return null;
+        var side = way.Across == 0 || way.Down == 0;
+        var handle = turn == 0 ? way : Handles.Where(h => (h.Across == 0 || h.Down == 0) == side).MaxBy(h =>
+        {
+            var on = Turned(new Point(h.Across, h.Down), default, turn);
+            return (on.X * way.Across + on.Y * way.Down) / Math.Sqrt(h.Across * h.Across + h.Down * h.Down);
+        });
+        return Take(Turned(HandlePoint(frame, handle), frame.Center, turn), null, handle) is { } d ? new Pulled(this, d) : null;
+    }
+
+    /// <summary>A pull of the size ring sizing the drawing selected (see Pull): its handle as far as the pull goes; kept, or taken back.</summary>
+    sealed class Pulled(DocumentView view, Dragged d) : GestureRing.IPull
+    {
+        public void To(Vector by, KeyModifiers modifiers)
+        {
+            if (ReferenceEquals(view.dragged, d))
+                view.DragTo(d.Start + by, modifiers);
+        }
+
+        public void End(bool keep)
+        {
+            if (ReferenceEquals(view.dragged, d))
+                view.EndDrag(keep);
+        }
+
+        public string? Reading => view.SizeReading();
+
+        public Cursor? Cursor => CursorOf(d.Handle!.Value, d.Turn);
+    }
+
+    /// <summary>
+    /// The size of the drawing selected as the size ring reads it, as large as a pull has it while it goes: "8,5 × 6,2 cm", in inches where
+    /// the region measures so; null where none is selected.
+    /// </summary>
+    public string? SizeReading()
+    {
+        (double Width, double Height) size;
+        if (dragged is { Moving: true, Handle: not null, Target: { } goal })
+            size = (goal.Width, goal.Height);
+        else if (TurnedFrame() is var (frame, _))
+            size = (frame.Width / (factor * PxPerPt), frame.Height / (factor * PxPerPt));
+        else
+            return null;
+        var metric = RegionInfo.CurrentRegion.IsMetric;
+        string Length(double points) => metric ? (points / 72 * 2.54).ToString("0.0", CultureInfo.CurrentCulture) : (points / 72).ToString("0.00", CultureInfo.CurrentCulture);
+        return $"{Length(size.Width)} × {Length(size.Height)} {(metric ? "cm" : "in")}";
+    }
+
+    /// <summary>Whether a point of the view is on the knob that turns the picture selected (its frame turned as it shows, see TurnedFrame).</summary>
+    bool KnobAt(Point point) => dragged == null && TurnsHere && TurnedFrame() is var (box, turn)
+        && ((Vector)(Turned(point, box.Center, -turn) - KnobPoint(box.Inflate(1.5)))).Length <= HandleReach;
 
     /// <summary>The pointer over a handle of a drawing turned so far: the way the handle sizes it on the screen; over the knob, turning.</summary>
     static Cursor CursorOf((int Across, int Down) handle, double turn) =>
@@ -237,8 +296,8 @@ public sealed partial class DocumentView
         TopRight = new(StandardCursorType.TopRightCorner), BottomLeft = new(StandardCursorType.BottomLeftCorner), TopSide = new(StandardCursorType.TopSide),
         BottomSide = new(StandardCursorType.BottomSide), LeftSide = new(StandardCursorType.LeftSide), RightSide = new(StandardCursorType.RightSide);
 
-    /// <summary>The pointer over the sheets, no button held: the cursor of a handle, of a drawing that can be moved, or of the text.</summary>
-    Cursor CursorAt(Point point) => HandleAt(point) is { } handle ? CursorOf(handle, TurnedFrame()?.Turn ?? 0) : DrawingAt(point) != null ? Grab
+    /// <summary>The pointer over the sheets, no button held: the cursor of the knob, of a drawing that can be moved, or of the text.</summary>
+    Cursor CursorAt(Point point) => KnobAt(point) ? Turning : DrawingAt(point) != null ? Grab
         : TableHandleAt(point) != null ? Grab : GripAt(point) is { } grip ? (grip.Plus ? Turning : Grab) : TableLineAt(point) is { } line ? (line.Upright ? Sideways : Upways) : TextCursorAt(point);
 
     /// <summary>The pointer moved while a drawing is pressed: once far enough, where the drawing goes, or how large it gets.</summary>
@@ -534,7 +593,7 @@ public sealed partial class DocumentView
 
     /// <summary>
     /// The drawing selected as a whole, framed a little outside its box (a picture turned, its frame turned with it, see TurnedFrame),
-    /// with its handles and a picture's knob; while it is dragged floating or sized, the frame where it goes and the lines it lines up
+    /// with a picture's knob; while it is dragged floating or sized, the frame where it goes and the lines it lines up
     /// with; turned by its knob, its frame as far as the pointer has it, the angle beside the pointer; floating, the mark of its
     /// anchor's paragraph in the margin.
     /// </summary>
@@ -552,8 +611,6 @@ public sealed partial class DocumentView
             using (context.PushTransform(TurnAbout(frame.Center, turn)))
             {
                 context.DrawRectangle(null, pen, frame.Inflate(1.5), 2, 2);
-                if (d.Handle != null)
-                    DrawHandles(context, frame.Inflate(1.5));
                 if (d.Handle == Knob)
                     DrawKnob(context, frame.Inflate(1.5));
             }
@@ -575,13 +632,8 @@ public sealed partial class DocumentView
             using (context.PushTransform(TurnAbout(box.Center, turned)))
             {
                 context.DrawRectangle(null, pen, box.Inflate(1.5), 2, 2);
-                if (dragged is not { Moving: true })
-                {
-                    if (session?.FrameSelected != true)
-                        DrawHandles(context, box.Inflate(1.5));
-                    if (TurnsHere)
-                        DrawKnob(context, box.Inflate(1.5));
-                }
+                if (dragged is not { Moving: true } && TurnsHere)
+                    DrawKnob(context, box.Inflate(1.5));
             }
             // In the line, dragged: its outline with the pointer, the bar where it goes (see Render).
             if (dragged is { Moving: true } inLine)
@@ -593,14 +645,6 @@ public sealed partial class DocumentView
         }
         if (SelectedDrawing() is var (anchorPage, anchorAt) && anchorPage < rows.Count)
             DrawAnchor(context, anchorPage, anchorAt);
-    }
-
-    /// <summary>The handles on a drawing's frame: small rings of the sheet's colour.</summary>
-    void DrawHandles(DrawingContext context, Rect frame)
-    {
-        var pen = new Pen(DrawingBrush, 1.5);
-        foreach (var handle in Handles)
-            context.DrawEllipse(Sheet ?? Brushes.White, pen, HandlePoint(frame, handle), HandleRadius, HandleRadius);
     }
 
     /// <summary>A floating drawing's anchor: a mark in the margin left of the line its character stands in.</summary>

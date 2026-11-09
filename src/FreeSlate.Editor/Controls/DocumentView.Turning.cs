@@ -9,7 +9,7 @@ namespace FreeSlate.Editor.Controls;
 /// <summary>
 /// The picture selected turned and tilted by hand. A knob above its frame turns it about its middle (see DrawingFormatting.Rotation): it
 /// follows the pointer, at the quarter turns it stays a little (Alt held, not), with Shift it goes by 15 degrees, its angle beside the
-/// pointer; letting go keeps it, Escape takes it back. Its frame and handles turn with it, the handles sizing it along its own sides.
+/// pointer; letting go keeps it, Escape takes it back. Its frame turns with it, and the size ring sizes it along its own sides (see Pull).
 /// Tilted by hand (see BeginTilt), dragging the picture turns it in space as Word's 3-D Rotation does (see PictureTilt), in perspective:
 /// across about its upright axis, up and down about its level one, a globe round its middle showing how; Enter, Escape or a press
 /// elsewhere ends it, Escape while dragging takes the drag back.
@@ -68,7 +68,7 @@ public sealed partial class DocumentView
     /// <summary>Where the knob of a frame stands before the frame turns: above its top's middle.</summary>
     static Point KnobPoint(Rect frame) => new(frame.Center.X, frame.Top - KnobDistance);
 
-    /// <summary>The knob over a frame (not yet turned): a stem from the frame's top and a ring as a handle's.</summary>
+    /// <summary>The knob over a frame (not yet turned): a stem from the frame's top and a ring of the sheet's colour.</summary>
     void DrawKnob(DrawingContext context, Rect frame)
     {
         var pen = new Pen(DrawingBrush, 1.5);

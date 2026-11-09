@@ -49,6 +49,16 @@
   <x:String x:Key="PictureReplace">Replace</x:String>
   <x:String x:Key="PictureFrame">Frame</x:String>
   <x:String x:Key="PictureTurn">Turn</x:String>
+  <x:String x:Key="PictureSize">Size</x:String>
+  <x:String x:Key="SizeTop">Top edge</x:String>
+  <x:String x:Key="SizeTopRight">Top right corner</x:String>
+  <x:String x:Key="SizeRight">Right edge</x:String>
+  <x:String x:Key="SizeBottomRight">Bottom right corner</x:String>
+  <x:String x:Key="SizeBottom">Bottom edge</x:String>
+  <x:String x:Key="SizeBottomLeft">Bottom left corner</x:String>
+  <x:String x:Key="SizeLeft">Left edge</x:String>
+  <x:String x:Key="SizeTopLeft">Top left corner</x:String>
+  <x:String x:Key="RingPull">hold and drag</x:String>
   <x:String x:Key="TurnStraight">Straight</x:String>
   <x:String x:Key="TurnRight">90° right</x:String>
   <x:String x:Key="TurnLeft">90° left</x:String>

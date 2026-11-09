@@ -107,11 +107,11 @@ public sealed partial class EditorView : Panel
     /// last, up left, taking the meaning away; on a picture, where it stands among the text (see Placement): in the line up, beside the
     /// text right and left, on its own down, in front of the text and behind it between them, a place on the page down right (a ring of
     /// the eight ways, top, top right …), and up left the picture itself (a ring: its caption, cropping it, its description, its colors,
-    /// turning it (a ring: straight again, mirrored either way, a quarter turn either way, slanted, the size it took when it was put in,
-    /// tilting it in space by hand), another picture in its frame, removing it, a hairline round it); on a picture cropped by hand, its
-    /// whole, proportions and the circle; on one tilted by hand, Word's 3-D presets; at a spot with nothing to act on, what goes in there,
-    /// the cursor there: a picture from a file up, one from the clipboard down. And its ways to the sheets. Space held on a selection
-    /// brings it for the keyboard.
+    /// its size (a ring of the eight ways, each a side or a corner pulled as its grip would be dragged), turning it (a ring: straight
+    /// again, mirrored either way, a quarter turn either way, slanted, the size it took when it was put in, tilting it in space by hand),
+    /// another picture in its frame, removing it, a hairline round it); on a picture cropped by hand, its whole, proportions and the
+    /// circle; on one tilted by hand, Word's 3-D presets; at a spot with nothing to act on, what goes in there, the cursor there: a picture
+    /// from a file up, one from the clipboard down. And its ways to the sheets. Space held on a selection brings it for the keyboard.
     /// </summary>
     void Join(Controls.GestureRing ring)
     {
@@ -172,9 +172,26 @@ public sealed partial class EditorView : Panel
             Field("TurnLeft", "", () => editing.TurnPicture(-90), icon: Placement.TurnLeftIcon),
             new("TiltByHand", "", () => Sheets.BeginTilt(), Icon: Placement.TiltByHandIcon),
         ];
+        // Sizing the picture, in the ring of the picture itself: each way a side or a corner of it (up its top, up right its top right
+        // corner …), pulled as its grip would be dragged (see DocumentView.Pull): pressed and dragged, or the held pointer moved on out of
+        // it; a corner keeps the proportions. Its size under the ring, and beside it while a pull goes.
+        Controls.GestureRing.Slot Side(string nameKey, int across, int down) =>
+            new(nameKey, "", Icon: Placement.HandleIcon(across, down), Pulls: () => Sheets.Pull((across, down)));
+        IReadOnlyList<Controls.GestureRing.Slot> sizing =
+        [
+            Side("SizeTop", 0, -1),
+            Side("SizeTopRight", 1, -1),
+            Side("SizeRight", 1, 0),
+            Side("SizeBottomRight", 1, 1),
+            Side("SizeBottom", 0, 1),
+            Side("SizeBottomLeft", -1, 1),
+            Side("SizeLeft", -1, 0),
+            Side("SizeTopLeft", -1, -1),
+        ];
         // What is done with the picture itself, up left: a caption below it, the cursor then in it (or taking it away, a preview as the
-        // others), cropping it by hand, its description (a card under it), its colors (a strip under it), turning it (a ring of its own),
-        // another picture in its frame, removing it, a hairline round it (or taking it away).
+        // others), cropping it by hand, its description (a card under it), its colors (a strip under it), its size (a ring of its own,
+        // between the colors and turning, the ninth field), turning it (a ring of its own), another picture in its frame, removing it, a
+        // hairline round it (or taking it away).
         IReadOnlyList<Controls.GestureRing.Slot> Itself(bool captioned, bool framed) =>
         [
             captioned
@@ -183,6 +200,7 @@ public sealed partial class EditorView : Panel
             new("PictureCrop", "", () => Sheets.BeginCrop(), Icon: Placement.CropIcon),
             new("PictureDescribe", "", Describe, Icon: Placement.DescriptionIcon),
             new("PictureRecolor", "", Recolor, Icon: Placement.RecolorIcon),
+            new("PictureSize", "", Under: sizing, Icon: Placement.SizeIcon, Status: () => Sheets.SizeReading() ?? ""),
             new("PictureTurn", "", Under: turning, Icon: Placement.TurnIcon),
             new("PictureReplace", "", () => _ = Sheets.ReplacePicture(), Icon: Placement.ReplaceIcon),
             new("PictureRemove", "×", () => Sheets.Edit(() => editing.Delete())),

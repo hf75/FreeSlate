@@ -50,6 +50,16 @@
   <x:String x:Key="PictureFrame">Rahmen</x:String>
   <x:String x:Key="PictureFrameRemove">Rahmen entfernen</x:String>
   <x:String x:Key="PictureTurn">Drehen</x:String>
+  <x:String x:Key="PictureSize">Größe</x:String>
+  <x:String x:Key="SizeTop">Oberer Rand</x:String>
+  <x:String x:Key="SizeTopRight">Ecke oben rechts</x:String>
+  <x:String x:Key="SizeRight">Rechter Rand</x:String>
+  <x:String x:Key="SizeBottomRight">Ecke unten rechts</x:String>
+  <x:String x:Key="SizeBottom">Unterer Rand</x:String>
+  <x:String x:Key="SizeBottomLeft">Ecke unten links</x:String>
+  <x:String x:Key="SizeLeft">Linker Rand</x:String>
+  <x:String x:Key="SizeTopLeft">Ecke oben links</x:String>
+  <x:String x:Key="RingPull">gedrückt halten und ziehen</x:String>
   <x:String x:Key="TurnStraight">Gerade</x:String>
   <x:String x:Key="TurnRight">90° nach rechts</x:String>
   <x:String x:Key="TurnLeft">90° nach links</x:String>

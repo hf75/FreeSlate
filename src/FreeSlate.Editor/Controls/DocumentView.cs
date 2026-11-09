@@ -809,7 +809,8 @@ public sealed partial class DocumentView : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (dragged != null)
+        // (A drawing the size ring pulls goes with the ring's pointer, see Pull.)
+        if (dragged is { Pointer: not null })
         {
             DragTo(e.GetPosition(this), e.KeyModifiers);
             Hold(e.GetPosition(this), e.KeyModifiers);
@@ -953,7 +954,7 @@ public sealed partial class DocumentView : Control
             e.Handled = true;
             return;
         }
-        if (e.ClickCount >= 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && HandleAt(point) == null && !OnDrawing(point) && TableLineAt(point) == null
+        if (e.ClickCount >= 2 && (e.KeyModifiers & KeyModifiers.Shift) == 0 && !KnobAt(point) && !OnDrawing(point) && TableLineAt(point) == null
             && SelectUnitsAt(point, words: e.ClickCount == 2, e.Pointer))
         {
             e.Handled = true;
@@ -1008,11 +1009,11 @@ public sealed partial class DocumentView : Control
     {
         Focus();
         ForgetLine();
-        // A handle of the drawing selected sizes it; a drawing pressed is selected as a whole, and may be dragged from there.
-        if ((modifiers & KeyModifiers.Shift) == 0 && HandleAt(point) is { } handle)
+        // The knob of the picture selected turns it; a drawing pressed is selected as a whole, and may be dragged from there.
+        if ((modifiers & KeyModifiers.Shift) == 0 && KnobAt(point))
         {
             if (dragging)
-                BeginDrag(point, pointer, handle);
+                BeginDrag(point, pointer, Knob);
             return true;
         }
         if ((modifiers & KeyModifiers.Shift) == 0 && SelectDrawingAt(point))
@@ -1039,7 +1040,7 @@ public sealed partial class DocumentView : Control
     }
 
     /// <summary>
-    /// Whether a point of the view is on the selection (a drawing selected as a whole: on it where it shows, see Hits, not on a handle); a
+    /// Whether a point of the view is on the selection (a drawing selected as a whole: on it where it shows, see Hits, not on its knob); a
     /// picture being cropped or tilted is none, a press on it crops or tilts it.
     /// </summary>
     public bool OnSelection(Point point)
@@ -1047,7 +1048,7 @@ public sealed partial class DocumentView : Control
         if (cropping || tilting || shaping != null || TableLineAt(point) != null)
             return false;
         if (SelectedDrawing() is var (drawnPage, drawnAt))
-            return Hits(drawnPage, drawnAt, point) && HandleAt(point) == null;
+            return Hits(drawnPage, drawnAt, point) && !KnobAt(point);
         if (session?.CellSelection != null)
         {
             foreach (var row in rows)
@@ -1147,7 +1148,7 @@ public sealed partial class DocumentView : Control
     {
         base.OnPointerReleased(e);
         LetGo();
-        if (dragged != null)
+        if (dragged is { Pointer: not null })
         {
             EndDrag(keep: true);
             e.Pointer.Capture(null);
@@ -1251,7 +1252,7 @@ public sealed partial class DocumentView : Control
         if (dragged is { } d && e.Key == Key.Escape)
         {
             EndDrag(keep: false);
-            d.Pointer.Capture(null);
+            d.Pointer?.Capture(null);
             e.Handled = true;
             return;
         }

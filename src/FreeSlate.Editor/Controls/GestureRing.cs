@@ -19,6 +19,9 @@ namespace FreeSlate.Editor.Controls;
 /// left half keeps what the ring shows (a tick), its right half takes it away (a cross), either closing the ring, not going back; the two
 /// there while a field is pointed at too, so that the way out is always in view; a new table's size stepped.
 /// What it acts on may have fields of its own (see Choose), a picture its places among the text.
+/// A field may be pulled (see Slot.Pulls), a picture's side say: pressed and dragged, it goes as far as the pointer goes from where it
+/// took it, what that makes standing beside the ring; let go, that stays and the ring with it, to be pulled again; Escape takes the pull
+/// back. Its name beside the ring says so (RingPull). Held, moved on out of such a field, the pull begins where the pointer leaves the ring.
 /// The right button held on the selection, or on a word where there is none, brings it after a moment of rest; moved into a field and
 /// let go there, it does what the field does, let go in the middle nothing; moved on out of a field that holds a ring, that ring comes
 /// where the pointer is, and let go in its middle it stays to be clicked (once the pointer was on its fields, it goes back, or closes on a
@@ -82,11 +85,27 @@ public sealed class GestureRing : Control
     /// side, as a stepper has them); and it may show something of its own while that ring shows (Opened as it comes; Left as it goes,
     /// kept where it closed beside the ring, by a click there, Enter or letting go there, else taken back: Escape, the way back), with a
     /// line about it under the ring while no field is pointed at (Status); and the middle of its ring may be split, its left half keeping
-    /// what the ring shows, its right half taking it away, either closing the ring (Settles).
+    /// what the ring shows, its right half taking it away, either closing the ring (Settles). A field may be pulled instead of doing
+    /// something (Pulls): what it gives as it is taken (null: nothing to pull now) goes as far as the pointer goes from there (see IPull).
     /// </summary>
     public sealed record Slot(string NameKey, string Sign, Action? Act = null, IReadOnlyList<Slot>? Under = null, bool Slanted = false, string? Icon = null,
         Color? Swatch = null, bool Steps = false, bool Split = false, Action? Opened = null, Action<bool>? Left = null, Func<string>? Status = null,
-        bool Settles = false);
+        bool Settles = false, Func<IPull?>? Pulls = null);
+
+    /// <summary>
+    /// A field pulled (see Slot.Pulls): told how far the pointer is from where it took the field as it goes, the keys held, and at the end
+    /// whether what it made stays; what it makes, which stands beside the ring while it goes (null: the field's name), and the pointer then.
+    /// </summary>
+    public interface IPull
+    {
+        void To(Vector by, KeyModifiers modifiers);
+
+        void End(bool keep);
+
+        string? Reading { get; }
+
+        Cursor? Cursor { get; }
+    }
 
     /// <summary>A ring as it shows: its fields, its centre, and the field of the ring before it that holds it (whose split and middle it has).</summary>
     sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent)
@@ -118,7 +137,7 @@ public sealed class GestureRing : Control
     static readonly Geometry Tick = Geometry.Parse("M-7.4,0.4 L-5,-2 L-1.8,1.2 L5,-5.6 L7.4,-3.2 L-1.8,6 Z");
     static readonly Geometry Cross = Geometry.Parse("M-5.6,-4 L-4,-5.6 L0,-1.6 L4,-5.6 L5.6,-4 L1.6,0 L5.6,4 L4,5.6 L0,1.6 L-4,5.6 L-5.6,4 L-1.6,0 Z");
 
-    enum Mode { None, Waiting, Blind, Held, Clicking, Gripped, Moving, Holding, KeysWaiting, Keys }
+    enum Mode { None, Waiting, Blind, Held, Clicking, Gripped, Moving, Holding, KeysWaiting, Keys, Pulling }
 
     /// <summary>The pointer while it moves the ring, as while it moves a picture.</summary>
     static readonly Cursor Grab = new(StandardCursorType.SizeAll);
@@ -146,6 +165,9 @@ public sealed class GestureRing : Control
     bool keeping;
     /// <summary>Where the middle of a ring to be clicked was pressed, and where its centre stood then: moved on, the ring goes with the pointer.</summary>
     (Point At, Point Centre) grip;
+    /// <summary>A field pulled (see Slot.Pulls), and where the pointer took it.</summary>
+    IPull? pull;
+    Point pulledAt;
     /// <summary>When the ring there came, and when the first ring of the gesture did, with the frame around the text (on Motion's clock).</summary>
     long since, opened;
     (string Name, Point At, long Since)? confirmed;
@@ -307,6 +329,7 @@ public sealed class GestureRing : Control
     /// </summary>
     void Close(bool keep)
     {
+        EndPull(keep);
         if (!keep)
             Aim(null);
         rest.Stop();
@@ -336,6 +359,33 @@ public sealed class GestureRing : Control
         chosen = field;
         visited |= field != null;
         Preview?.Invoke(field is { } k && Current is { } level ? level.Slots[k] : null);
+    }
+
+    /// <summary>
+    /// A field of the ring there pulled from a point (see Slot.Pulls), by a pointer pressed on it or the one held: it goes with the pointer
+    /// from there; false where it gives nothing to pull now.
+    /// </summary>
+    bool Pull(int field, Point from, IPointer? by)
+    {
+        if (Current is not { } level || level.Slots[field].Pulls?.Invoke() is not { } pulling)
+            return false;
+        Aim(field);
+        (mode, pull, pulledAt, IsHitTestVisible) = (Mode.Pulling, pulling, from, true);
+        pointer = by ?? pointer;
+        Cursor = pulling.Cursor;
+        InvalidateVisual();
+        return true;
+    }
+
+    /// <summary>The pull ends: what it made stays (<paramref name="keep"/>), else it is taken back; the ring stays, to be clicked.</summary>
+    void EndPull(bool keep)
+    {
+        if (pull is not { } going)
+            return;
+        (pull, mode) = (null, Mode.Clicking);
+        ClearValue(CursorProperty);
+        going.End(keep);
+        InvalidateVisual();
     }
 
     /// <summary>Whether a point is in the middle of the ring now; in a ring of a second level, on its way back.</summary>
@@ -404,9 +454,17 @@ public sealed class GestureRing : Control
             case Mode.Held when Current is { } level:
                 Aim(Pointed(at), back: visited && Backward(at));
                 keeping = level.Settles && at.X < level.Centre.X;
-                // On out of a field that holds a ring: that ring, where the pointer is.
-                if (chosen is { } field && level.Slots[field].Under != null && Far(at, level.Centre) > Outer + 6)
-                    Enter(level.Slots[field], at);
+                // On out of a field that holds a ring: that ring, where the pointer is; out of one that is pulled, the pull, from there.
+                if (chosen is { } field && Far(at, level.Centre) > Outer + 6)
+                {
+                    if (level.Slots[field].Under != null)
+                        Enter(level.Slots[field], at);
+                    else if (level.Slots[field].Pulls != null)
+                        Pull(field, at, null);
+                }
+                break;
+            case Mode.Pulling:
+                pull?.To(at - pulledAt, e.KeyModifiers);
                 break;
             case Mode.Clicking or Mode.Keys when Current is { } level:
                 if (mode != Mode.Keys || arrows.Count == 0)
@@ -482,12 +540,13 @@ public sealed class GestureRing : Control
                     break;
                 }
                 var held = chosen is { } done ? level.Slots[done] : null;
-                if (held is { Steps: true })
+                if (held is { Steps: true } or { Pulls: not null })
                 {
-                    // Let go on a field that steps: it steps, and the ring stays to be clicked.
+                    // Let go on a field that steps: it steps, and the ring stays to be clicked; on one that is pulled, it stays to be pulled.
                     (mode, IsHitTestVisible) = (Mode.Clicking, true);
                     e.Pointer.Capture(null);
-                    Do(held, null);
+                    if (held.Steps)
+                        Do(held, null);
                     InvalidateVisual();
                     break;
                 }
@@ -512,6 +571,11 @@ public sealed class GestureRing : Control
                 // Moved: it stays where it is, to be clicked.
                 mode = Mode.Clicking;
                 ClearValue(CursorProperty);
+                e.Pointer.Capture(null);
+                break;
+            case Mode.Pulling:
+                // Let go while pulling: what the pull made stays, and the ring, to be pulled again.
+                EndPull(keep: true);
                 e.Pointer.Capture(null);
                 break;
             default:
@@ -539,14 +603,16 @@ public sealed class GestureRing : Control
         if (Field(first, (turned ? corner : end) - start, BlindDistance) is not { } way)
             return null;
         var slot = first[way];
+        // A field that is pulled wants the ring.
         if (slot.Under == null)
-            return turned ? null : slot;
-        return turned && Field(slot.Under, end - corner, BlindDistance, slot.Split) is { } second ? slot.Under[second] : null;
+            return turned || slot.Pulls != null ? null : slot;
+        return turned && Field(slot.Under, end - corner, BlindDistance, slot.Split) is { } second && slot.Under[second] is { Pulls: null } picked ? picked : null;
     }
 
     /// <summary>
     /// A click while the ring waits for one: on a field it does that field (one with a ring opens it, one that steps steps and the ring
-    /// stays), elsewhere it closes, what the rings show taken away; in the middle it is a click as it is let go there (back to the ring
+    /// stays, one that is pulled goes with the pointer from there, see Pull), elsewhere it closes, what the rings show taken away; in the
+    /// middle it is a click as it is let go there (back to the ring
     /// before, or the ring closed: the first one, or one with a split middle), and the ring goes with the pointer moved on from there (see
     /// Shift).
     /// </summary>
@@ -569,6 +635,13 @@ public sealed class GestureRing : Control
             Enter(level.Slots[inside], level.Centre);
             return;
         }
+        if (field is { } pulled && level.Slots[pulled].Pulls != null)
+        {
+            // A field that gives nothing to pull now does nothing.
+            if (Pull(pulled, point, e.Pointer))
+                e.Pointer.Capture(this);
+            return;
+        }
         if (field is { } step && level.Slots[step].Steps)
         {
             Aim(step);
@@ -585,7 +658,10 @@ public sealed class GestureRing : Control
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);
-        if (mode is Mode.Waiting or Mode.Blind or Mode.Held or Mode.Holding)
+        // Lost while pulling: the pull taken back, as a drag is.
+        if (mode == Mode.Pulling)
+            EndPull(keep: false);
+        else if (mode is Mode.Waiting or Mode.Blind or Mode.Held or Mode.Holding)
             Close(keep: false);
         // Lost while it holds the ring by its middle: the ring stays where it is, to be clicked.
         else if (mode is Mode.Gripped or Mode.Moving)
@@ -658,7 +734,8 @@ public sealed class GestureRing : Control
     /// <summary>
     /// A key while the ring has a gesture: the arrows choose for the keyboard (two of them a diagonal), Enter opens the ring of the field
     /// chosen; Backspace goes back while a ring shows to be clicked or for the keys (not where the held pointer would bring the ring it
-    /// left again at once, nor while it moves one), and the selection under it stays; Escape closes any ring. Whether the ring took the key.
+    /// left again at once, nor while it moves one), and the selection under it stays; Escape closes any ring, or takes back a pull going
+    /// (see Pull). Whether the ring took the key.
     /// </summary>
     public bool KeyChanged(Key key, bool down)
     {
@@ -666,13 +743,22 @@ public sealed class GestureRing : Control
             return false;
         if (key == Key.Escape)
         {
-            if (down)
+            // Escape while a field is pulled takes the pull back, the ring staying; else it closes the ring.
+            if (down && mode == Mode.Pulling)
+            {
+                EndPull(keep: false);
+                pointer?.Capture(null);
+            }
+            else if (down)
             {
                 pointer?.Capture(null);
                 Close(keep: false);
             }
             return true;
         }
+        // While a field is pulled, the keys are the pull's (those held go to it with the pointer).
+        if (mode == Mode.Pulling)
+            return true;
         if (key == Key.Back && levels.Count > 0)
         {
             if (down && levels.Count > 1 && mode is (Mode.Clicking or Mode.Keys))
@@ -823,19 +909,23 @@ public sealed class GestureRing : Control
     }
 
     /// <summary>
-    /// The ring there as it shows now, null without one: the field pointed at, the way back, and the name beside it as it reads now (the
-    /// field's; else the way back's, or the line about what the ring shows, see Slot.Status).
+    /// The ring there as it shows now, null without one: the field pointed at, the way back, and the name beside it as it reads now (what a
+    /// pull makes while it goes; the field's; else the way back's, or the line about what the ring shows, see Slot.Status).
     /// </summary>
     Look? Showing()
     {
         if (Current is not { } level)
             return null;
-        var status = chosen == null && !backward ? level.Parent?.Status?.Invoke() : null;
-        var label = chosen is { } named ? NameOf(level.Slots[named].NameKey)
+        var status = chosen == null && !backward && level.Parent?.Status?.Invoke() is { Length: > 0 } line ? line : null;
+        var label = pull?.Reading is { } reading ? reading
+            : chosen is { } named ? Named(level.Slots[named])
             : backward || status != null ? status ?? NameOf(!level.Settles ? "RingBack" : keeping ? "RingTake" : "RingDrop")
             : null;
         return new Look(level, chosen, backward, keeping, mode == Mode.Moving, label);
     }
+
+    /// <summary>A field's name beside the ring; a field that is pulled says how (see RingPull).</summary>
+    string Named(Slot slot) => slot.Pulls == null ? NameOf(slot.NameKey) : $"{NameOf(slot.NameKey)} · {NameOf("RingPull")}";
 
     /// <summary>
     /// The frame around the text a ring acts on, as far as it has come (0 to 1): in the ring's clear middle, and around it; in the accent
