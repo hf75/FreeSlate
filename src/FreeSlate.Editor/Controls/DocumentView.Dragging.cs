@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -458,11 +459,16 @@ public sealed partial class DocumentView
         Aim(d, new Goal(row.Index, (d.Ghost.X - Left(row)) / pt, d.Ghost.Y / pt - row.Top / PxPerPt, width / pt, height / pt, null, null));
     }
 
-    /// <summary>Where the drawing dragged is to go; the text goes round it there as soon as the pointer rests a moment (moves that come first go before).</summary>
+    /// <summary>
+    /// Where the drawing dragged is to go: sized, it shows so with the next frame (see PreviewNext); moved, the text goes round it there
+    /// as soon as the pointer rests a moment (moves that come first go before).
+    /// </summary>
     void Aim(Dragged d, Goal goal)
     {
         d.Target = goal;
-        if (!d.Scheduled)
+        if (d.Handle != null)
+            PreviewNext(d);
+        else if (!d.Scheduled)
         {
             d.Scheduled = true;
             Dispatcher.UIThread.Post(() =>
@@ -473,6 +479,24 @@ public sealed partial class DocumentView
             }, DispatcherPriority.Background);
         }
         InvalidateVisual();
+    }
+
+    /// <summary>
+    /// The drawing dragged shown as the drag has it (sized, or turned by its knob) with the next frame. Not when the dispatcher is idle: a
+    /// hand moving the pointer keeps input waiting, and work of a lower priority than input waits as long (Avalonia's dispatcher, as
+    /// WPF's), so that the drawing stood still while the pointer moved and jumped when it rested.
+    /// </summary>
+    void PreviewNext(Dragged d)
+    {
+        if (d.Scheduled || TopLevel.GetTopLevel(this) is not { } top)
+            return;
+        d.Scheduled = true;
+        top.RequestAnimationFrame(_ =>
+        {
+            d.Scheduled = false;
+            if (ReferenceEquals(dragged, d))
+                Preview(d);
+        });
     }
 
     /// <summary>The drawing dragged put where it goes, or sized as it gets, as a step of its own in place of the one that showed it before.</summary>

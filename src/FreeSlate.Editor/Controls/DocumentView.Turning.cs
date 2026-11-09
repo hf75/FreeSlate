@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.Threading;
 
 namespace FreeSlate.Editor.Controls;
 
@@ -92,16 +91,7 @@ public sealed partial class DocumentView
         if (Math.Abs(angle - 360) < 1e-6)
             angle = 0;
         d.Angle = angle;
-        if (!d.Scheduled)
-        {
-            d.Scheduled = true;
-            Dispatcher.UIThread.Post(() =>
-            {
-                d.Scheduled = false;
-                if (ReferenceEquals(dragged, d))
-                    Preview(d);
-            }, DispatcherPriority.Background);
-        }
+        PreviewNext(d);
         InvalidateVisual();
     }
 
