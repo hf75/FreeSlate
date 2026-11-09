@@ -887,15 +887,9 @@ public sealed class GestureRing : Control
             // The way back pointed at: the middle of glass too, a field as the others (see below).
             if (look.Backward)
                 context.DrawEllipse(surface, null, c, Inner, Inner);
-            // The band of fields: its inner rim. No lines between the fields: the signs show them, and lines across the text's lines under
-            // the glass would read as strokes through the words.
+            // The band of fields: its inner rim. No lines between the fields, nor between the halves of a split ring: the signs show them,
+            // and lines across the text under the glass would read as strokes through it.
             context.DrawEllipse(null, hairline, c, Inner, Inner);
-            // A split ring: a line through its middle up and down, between its halves.
-            if (level.Split)
-            {
-                context.DrawLine(hairline, new Point(c.X, c.Y - Outer + Gap), new Point(c.X, c.Y - Inner));
-                context.DrawLine(hairline, new Point(c.X, c.Y + Inner), new Point(c.X, c.Y + Outer - Gap));
-            }
             if (look.Chosen is { } pointed)
                 context.DrawGeometry(accent, null, Sector(c, Inner + Gap, Outer - Gap, Angle(pointed, count, level.Split), half, Gap, Round));
             for (var k = 0; k < count; k++)
@@ -925,10 +919,9 @@ public sealed class GestureRing : Control
             // reads as that field would make it. A split way back stays then too.
             if (level.Settles)
             {
-                // A split way back: the ring's line on through the middle, keeping what it shows on the left (a tick), taking it away on
-                // the right (a cross), each half on a button of glass and lit as a field where the pointer is in it; there while a field
-                // is pointed at too, so that keeping and taking away are always to be seen.
-                context.DrawLine(hairline, new Point(c.X, c.Y - Inner), new Point(c.X, c.Y + Inner));
+                // A split way back: keeping what it shows on the left (a tick), taking it away on the right (a cross), each half on a
+                // button of glass and lit as a field where the pointer is in it; there while a field is pointed at too, so that keeping
+                // and taking away are always to be seen.
                 foreach (var (side, sign) in new[] { (-1, Tick), (1, Cross) })
                 {
                     var lit = look.Backward && look.Keeping == side < 0;
