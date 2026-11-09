@@ -207,15 +207,18 @@ public sealed partial class DocumentView
         var (x, y, z) = d.From.Angles;
         var camera = d.From.Camera == PictureTilt.Flat.Camera ? "perspectiveFront" : d.From.Camera;
         d.Target = new PictureTilt(camera, Within(x + by.X * TiltPerPixel), Within(y + by.Y * TiltPerPixel), z, d.From.Fov);
-        if (!d.Scheduled)
+        // The picture tilted so at the next frame. Not when the dispatcher is idle: a hand moving the pointer keeps input waiting, and
+        // work of a lower priority than input waits as long (Avalonia's dispatcher, as WPF's), so that the picture stood still while the
+        // pointer moved and jumped when it rested.
+        if (!d.Scheduled && TopLevel.GetTopLevel(this) is { } top)
         {
             d.Scheduled = true;
-            Dispatcher.UIThread.Post(() =>
+            top.RequestAnimationFrame(_ =>
             {
                 d.Scheduled = false;
                 if (ReferenceEquals(tiltDrag, d))
                     PreviewTilt(d);
-            }, DispatcherPriority.Background);
+            });
         }
         InvalidateVisual();
     }
