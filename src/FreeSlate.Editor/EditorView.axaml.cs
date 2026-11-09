@@ -256,9 +256,9 @@ public sealed partial class EditorView : Panel
         ];
         // A new table, in the tone's look, its size stepped in a split ring: its columns on the right, one more up and one fewer down, its
         // rows on the left alike. It shows at the cursor as it would go in from the moment that ring comes, growing and shrinking with
-        // each step; the way back in the ring's middle is split as the ring is: on its left (a tick) the table goes in, on its right (a
-        // cross) it goes away, either back at the ring before. Enter puts it in and closes the ring; a click beside the ring, Escape and
-        // Backspace take it away. Chosen blindly, a step puts in a table of the size it makes.
+        // each step; the ring's middle is split as the ring is: on its left (a tick) the table goes in, on its right (a cross) it goes away,
+        // either closing the ring, as Enter puts it in and a click beside the ring or Escape take it away; Backspace takes it away back at
+        // the ring before. Chosen blindly, a step puts in a table of the size it makes.
         var size = (Columns: Tables.Columns, Rows: Tables.Rows);
         var tableShown = false;
         Controls.GestureRing.Slot? newTable = null;
