@@ -16,8 +16,8 @@ namespace FreeSlate.Editor.Controls;
 /// the ring where the ring lies over it, and reads as the field pointed at would make it (Preview). The middle of a ring of a second
 /// level is the way back to the ring before: the sign of the field that holds it stands there while no field is pointed at, and it
 /// lights up as a field does where the pointer is in it. Where that field says so (Slot.Settles), the middle is split as the ring is: its
-/// left half goes back keeping what the ring shows (a tick), its right half going back takes it away (a cross); a new table's size
-/// stepped.
+/// left half goes back keeping what the ring shows (a tick), its right half going back takes it away (a cross), the two there while a
+/// field is pointed at too, so that the way out is always in view; a new table's size stepped.
 /// What it acts on may have fields of its own (see Choose), a picture its places among the text.
 /// The right button held on the selection, or on a word where there is none, brings it after a moment of rest; moved into a field and
 /// let go there, it does what the field does, let go in the middle nothing; moved on out of a field that holds a ring, that ring comes
@@ -922,11 +922,12 @@ public sealed class GestureRing : Control
             }
             // A ring of a second level: in its middle the way back, the sign of the field that holds it; on a button of glass, so that it
             // reads over the text, and lit as a field where the pointer is in it. While a field is pointed at it is away: the text there
-            // reads as that field would make it.
-            if (level.Parent != null && (look.Backward || look.Chosen == null) && level.Settles)
+            // reads as that field would make it. A split way back stays then too.
+            if (level.Settles)
             {
                 // A split way back: the ring's line on through the middle, keeping what it shows on the left (a tick), taking it away on
-                // the right (a cross), each half on a button of glass and lit as a field where the pointer is in it.
+                // the right (a cross), each half on a button of glass and lit as a field where the pointer is in it; there while a field
+                // is pointed at too, so that keeping and taking away are always to be seen.
                 context.DrawLine(hairline, new Point(c.X, c.Y - Inner), new Point(c.X, c.Y + Inner));
                 foreach (var (side, sign) in new[] { (-1, Tick), (1, Cross) })
                 {
