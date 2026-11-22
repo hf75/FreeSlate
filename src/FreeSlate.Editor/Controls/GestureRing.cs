@@ -1,10 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Threading;
+using Avalonia.Utilities;
 
 namespace FreeSlate.Editor.Controls;
 
@@ -107,6 +109,28 @@ public sealed class GestureRing : Control
         Cursor? Cursor { get; }
     }
 
+    /// <summary>
+    /// The ring talking with Claude (see Ask): what it says beside the ring while nothing is typed (what Claude is doing), Claude's words in
+    /// its last answer, whether Claude is at work, and when any of that changes; a further wish sent, the changes kept or taken back.
+    /// </summary>
+    public interface IAsked
+    {
+        string Line { get; }
+
+        string? Answer { get; }
+
+        bool Working { get; }
+
+        /// <summary>Whether the talk changed the document: only then is there something to keep or take back.</summary>
+        bool Changed { get; }
+
+        event Action? Updated;
+
+        void Send(string wish);
+
+        void Settle(bool keep);
+    }
+
     /// <summary>A ring as it shows: its fields, its centre, and the field of the ring before it that holds it (whose split and middle it has).</summary>
     sealed record Level(IReadOnlyList<Slot> Slots, Point Centre, Slot? Parent)
     {
@@ -125,6 +149,14 @@ public sealed class GestureRing : Control
     {
         public long Left { get; init; }
         public Framing? Frame { get; init; }
+
+        /// <summary>
+        /// Whether the ring talks with Claude (its fields away), Claude is at work, and there is something to keep or take back (its middle
+        /// split then).
+        /// </summary>
+        public bool Talking { get; init; }
+        public bool Working { get; init; }
+        public bool Settling { get; init; }
     }
 
     /// <summary>The frame around the text a ring acts on: the text's parts, or a drawing's frame turned; in the accent where a field is pointed at.</summary>
@@ -137,7 +169,13 @@ public sealed class GestureRing : Control
     static readonly Geometry Tick = Geometry.Parse("M-7.4,0.4 L-5,-2 L-1.8,1.2 L5,-5.6 L7.4,-3.2 L-1.8,6 Z");
     static readonly Geometry Cross = Geometry.Parse("M-5.6,-4 L-4,-5.6 L0,-1.6 L4,-5.6 L5.6,-4 L1.6,0 L5.6,4 L4,5.6 L0,1.6 L-4,5.6 L-5.6,4 L-1.6,0 Z");
 
-    enum Mode { None, Waiting, Blind, Held, Clicking, Gripped, Moving, Holding, KeysWaiting, Keys, Pulling }
+    enum Mode { None, Waiting, Blind, Held, Clicking, Gripped, Moving, Holding, KeysWaiting, Keys, Pulling, Asking }
+
+    /// <summary>How long the ring takes to go aside as Claude begins to write (ms), the widest the line beside it grows, and Claude's card.</summary>
+    const double GlideTime = 320, LineWidest = 460, LineNarrowest = 240, CardWidth = 400;
+
+    /// <summary>Claude's words that fit on the line beside the ring; longer ones go on a card under it.</summary>
+    const int ShortAnswer = 64;
 
     /// <summary>The pointer while it moves the ring, as while it moves a picture.</summary>
     static readonly Cursor Grab = new(StandardCursorType.SizeAll);
@@ -171,6 +209,22 @@ public sealed class GestureRing : Control
     /// <summary>When the ring there came, and when the first ring of the gesture did, with the frame around the text (on Motion's clock).</summary>
     long since, opened;
     (string Name, Point At, long Since)? confirmed;
+    /// <summary>
+    /// What is typed at the ring for Claude, and the cursor in it; the talk it began, and since when; what the line says where Claude
+    /// cannot be reached; where the line and Claude's card stand, as last drawn.
+    /// </summary>
+    string typed = "";
+    int typedAt;
+    IAsked? asked;
+    long talking;
+    string? unreached;
+    Rect lineBox;
+    Rect? cardBox;
+    /// <summary>The wishes sent while the editor runs, the last last, which ↑ brings back; the one brought back.</summary>
+    static readonly List<string> Wishes = [];
+    int recalled = -1;
+    /// <summary>Where the ring goes aside from and to as Claude begins to write, and since when.</summary>
+    (Point From, Point To, long Since)? glide;
 
     public GestureRing()
     {
@@ -186,7 +240,14 @@ public sealed class GestureRing : Control
         leaving.RemoveAll(look => Motion.Going(look.Left) <= 0);
         if (confirmed is { } c && Motion.Since(c.Since) > Confirmation)
             confirmed = null;
-        return leaving.Count > 0 || confirmed != null || Current != null && Motion.Coming(since) < 1;
+        if (glide is var (from, to, began) && levels.Count > 0)
+        {
+            var t = Math.Clamp(Motion.Since(began) / GlideTime, 0, 1);
+            levels[^1] = levels[^1] with { Centre = from + (to - from) * (1 - Math.Pow(1 - t, 3)) };
+            if (t >= 1)
+                glide = null;
+        }
+        return leaving.Count > 0 || confirmed != null || Current != null && Motion.Coming(since) < 1 || glide != null || asked?.Working == true;
     }
 
     /// <summary>The fields of the first ring, from the top clockwise; they share the circle evenly.</summary>
@@ -227,6 +288,23 @@ public sealed class GestureRing : Control
 
     /// <summary>Whether the ring has a gesture going: it takes the pointer, Escape takes it back.</summary>
     public bool IsBusy => mode != Mode.None;
+
+    /// <summary>Whether the ring asks Claude (see Ask): what Claude writes is framed whole, not line by line.</summary>
+    public bool IsAsking => mode == Mode.Asking;
+
+    /// <summary>
+    /// Where a wish typed at the ring goes as Enter sends it: the talk with Claude it begins (see IAsked), or null where Claude cannot be
+    /// reached, Unreachable then saying why on the line beside the ring.
+    /// </summary>
+    public Func<string, IAsked?>? Ask { get; set; }
+
+    public Func<string>? Unreachable { get; set; }
+
+    /// <summary>Where the ring goes as Claude begins to write, given where it stands, so that what is written shows: beside the pages; null to stay.</summary>
+    public Func<Point, Point?>? Aside { get; set; }
+
+    /// <summary>The wheel turned over the ring while it talks with Claude: the sheets scroll under it.</summary>
+    public Action<PointerWheelEventArgs>? Wheel { get; set; }
 
     /// <summary>Takes the presses on the sheets the ring answers: the right button (Ctrl and the button on a Mac), and the left one on the selection.</summary>
     public void Attach(Control sheets) => sheets.AddHandler(PointerPressedEvent, Pressed, RoutingStrategies.Tunnel);
@@ -283,7 +361,7 @@ public sealed class GestureRing : Control
         levels.Clear();
         levels.Add(Measure(first, point, null, onText: true));
         since = opened = Motion.Now;
-        IsHitTestVisible = mode == Mode.Clicking;
+        IsHitTestVisible = mode is Mode.Clicking or Mode.Asking;
         Aim(mode == Mode.Keys ? null : Pointed(at));
         frames.Start();
         InvalidateVisual();
@@ -329,6 +407,14 @@ public sealed class GestureRing : Control
     /// </summary>
     void Close(bool keep)
     {
+        // A talk with Claude settles as the ring closes, its changes kept or not as the ring's preview is.
+        if (asked is { } talk)
+        {
+            talk.Updated -= Talked;
+            asked = null;
+            talk.Settle(keep);
+        }
+        (typed, typedAt, unreached, glide, recalled, cardBox) = ("", 0, null, null, -1, null);
         EndPull(keep);
         if (!keep)
             Aim(null);
@@ -480,6 +566,11 @@ public sealed class GestureRing : Control
             case Mode.Moving:
                 Shift();
                 break;
+            case Mode.Asking when asked != null && Current is { } level:
+                // Over the split middle the half a click would do is lit.
+                backward = InMiddle(at);
+                keeping = at.X < level.Centre.X;
+                break;
         }
         if (mode != Mode.None)
         {
@@ -619,6 +710,12 @@ public sealed class GestureRing : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
+        if (mode == Mode.Asking && Current is { } asking)
+        {
+            e.Handled = true;
+            Asked(e.GetPosition(this), asking);
+            return;
+        }
         if (mode != Mode.Clicking || Current is not { } level)
             return;
         e.Handled = true;
@@ -653,6 +750,54 @@ public sealed class GestureRing : Control
         Close(keep: field != null);
         if (field is { } given)
             Do(level.Slots[given], null);
+    }
+
+    /// <summary>
+    /// A click while the ring asks Claude. Before a wish went, the ring is as it was: a field does what it does (one with a ring opens
+    /// it), elsewhere it closes. While it talks: its middle's left half keeps the changes, its right half takes them back, either closing
+    /// it; a click beside it keeps them and closes it once Claude is done; on the ring, the line or the card nothing.
+    /// </summary>
+    void Asked(Point point, Level level)
+    {
+        if (asked is not { } talk)
+        {
+            var field = !InMiddle(point) && Far(point, level.Centre) <= Outer + 4 ? Pointed(point) : null;
+            if (field is { } holding && level.Slots[holding].Under != null)
+            {
+                (typed, typedAt, mode) = ("", 0, Mode.Clicking);
+                Enter(level.Slots[holding], level.Centre);
+                return;
+            }
+            if (lineBox.Contains(point))
+                return;
+            Aim(field);
+            Close(keep: field != null);
+            if (field is { } given)
+                Do(level.Slots[given], null);
+            return;
+        }
+        if (InMiddle(point))
+        {
+            // With nothing to keep, the middle closes the ring.
+            var keep = point.X < level.Centre.X && (talk.Working || talk.Changed);
+            talk.Settle(keep);
+            Close(keep);
+            return;
+        }
+        if (Far(point, level.Centre) <= Outer + 4 || lineBox.Contains(point) || cardBox?.Contains(point) == true || talk.Working)
+            return;
+        talk.Settle(keep: true);
+        Close(keep: true);
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        if (mode == Mode.Asking && Wheel != null)
+        {
+            Wheel(e);
+            e.Handled = true;
+        }
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
@@ -737,10 +882,17 @@ public sealed class GestureRing : Control
     /// left again at once, nor while it moves one), and the selection under it stays; Escape closes any ring, or takes back a pull going
     /// (see Pull). Whether the ring took the key.
     /// </summary>
-    public bool KeyChanged(Key key, bool down)
+    public bool KeyChanged(Key key, bool down, KeyModifiers modifiers = KeyModifiers.None)
     {
         if (mode == Mode.None)
             return false;
+        // While the ring asks Claude, the keys are the line's.
+        if (mode == Mode.Asking)
+        {
+            if (down)
+                AskingKey(key, modifiers);
+            return true;
+        }
         if (key == Key.Escape)
         {
             // Escape while a field is pulled takes the pull back, the ring staying; else it closes the ring.
@@ -795,6 +947,178 @@ public sealed class GestureRing : Control
         }
         InvalidateVisual();
         return true;
+    }
+
+    /// <summary>
+    /// Text typed while a ring shows (to be clicked, held or up for the keys): it goes to the line beside the ring, to ask Claude (see Ask),
+    /// the fields' previews taken back; a ring held stays when it is let go. Spaces alone begin nothing. Whether the ring took the text.
+    /// </summary>
+    public bool Typed(string text)
+    {
+        if (mode is not (Mode.Clicking or Mode.Held or Mode.Keys or Mode.Asking) || Current == null)
+            return false;
+        if (asked?.Working == true)
+            return true;
+        var printable = new string([.. text.Where(c => !char.IsControl(c))]);
+        if (typed.Length == 0)
+            printable = printable.TrimStart();
+        if (printable.Length == 0)
+            return true;
+        if (mode != Mode.Asking)
+        {
+            if (printable.Trim().Length == 0)
+                return true;
+            Aim(null);
+            arrows.Clear();
+            (mode, IsHitTestVisible, backward) = (Mode.Asking, true, false);
+            ClearValue(CursorProperty);
+        }
+        typed = typed.Insert(typedAt, printable);
+        typedAt += printable.Length;
+        unreached = null;
+        InvalidateVisual();
+        return true;
+    }
+
+    /// <summary>The ring at a point, its line ready to ask Claude (Ctrl+Space): the ring of what the selection, or the cursor, has.</summary>
+    public void OpenAsking(Point point)
+    {
+        if (mode != Mode.None)
+            return;
+        Begin(Mode.Asking, point, null, RestTime);
+        rest.Stop();
+        Open(Mode.Asking, point);
+    }
+
+    /// <summary>
+    /// A key for the line: Enter sends what is typed (with nothing typed, it keeps Claude's changes); Escape clears it, or closes the ring,
+    /// Claude's changes taken back; Backspace and Delete (Ctrl: a word), the arrows, Home and End edit it; ↑ and ↓ bring back wishes sent
+    /// before; Ctrl+V pastes text.
+    /// </summary>
+    void AskingKey(Key key, KeyModifiers modifiers)
+    {
+        var working = asked?.Working == true;
+        var control = (modifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
+        switch (key)
+        {
+            case Key.Escape when typed.Length > 0:
+                (typed, typedAt) = ("", 0);
+                break;
+            case Key.Escape:
+                asked?.Settle(false);
+                Close(keep: false);
+                return;
+            case Key.Enter when working:
+                break;
+            case Key.Enter when typed.Trim().Length == 0:
+                if (asked is { } talk)
+                {
+                    talk.Settle(true);
+                    Close(keep: true);
+                }
+                return;
+            case Key.Enter:
+                Send();
+                break;
+            case Key.Back when typedAt > 0:
+            {
+                var from = control ? WordStart(typed, typedAt) : typedAt - 1;
+                typed = typed.Remove(from, typedAt - from);
+                typedAt = from;
+                break;
+            }
+            case Key.Delete when typedAt < typed.Length:
+                typed = typed.Remove(typedAt, 1);
+                break;
+            case Key.Left:
+                typedAt = control ? WordStart(typed, typedAt) : Math.Max(0, typedAt - 1);
+                break;
+            case Key.Right:
+                typedAt = Math.Min(typed.Length, typedAt + 1);
+                break;
+            case Key.Home:
+                typedAt = 0;
+                break;
+            case Key.End:
+                typedAt = typed.Length;
+                break;
+            case Key.Up when Wishes.Count > 0 && !working:
+                recalled = recalled < 0 ? Wishes.Count - 1 : Math.Max(0, recalled - 1);
+                (typed, typedAt) = (Wishes[recalled], Wishes[recalled].Length);
+                break;
+            case Key.Down when recalled >= 0:
+                recalled++;
+                typed = recalled < Wishes.Count ? Wishes[recalled] : "";
+                if (recalled >= Wishes.Count)
+                    recalled = -1;
+                typedAt = typed.Length;
+                break;
+            case Key.V when control && !working:
+                _ = Paste();
+                break;
+        }
+        InvalidateVisual();
+    }
+
+    /// <summary>Where the word before a place in a text begins (Ctrl+Backspace, Ctrl+Left).</summary>
+    static int WordStart(string text, int at)
+    {
+        var k = at;
+        while (k > 0 && char.IsWhiteSpace(text[k - 1]))
+            k--;
+        while (k > 0 && !char.IsWhiteSpace(text[k - 1]))
+            k--;
+        return k;
+    }
+
+    /// <summary>The clipboard's text in the line at its cursor, on one line.</summary>
+    async Task Paste()
+    {
+        if (TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard)
+            return;
+        var text = await clipboard.TryGetTextAsync();
+        if (string.IsNullOrEmpty(text) || mode != Mode.Asking)
+            return;
+        var line = string.Join(" ", text.Split('\n', '\r').Select(l => l.Trim()).Where(l => l.Length > 0));
+        typed = typed.Insert(typedAt, line);
+        typedAt += line.Length;
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// The wish typed sent: the first begins the talk (see Ask), the ring going aside so that what Claude writes shows (see Aside); later
+    /// ones go on with it. Where Claude cannot be reached the line says why, the wish staying typed.
+    /// </summary>
+    void Send()
+    {
+        var wish = typed.Trim();
+        if (asked == null)
+        {
+            if (Ask?.Invoke(wish) is not { } talk)
+            {
+                unreached = Unreachable?.Invoke() ?? "";
+                InvalidateVisual();
+                return;
+            }
+            asked = talk;
+            talk.Updated += Talked;
+            if (Current is { } level && Aside?.Invoke(level.Centre) is { } aside && Far(InView(aside), level.Centre) > 1)
+                glide = (level.Centre, InView(aside), Motion.Now);
+        }
+        else
+            asked.Send(wish);
+        talking = Motion.Now;
+        if (Wishes.Count == 0 || Wishes[^1] != wish)
+            Wishes.Add(wish);
+        (typed, typedAt, recalled, unreached) = ("", 0, -1, null);
+        Talked();
+    }
+
+    /// <summary>The talk changed: the ring is drawn again, and moves while Claude works.</summary>
+    void Talked()
+    {
+        frames.Start();
+        InvalidateVisual();
     }
 
     /// <summary>A name in the language of the interface, by its key among the texts (the key where there is none).</summary>
@@ -899,7 +1223,11 @@ public sealed class GestureRing : Control
             DrawRing(context, look, left);
         }
         if (Showing() is { } shown)
+        {
             DrawRing(context, shown, Motion.Coming(since));
+            if (mode == Mode.Asking)
+                DrawAsking(context, shown.Level, Motion.Coming(since));
+        }
         if (confirmed is var (name, point2, given))
         {
             var fading = Math.Clamp(Motion.Since(given) / Confirmation, 0, 1);
@@ -916,6 +1244,14 @@ public sealed class GestureRing : Control
     {
         if (Current is not { } level)
             return null;
+        // Asking Claude, the line beside the ring says what is going on (see DrawAsking).
+        if (mode == Mode.Asking)
+            return new Look(level, null, asked != null && backward, keeping, false, null)
+            {
+                Talking = asked != null,
+                Working = asked?.Working == true,
+                Settling = asked is { } talk && (talk.Working || talk.Changed),
+            };
         var status = chosen == null && !backward && level.Parent?.Status?.Invoke() is { Length: > 0 } line ? line : null;
         var label = pull?.Reading is { } reading ? reading
             : chosen is { } named ? Named(level.Slots[named])
@@ -984,7 +1320,20 @@ public sealed class GestureRing : Control
             context.DrawEllipse(null, hairline, c, Inner, Inner);
             if (look.Chosen is { } pointed)
                 context.DrawGeometry(accent, null, Sector(c, Inner + Gap, Outer - Gap, Angle(pointed, count, level.Split), half, Gap, Round));
-            for (var k = 0; k < count; k++)
+            // Talking with Claude the band is empty, an arc going round it while Claude is at work.
+            if (look.Working)
+            {
+                var turn = Motion.Since(talking) / 1000 * 1.6 * Math.PI;
+                var arc = new StreamGeometry();
+                using (var draw = arc.Open())
+                {
+                    draw.BeginFigure(c + Way(turn) * Middle, false);
+                    draw.ArcTo(c + Way(turn + 1.1) * Middle, new Size(Middle, Middle), 0, false, SweepDirection.Clockwise);
+                    draw.EndFigure(false);
+                }
+                context.DrawGeometry(null, new Pen(accent, 3, lineCap: PenLineCap.Round), arc);
+            }
+            for (var k = 0; k < (look.Talking ? 0 : count); k++)
             {
                 var slot = level.Slots[k];
                 var way = Way(Angle(k, count, level.Split));
@@ -1009,7 +1358,7 @@ public sealed class GestureRing : Control
             // A ring of a second level: in its middle the way back, the sign of the field that holds it; on a button of glass, so that it
             // reads over the text, and lit as a field where the pointer is in it. While a field is pointed at it is away: the text there
             // reads as that field would make it. A split middle stays then too.
-            if (level.Settles)
+            if (level.Settles || look.Settling)
             {
                 // A split middle: keeping what the ring shows on the left (a tick), taking it away on the right (a cross), either closing
                 // the ring; each half on a button of glass and lit as a field where the pointer is in it; there while a field is pointed
@@ -1054,6 +1403,91 @@ public sealed class GestureRing : Control
             using (context.PushOpacity(presence))
                 Tip(context, label, new Point(beside.X - w / 2, beside.Y - h / 2), Brush("TipSurface"));
         }
+    }
+
+    /// <summary>
+    /// The line beside the ring while it asks Claude, under it (over it where the view ends below): what is typed, its cursor in it; else
+    /// why Claude cannot be reached, what Claude is doing (its dots going), Claude's words where they are short, or what to type (faint).
+    /// Claude's longer words stand on a card under the line.
+    /// </summary>
+    void DrawAsking(DrawingContext context, Level level, double presence)
+    {
+        var c = level.Centre;
+        var working = asked?.Working == true;
+        var answer = asked is { Working: false } done && typed.Length == 0 && unreached == null ? done.Answer : null;
+        var (shown, faint) = unreached != null ? (unreached, false)
+            : typed.Length > 0 ? (typed, false)
+            : asked == null ? (NameOf("AskPlaceholder"), true)
+            : working ? (asked.Line + new string('.', 1 + (int)(Motion.Since(talking) / 450) % 3), false)
+            : answer is { Length: > 0 and <= ShortAnswer } said && !said.Contains('\n') ? (Emphasis(said).Text, false)
+            : (NameOf(asked.Changed ? "AskFollowUp" : "AskFurther"), true);
+        var ink = faint ? Brush("InkFaint") : Brush("TipInk");
+        // A long line shows its end, where the cursor is.
+        var cut = 0;
+        var label = Layout(shown, ink);
+        while (label.WidthIncludingTrailingWhitespace > LineWidest - 28 && cut < shown.Length - 1)
+        {
+            cut += Math.Max(1, (shown.Length - cut) / 12);
+            label = Layout("…" + shown[cut..], ink);
+        }
+        var (w, h) = (Math.Clamp(label.WidthIncludingTrailingWhitespace + 28, LineNarrowest, LineWidest), label.Height + 14);
+        TextLayout? card = null;
+        if (answer is { Length: > 0 } words && (words.Length > ShortAnswer || words.Contains('\n')))
+        {
+            // Claude's **words** bold, the rest as it is.
+            var (plain, bold) = Emphasis(words);
+            var strong = new Typeface(Inter, FontStyle.Normal, FontWeight.Bold);
+            card = new TextLayout(plain, new Typeface(Inter), 12.5, Brush("TipInk"), TextAlignment.Left, TextWrapping.Wrap, TextTrimming.WordEllipsis,
+                maxWidth: CardWidth - 28, maxLines: 18,
+                textStyleOverrides: [.. bold.Select(b => new ValueSpan<TextRunProperties>(b.Start, b.Length, new GenericTextRunProperties(strong, 12.5, foregroundBrush: Brush("TipInk"))))]);
+        }
+        var cardHeight = card != null ? card.Height + 20 + 8 : 0;
+        var below = c.Y + Outer + 10 + h + cardHeight <= Bounds.Height - 4;
+        var x = Math.Clamp(c.X - w / 2, 8, Math.Max(8, Bounds.Width - w - 8));
+        lineBox = new Rect(x, below ? c.Y + Outer + 10 : c.Y - Outer - 10 - h, w, h);
+        var shadow = new BoxShadows(new BoxShadow { OffsetY = 3, Blur = 10, Color = Color.FromArgb(0x26, 0, 0, 0) });
+        using (context.PushOpacity(presence))
+        {
+            var typing = unreached == null && (typed.Length > 0 || asked == null);
+            context.DrawRectangle(Brush("TipSurface"), typing ? new Pen(Brush("Accent"), 1) : null, new RoundedRect(lineBox, h / 2), shadow);
+            label.Draw(context, new Point(lineBox.X + 14, lineBox.Y + 7));
+            if (typing)
+            {
+                var before = Layout((cut > 0 ? "…" : "") + typed[Math.Min(cut, typedAt)..typedAt], ink).WidthIncludingTrailingWhitespace;
+                var caretX = Math.Round(lineBox.X + 14 + (typed.Length == 0 ? 0 : before)) + 0.5;
+                context.DrawLine(new Pen(Brush("Accent"), 1.2), new Point(caretX, lineBox.Y + 6), new Point(caretX, lineBox.Bottom - 6));
+            }
+            if (card != null)
+            {
+                var cx = Math.Clamp(c.X - CardWidth / 2, 8, Math.Max(8, Bounds.Width - CardWidth - 8));
+                var box = new Rect(cx, below ? lineBox.Bottom + 8 : lineBox.Top - 8 - (card.Height + 20), CardWidth, card.Height + 20);
+                cardBox = box;
+                context.DrawRectangle(Brush("TipSurface"), null, new RoundedRect(box, 12), shadow);
+                card.Draw(context, new Point(box.X + 14, box.Y + 10));
+            }
+            else
+                cardBox = null;
+        }
+    }
+
+    /// <summary>A text of Claude's without its marks of emphasis (**so**), and where the words so marked stand in it, to be set bold.</summary>
+    static (string Text, List<(int Start, int Length)> Bold) Emphasis(string text)
+    {
+        var plain = new System.Text.StringBuilder();
+        var bold = new List<(int, int)>();
+        var k = 0;
+        while (k < text.Length)
+        {
+            if (text.AsSpan(k).StartsWith("**") && text.IndexOf("**", k + 2, StringComparison.Ordinal) is var end && end > k + 2)
+            {
+                bold.Add((plain.Length, end - k - 2));
+                plain.Append(text, k + 2, end - k - 2);
+                k = end + 2;
+                continue;
+            }
+            plain.Append(text[k++]);
+        }
+        return (plain.ToString(), bold);
     }
 
     /// <summary>

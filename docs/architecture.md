@@ -433,6 +433,29 @@ pictures, Escape takes it back), and one in the text goes between its paragraphs
 has the places in the text (middle up, right down right, across down, left down left) and floating beside the text (right up
 right, left up left).
 
+Claude works at the ring (`Asking/`): text typed while a ring shows goes to a line under it instead of a field (Ctrl+Space opens
+the ring at the selection or the cursor, ready to type), and Enter sends it as a wish, with no mode to choose: where the ring was
+opened says what the wish is about (`Focus`: words, paragraphs, the cursor, an empty paragraph, a picture, a table). The document
+goes to Claude in a notation of its own (`Reading`, `Notation`): each paragraph a line after its id, Markdown for the levels and
+the meanings ({Term|…} for those Markdown lacks), GitHub's tables, fenced blocks of a vector picture (```svg) and of WordArt
+(```wordart), "::: columns 2" to ":::", footnotes, and WordprocessingML for anything else. Claude writes in the same notation
+with its tools (`Prompt`): write (at the focus, after or before a paragraph, in place of paragraphs), look (a page as it is laid
+out, as a picture) and describe_picture. A write streams into the document as Claude writes it (`Writing`): the place is made
+once it is read, blocks go in as they are finished (a block counts as finished only once what follows shows it ended, so that a
+block given once stays as it was), the one being written shows as plain text after them, taken back as it grows; `Markup` makes
+the blocks WordprocessingML of the document's own kind: levels and meanings as the tone's styles, a table as Word's Insert Table
+makes one, an SVG as Word keeps one (with a PNG drawn from it), WordArt as a text box with Word's text effects and warps, columns
+as sections that end on the page they begin. While Claude works (`Talk`), the ring goes beside the pages, its band empty but for
+an arc going round, the line saying what Claude does; what Claude writes is framed as a whole, the selection hidden. Its changes
+are a preview: the ring's middle keeps them as one step to undo (or Enter) or takes them back (or Escape), a further wish typed
+goes on with the same talk, a question gets its answer on a card under the line. Claude is reached through `Asking.Claude.Link`;
+the desktop sets it with Anthropic's SDK where `ANTHROPIC_API_KEY` is set (`Desktop/ClaudeLink`: Claude Opus 5.5, its thinking
+adaptive, its answers and the inputs of writes streamed, the instructions and the talk cached, a declined request taken on by the
+model Anthropic recommends); without a key the line says that one is needed. The SDK serializes by reflection and so does not
+work ahead-of-time compiled yet (System.Text.Json's reflection is off there, and allowed, its converters for the SDK's generic
+types have no native code); the link is begun with the first wish, so that such a failure shows on the line instead of ending
+the editor.
+
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 
 - **Themes** are dictionaries of colours (`Themes/Light.axaml`) under a theme variant in `App.axaml`; `Themes/Controls.axaml`

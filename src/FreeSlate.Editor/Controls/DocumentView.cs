@@ -1144,6 +1144,10 @@ public sealed partial class DocumentView : Control
     /// <summary>The cursor's bar in the view's coordinates, an empty rectangle where it shows nowhere.</summary>
     public Rect CaretBounds => CaretRect();
 
+    /// <summary>Where the widest page stands across the sheets, in their coordinates (all of them stand centred); null without pages.</summary>
+    public (double Left, double Right)? PagesAcross =>
+        rows.Count == 0 ? null : rows.MaxBy(r => r.Size.Width) is { } widest ? (Left(widest), Left(widest) + widest.Size.Width * factor) : null;
+
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);

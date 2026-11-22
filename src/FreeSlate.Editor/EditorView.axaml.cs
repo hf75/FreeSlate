@@ -551,7 +551,21 @@ public sealed partial class EditorView : Panel
         {
             // A line's stretch under the pointer alone in its own ring, else the whole line.
             Sheets.TargetPiece = ring.Holder?.NameKey == "LinePiece";
-            return Sheets.TranslatePoint(default, ring) is { } shift ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList() : [];
+            var areas = Sheets.TranslatePoint(default, ring) is { } shift ? Sheets.SelectionAreas().Select(area => area.Translate((Vector)shift)).ToList() : [];
+            // What Claude writes framed as a whole: the lines that follow one another on a page as one box.
+            if (ring.IsAsking && areas.Count > 1)
+            {
+                var whole = new List<Avalonia.Rect> { areas[0] };
+                foreach (var area in areas.Skip(1))
+                {
+                    if (area.Top - whole[^1].Bottom < 32 && area.Bottom > whole[^1].Top)
+                        whole[^1] = whole[^1].Union(area);
+                    else
+                        whole.Add(area);
+                }
+                areas = whole;
+            }
+            return areas;
         };
         ring.Turned = () => Sheets.SelectionTurned() is var (frame, turn) && Sheets.TranslatePoint(default, ring) is { } moved
             ? (frame.Translate((Vector)moved), turn)
@@ -583,11 +597,66 @@ public sealed partial class EditorView : Panel
             else if (ring.KeyChanged(e.Key, down: false))
                 e.Handled = true;
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        // While Space waits for the ring or brings it, it types nothing; let go early, it types its space then (see above).
+        // While Space waits for the ring or brings it, it types nothing; let go early, it types its space then (see above). Text typed while
+        // the ring shows goes to its line, to ask Claude.
         AddHandler(TextInputEvent, (_, e) =>
         {
-            if (ring.IsBusy && e.Text == " ")
+            if (ring.IsBusy && (e.Text is { } text && ring.Typed(text) || e.Text == " "))
                 e.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        Converse(ring, () => inserting = !editing.Selecting && !Sheets.DrawingSelected);
+    }
+
+    /// <summary>
+    /// Claude at the ring: a wish typed there begins a talk about the place the ring was opened at (see Asking.Talk), the selection hidden
+    /// while it goes, Claude's writing framed by the ring; the ring goes beside the pages while Claude writes, and the wheel scrolls the
+    /// sheets under it. Ctrl+Space opens the ring at the selection or the cursor, ready to type (<paramref name="atCursor"/> readies the
+    /// ring for the place first).
+    /// </summary>
+    void Converse(Controls.GestureRing ring, Action atCursor)
+    {
+        string Text(string key) => this.TryFindResource(key, out var text) && text is string found ? found : key;
+        ring.Ask = wish =>
+        {
+            if (Asking.Claude.Link is not { } link)
+                return null;
+            var talk = new Asking.Talk(editing, Sheets, link, Asking.Focus.Of(editing), Text, UiLanguages.Current?.Name ?? "English");
+            Sheets.SelectionHidden = true;
+            talk.Settled += () =>
+            {
+                Sheets.SelectionHidden = false;
+                Sheets.Focus();
+            };
+            talk.Send(wish);
+            return talk;
+        };
+        ring.Unreachable = () => Text("AskNoKey");
+        ring.Aside = centre =>
+        {
+            if (Sheets.PagesAcross is not var (left, right) || Sheets.TranslatePoint(new Avalonia.Point(left, 0), ring) is not { } from
+                || Sheets.TranslatePoint(new Avalonia.Point(right, 0), ring) is not { } to)
+                return null;
+            // Beside the pages on the right, as near them as the ring's width lets it stand; where there is too little room, at the view's
+            // edge, over the page's margin rather than its text; on the left where only there is room.
+            const double Radius = 90;
+            var width = ring.Bounds.Width;
+            if (width - to.X >= 40 || from.X < 40)
+                return new Avalonia.Point(Math.Min(to.X + Radius + 48, width - Radius - 8), centre.Y);
+            return new Avalonia.Point(Math.Max(from.X - Radius - 48, Radius + 8), centre.Y);
+        };
+        ring.Wheel = e =>
+        {
+            if (Sheets.FindAncestorOfType<ScrollViewer>() is { } scroller)
+                scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0, scroller.Offset.Y - e.Delta.Y * 60));
+        };
+        AddHandler(KeyDownEvent, (_, e) =>
+        {
+            if (e.Key != Key.Space || (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) == 0 || ring.IsBusy || !Sheets.IsFocused)
+                return;
+            e.Handled = true;
+            var at = editing.Selecting && Sheets.SelectionAreas() is { Count: > 0 } areas ? areas[^1].Center : Sheets.CaretBounds.Center;
+            atCursor();
+            ring.OpenAsking(Sheets.TranslatePoint(at, ring) ?? new Avalonia.Point(Bounds.Width / 2, Bounds.Height / 2));
         }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
     }
 
@@ -718,7 +787,7 @@ public sealed partial class EditorView : Panel
     void Structure(object? sender, KeyEventArgs e)
     {
         // The ring's keys first: the arrows and Escape while it is up, Space held on a selection.
-        if (Ring.KeyChanged(e.Key, down: true))
+        if (Ring.KeyChanged(e.Key, down: true, e.KeyModifiers))
         {
             e.Handled = true;
             return;

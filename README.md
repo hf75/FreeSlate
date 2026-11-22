@@ -337,7 +337,11 @@ empty sheet to type on at once, and nothing is saved yet. It has its own window 
 behaviour, Windows' snap layouts for instance), one light theme, German and English. The window's buttons fade away while the pointer is elsewhere; one of them, or F11, goes to
 full screen, where the top edge of the screen brings the buttons back and F11 or Escape leave. `--language en` overrides
 the language for one run; otherwise it follows the system until the user chooses. Its themes and languages are resource dictionaries (`Themes/`, `Localization/`), a new one is a copy
-with other values. Published, the editor is ahead-of-time compiled: `dotnet publish src/FreeSlate.Editor.Desktop -c
+with other values. With an Anthropic API key in `ANTHROPIC_API_KEY`, Claude works at the gesture ring: type a wish while the
+ring shows (or press Ctrl+Space), and Claude writes into the document where the ring was opened, live, with everything the
+editor has (WordArt, columns, tables, vector graphics, footnotes), or answers on a card; the ring's middle keeps or takes back
+what it wrote. So far this works with `dotnet run`: Anthropic's SDK serializes by reflection, which the ahead-of-time compiled
+build does not have. Published, the editor is ahead-of-time compiled: `dotnet publish src/FreeSlate.Editor.Desktop -c
 Release -r win-x64` gives a native program, `dotnet publish src/FreeSlate.Editor.Browser -c Release` a page (it needs
 the workload `wasm-tools`; the solution leaves the browser's project out of its build for that reason). So far it has
 run on Windows and in Chromium.
