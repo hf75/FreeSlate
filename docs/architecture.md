@@ -271,6 +271,12 @@ over each grid column at its top and bottom, as the layout resolves the cells' a
   versions refer to going with them; so a version shares the document's ids and no version ever reaches what renumbers
   them. Putting a version in place moves text within the main part, one change to undo. A copy without plans
   (`SaveWithoutPlans`) leaves out the versions and what only they refer to, for a file that goes to others.
+- Saving (`WordDocument.Save`) leaves out what editing left unnamed (`Unnamed`), as Word's saving leaves out a deleted
+  picture: relationships of the kinds a part names by their ids (pictures, charts, diagrams, embedded objects, links,
+  headers and footers, media) that the main part, or a part editing changed, no longer names, where it named them when
+  the document was opened or they came since, and the parts only they reached, with their relationships and content
+  types. What a file left unnamed already stays as it was (the 5603 documents of the corpus save with every part they
+  had), and the package keeps everything in memory, which undoing brings back.
 - `PresentationDocument` makes its changes in the XML of the slides (`Pptx/SlideEdits` for text, `Pptx/SlideShapes` for
   shapes, `Pptx/SlideList` for the list of slides and the parts around it), reads the slide again and draws it anew;
   text that shrinks to fit its shape, and shapes that grow to their text, are fitted anew as PowerPoint fits them.

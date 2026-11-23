@@ -1390,11 +1390,64 @@ public sealed partial class WordDocument : IEditableDocument
         return scenes![page];
     }
 
-    /// <summary>Writes the document as DOCX (see OpcPackage.Save).</summary>
+    /// <summary>Writes the document as DOCX (see OpcPackage.Save), without what editing left unnamed (see Unnamed).</summary>
     public void Save(Stream output)
     {
-        package.Replace(context.MainPart, Spliced(whole, islands));
-        package.Save(output);
+        var main = Spliced(whole, islands);
+        package.Replace(context.MainPart, main);
+        var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
+        Unnamed(new PartText(main).Text, changes);
+        package.Save(output, changes);
+    }
+
+    /// <summary>
+    /// What editing left unnamed taken out of a save, among the changes (see Unrelated): of the relationships a part names by
+    /// their ids (see Sweepable), those the main part, or a part editing gave new bytes (notes, comments, headers, footers),
+    /// no longer names, where it named them when the document was opened or they came since; with them the parts only they
+    /// reached, a deleted picture's, chart's or diagram's, as Word's saving leaves them out. What the file left unnamed
+    /// already stays as it was; the package itself keeps everything, which undoing brings back.
+    /// </summary>
+    void Unnamed(string main, Dictionary<string, byte[]?> changes)
+    {
+        var parts = new List<string> { context.MainPart };
+        foreach (var name in partBytes.Keys)
+        {
+            var part = name.EndsWith(".rels", StringComparison.OrdinalIgnoreCase) ? OpcPackage.SourcePart(name) : name;
+            if (part != "/" && !string.Equals(part, OpcPackage.ContentTypesPart, StringComparison.OrdinalIgnoreCase) && package.Exists(part)
+                && !parts.Contains(part, StringComparer.OrdinalIgnoreCase))
+                parts.Add(part);
+        }
+        var taken = new List<(string Source, IReadOnlyCollection<string> Ids)>();
+        foreach (var part in parts)
+        {
+            var now = package.Relationships(part);
+            if (!now.Any(Sweepable))
+                continue;
+            var named = Named(part == context.MainPart ? main : new PartText(package.ReadBytes(part)).Text, now, n => package.Exists(n) ? package.ReadBytes(n) : null);
+            var opened = package.OriginalRelationships(part);
+            if (!namedWhenOpened.TryGetValue(part, out var namedThen))
+                namedWhenOpened[part] = namedThen = package.Original(part) is { } bytes ? Named(new PartText(bytes).Text, opened, package.Original) : [];
+            taken.Add((part, [.. now.Where(r => Sweepable(r) && !named.Contains(r.Id) && (namedThen.Contains(r.Id) || opened.All(o => o.Id != r.Id))).Select(r => r.Id)]));
+        }
+        Unrelated(taken, changes);
+    }
+
+    /// <summary>What the parts named when the document was opened (see Unnamed), by part, as they are asked for.</summary>
+    readonly Dictionary<string, HashSet<string>> namedWhenOpened = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The values a part's XML gives its attributes, the ids of the relationships it names among them; with those of the data of
+    /// the diagrams it names, which name a diagram's drawing by a relationship of the part.
+    /// </summary>
+    static HashSet<string> Named(string xml, IReadOnlyList<Relationship> relationships, Func<string, byte[]?> read)
+    {
+        var values = Referring.In(xml).Values;
+        foreach (var data in relationships.Where(r => r.Is("diagramData") && !r.External && values.Contains(r.Id)).ToList())
+        {
+            if (read(data.Target) is { } bytes)
+                values.UnionWith(Referring.In(new PartText(bytes).Text).Values);
+        }
+        return values;
     }
 
     /// <summary>Saves the document as a DOCX file, over the one it was opened from too.</summary>

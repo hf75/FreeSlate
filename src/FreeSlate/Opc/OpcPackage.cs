@@ -301,29 +301,50 @@ public sealed class OpcPackage : IDisposable
         if (relationships.TryGetValue(partName, out var cached))
             return cached;
 
+        var relsName = RelationshipsPart(partName);
+        var list = Exists(relsName) ? Parsed(partName, ReadXml(relsName)) : [];
+        relationships[partName] = list;
+        return list;
+    }
+
+    /// <summary>Relationships of a part as the package had them when it was opened (see Original); none for a part it did not have.</summary>
+    public IReadOnlyList<Relationship> OriginalRelationships(string partName)
+    {
+        if (Original(RelationshipsPart(partName)) is not { } bytes)
+            return [];
+        using var stream = new MemoryStream(bytes, writable: false);
+        return Parsed(partName, Strict.Transition(XDocument.Load(stream)));
+    }
+
+    /// <summary>The relationships a part's relationships part lists, their targets resolved against the part's folder.</summary>
+    static List<Relationship> Parsed(string partName, XDocument rels)
+    {
         var list = new List<Relationship>();
         var directory = partName == "/" ? "/" : partName[..(partName.LastIndexOf('/') + 1)];
-        var relsName = RelationshipsPart(partName);
-        if (Exists(relsName))
+        foreach (var r in rels.Root!.Elements(XName.Get("Relationship", RelationshipsNs)))
         {
-            foreach (var r in ReadXml(relsName).Root!.Elements(XName.Get("Relationship", RelationshipsNs)))
-            {
-                var external = string.Equals((string?)r.Attribute("TargetMode"), "External", StringComparison.OrdinalIgnoreCase);
-                var target = (string?)r.Attribute("Target") ?? "";
-                list.Add(new Relationship(
-                    (string?)r.Attribute("Id") ?? "",
-                    (string?)r.Attribute("Type") ?? "",
-                    external ? target : Resolve(directory, target),
-                    external));
-            }
+            var external = string.Equals((string?)r.Attribute("TargetMode"), "External", StringComparison.OrdinalIgnoreCase);
+            var target = (string?)r.Attribute("Target") ?? "";
+            list.Add(new Relationship(
+                (string?)r.Attribute("Id") ?? "",
+                (string?)r.Attribute("Type") ?? "",
+                external ? target : Resolve(directory, target),
+                external));
         }
-        relationships[partName] = list;
         return list;
     }
 
     /// <summary>The part that holds a part's relationships ("/word/_rels/document.xml.rels"); "/" for the package's.</summary>
     public static string RelationshipsPart(string partName) =>
         partName == "/" ? "/_rels/.rels" : $"{partName[..(partName.LastIndexOf('/') + 1)]}_rels/{partName[(partName.LastIndexOf('/') + 1)..]}.rels";
+
+    /// <summary>The part whose relationships a relationships part holds (see RelationshipsPart): "/" for the package's.</summary>
+    public static string SourcePart(string relationshipsPart)
+    {
+        var at = relationshipsPart.LastIndexOf("/_rels/", StringComparison.OrdinalIgnoreCase);
+        var name = relationshipsPart[(at + 7)..^5];
+        return at == 0 && name.Length == 0 ? "/" : relationshipsPart[..(at + 1)] + name;
+    }
 
     public Relationship? Relationship(string partName, string id) =>
         Relationships(partName).FirstOrDefault(r => r.Id == id);

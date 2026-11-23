@@ -761,12 +761,19 @@ public sealed partial class WordDocument
     /// Relationships of a part taken away, among the changes: and the parts they name where no other relationship does, with
     /// what those name so in their turn, out of the content types too.
     /// </summary>
-    void Unrelated(string source, IReadOnlyCollection<string> ids, Dictionary<string, byte[]?> changes)
+    void Unrelated(string source, IReadOnlyCollection<string> ids, Dictionary<string, byte[]?> changes) => Unrelated([(source, ids)], changes);
+
+    /// <summary>
+    /// Relationships of several parts taken away at once (see Unrelated): a part that relationships of two of them name goes
+    /// too; a part that went itself keeps its relationships part out.
+    /// </summary>
+    void Unrelated(IReadOnlyList<(string Source, IReadOnlyCollection<string> Ids)> taken, Dictionary<string, byte[]?> changes)
     {
-        if (ids.Count == 0)
+        taken = [.. taken.Where(t => t.Ids.Count > 0)];
+        if (taken.Count == 0)
             return;
-        var gone = new HashSet<(string Source, string Id)>();
-        var owners = package.PartNames.Where(n => n.EndsWith(".rels", StringComparison.OrdinalIgnoreCase)).Select(Owner).ToList();
+        var gone = new HashSet<(string Source, string Id)>(taken.SelectMany(t => t.Ids.Select(id => (t.Source, id))));
+        var owners = package.PartNames.Where(n => n.EndsWith(".rels", StringComparison.OrdinalIgnoreCase)).Select(OpcPackage.SourcePart).ToList();
         void Take(string from, IEnumerable<string> names)
         {
             var targets = new List<string>();
@@ -787,12 +794,18 @@ public sealed partial class WordDocument
                     changes[OpcPackage.RelationshipsPart(target)] = null;
             }
         }
-        Take(source, ids);
-        var relsPart = OpcPackage.RelationshipsPart(source);
-        var rels = Xml(Current(relsPart, changes) ?? throw new InvalidOperationException("The part has no relationships."));
-        foreach (var relationship in rels.Root!.Elements(Relationships + "Relationship").Where(r => (string?)r.Attribute("Id") is { } id && ids.Contains(id)).ToList())
-            relationship.Remove();
-        changes[relsPart] = Bytes(rels);
+        foreach (var (source, ids) in taken)
+            Take(source, ids);
+        foreach (var (source, ids) in taken)
+        {
+            if (changes.TryGetValue(source, out var went) && went == null)
+                continue;
+            var relsPart = OpcPackage.RelationshipsPart(source);
+            var rels = Xml(Current(relsPart, changes) ?? throw new InvalidOperationException("The part has no relationships."));
+            foreach (var relationship in rels.Root!.Elements(Relationships + "Relationship").Where(r => (string?)r.Attribute("Id") is { } id && ids.Contains(id)).ToList())
+                relationship.Remove();
+            changes[relsPart] = Bytes(rels);
+        }
         var types = Xml(Current(OpcPackage.ContentTypesPart, changes) ?? throw new NotSupportedException("The package names no content types."));
         var listed = false;
         foreach (var entry in types.Root!.Elements(ContentTypes + "Override").Where(o => (string?)o.Attribute("PartName") is { } name && changes.TryGetValue(name, out var bytes) && bytes == null).ToList())
@@ -802,12 +815,5 @@ public sealed partial class WordDocument
         }
         if (listed)
             changes[OpcPackage.ContentTypesPart] = Bytes(types);
-
-        static string Owner(string rels)
-        {
-            var at = rels.LastIndexOf("/_rels/", StringComparison.OrdinalIgnoreCase);
-            var name = rels[(at + 7)..^5];
-            return at == 0 && name.Length == 0 ? "/" : rels[..(at + 1)] + name;
-        }
     }
 }
