@@ -256,6 +256,12 @@ static partial class TextEdits
     }
 
     /// <summary>
+    /// The links and fields of a paragraph that end in it where they begin (see Shown): the stretch of its text each shows and the element
+    /// that stands for it (the w:hyperlink, the w:fldSimple, a complex field's beginning).
+    /// </summary>
+    public static List<(int Start, int End, XElement Element)> Stretches(ParagraphBlock paragraph) => Shown(paragraph, inline => inline.Xml);
+
+    /// <summary>
     /// The stretch of a paragraph's text a link, a field or a note's reference or own mark shows that ends at a place
     /// (<paramref name="ending"/>) or begins at it, the widest; null where none does.
     /// </summary>
@@ -2341,7 +2347,7 @@ static partial class TextEdits
                     margins.SetAttributeValue(w + name, Twips(points));
             }
         }
-        if (format.Columns != null || format.ColumnSpace != null)
+        if (format.Columns != null || format.ColumnSpace != null || format.ColumnLine != null)
         {
             var columns = Set("cols");
             if (format.Columns is { } count)
@@ -2352,6 +2358,8 @@ static partial class TextEdits
             }
             if (format.ColumnSpace is { } space)
                 columns.SetAttributeValue(w + "space", Twips(space));
+            if (format.ColumnLine is { } line)
+                columns.SetAttributeValue(w + "sep", line ? "1" : null);
         }
         if (format.Start is { } start)
         {

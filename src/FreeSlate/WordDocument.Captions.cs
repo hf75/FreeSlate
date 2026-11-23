@@ -247,6 +247,54 @@ public sealed partial class WordDocument
             Format(paragraph, offset, new DrawingFormatting { Width = width, Height = fitted });
     }
 
+    /// <summary>
+    /// The text box at a place of a paragraph's text (a shape's, wps:txbx) as high as what it holds at its width between its insets (see
+    /// Paginator.TextHeight), a change where the height it is saved with is another, as Word fits a shape whose text fits it (a:spAutoFit)
+    /// as it lays it out; nothing where no text box stands there, or before the document is laid out.
+    /// </summary>
+    public void FitTextBox(int paragraph, int offset)
+    {
+        var p = Find(paragraph).Paragraph;
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (at == offset && length > 0)
+            {
+                var (box, text) = inline switch { DrawingInline d => (d.Drawing, d.Text), AnchorInline a => (a.Anchor, a.Text), _ => (null, null) };
+                if (box == null || text is not { Count: > 0 })
+                    return;
+                if (paginator == null || shown.Count == 0)
+                    Scenes();
+                if (paginator == null || shown.Count == 0)
+                    return;
+                var (width, height) = Drawings.Extent(box);
+                var shape = box.Element(A + "graphic")?.Element(A + "graphicData")?.Element(Drawings.Wps + "wsp");
+                var (l, t, r, b) = TextBoxLayout.Insets(shape?.Element(Drawings.Wps + "bodyPr"), shape, width, height, context.Theme);
+                var fitted = paginator.TextHeight(text, width - l - r, shown[0]) + t + b;
+                if (Math.Abs(fitted - height) >= 0.05)
+                    Format(paragraph, offset, new DrawingFormatting { Width = width, Height = fitted });
+                return;
+            }
+            at += length;
+        }
+    }
+
+    /// <summary>The paragraphs of the text box at a place of a paragraph's text (a shape's, wps:txbx), in reading order; none where no text box stands there.</summary>
+    public IReadOnlyList<int> TextBoxParagraphs(int paragraph, int offset)
+    {
+        var p = Find(paragraph).Paragraph;
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (at == offset && length > 0)
+                return (inline switch { DrawingInline d => d.Text, AnchorInline a => a.Text, _ => null }) is { } text ? text.SelectMany(Flat).Select(b => b.Id).ToList() : [];
+            at += length;
+        }
+        return [];
+    }
+
     /// <summary>The figures of the body as high as what they hold (see FitFigure), after a change of how their captions look: a change for each that is not.</summary>
     void FitFigures()
     {

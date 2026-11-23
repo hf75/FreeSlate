@@ -36,6 +36,27 @@ public sealed partial class WordDocument
     public byte[]? VectorOf(int paragraph, int offset) =>
         Embedded(paragraph, offset, blip => blip.Descendants().FirstOrDefault(e => e.Name.LocalName == "svgBlip"));
 
+    /// <summary>The bytes of the chart part the drawing at a place of a paragraph's text shows (its c:chart's r:id); null where it shows no chart.</summary>
+    public byte[]? ChartOf(int paragraph, int offset)
+    {
+        var (p, _) = Find(paragraph);
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (at == offset && length > 0)
+            {
+                var (own, part) = inline switch { DrawingInline d => (d.Drawing, d.Part), AnchorInline a => (a.Anchor, a.Part), _ => (null, null) };
+                var chart = own?.Descendants().FirstOrDefault(e => e.Name.LocalName == "chart" && e.Name.NamespaceName.EndsWith("/chart", StringComparison.Ordinal));
+                var id = (string?)chart?.Attributes().FirstOrDefault(a => a.Name.LocalName == "id");
+                return id != null && part != null && package.Relationship(part, id) is { External: false } related && package.Exists(related.Target)
+                    ? package.ReadBytes(related.Target) : null;
+            }
+            at += length;
+        }
+        return null;
+    }
+
     /// <summary>The bytes of the part an element of the first a:blip of the drawing at a place refers to by its r:embed; null where there is none.</summary>
     byte[]? Embedded(int paragraph, int offset, Func<XElement, XElement?> referring)
     {

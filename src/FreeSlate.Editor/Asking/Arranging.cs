@@ -222,6 +222,201 @@ static class Arranging
         return failed.Count > 0 ? (told + " Not done: " + string.Join("; ", failed) + ".", succeeded == 0) : (told, false);
     }
 
+    /// <summary>The paper sizes the page tool names, upright, in points.</summary>
+    public static readonly Dictionary<string, (double Width, double Height)> Papers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["A3"] = (841.9, 1190.6), ["A4"] = (595.3, 841.9), ["A5"] = (419.5, 595.3), ["Letter"] = (612, 792), ["Legal"] = (612, 1008),
+    };
+
+    /// <summary>
+    /// The page tool: the document's page setup as its input says, in every section set up as its first one is (sections turned across for
+    /// a table keep theirs): margins, paper, orientation, whether the first page has a header and footer of its own (a title page); and the
+    /// header and footer every page shows, in the notation's text ({page}, {pages}, {date} as fields, a tab between parts putting the next in
+    /// the middle and the last at the right, as Word's positional tabs do, whatever the margins). What is told Claude: the page as it is then.
+    /// </summary>
+    public static (string Text, bool Error) Page(EditSession editing, DocumentView sheets, Objects objects, string json)
+    {
+        if (editing.Document is not WordDocument word || word.Beginning is not { } first)
+            return ("This document has no pages to set up.", true);
+        Dictionary<string, string> input;
+        try
+        {
+            using var parsed = JsonDocument.Parse(json);
+            if (parsed.RootElement.ValueKind != JsonValueKind.Object)
+                return ("The input of page is a JSON object.", true);
+            input = parsed.RootElement.EnumerateObject().Where(p => p.Value.ValueKind == JsonValueKind.String)
+                .ToDictionary(p => p.Name, p => p.Value.GetString()!, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return ("The input of page is a JSON object.", true);
+        }
+        var failed = new List<string>();
+        var format = new SectionFormatting();
+        if (input.GetValueOrDefault("margins") is { } margins)
+        {
+            var lengths = margins.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries).Select(m => Markup.Length(m, 0)).ToList();
+            if (lengths.Count is 1 or 2 or 4 && lengths.All(l => l is > 0 and < 300))
+            {
+                var (top, right, bottom, left) = lengths.Count switch
+                {
+                    1 => (lengths[0], lengths[0], lengths[0], lengths[0]),
+                    2 => (lengths[0], lengths[1], lengths[0], lengths[1]),
+                    _ => (lengths[0], lengths[1], lengths[2], lengths[3]),
+                };
+                format = format with { Top = top, Right = right, Bottom = bottom, Left = left };
+            }
+            else
+                failed.Add($"margins {margins} (one, two or four lengths: 2cm, 2cm 2.5cm, 2cm 2.5cm 2cm 2.5cm)");
+        }
+        if (input.GetValueOrDefault("size") is { } size)
+        {
+            if (Papers.TryGetValue(size.Trim(), out var paper))
+                format = format with { PageWidth = paper.Width, PageHeight = paper.Height };
+            else
+                failed.Add($"size {size} (A3, A4, A5, Letter or Legal)");
+        }
+        if (input.GetValueOrDefault("orientation")?.Trim().ToLowerInvariant() is { } orientation)
+        {
+            if (orientation is "portrait" or "landscape")
+                format = format with { Orientation = orientation };
+            else
+                failed.Add($"orientation {orientation} (portrait or landscape)");
+        }
+        // A paper named lies as the orientation given says, else as the page lies now; turned alone, the page keeps its paper (the
+        // document swaps its width and height, as Word turns it).
+        if (format.PageWidth is { } across && format.PageHeight is { } down)
+        {
+            var lying = format.Orientation == "landscape"
+                || format.Orientation == null && word.SectionOf(first) is { PageWidth: { } w, PageHeight: { } h } && w > h;
+            format = format with
+            {
+                PageWidth = lying ? Math.Max(across, down) : Math.Min(across, down),
+                PageHeight = lying ? Math.Min(across, down) : Math.Max(across, down),
+                Orientation = lying ? "landscape" : "portrait",
+            };
+        }
+        var done = new List<string>();
+        sheets.Edit(() =>
+        {
+            void Do(string what, Action change)
+            {
+                try
+                {
+                    editing.Handle(() =>
+                    {
+                        change();
+                        return null;
+                    });
+                    done.Add(what);
+                }
+                catch (Exception e) when (e is NotSupportedException or ArgumentException or InvalidOperationException)
+                {
+                    failed.Add($"{what} ({e.Message})");
+                }
+            }
+            if (format != new SectionFormatting())
+            {
+                // Every section set up as the first one is: one of its paragraphs each.
+                var upright = word.SectionOf(first) is { PageWidth: { } w0, PageHeight: { } h0 } ? w0 <= h0 : true;
+                var sections = new Dictionary<int, int>();
+                for (int? paragraph = first; paragraph is { } p; paragraph = word.Next(p))
+                {
+                    try
+                    {
+                        var end = word.SectionEnd(p) ?? -1;
+                        sections.TryAdd(end, p);
+                    }
+                    catch (NotSupportedException)
+                    {
+                    }
+                }
+                Do("page setup", () =>
+                {
+                    foreach (var paragraph in sections.Values)
+                    {
+                        if (word.SectionOf(paragraph) is { PageWidth: { } w, PageHeight: { } h } && (w <= h) != upright)
+                            continue;
+                        word.Format(paragraph, format);
+                    }
+                });
+            }
+            if (input.GetValueOrDefault("first_page")?.Trim().ToLowerInvariant() is { } titled)
+            {
+                if (titled is "own" or "same")
+                    Do("first page", () => word.Format(first, new SectionFormatting { TitlePage = titled == "own" }));
+                else
+                    failed.Add($"first_page {titled} (own or same)");
+            }
+            foreach (var (name, footer) in new[] { ("header", false), ("footer", true) })
+            {
+                if (input.GetValueOrDefault(name) is not { } text)
+                    continue;
+                Do(name, () => Story(word, first, footer, text));
+            }
+        });
+        var told = "Now: " + Reading.PageOf(word, objects);
+        if (failed.Count > 0)
+            told += " Not done: " + string.Join("; ", failed) + ".";
+        return (told, done.Count == 0 && failed.Count > 0);
+    }
+
+    /// <summary>
+    /// The header (or the footer) every page shows given a text in the notation: one paragraph of its own, the parts between tabs placed by
+    /// positional tabs (the next in the middle, the last at the right, wherever the margins are), {page} and its kin as fields.
+    /// </summary>
+    public static void Story(WordDocument word, int first, bool footer, string text)
+    {
+        var story = word.Header(first, "default", footer);
+        while (word.After(story) is { } next)
+            story = word.Join(story);
+        word.Replace(story, 0, word.Text(story).Length, "");
+        var parts = text.Replace("\\t", "\t", StringComparison.Ordinal).Split('\t').Select(p => p.Trim()).ToList();
+        var runs = new System.Text.StringBuilder();
+        for (var k = 0; k < parts.Count; k++)
+        {
+            if (k > 0)
+            {
+                var alignment = k == parts.Count - 1 ? "right" : "center";
+                runs.Append($"<w:r><w:ptab w:relativeTo=\"margin\" w:alignment=\"{alignment}\" w:leader=\"none\"/></w:r>");
+            }
+            runs.Append(Markup.RunsOf(Notation.Inline(parts[k], null)).Runs);
+        }
+        if (runs.Length > 0)
+            word.InsertMarkup(story, 0, runs.ToString());
+    }
+
+    /// <summary>The header's and the footer's text in the notation (the parts between tabs), and whether the first page has none, as the first section has them.</summary>
+    public static (string Header, string Footer, bool Title)? Stories(WordDocument word, Objects objects)
+    {
+        if (word.Beginning is not { } first)
+            return null;
+        string Of(bool footer)
+        {
+            int? story;
+            try
+            {
+                story = word.ShownHeader(first, "default", footer);
+            }
+            catch (NotSupportedException)
+            {
+                return "";
+            }
+            var lines = new List<string>();
+            for (var paragraph = story; paragraph is { } p; paragraph = word.After(p))
+                lines.Add(Reading.Line(word, p, objects));
+            return string.Join(" ", lines).Trim();
+        }
+        try
+        {
+            return (Of(false), Of(true), word.SectionOf(first).TitlePage == true);
+        }
+        catch (NotSupportedException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The tone tool: the document given a tone as its buttons give it (see EditorView.Take), the pages fading into it.</summary>
     public static async Task<(string Text, bool Error)> Tone(EditSession editing, DocumentView sheets, string json)
     {

@@ -50,6 +50,12 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     readonly List<(int Paragraph, int Offset, string Label)> notes = [];
     readonly List<string> problems = [];
 
+    /// <summary>
+    /// The header, the footer and the title page the document had as the write took text away that ends a section (whose page setup holds
+    /// them): given again at the end where that took them with it (see End).
+    /// </summary>
+    (string Header, string Footer, bool Title)? stories;
+
     /// <summary>The objects whose tokens went in while they stood elsewhere, and where: taken away there at the end (they moved).</summary>
     readonly List<(int Id, (int Paragraph, int Offset) From)> moved = [];
 
@@ -140,6 +146,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         keptTables.Clear();
         parking.Clear();
         tableNotes.Clear();
+        stories = null;
     }
 
     /// <summary>Takes back what the write did so far (input that could not be read): its steps are the session's last.</summary>
@@ -201,6 +208,25 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         }
     }
 
+    /// <summary>Whether a paragraph from one to another (in reading order) ends a section.</summary>
+    bool EndsSection(int first, int last)
+    {
+        for (int? paragraph = first; paragraph is { } at; paragraph = document.Next(at))
+        {
+            try
+            {
+                if (word!.SectionEnd(at) == at)
+                    return true;
+            }
+            catch (NotSupportedException)
+            {
+            }
+            if (at == last)
+                break;
+        }
+        return false;
+    }
+
     /// <summary>Whether a table stands right before a paragraph of the body (its last cell's paragraph the one before it in reading order).</summary>
     bool AfterTable(int paragraph) => document.Before(paragraph) == null && document.Previous(paragraph) is { } previous && word?.TableOf(previous) != null;
 
@@ -249,6 +275,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             return false;
         }
         objects.Keep(first, last);
+        if (word != null && EndsSection(first, last))
+            stories = Arranging.Stories(word, objects);
         var tables = TablesIn(first, last);
         // The first paragraph of the text that is in none of those tables: what stands together once they are kept aside.
         int? plain = null;
@@ -327,7 +355,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         {
             var block = parsed.Blocks[done];
             // A drawing to float beside the text waits for the paragraph after it, and goes into it.
-            if (block is Notation.Fenced { Kind: "svg" or "wordart" } fenced && fenced.Settings.GetValueOrDefault("float")?.ToLowerInvariant() is "left" or "right")
+            if (block is Notation.Fenced { Kind: "svg" or "wordart" or "box" or "chart" } fenced && fenced.Settings.GetValueOrDefault("float")?.ToLowerInvariant() is "left" or "right")
             {
                 if (done + 1 >= parsed.Blocks.Count && !final)
                     break;
@@ -435,7 +463,11 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         {
             section = new SectionFormatting();
         }
-        return new(word.TextWidth(at), section, (columns, rows) => word.TableMarkup(at, columns, rows, Tables.Table.Style, Tables.Text.Style), Kept);
+        return new(word.TextWidth(at), section, (columns, rows) => word.TableMarkup(at, columns, rows, Tables.Table.Style, Tables.Text.Style), Kept)
+        {
+            Lines = (Tones.Of(document) ?? Tones.All[0]).LineColors(),
+            KeptAlign = objects.AlignOf,
+        };
     }
 
     /// <summary>
@@ -517,6 +549,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             {
                 document.Format(ids[0], 0, new DrawingFormatting { Wrap = "square", HorizontalFrom = "column", HorizontalAlign = floats.Float });
             }
+            // A box as high as its text, in a line of its own or floating at the start of the paragraph after it.
+            if ((made.Fit || floats?.Fit == true) && word != null && ids.Count > 0)
+                word.FitTextBox(ids[0], 0);
             // A new table given what GitHub's tables do not say: its merged cells, its cells' and its own looks; its paragraphs as they
             // then are (merged cells' go), its notes by their cells.
             if (block is Notation.Table table && word != null && ids.Count > 0 && word.TableOf(ids[0]) is { } newTable)
@@ -606,6 +641,28 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 objects.Noted(label, text, endnote);
         }
         objects.Written();
+        // The header, footer and title page that went with a section's end taken away, given again.
+        if (stories is var (header, footer, title) && word?.Beginning is { } beginning && Arranging.Stories(word, objects) is var (header2, footer2, title2))
+        {
+            if (header.Length > 0 && header2.Length == 0)
+                Step(() =>
+                {
+                    Arranging.Story(word, beginning, footer: false, header);
+                    return null;
+                }, quiet: true);
+            if (footer.Length > 0 && footer2.Length == 0)
+                Step(() =>
+                {
+                    Arranging.Story(word, beginning, footer: true, footer);
+                    return null;
+                }, quiet: true);
+            if (title && !title2)
+                Step(() =>
+                {
+                    word.Format(beginning, new SectionFormatting { TitlePage = true });
+                    return null;
+                }, quiet: true);
+        }
         // The objects that moved here taken away where they stood, the last of a paragraph first.
         foreach (var (id, (paragraph, offset)) in moved.OrderByDescending(m => m.From.Offset))
         {

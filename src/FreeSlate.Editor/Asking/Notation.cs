@@ -49,6 +49,9 @@ public static partial class Notation
     /// <summary>Blocks of WordprocessingML as they are given (w:p, w:tbl, w:sdt).</summary>
     public sealed record Raw(string Markup) : Block;
 
+    /// <summary>A formula in a paragraph of its own, centred ($$…$$): its LaTeX (see Formulas).</summary>
+    public sealed record MathBlock(string Latex) : Block;
+
     public abstract record Piece;
 
     /// <summary>Text with a meaning (a character style) or none.</summary>
@@ -66,6 +69,15 @@ public static partial class Notation
     /// <summary>An object of the document by its token ("[picture 3]", see Objects): it stands here, as it was.</summary>
     public sealed record Kept(int Id) : Piece;
 
+    /// <summary>A link: its text's pieces (in the link's style), and where it leads (an address, or "#" and a bookmark's name).</summary>
+    public sealed record Link(IReadOnlyList<Piece> Pieces, string Address) : Piece;
+
+    /// <summary>A field the notation names: {page} the page's number, {pages} the pages' count, {date} today's date.</summary>
+    public sealed record FieldMark(string Name) : Piece;
+
+    /// <summary>A formula among the text ($…$): its LaTeX (see Formulas).</summary>
+    public sealed record Formula(string Latex) : Piece;
+
     /// <summary>The text block being written as far as it reads: its style, and its text without the notation's marks.</summary>
     public sealed record Tail(string? Style, string Text);
 
@@ -78,7 +90,7 @@ public static partial class Notation
     /// <summary>The styles of the headings # to ###: the title, a chapter, a section (deeper ones are sections too).</summary>
     static readonly string[] Headings = ["Title", "Heading1", "Heading2"];
 
-    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled }
+    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, Formula, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled }
 
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
     private static partial Regex HeadingLine();
@@ -89,7 +101,7 @@ public static partial class Notation
     [GeneratedRegex(@"^\[\^([^\]\s]+)\]:\s?(.*)$")]
     private static partial Regex NoteLine();
 
-    [GeneratedRegex(@"^\{([A-Za-z][A-Za-z0-9]*)\}\s+(.*)$")]
+    [GeneratedRegex(@"^\{([A-Z][A-Za-z0-9]*)\}\s+(.*)$")]
     private static partial Regex StyledLine();
 
     [GeneratedRegex(@"^:::\s*columns?\s*=?\s*(\d+)\s*(.*)$", RegexOptions.IgnoreCase)]
@@ -268,7 +280,7 @@ public static partial class Notation
                         settings[setting.Groups[1].Value] = setting.Groups[2].Value.Trim('"', '\'');
                     if (close < 0)
                         problems.Add($"The ```{kindName} block was not closed; it was read to the end.");
-                    if (kindName is "svg" or "wordart")
+                    if (kindName is "svg" or "wordart" or "box" or "chart")
                         blocks.Add(new Fenced(kindName, settings, body));
                     else if (kindName is "xml" or "ooxml" or "wordml")
                         blocks.Add(new Raw(body));
@@ -279,6 +291,45 @@ public static partial class Notation
                             blocks.Add(new Paragraph(null, [new Run(codeLine, null)]));
                     }
                     i = end + 1;
+                    continue;
+                }
+                case Kind.Formula:
+                {
+                    // $$…$$ on a line, or from a line beginning with $$ to one ending with it.
+                    var first = line.Trim()[2..];
+                    var body = new StringBuilder();
+                    var close = -1;
+                    if (first.TrimEnd().EndsWith("$$", StringComparison.Ordinal) && !open)
+                    {
+                        body.Append(first.TrimEnd()[..^2]);
+                        close = i;
+                    }
+                    else
+                    {
+                        body.Append(first);
+                        for (var k = i + 1; k < count && close < 0; k++)
+                        {
+                            if (Open(k))
+                                break;
+                            var next = lines[k].TrimEnd();
+                            if (next.EndsWith("$$", StringComparison.Ordinal))
+                            {
+                                body.Append(' ').Append(next[..^2]);
+                                close = k;
+                            }
+                            else
+                                body.Append(' ').Append(next);
+                        }
+                    }
+                    if (close < 0 && !final)
+                    {
+                        i = count;
+                        continue;
+                    }
+                    if (close < 0)
+                        problems.Add("A formula's $$ was not closed; it was read to the end.");
+                    blocks.Add(new MathBlock(body.ToString().Trim()));
+                    i = close < 0 ? count : close + 1;
                     continue;
                 }
                 case Kind.ColumnsOpen:
@@ -427,6 +478,8 @@ public static partial class Notation
             return Kind.Blank;
         if (trimmed.StartsWith("```", StringComparison.Ordinal))
             return Kind.Fence;
+        if (trimmed.StartsWith("$$", StringComparison.Ordinal))
+            return Kind.Formula;
         if (trimmed == ":::")
             return open ? Kind.Unsure : Kind.ColumnsClose;
         if (trimmed.StartsWith(":::", StringComparison.Ordinal))
@@ -592,7 +645,11 @@ public static partial class Notation
     static string Shorten(string text) => text.Length <= 80 ? text : text[..80] + "…";
 
     /// <summary>A text without the notation's marks, as it shows while it is being written.</summary>
-    static string Plain(string text) => PlainMarks().Replace(text.Replace("<br>", " ", StringComparison.OrdinalIgnoreCase), "").Replace("\\", "", StringComparison.Ordinal);
+    static string Plain(string text) =>
+        PlainMarks().Replace(PlainLinks().Replace(text.Replace("<br>", " ", StringComparison.OrdinalIgnoreCase), "$1"), "").Replace("\\", "", StringComparison.Ordinal);
+
+    [GeneratedRegex(@"\[([^\]]*)\]\([^)\s]*\)?")]
+    private static partial Regex PlainLinks();
 
     [GeneratedRegex(@"\{[A-Za-z][A-Za-z0-9]*\||\[\^[^\]]*\]?|\[(?:" + Objects.Kinds + @")\s+\d[^\]]*\]?|[*_`}]|<[^>]*>?", RegexOptions.IgnoreCase)]
     private static partial Regex PlainMarks();
@@ -619,7 +676,7 @@ public static partial class Notation
         {
             var c = text[k];
             var rest = text.AsSpan(k);
-            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^".Contains(text[k + 1]))
+            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^$".Contains(text[k + 1]))
             {
                 buffer.Append(text[k + 1]);
                 k += 2;
@@ -677,8 +734,23 @@ public static partial class Notation
             }
             if (c == '[' && LinkText().Match(text, k) is { Success: true } link)
             {
-                buffer.Append(link.Groups[1].Value);
+                Flush();
+                pieces.Add(new Link(Inline(link.Groups[1].Value, "Hyperlink"), link.Groups[2].Value));
                 k += link.Length;
+                continue;
+            }
+            if (c == '$' && MathText().Match(text, k) is { Success: true } math)
+            {
+                Flush();
+                pieces.Add(new Formula(math.Groups[1].Value));
+                k += math.Length;
+                continue;
+            }
+            if (c == '{' && FieldText().Match(text, k) is { Success: true } field)
+            {
+                Flush();
+                pieces.Add(new FieldMark(field.Groups[1].Value.ToLowerInvariant()));
+                k += field.Length;
                 continue;
             }
             if (c == '`' && CodeText().Match(text, k) is { Success: true } code)
@@ -724,6 +796,13 @@ public static partial class Notation
 
     [GeneratedRegex(@"\G`([^`]+)`")]
     private static partial Regex CodeText();
+
+    [GeneratedRegex(@"\G\{(page|pages|date)\}", RegexOptions.IgnoreCase)]
+    private static partial Regex FieldText();
+
+    /// <summary>A formula among the text: $…$, its content neither beginning nor ending with a space, no digit right after it (so that prices stay text).</summary>
+    [GeneratedRegex(@"\G\$(?!\s)((?:\\.|[^$\\\n])+?)(?<!\s)\$(?!\d)")]
+    private static partial Regex MathText();
 
     [GeneratedRegex(@"\G<br\s*/?>", RegexOptions.IgnoreCase)]
     private static partial Regex BreakTag();

@@ -23,6 +23,8 @@ static class Prompt
         - Meanings of words (not formatting): **important**, *emphasized*, {Term|a term}, {Quotation|a quotation},
           {OpenQuestion|a question still open}. Never use backticks; "> " before a paragraph makes all of it a quotation.
         - A line ending in two spaces breaks the line within the paragraph; a blank line ends a paragraph.
+        - A link: [its text](https://address) (or [text](#bookmark)). Fields Word computes: {page} the page's number, {pages} how many
+          pages there are, {date} today's date.
         - Tables as GitHub writes them: | a | b | then |---|---| (":---:" centres a column, "---:" aligns it right), the first row is
           the head. A table you read starts with the ids of its first and last paragraph. Besides GitHub's:
           - A line right before the table gives its own settings: {table look=book head=none align=center float=right across=yes}.
@@ -55,8 +57,19 @@ static class Prompt
           triangle, triangle-down, chevron, chevron-down, can, fade-right, fade-left, fade-up, fade-down, cascade-up, cascade-down,
           ring, stop, or a Word name such as textArchUp), size (points), font, fill (one colour, or two or three for a gradient),
           outline (a colour), glow (a colour), shadow=none, bold=no, italic=yes, width and height, align, float.
-        - Anything else Word can hold (an equation as m:oMath, a field, a text box): WordprocessingML, as a block (w:p, w:tbl) on lines
-          of its own or among the text (w:r, m:oMath). The usual prefixes need no declarations.
+        - A box, for what is to stand out (a rule to remember, a hint, a task): a fenced block ```box fill=yellow line=strong
+          shape=rounded with paragraphs in the notation inside (levels, points, meanings, links, formulas; no tables or graphics).
+          Settings: fill (gray, yellow, orange, green, blue, rose, violet or none), line (fine, the default, strong, double, dotted,
+          dashed or none), shape=rounded, width (as wide as the text without it), align, float=left|right beside the paragraph after it.
+        - A chart Word can edit: a fenced block ```chart type=column title="…" y="…" with a table inside, the categories down its first
+          column and a series in each other column, its head naming them ("| Month | 2024 | 2025 |"). type: column, bar, line, area,
+          pie or doughnut; stacked=yes or percent; labels=yes for the values on it; legend (bottom, right, top, left or none); x and y
+          the axes' titles; width, height, align, float, caption, alt as a graphic's.
+        - Formulas in LaTeX: $…$ among the text, $$…$$ on a line of its own (centred): fractions, roots, powers and indices, sums,
+          integrals and limits, \left( \right), matrices (pmatrix, bmatrix, cases), \vec, \overline, Greek letters, \text{…}.
+        - Anything else Word can hold (a field, a shape, a content control): WordprocessingML, as a block (w:p, w:tbl) on lines of its
+          own or among the text (w:r). The usual prefixes need no declarations. A paragraph you read as WordprocessingML (<w:p>…) has
+          formatting the notation does not say: write it back as WordprocessingML where it is to keep it.
         - Objects stand in the text as tokens: [picture 3], [graphic 4] (a vector graphic), [wordart 5], [text box 6], [field 7],
           [equation 8] … "Objects:" after the document says where and how each stands, and gives a graphic's SVG and WordArt's block.
           A token is the object itself: write it where the object is to stand. Writing in place of text that holds one, write its
@@ -71,7 +84,8 @@ static class Prompt
           replace it in sensible pieces.
         - Change how a picture or another object stands or looks with the picture tool (where it stands, size, crop, colours, frame,
           turn, mirror, tilt, caption, description), not by writing it anew. Give the document another look with the tone tool, only
-          where the wish asks for one.
+          where the wish asks for one. Headers, footers, page numbers, margins, paper and orientation are the page tool's ("Page:"
+          after the document says how they are).
         - Write a whole new document in a few writes of a few pages each, in order, so that the user sees it grow.
         - After writing WordArt, columns, graphics, tables or page breaks, look at the pages they are on and fix what does not sit
           well (text cut off, a graphic too large, a heading alone at the bottom of a page, an empty page). Plain text needs no look.
@@ -141,6 +155,20 @@ static class Prompt
         }
         """;
 
+    const string PageSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "header": { "type": "string", "description": "The header on every page in the notation's text, a tab between parts putting the next part in the middle and the last at the right (\"Name:\\tClass 5b\\tPage {page} of {pages}\"); empty to take it away." },
+            "footer": { "type": "string", "description": "The footer on every page, as the header." },
+            "first_page": { "type": "string", "enum": ["own", "same"], "description": "own: the first page without header and footer (a title page); same: as the other pages." },
+            "margins": { "type": "string", "description": "The margins: one length for all (2cm), two for top and bottom and for the sides (2cm 2.5cm), or four (top right bottom left)." },
+            "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
+            "size": { "type": "string", "enum": ["A4", "A5", "A3", "Letter", "Legal"] }
+          }
+        }
+        """;
+
     const string ToneSchema = """
         {
           "type": "object",
@@ -157,5 +185,6 @@ static class Prompt
         new("look", "Shows a page of the document as it is laid out now, exactly as Word prints it.", LookSchema),
         new("picture", "Changes an object of the document as the user's ring does: where it stands, its size, crop, colours, frame, turn, mirror, tilt, caption and description; or takes it away. Give only what changes.", PictureSchema),
         new("tone", "Gives the whole document another tone, the look its levels, meanings and tables take: plain, magazine or notebook.", ToneSchema),
+        new("page", "Sets up the document's pages: header and footer (with page numbers), margins, paper, orientation, a first page of its own. Give only what changes.", PageSchema),
     ];
 }

@@ -586,6 +586,60 @@ public sealed partial class WordDocument : IEditableDocument
 
     public string? FieldText(int paragraph, int offset) => TextEdits.FieldAt(Find(paragraph).Paragraph, offset);
 
+    /// <summary>
+    /// The instruction of the field whose character stands at a place of a paragraph's text (one Word computes as it lays the page out:
+    /// PAGE, NUMPAGES, DATE …); null where none stands there.
+    /// </summary>
+    public string? FieldInstruction(int paragraph, int offset)
+    {
+        var p = Find(paragraph).Paragraph;
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (at == offset && length > 0)
+                return inline is FieldInline field ? field.Instruction.Trim() : null;
+            at += length;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The links of a paragraph's text (w:hyperlink, and HYPERLINK fields), in order: the stretch of the text each shows and where it leads
+    /// (an address, or "#" and a bookmark's name).
+    /// </summary>
+    public IReadOnlyList<(int Start, int End, string Target)> LinksOf(int paragraph)
+    {
+        var (p, top) = Find(paragraph);
+        var links = new List<(int, int, string)>();
+        foreach (var (start, end, element) in TextEdits.Stretches(p))
+        {
+            if (element.Name.LocalName == "hyperlink")
+            {
+                var id = (string?)element.Attributes().FirstOrDefault(a => a.Name.LocalName == "id" && a.Name.NamespaceName.EndsWith("relationships", StringComparison.Ordinal));
+                if (id != null && package.Relationship(PartOf(top), id) is { } related)
+                    links.Add((start, end, related.Target));
+                else if ((string?)element.Attributes().FirstOrDefault(a => a.Name.LocalName == "anchor") is { Length: > 0 } anchor)
+                    links.Add((start, end, "#" + anchor));
+                continue;
+            }
+            var instruction = element.Name.LocalName == "fldSimple" ? (string?)element.Attributes().FirstOrDefault(a => a.Name.LocalName == "instr") : null;
+            if (instruction != null && HyperlinkTarget(instruction) is { } target)
+                links.Add((start, end, target));
+        }
+        return links;
+    }
+
+    /// <summary>Where a HYPERLINK field's instruction leads: its address, or "#" and the bookmark its \l names; null for another field.</summary>
+    static string? HyperlinkTarget(string instruction)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(instruction, @"^\s*HYPERLINK\s+(?:""([^""]*)""|(\S+))?(?:.*?\\l\s+""([^""]*)"")?", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success)
+            return null;
+        var address = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Success ? match.Groups[2].Value : "";
+        return address.Length > 0 && !address.StartsWith('\\') ? address : match.Groups[3].Success ? "#" + match.Groups[3].Value : null;
+    }
+
     public (int Start, int End)? FieldAt(int paragraph, int offset, bool ending) => TextEdits.FieldAt(Find(paragraph).Paragraph, offset, ending);
 
     public int Standing(int paragraph, int offset) => TextEdits.Standing(Find(paragraph).Paragraph, offset);

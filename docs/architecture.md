@@ -439,14 +439,22 @@ opened says what the wish is about (`Focus`: words, paragraphs, the cursor, an e
 goes to Claude in a notation of its own (`Reading`, `Notation`): each paragraph a line after its id, Markdown for the levels and
 the meanings ({Term|…} for those Markdown lacks), GitHub's tables with what the ring gives tables besides (a line
 "{table look=book head=none float=right across=yes}" before one, "{fill=yellow valign=middle turn=up}" at a cell's start, "<"
-and "^" for cells merged with the one before or above, see `TableWords`), fenced blocks of a vector picture (```svg) and of
-WordArt (```wordart), "::: columns 2" to ":::", footnotes, and WordprocessingML for anything else. The document's objects (its
+and "^" for cells merged with the one before or above, see `TableWords`), fenced blocks of a vector picture (```svg), of
+WordArt (```wordart), of a box (```box: Word's text box with paragraphs of the notation inside, a fill, a line, as high as its
+text, see WordDocument.FitTextBox) and of a chart (```chart: a GitHub table of categories and series made a chart part with its
+data in an embedded workbook, `Charts`), formulas in LaTeX ($…$, $$…$$, made Office Math and read back so, `Formulas`), links
+([text](address) as HYPERLINK fields, in the tones' link style), fields ({page}, {pages}, {date}), "::: columns 2 line" to
+":::", footnotes, \pagebreak and --- for a page break and a line, and WordprocessingML for anything else: a paragraph with
+formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
+across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
 pictures, graphics, WordArt, text boxes, frames, fields, equations) stand in its text as tokens ("[picture 3]"), told after it
 with where and how each stands, a graphic's SVG and WordArt's block (`Objects`); its notes as marks ("[^1]") with their texts.
 Claude writes in the same notation with its tools (`Prompt`): write (at the focus, after or before a paragraph, in place of
 paragraphs), look (a page as it is laid out, as a picture), picture (`Arranging`: an object's place, size, crop, colours,
-frame, turn, mirror, tilt, caption and description, by the session's own handlings as the ring's) and tone (the document's
-tone, as its buttons give it). A token written is its object: one in text a write takes away is kept from before and goes in
+frame, turn, mirror, tilt, caption and description, by the session's own handlings as the ring's), tone (the document's tone,
+as its buttons give it) and page (the header and footer every page shows, their parts placed by positional tabs, margins,
+paper, orientation, a title page; read with the document as "Page:", and given again where a write takes a section's end
+away). A token written is its object: one in text a write takes away is kept from before and goes in
 again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
 elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits
 after the place and is written again in place where the write gives a table like it (`Writing.Tables`): rows and columns added

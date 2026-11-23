@@ -339,9 +339,10 @@ full screen, where the top edge of the screen brings the buttons back and F11 or
 the language for one run; otherwise it follows the system until the user chooses. Its themes and languages are resource dictionaries (`Themes/`, `Localization/`), a new one is a copy
 with other values. With an Anthropic API key in `ANTHROPIC_API_KEY`, Claude works at the gesture ring: type a wish while the
 ring shows (or press Ctrl+Space), and Claude writes into the document where the ring was opened, live, with everything the
-editor has (WordArt, columns, tables with their looks, vector graphics, footnotes), changes pictures and the tone as the ring
-does, or answers on a card; pictures, notes and tables keep what Claude does not change; the ring's middle keeps or takes back
-what it did. So far this works with `dotnet run`: Anthropic's SDK serializes by reflection, which the ahead-of-time compiled
+editor has and more of what the renderer draws (WordArt, columns, tables with their looks, vector graphics, charts Word can
+edit, boxes, formulas, links, footnotes), sets up the pages (header and footer with page numbers, margins, paper, orientation),
+changes pictures and the tone as the ring does, or answers on a card; pictures, notes, tables and formatting keep what Claude
+does not change; the ring's middle keeps or takes back what it did. So far this works with `dotnet run`: Anthropic's SDK serializes by reflection, which the ahead-of-time compiled
 build does not have. Published, the editor is ahead-of-time compiled: `dotnet publish src/FreeSlate.Editor.Desktop -c
 Release -r win-x64` gives a native program, `dotnet publish src/FreeSlate.Editor.Browser -c Release` a page (it needs
 the workload `wasm-tools`; the solution leaves the browser's project out of its build for that reason). So far it has

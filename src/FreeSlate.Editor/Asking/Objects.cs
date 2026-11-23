@@ -29,6 +29,9 @@ sealed partial class Objects(IEditableDocument document)
 
         /// <summary>Whether the write going on took it away (see Keep): its token then puts in what was kept, whatever else reads alike.</summary>
         public bool TakenAway { get; set; }
+
+        /// <summary>How the paragraph it stood alone in was aligned (left, center, right) when it was kept; null where it stood among text.</summary>
+        public string? Align { get; set; }
     }
 
     /// <summary>A footnote or endnote as Claude reads it: its label, whether it is an endnote, its text in the notation.</summary>
@@ -93,6 +96,18 @@ sealed partial class Objects(IEditableDocument document)
         return text.ToString();
     }
 
+    /// <summary>
+    /// The formula whose character stands at a place as LaTeX (see Formulas), and whether it stands in a paragraph of its own (an
+    /// m:oMathPara); null where none stands there, or it holds what LaTeX here cannot say (it then reads as an object).
+    /// </summary>
+    public (string Latex, bool Display)? Formula(int paragraph, int offset)
+    {
+        if (Copied(paragraph, offset) is not { } markup || Element(markup) is not { } element)
+            return null;
+        var math = element.Descendants().FirstOrDefault(e => e.Name.LocalName is "oMathPara" or "oMath" && e.Name.NamespaceName.EndsWith("/math", StringComparison.Ordinal));
+        return math != null && Formulas.Latex(math) is { Length: > 0 } latex ? (latex, math.Name.LocalName == "oMathPara") : null;
+    }
+
     /// <summary>A note's text by its label, and whether it is an endnote; null where no note has the label.</summary>
     public Note? NoteOf(string label) => notes.GetValueOrDefault(label);
 
@@ -123,6 +138,10 @@ sealed partial class Objects(IEditableDocument document)
     public void Keep(int paragraph, int from = 0, int to = int.MaxValue)
     {
         var text = document.Text(paragraph);
+        // An object alone in its paragraph: how that stands, to stand so again where its token alone makes a paragraph (see Markup).
+        string? alone = null;
+        if (text == "￼" && from == 0)
+            alone = Alignment(paragraph);
         for (var offset = from; offset < Math.Min(to, text.Length); offset++)
         {
             if (text[offset] != '￼')
@@ -134,8 +153,27 @@ sealed partial class Objects(IEditableDocument document)
             }
             var entry = EntryAt(paragraph, offset);
             if (Copied(paragraph, offset) is { } markup)
-                (entry.Kept, entry.TakenAway) = (markup, true);
+                (entry.Kept, entry.TakenAway, entry.Align) = (markup, true, alone);
         }
+    }
+
+    /// <summary>How the paragraph an object kept stood alone in was aligned; null where it stood among text, or it is not known.</summary>
+    public string? AlignOf(int id) => entries.FirstOrDefault(e => e.Id == id)?.Align;
+
+    /// <summary>A paragraph's alignment as its own properties give it (left, center, right; justified text reads as left).</summary>
+    string Alignment(int paragraph)
+    {
+        var copied = (document.After(paragraph) is { } next ? document.Copy(paragraph, 0, next, 0) : null)
+            ?? document.Copy(paragraph, 0, paragraph, document.Text(paragraph).Length);
+        if (copied is not [var first, ..] || Element(first) is not { } element)
+            return "left";
+        var jc = element.Descendants().FirstOrDefault(e => e.Name.LocalName == "pPr")?.Elements().FirstOrDefault(e => e.Name.LocalName == "jc");
+        return ((string?)jc?.Attributes().FirstOrDefault(a => a.Name.LocalName == "val"))?.ToLowerInvariant() switch
+        {
+            "center" => "center",
+            "right" or "end" => "right",
+            _ => "left",
+        };
     }
 
     /// <summary>A write begun or ended: the objects it took away are those of any other write again (see Entry.TakenAway).</summary>
@@ -346,8 +384,11 @@ sealed partial class Objects(IEditableDocument document)
             case "wordart" when element != null && WordArt(element) is { } block:
                 line.Append('\n').Append(block);
                 break;
-            case "text box" when element != null:
-                line.Append(" text=").Append(Quoted(string.Join(" ", element.Descendants().Where(e => e.Name.LocalName == "p").Select(p => string.Concat(p.Descendants().Where(t => t.Name.LocalName == "t").Select(t => t.Value)))).Trim()));
+            case "chart" when word?.ChartOf(paragraph, offset) is { } part && Charts.Block(part, document.DrawingOf(paragraph, offset)) is { } block:
+                line.Append('\n').Append(block);
+                break;
+            case "text box" when element != null && word != null:
+                line.Append('\n').Append(Box(word, paragraph, offset, element));
                 break;
             case "field" when element != null:
             {
@@ -380,6 +421,38 @@ sealed partial class Objects(IEditableDocument document)
             }
         }
         return line.ToString();
+    }
+
+    /// <summary>
+    /// A text box as the notation writes a box (see Markup.Box): its fill, line, shape, width and float read back from its shape, its
+    /// paragraphs in the notation within it.
+    /// </summary>
+    string Box(WordDocument word, int paragraph, int offset, XElement element)
+    {
+        var settings = new List<string>();
+        var properties = element.Descendants().FirstOrDefault(e => e.Name.LocalName == "spPr");
+        var fill = properties?.Elements().FirstOrDefault(e => e.Name.LocalName == "solidFill")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "srgbClr");
+        if ((string?)fill?.Attribute("val") is { Length: 6 } hex)
+            settings.Add("fill=" + TableWords.FillName(hex));
+        var outline = properties?.Elements().FirstOrDefault(e => e.Name.LocalName == "ln");
+        var width = (long?)outline?.Attribute("w") ?? 0;
+        var dash = (string?)outline?.Elements().FirstOrDefault(e => e.Name.LocalName == "prstDash")?.Attribute("val");
+        settings.Add("line=" + (outline == null || outline.Elements().Any(e => e.Name.LocalName == "noFill") ? "none"
+            : (string?)outline.Attribute("cmpd") == "dbl" ? "double"
+            : dash is "sysDot" or "dot" or "sysDash" && dash != "sysDash" ? "dotted"
+            : dash is "dash" or "sysDash" or "lgDash" ? "dashed"
+            : width >= 15875 ? "strong" : "fine"));
+        if ((string?)element.Descendants().FirstOrDefault(e => e.Name.LocalName == "prstGeom")?.Attribute("prst") == "roundRect")
+            settings.Add("shape=rounded");
+        if (document.DrawingOf(paragraph, offset) is { } drawing)
+        {
+            if (drawing.Width is { } across)
+                settings.Add("width=" + Centimetres(across));
+            if (Place(drawing) is "left" or "right")
+                settings.Add("float=" + Place(drawing));
+        }
+        var lines = word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Prefix(document.ParagraphStyle(p)) + Reading.Line(document, p, this));
+        return "```box " + string.Join(" ", settings) + "\n" + string.Join("\n\n", lines) + "\n```";
     }
 
     /// <summary>Where a drawing stands, as the picture tool names it: inline, left, right, own, behind, front (floating otherwise).</summary>

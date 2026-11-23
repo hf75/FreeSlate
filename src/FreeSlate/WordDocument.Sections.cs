@@ -20,7 +20,9 @@ public sealed partial class WordDocument
         {
             PageWidth = s.PageWidth, PageHeight = s.PageHeight, Orientation = s.Element?.Element(Wml.W + "pgSz")?.Attribute(Wml.W + "orient")?.Value ?? "portrait",
             Top = s.TopFixed ? -s.Top : s.Top, Bottom = s.BottomFixed ? -s.Bottom : s.Bottom, Left = s.Left, Right = s.Right, Header = s.Header, Footer = s.Footer, Gutter = s.Gutter,
-            Columns = s.Columns, ColumnSpace = s.ColumnSpace, Start = s.Start, TitlePage = s.TitlePage, VerticalAlign = s.VerticalAlign,
+            Columns = s.Columns, ColumnSpace = s.ColumnSpace,
+            ColumnLine = s.Element?.Element(Wml.W + "cols")?.Attribute(Wml.W + "sep")?.Value is "1" or "true" or "on",
+            Start = s.Start, TitlePage = s.TitlePage, VerticalAlign = s.VerticalAlign,
             PageNumberStart = s.PageNumberStart ?? -1, PageNumberFormat = s.PageNumberFormat,
         };
     }
@@ -42,6 +44,10 @@ public sealed partial class WordDocument
         else
             Change(blocks[^1], blocks[^1], (stretch, tracking) => TextEdits.Format(stretch, BodySection(), format, tracking), lastSection: true);
     }
+
+    /// <summary>The paragraph of the body that ends the section a paragraph stands in (its properties hold the section's w:sectPr); null for the last section.</summary>
+    /// <exception cref="NotSupportedException">The paragraph is not in the body (a note, a header or footer, a comment).</exception>
+    public int? SectionEnd(int paragraph) => SectionEndOf(paragraph)?.Id;
 
     /// <summary>The paragraph of the body that ends the section a paragraph stands in, null for the last section.</summary>
     ParagraphBlock? SectionEndOf(int paragraph)

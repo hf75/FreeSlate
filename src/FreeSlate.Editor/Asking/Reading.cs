@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Xml.Linq;
 using FreeSlate.Editing;
 using FreeSlate.Editor.Writing;
 
@@ -59,7 +60,7 @@ public sealed record Focus(Focus.Kinds Kind, int First, int Last, int Offset = 0
 static class Reading
 {
     /// <summary>Prefixes of the levels' styles (see Levels), as the notation writes them.</summary>
-    static string Prefix(string? style) => style switch
+    public static string Prefix(string? style) => style switch
     {
         null or "" or "Normal" => "",
         "Title" => "# ",
@@ -91,7 +92,7 @@ static class Reading
                     if (columns > 1)
                         text.Append(":::\n");
                     if (section > 1)
-                        text.Append("::: columns ").Append(section.ToString(CultureInfo.InvariantCulture)).Append('\n');
+                        text.Append("::: columns ").Append(section.ToString(CultureInfo.InvariantCulture)).Append(Separated(word, p) ? " line" : "").Append('\n');
                     columns = section;
                 }
             }
@@ -105,11 +106,27 @@ static class Reading
                 continue;
             }
             tableShown = null;
+            // What the notation says otherwise than by a paragraph's text: a page break alone, a line across, a section's end (said by the
+            // columns' marks and the tables' settings, else as WordprocessingML), formatting of its own (as WordprocessingML).
+            if (word != null && Special(word, p) is var (shownAs, hidden))
+            {
+                if (!hidden)
+                    text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(' ').Append(shownAs).Append('\n');
+                continue;
+            }
+            // A formula in a paragraph of its own as the notation writes one ($$…$$).
+            if (document.Text(p) == "￼" && objects.Formula(p, 0) is (var latex, true))
+            {
+                text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(" $$").Append(latex).Append("$$\n");
+                continue;
+            }
             text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(' ')
                 .Append(Prefix(document.ParagraphStyle(p))).Append(Line(document, p, objects)).Append('\n');
         }
         if (columns > 1)
             text.Append(":::\n");
+        if (word != null && PageOf(word, objects) is { Length: > 0 } page)
+            text.Append("\nPage: ").Append(page).Append('\n');
         if (objects.Known.Any())
         {
             text.Append("\nObjects:\n");
@@ -123,6 +140,146 @@ static class Reading
                 text.Append("[^").Append(note.Label).Append("]: ").Append(note.Endnote ? "(endnote) " : "").Append(note.Text).Append('\n');
         }
         return text.ToString();
+    }
+
+    /// <summary>
+    /// The page as Claude reads it and the page tool sets it (see Arranging.Page): the paper and its orientation, the margins (top right
+    /// bottom left), whether the first page has a header and footer of its own, and the header and footer as the notation writes them.
+    /// </summary>
+    public static string PageOf(WordDocument word, Objects objects)
+    {
+        if (word.Beginning is not { } first)
+            return "";
+        SectionFormatting section;
+        try
+        {
+            section = word.SectionOf(first);
+        }
+        catch (NotSupportedException)
+        {
+            return "";
+        }
+        static string Cm(double? points) => (Math.Abs(points ?? 0) / 72 * 2.54).ToString("0.##", CultureInfo.InvariantCulture) + "cm";
+        var (width, height) = (section.PageWidth ?? 595.3, section.PageHeight ?? 841.9);
+        var paper = Arranging.Papers.FirstOrDefault(p => Math.Abs(p.Value.Width - Math.Min(width, height)) < 3 && Math.Abs(p.Value.Height - Math.Max(width, height)) < 3).Key
+            ?? $"{Cm(width)} × {Cm(height)}";
+        var said = new StringBuilder(paper).Append(width > height ? " landscape" : " portrait");
+        said.Append(", margins ").Append(Cm(section.Top)).Append(' ').Append(Cm(section.Right)).Append(' ').Append(Cm(section.Bottom)).Append(' ')
+            .Append(Cm(section.Left)).Append(" (top right bottom left)");
+        if (section.TitlePage == true)
+            said.Append(", the first page without header and footer");
+        foreach (var (name, footer) in new[] { ("header", false), ("footer", true) })
+        {
+            int? story;
+            try
+            {
+                story = word.ShownHeader(first, "default", footer);
+            }
+            catch (NotSupportedException)
+            {
+                story = null;
+            }
+            var lines = new List<string>();
+            for (var paragraph = story; paragraph is { } p; paragraph = word.After(p))
+                lines.Add(Line(word, p, objects).Replace("\t", "\\t", StringComparison.Ordinal));
+            if (string.Concat(lines).Trim().Length > 0)
+                said.Append(", ").Append(name).Append(": \"").Append(string.Join(" / ", lines)).Append('"');
+        }
+        return said.ToString();
+    }
+
+    /// <summary>The properties a paragraph of the body has (its w:pPr as copying keeps it), with the paragraph as copied; null where it cannot be copied.</summary>
+    static (XElement Paragraph, XElement? Properties)? Copied(WordDocument word, int paragraph)
+    {
+        // Copied to the next one's start the paragraph comes whole, its mark and properties with it (an empty one too); the last of its body,
+        // or one before a table, as far as its text goes.
+        var copied = (word.After(paragraph) is { } next ? word.Copy(paragraph, 0, next, 0) : null)
+            ?? word.Copy(paragraph, 0, paragraph, word.Text(paragraph).Length);
+        if (copied is not [var first, ..])
+            return null;
+        try
+        {
+            var p = Markup.Parsed(first).Elements().FirstOrDefault();
+            return p == null ? null : (p, p.Elements().FirstOrDefault(e => e.Name.LocalName == "pPr"));
+        }
+        catch (System.Xml.XmlException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The paragraph properties the notation says (or that go without saying): its style, its mark's look, keeping, its alignment.</summary>
+    static readonly HashSet<string> Said = ["pStyle", "rPr", "keepNext", "keepLines", "jc", "widowControl", "suppressAutoHyphens", "suppressLineNumbers", "contextualSpacing"];
+
+    /// <summary>
+    /// A paragraph the notation says otherwise than by its text, and how (see Document): a page break alone as \pagebreak, an empty
+    /// paragraph with a line under it as ---, a section's end hidden where the columns' marks or a table's pages across say it (the page
+    /// set up alike on both sides), else as the WordprocessingML it is; a paragraph with properties the notation does not say as its
+    /// WordprocessingML. Null for a paragraph the notation says by its level and text.
+    /// </summary>
+    static (string Shown, bool Hidden)? Special(WordDocument word, int paragraph)
+    {
+        var text = word.Text(paragraph);
+        if (text.Trim(' ', '\f').Length == 0 && text.Contains('\f'))
+            return ("\\pagebreak", false);
+        // An empty paragraph that ends a section, next to a table on pages across or with the page set up alike after it: said already.
+        if (text.Length == 0 && Ends(word, paragraph))
+        {
+            var after = word.Next(paragraph);
+            var before = word.Previous(paragraph);
+            if (after is { } next && word.TableOf(next) is { } following && word.TableAcross(following)
+                || before is { } previous && word.TableOf(previous) is { } preceding && word.TableAcross(preceding))
+                return ("", true);
+            try
+            {
+                if (after is { } nextParagraph && Alike(word.SectionOf(paragraph), word.SectionOf(nextParagraph)))
+                    return ("", true);
+            }
+            catch (NotSupportedException)
+            {
+            }
+        }
+        if (Copied(word, paragraph) is not var (copied, properties) || properties == null)
+            return null;
+        var own = properties.Elements().Where(e => !Said.Contains(e.Name.LocalName)).ToList();
+        if (own.Count == 0)
+            return null;
+        if (text.Length == 0 && own is [{ Name.LocalName: "pBdr" } border] && border.Elements().All(e => e.Name.LocalName == "bottom"))
+            return ("---", false);
+        return (copied.ToString(SaveOptions.DisableFormatting).Replace(" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"", "", StringComparison.Ordinal), false);
+    }
+
+    /// <summary>Whether a paragraph of the body ends its section (its properties hold the section's w:sectPr).</summary>
+    static bool Ends(WordDocument word, int paragraph)
+    {
+        try
+        {
+            return word.SectionEnd(paragraph) == paragraph;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Whether two sections set up their pages alike (paper, orientation, margins), as columns' sections do.</summary>
+    static bool Alike(SectionFormatting one, SectionFormatting other) =>
+        Close(one.PageWidth, other.PageWidth) && Close(one.PageHeight, other.PageHeight) && Close(one.Top, other.Top) && Close(one.Bottom, other.Bottom)
+        && Close(one.Left, other.Left) && Close(one.Right, other.Right);
+
+    static bool Close(double? one, double? other) => Math.Abs((one ?? 0) - (other ?? 0)) < 0.5;
+
+    /// <summary>Whether the columns of the section a paragraph of the body stands in have a line between them (w:cols w:sep).</summary>
+    static bool Separated(WordDocument word, int paragraph)
+    {
+        try
+        {
+            return word.SectionOf(paragraph).ColumnLine == true;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
     }
 
     /// <summary>How many columns the section a paragraph of the body stands in has (1 where it cannot be told).</summary>
@@ -223,21 +380,31 @@ static class Reading
     public static string Line(IEditableDocument document, int paragraph, Objects objects) => Line(document, paragraph, 0, document.Text(paragraph).Length, objects);
 
     /// <summary>A stretch of a paragraph's text in the notation (see Line).</summary>
-    public static string Line(IEditableDocument document, int paragraph, int from, int to, Objects objects)
+    public static string Line(IEditableDocument document, int paragraph, int from, int to, Objects objects, bool inLink = false)
     {
         var text = document.Text(paragraph);
         var styles = document.CharacterStyles(paragraph);
+        var word = document as WordDocument;
+        // Its links as the notation writes them, their text as it reads within them, the link's own style aside.
+        var links = word != null && !inLink ? word.LinksOf(paragraph).Where(l => l.Start >= from && l.End <= to && l.End > l.Start).ToList() : [];
         var line = new StringBuilder();
         var k = from;
         while (k < to)
         {
+            if (links.FirstOrDefault(l => l.Start == k) is { End: > 0 } link)
+            {
+                line.Append('[').Append(Line(document, paragraph, link.Start, link.End, objects, inLink: true)).Append("](").Append(link.Target).Append(')');
+                k = link.End;
+                continue;
+            }
             var styled = styles.FirstOrDefault(s => s.Offset <= k && k < s.Offset + s.Length);
             var end = styled.Length > 0 ? Math.Min(to, styled.Offset + styled.Length) : Math.Min(to, styles.Where(s => s.Offset > k).Select(s => s.Offset).DefaultIfEmpty(to).Min());
+            end = Math.Min(end, links.Where(l => l.Start > k).Select(l => l.Start).DefaultIfEmpty(end).Min());
             var part = new StringBuilder();
             for (var c = k; c < end; c++)
-                part.Append(Character(paragraph, text, c, objects));
+                part.Append(Character(word, paragraph, text, c, objects));
             var shown = part.ToString();
-            line.Append(styled.Length > 0 && styled.Style.Length > 0 && shown.Trim().Length > 0 ? styled.Style switch
+            line.Append(styled.Length > 0 && styled.Style is { Length: > 0 } and not "Hyperlink" && shown.Trim().Length > 0 ? styled.Style switch
             {
                 "Important" => "**" + shown + "**",
                 "Emphasized" => "*" + shown + "*",
@@ -248,13 +415,29 @@ static class Reading
         return line.ToString();
     }
 
-    /// <summary>A character as the notation writes it: an object by its token, a note by its mark, a line or page break marked, the notation's marks escaped.</summary>
-    static string Character(int paragraph, string text, int offset, Objects objects)
+    /// <summary>The fields the notation names ({page}, {pages}, {date}) by their instructions; null for others.</summary>
+    public static string? FieldName(string instruction) => instruction.Trim().Split(' ', 2)[0].ToUpperInvariant() switch
+    {
+        "PAGE" => "page",
+        "NUMPAGES" => "pages",
+        "DATE" => "date",
+        _ => null,
+    };
+
+    /// <summary>
+    /// A character as the notation writes it: a field it names by its name ({page}), another object by its token, a note by its mark, a
+    /// line or page break marked, the notation's marks escaped.
+    /// </summary>
+    static string Character(WordDocument? word, int paragraph, string text, int offset, Objects objects)
     {
         var c = text[offset];
         switch (c)
         {
             case '￼':
+                if (word?.FieldInstruction(paragraph, offset) is { } instruction && FieldName(instruction) is { } name)
+                    return "{" + name + "}";
+                if (objects.Formula(paragraph, offset) is var (latex, _))
+                    return "$" + latex + "$";
                 return objects.Token(paragraph, offset);
             case '\v':
                 return "<br>";
@@ -262,7 +445,7 @@ static class Reading
                 return " [page break] ";
             case '\u000E':
                 return " [column break] ";
-            case '*' or '_' or '{' or '}' or '[' or ']' or '|' or '`' or '\\' or '<':
+            case '*' or '_' or '{' or '}' or '[' or ']' or '|' or '`' or '\\' or '<' or '$':
                 return "\\" + c;
             default:
                 return c.ToString();

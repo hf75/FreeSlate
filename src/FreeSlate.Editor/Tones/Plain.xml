@@ -113,6 +113,25 @@
       <w:qFormat />
       <w:rPr><w:color w:val="C2410C" /><w:u w:val="wave" w:color="EA580C" /></w:rPr>
     </w:style>
+    <w:style w:type="paragraph" w:styleId="Header">
+      <w:name w:val="header" />
+      <w:basedOn w:val="Normal" />
+      <w:uiPriority w:val="99" />
+      <w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto" /><w:jc w:val="left" /></w:pPr>
+      <w:rPr><w:color w:val="66645E" /><w:sz w:val="17" /><w:szCs w:val="17" /></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Footer">
+      <w:name w:val="footer" />
+      <w:basedOn w:val="Normal" />
+      <w:uiPriority w:val="99" />
+      <w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto" /><w:jc w:val="left" /></w:pPr>
+      <w:rPr><w:color w:val="66645E" /><w:sz w:val="17" /><w:szCs w:val="17" /></w:rPr>
+    </w:style>
+    <w:style w:type="character" w:styleId="Hyperlink">
+      <w:name w:val="Hyperlink" />
+      <w:uiPriority w:val="99" />
+      <w:rPr><w:color w:val="1E40AF" /><w:u w:val="single" /></w:rPr>
+    </w:style>
   </w:styles>
   <w:numbering>
     <w:abstractNum w:abstractNumId="9001">

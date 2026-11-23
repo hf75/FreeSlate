@@ -20,7 +20,14 @@ static class Markup
     /// columns and rows in the tone's look as Word's Insert Table makes it (see WordDocument.TableMarkup), and the markup an object's token
     /// goes in as (see Objects.Markup; null where there is no such object).
     /// </summary>
-    public sealed record Place(double TextWidth, SectionFormatting Section, Func<int, int, string> EmptyTable, Func<int, string?>? Kept = null);
+    public sealed record Place(double TextWidth, SectionFormatting Section, Func<int, int, string> EmptyTable, Func<int, string?>? Kept = null)
+    {
+        /// <summary>How the paragraph an object's token alone makes is aligned: as the paragraph it stood alone in was (see Objects.AlignOf).</summary>
+        public Func<int, string?>? KeptAlign { get; init; }
+
+        /// <summary>The tone's colours for light lines and for rules (hex), which boxes' lines take (see Tone.LineColors).</summary>
+        public (string Light, string Dark) Lines { get; init; } = ("D6D3CD", "3F3C37");
+    }
 
     /// <summary>
     /// A block made: its markup (blocks, or nothing where it makes none), the parts it brings, the footnotes whose marks it holds (the
@@ -29,7 +36,11 @@ static class Markup
     /// on the same page (a section of columns ended).
     /// </summary>
     public sealed record Made(string Blocks, IReadOnlyList<NewPart> Parts, IReadOnlyList<(int Paragraph, int Offset, string Label)> Notes,
-        string? Float = null, bool GoOn = false, string? Problem = null);
+        string? Float = null, bool GoOn = false, string? Problem = null)
+    {
+        /// <summary>Whether the drawing it brings is a box to be made as high as its text once it is in (see WordDocument.FitTextBox).</summary>
+        public bool Fit { get; init; }
+    }
 
     const double EmuPerPoint = 12700;
 
@@ -58,15 +69,18 @@ static class Markup
     /// <summary>A block made at a place (see Made).</summary>
     public static Made Of(Notation.Block block, Place place) => block switch
     {
-        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null, kept: place.Kept),
+        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null, kept: place.Kept, keptAlign: place.KeptAlign),
         Notation.Table table => Table(table, place),
         Notation.Fenced { Kind: "svg" } svg => Svg(svg, place),
         Notation.Fenced { Kind: "wordart" } art => WordArt(art, place),
+        Notation.Fenced { Kind: "box" } box => Box(box, place),
+        Notation.Fenced { Kind: "chart" } chart => Charts.Of(chart, place),
         // Sections of columns are the writing's to make, which knows where they begin (see Writing.Put, SectionEnd).
         Notation.Columns or Notation.ColumnsEnd => new("", [], []),
         Notation.PageBreak => new("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>", [], []),
         Notation.Rule => new("<w:p><w:pPr><w:pBdr><w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"auto\"/></w:pBdr></w:pPr></w:p>", [], []),
         Notation.Raw raw => Checked(raw.Markup) is { } problem ? new("", [], [], Problem: problem) : new(raw.Markup, [], []),
+        Notation.MathBlock math => new(Formulas.Display(math.Latex), [], []),
         _ => new("", [], []),
     };
 
@@ -104,8 +118,12 @@ static class Markup
     }
 
     /// <summary>A paragraph of a style, its pieces as runs; with an alignment where one is given (a cell's column, a picture's line).</summary>
-    static Made Paragraph(string? style, IReadOnlyList<Notation.Piece> pieces, string? align, string? before = null, Func<int, string?>? kept = null)
+    static Made Paragraph(string? style, IReadOnlyList<Notation.Piece> pieces, string? align, string? before = null, Func<int, string?>? kept = null,
+        Func<int, string?>? keptAlign = null)
     {
+        // An object alone in its paragraph stands as it stood alone before, else in a line of its own as the notation's drawings do: centred.
+        if (style == null && align == null && before == null && pieces is [Notation.Kept alone])
+            align = keptAlign?.Invoke(alone.Id) is { } was ? (was == "left" ? null : was) : "center";
         var markup = new StringBuilder("<w:p>");
         if (style != null || align != null)
         {
@@ -172,9 +190,32 @@ static class Markup
                     markup.Append(run);
                     offset++;
                     break;
+                case Notation.Link link:
+                    // A link as Word's HYPERLINK field, its result the link's text (the document reads it as that text).
+                    markup.Append("<w:fldSimple w:instr=\"").Append(Escape(Hyperlink(link.Address))).Append("\">");
+                    markup.Append(Runs(link.Pieces, notes, paragraph, ref offset, kept));
+                    markup.Append("</w:fldSimple>");
+                    break;
+                case Notation.Formula formula:
+                    markup.Append(Formulas.Inline(formula.Latex));
+                    offset++;
+                    break;
+                case Notation.FieldMark field:
+                    // A field Word computes as it lays the page out (one character of the text), its result as saved till then.
+                    markup.Append("<w:fldSimple w:instr=\"").Append(field.Name switch { "pages" => " NUMPAGES ", "date" => " DATE ", _ => " PAGE " })
+                        .Append("\"><w:r><w:t>").Append(field.Name == "date" ? DateTime.Today.ToString("d", CultureInfo.CurrentCulture) : "1").Append("</w:t></w:r></w:fldSimple>");
+                    offset++;
+                    break;
             }
         }
         return markup.ToString();
+    }
+
+    /// <summary>A HYPERLINK field's instruction for an address, or for "#" and a bookmark's name; quotes left out.</summary>
+    static string Hyperlink(string address)
+    {
+        var clean = address.Replace("\"", "", StringComparison.Ordinal).Trim();
+        return clean.StartsWith('#') ? $" HYPERLINK \\l \"{clean[1..]}\" " : $" HYPERLINK \"{clean}\" ";
     }
 
     /// <summary>A text's stretches between tabs, and the tabs.</summary>
@@ -277,7 +318,7 @@ static class Markup
     /// A drawing's run as a block: in a line of its own (aligned as its settings say, centred by default) with its caption under it in the
     /// tone's caption style; or, where it floats, its run alone, to go in at the start of the paragraph after it (see Writing).
     /// </summary>
-    static Made Placed(string run, IReadOnlyList<NewPart> parts, IReadOnlyDictionary<string, string> settings, Place place)
+    public static Made Placed(string run, IReadOnlyList<NewPart> parts, IReadOnlyDictionary<string, string> settings, Place place)
     {
         var floats = settings.GetValueOrDefault("float")?.ToLowerInvariant() is "left" or "right" ? settings["float"].ToLowerInvariant() : null;
         if (floats != null)
@@ -390,6 +431,64 @@ static class Markup
             + "<wps:bodyPr rot=\"0\" vert=\"horz\" wrap=\"square\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" anchor=\"ctr\" anchorCtr=\"0\">"
             + $"<a:prstTxWarp prst=\"{shape}\"><a:avLst/></a:prstTxWarp><a:noAutofit/></wps:bodyPr></wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>";
         return Placed(run, [], settings, place);
+    }
+
+    /// <summary>
+    /// A box: Word's text box (wps:txbx) holding the paragraphs the notation gives within it (levels, points, meanings, links, objects), on a
+    /// fill of the cells' colours, in a line of the table lines' kinds in the tone's colours (fine by default), its corners round where its
+    /// shape says so; as wide as the text unless its width says so, in a line of its own or floating beside the paragraph after it (see
+    /// Placed), and as high as its text once it is in (see Made.Fit).
+    /// </summary>
+    static Made Box(Notation.Fenced box, Place place)
+    {
+        var inner = Notation.Parse(box.Body, final: true);
+        var paragraphs = new StringBuilder();
+        var lines = 0;
+        var width = Math.Clamp(Length(box.Settings.GetValueOrDefault("width"), place.TextWidth) ?? place.TextWidth, 36, place.TextWidth);
+        foreach (var block in inner.Blocks)
+        {
+            if (block is not Notation.Paragraph paragraph)
+                return new("", [], [], Problem: "A box holds paragraphs, points and their meanings, no tables, graphics or columns.");
+            // Notes do not go in text boxes (Word keeps none there): their marks are left out.
+            var pieces = paragraph.Pieces.Where(p => p is not Notation.NoteMark).ToList();
+            paragraphs.Append(Paragraph(paragraph.Style, pieces, null, kept: place.Kept).Blocks);
+            var characters = pieces.OfType<Notation.Run>().Sum(r => r.Text.Length) + 1;
+            lines += (int)Math.Ceiling(characters * 5.4 / Math.Max(60, width - 20)) + (paragraph.Style is "Heading1" or "Heading2" or "Title" ? 1 : 0);
+        }
+        if (paragraphs.Length == 0)
+            return new("", [], [], Problem: "A box holds its text: ```box with paragraphs inside.");
+        var settings = box.Settings;
+        var fill = TableWords.FillHex(settings.GetValueOrDefault("fill"), out var knownFill);
+        if (!knownFill)
+            return new("", [], [], Problem: $"fill={settings["fill"]} is no fill (gray, yellow, orange, green, blue, rose, violet or none).");
+        var line = settings.GetValueOrDefault("line")?.Trim().ToLowerInvariant() ?? "fine";
+        var kind = FreeSlate.Editor.Writing.Tables.Lines.FirstOrDefault(l => l.NameKey[4..].Equals(line, StringComparison.OrdinalIgnoreCase));
+        if (kind == null && line != "none")
+            return new("", [], [], Problem: $"line={line} is no line (fine, strong, double, dotted, dashed or none).");
+        var shape = settings.GetValueOrDefault("shape")?.Trim().ToLowerInvariant() is "rounded" or "round" ? "roundRect" : "rect";
+        var height = Math.Max(24, lines * 15.5 + 20);
+        var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));
+        var outline = kind == null ? "<a:ln><a:noFill/></a:ln>" : Outline(kind, place.Lines);
+        var filled = fill != null ? $"<a:solidFill><a:srgbClr val=\"{fill}\"/></a:solidFill>" : "<a:noFill/>";
+        var run = $"<w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"{cx}\" cy=\"{cy}\"/><wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/>"
+            + "<wp:docPr id=\"1\" name=\"Kasten\"/><wp:cNvGraphicFramePr/>"
+            + "<a:graphic><a:graphicData uri=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\"><wps:wsp><wps:cNvSpPr txBox=\"1\"/>"
+            + $"<wps:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"{shape}\"><a:avLst/></a:prstGeom>{filled}{outline}</wps:spPr>"
+            + $"<wps:txbx><w:txbxContent>{paragraphs}</w:txbxContent></wps:txbx>"
+            + "<wps:bodyPr rot=\"0\" vert=\"horz\" wrap=\"square\" lIns=\"108000\" tIns=\"79200\" rIns=\"108000\" bIns=\"79200\" anchor=\"t\" anchorCtr=\"0\"><a:spAutoFit/></wps:bodyPr>"
+            + "</wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>";
+        var made = Placed(run, [], settings.ContainsKey("align") ? settings : new Dictionary<string, string>(settings, StringComparer.OrdinalIgnoreCase) { ["align"] = "left" }, place);
+        return made with { Fit = true };
+    }
+
+    /// <summary>A shape's line of a kind of the table lines' (see Tables.Lines) in the tone's colours: its width, its colour, double, dotted or dashed.</summary>
+    static string Outline(FreeSlate.Editor.Writing.LineKind kind, (string Light, string Dark) colors)
+    {
+        var color = kind.Rule ? colors.Dark : colors.Light;
+        var width = (long)Math.Round((kind.Kind == "double" ? Math.Max(2.25, kind.Width * 3) : kind.Width) * EmuPerPoint);
+        var compound = kind.Kind == "double" ? " cmpd=\"dbl\"" : "";
+        var dash = kind.Kind switch { "dotted" => "<a:prstDash val=\"sysDot\"/>", "dashed" => "<a:prstDash val=\"dash\"/>", _ => "" };
+        return $"<a:ln w=\"{width}\"{compound}><a:solidFill><a:srgbClr val=\"{color}\"/></a:solidFill>{dash}</a:ln>";
     }
 
     /// <summary>Word's text warp for a shape's name: its own name (textArchUp …) or a short one (arch, circle, wave …); none for straight text.</summary>

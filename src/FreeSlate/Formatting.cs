@@ -108,6 +108,9 @@ public sealed record SectionFormatting
     public int? Columns { get; init; }
     public double? ColumnSpace { get; init; }
 
+    /// <summary>Whether a line stands between the columns (w:cols w:sep), as Word's Columns dialog's Line between draws it.</summary>
+    public bool? ColumnLine { get; init; }
+
     /// <summary>Where the section begins (w:type): nextPage, continuous, evenPage, oddPage or nextColumn.</summary>
     public string? Start { get; init; }
 
