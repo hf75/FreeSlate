@@ -13,9 +13,10 @@ namespace FreeSlate.Editor.Asking;
 /// as it grows; and once its input is whole, the rest goes in as it reads then (see Finish). Each change is a step of the session, which
 /// the talk joins into one or takes back as the user decides. Blocks go in before an empty paragraph made for the place (taken away at
 /// the end), or before the end of a section of columns while the text is in columns; text written to words or to the cursor goes in
-/// among the text there.
+/// among the text there. The objects of the text a write takes away are kept first (see Objects.Keep), to go in again where their
+/// tokens are written; an object whose token is written while it stands elsewhere moves here (taken away there at the end).
 /// </summary>
-sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
+sealed partial class Writing(EditSession editing, DocumentView sheets, Focus focus, Objects objects)
 {
     readonly IEditableDocument document = editing.Document;
     readonly WordDocument? word = editing.Document as WordDocument;
@@ -48,6 +49,9 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
     readonly List<int> written = [];
     readonly List<(int Paragraph, int Offset, string Label)> notes = [];
     readonly List<string> problems = [];
+
+    /// <summary>The objects whose tokens went in while they stood elsewhere, and where: taken away there at the end (they moved).</summary>
+    readonly List<(int Id, (int Paragraph, int Offset) From)> moved = [];
 
     /// <summary>The input as it streams in: the write begins where its place is read, and its content goes in as far as it is written.</summary>
     public void Grew(string json)
@@ -132,6 +136,10 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
         written.Clear();
         notes.Clear();
         problems.Clear();
+        moved.Clear();
+        keptTables.Clear();
+        parking.Clear();
+        tableNotes.Clear();
     }
 
     /// <summary>Takes back what the write did so far (input that could not be read): its steps are the session's last.</summary>
@@ -155,6 +163,7 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
     bool Begin(string place, int? paragraph, int? through)
     {
         begun = true;
+        objects.Written();
         if (place != "focus" && (paragraph is not { } id || !document.Contains(id)))
         {
             refused = $"There is no paragraph {(paragraph is { } given ? "¶" + given.ToString(CultureInfo.InvariantCulture) : "given")} to write {place}.";
@@ -180,6 +189,7 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
                 return Step(() => (placeholder = anchor = After(focus.First)) is { } made ? new TextPlace(made, 0) : null);
             case Focus.Kinds.Words:
                 among = (focus.First, focus.Offset);
+                objects.Keep(focus.First, focus.Offset, focus.Offset + focus.Length);
                 return Step(() =>
                 {
                     document.Replace(focus.First, focus.Offset, focus.Length, "");
@@ -191,6 +201,12 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
         }
     }
 
+    /// <summary>Whether a table stands right before a paragraph of the body (its last cell's paragraph the one before it in reading order).</summary>
+    bool AfterTable(int paragraph) => document.Before(paragraph) == null && document.Previous(paragraph) is { } previous && word?.TableOf(previous) != null;
+
+    /// <summary>Whether a table stands right after a paragraph of the body.</summary>
+    bool BeforeTable(int paragraph) => document.After(paragraph) == null && document.Next(paragraph) is { } next && word?.TableOf(next) != null;
+
     /// <summary>Whether a paragraph is the first, or the last, of a table of the body.</summary>
     bool OpensTable(int paragraph) => word?.TableOf(paragraph) is { } table && word.CellsOf(table) is { } cells && cells.Cells[0].First == paragraph;
 
@@ -199,22 +215,31 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
     /// <summary>An empty paragraph made after one: after its table where it ends one, else right after it (in its cell, where it stands in one).</summary>
     int After(int paragraph)
     {
-        if (ClosesTable(paragraph) && document.Next(paragraph) is { } next && word!.TableOf(next) == null)
+        if (ClosesTable(paragraph) && document.Next(paragraph) is { } next)
+        {
+            if (word!.TableOf(next) != null)
+                throw new NotSupportedException("This table meets the table after it: nothing can go between them. Write before the paragraph after the second table, or replace both tables together.");
             return document.InsertBlocks(next, "<w:p/>", before: true)[0];
+        }
         return document.InsertBlocks(paragraph, "<w:p/>")[0];
     }
 
     /// <summary>An empty paragraph made before one: before its table where it begins one (after the paragraph before the table), else right before it.</summary>
     int Before(int paragraph)
     {
-        if (OpensTable(paragraph) && document.Previous(paragraph) is { } previous && word!.TableOf(previous) == null)
+        if (OpensTable(paragraph) && document.Previous(paragraph) is { } previous)
+        {
+            if (word!.TableOf(previous) != null)
+                throw new NotSupportedException("This table meets the table before it: nothing can go between them. Write after the paragraph before the first table, or replace both tables together.");
             return document.InsertBlocks(previous, "<w:p/>")[0];
+        }
         return document.InsertBlocks(paragraph, "<w:p/>", before: true)[0];
     }
 
     /// <summary>
     /// Paragraphs taken away for what is written, from one to another (whole tables where they are a table's first and last): an empty
-    /// paragraph made after them, where the blocks go in, everything from the first up to it taken away.
+    /// paragraph made after them, where the blocks go in, everything from the first up to it taken away; their objects kept first (see
+    /// Objects.Keep), their tables kept after it to be written again in place (see KeepTables).
     /// </summary>
     bool Replace(int first, int last)
     {
@@ -223,10 +248,32 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
             refused = $"There is no paragraph ¶{last.ToString(CultureInfo.InvariantCulture)} to replace through.";
             return false;
         }
+        objects.Keep(first, last);
+        var tables = TablesIn(first, last);
+        // The first paragraph of the text that is in none of those tables: what stands together once they are kept aside.
+        int? plain = null;
+        if (tables.Count > 0)
+        {
+            var inTables = tables.SelectMany(t => word!.CellsOf(t)!.Cells.SelectMany(c => c.Paragraphs)).ToHashSet();
+            for (int? paragraph = first; paragraph is { } at && plain == null; paragraph = at == last ? null : document.Next(at))
+            {
+                if (!inTables.Contains(at))
+                    plain = at;
+            }
+        }
         return Step(() =>
         {
             var made = After(last);
-            if (OpensTable(first))
+            if (tables.Count > 0 && word!.TableOf(made) == null)
+            {
+                KeepTables(tables, made);
+                if (plain is { } start)
+                {
+                    document.RemoveBetween(start, made);
+                    document.Remove(start);
+                }
+            }
+            else if (OpensTable(first))
             {
                 if (document.Previous(first) is not { } previous || word!.TableOf(previous) != null)
                     throw new NotSupportedException("A table right at the start of the document, or right after another table, cannot be replaced; write after it and remove it by replacing it together with the paragraph before.");
@@ -351,7 +398,7 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
         if (parsed.Blocks.Count > 0 && parsed.Blocks[0] is Notation.Paragraph { Style: null } first && (one || words))
         {
             // The first paragraph among the text at the place, the rest after its paragraph.
-            var made = Markup.RunsOf(first.Pieces);
+            var made = Markup.RunsOf(first.Pieces, Kept);
             if (made.Runs.Length > 0)
             {
                 Step(() =>
@@ -378,7 +425,7 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
     {
         var at = anchor!.Value;
         if (word == null)
-            return new(450, new SectionFormatting(), (_, _) => "");
+            return new(450, new SectionFormatting(), (_, _) => "", Kept);
         SectionFormatting section;
         try
         {
@@ -388,7 +435,23 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
         {
             section = new SectionFormatting();
         }
-        return new(word.TextWidth(at), section, (columns, rows) => word.TableMarkup(at, columns, rows, Tables.Table.Style, Tables.Text.Style));
+        return new(word.TextWidth(at), section, (columns, rows) => word.TableMarkup(at, columns, rows, Tables.Table.Style, Tables.Text.Style), Kept);
+    }
+
+    /// <summary>
+    /// The markup an object's token goes in as (see Objects.Markup): as kept where the write took it away; as it stands where it stands
+    /// elsewhere, to be taken away there at the end (it moves here). Null, and said to Claude, where there is no such object.
+    /// </summary>
+    string? Kept(int id)
+    {
+        if (objects.Markup(id) is not var (markup, from))
+        {
+            problems.Add($"There is no object {id.ToString(CultureInfo.InvariantCulture)} to keep there; its token was left out.");
+            return null;
+        }
+        if (from is { } at && !moved.Any(m => m.Id == id))
+            moved.Add((id, at));
+        return markup;
     }
 
     /// <summary>A block put in before the anchor, a step of its own; text in columns begun or ended.</summary>
@@ -419,6 +482,9 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
                 if (columns.Count > 0)
                     anchor = columns.Pop();
                 return;
+            case Notation.Table kept when word != null && keptTables.Count > 0:
+                Rework(Kept(kept), kept);
+                return;
         }
         var made = Markup.Of(block, PlaceAt());
         if (made.Problem != null)
@@ -443,10 +509,25 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
         }
         Step(() =>
         {
+            // A table never meets a table before it (Word joins tables that meet): an empty paragraph between them, as Word leaves one.
+            if (block is Notation.Table && AfterTable(at))
+                document.InsertBlocks(at, "<w:p/>", before: true);
             var ids = document.InsertBlocks(at, blocks, before: true, parts.Count > 0 ? parts : null);
             if (floats != null && ids.Count > 0)
             {
                 document.Format(ids[0], 0, new DrawingFormatting { Wrap = "square", HorizontalFrom = "column", HorizontalAlign = floats.Float });
+            }
+            // A new table given what GitHub's tables do not say: its merged cells, its cells' and its own looks; its paragraphs as they
+            // then are (merged cells' go), its notes by their cells.
+            if (block is Notation.Table table && word != null && ids.Count > 0 && word.TableOf(ids[0]) is { } newTable)
+            {
+                var across = Math.Max(1, table.Aligns.Count);
+                tableNotes.AddRange(made.Notes.Select(n => (newTable, n.Paragraph / across, n.Paragraph % across, n.Offset, n.Label)));
+                Merge(newTable, table, split: false);
+                Dress(newTable, table);
+                var cells = word.CellsOf(newTable)!;
+                written.AddRange(cells.Cells.SelectMany(c => c.Paragraphs));
+                return new TextPlace(cells.Cells[^1].Last, document.Text(cells.Cells[^1].Last).Length);
             }
             written.AddRange(ids);
             notes.AddRange(made.Notes.Where(n => n.Paragraph < ids.Count).Select(n => (ids[n.Paragraph], n.Offset + (n.Paragraph == 0 ? shift : 0), n.Label)));
@@ -486,7 +567,10 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
     /// </summary>
     void End()
     {
-        if (placeholder is { } made && document.Contains(made))
+        // The tables kept that were not written again taken away first, so that the place is seen as it then stands.
+        EndTables();
+        // The empty paragraph made for the place stays where it stands between two tables, which would join without it.
+        if (placeholder is { } made && document.Contains(made) && !(AfterTable(made) && BeforeTable(made)))
         {
             var removed = Step(() =>
             {
@@ -496,20 +580,45 @@ sealed class Writing(EditSession editing, DocumentView sheets, Focus focus)
             if (!removed && document.Before(made) is { } previous && !sectionEnds.Contains(previous) && written.Contains(previous))
                 Step(() => new TextPlace(document.Join(previous, backward: true), document.Text(previous).Length), quiet: true);
         }
-        // The notes at their marks, from the last mark of a paragraph back, so that the marks before stay where they are.
+        // The notes in tables' cells at their cells' first paragraphs as they are now (a table changed is read anew).
+        foreach (var (table, row, column, offset, label) in tableNotes)
+        {
+            if (word?.CellsOf(table)?.Cells.FirstOrDefault(c => c.Top == row && c.Left == column) is { } cell)
+                notes.Add((cell.First, offset, label));
+        }
+        // The notes at their marks, from the last mark of a paragraph back, so that the marks before stay where they are: with the text the
+        // write gives them, else with the text of the note of that label (one the write took away goes in again so).
         foreach (var (paragraph, offset, label) in notes.OrderByDescending(n => n.Offset))
         {
-            if (!noteTexts.TryGetValue(label, out var text))
+            var known = objects.NoteOf(label);
+            if ((noteTexts.TryGetValue(label, out var given) ? given : known?.Text) is not { } text)
             {
                 problems.Add($"The footnote [^{label}] has no text: give it as [^{label}]: text.");
                 continue;
             }
-            var runs = Markup.RunsOf(Notation.Inline(text, null)).Runs;
+            var endnote = known?.Endnote == true;
+            var runs = Markup.RunsOf(Notation.Inline(text, null), Kept).Runs;
+            if (Step(() =>
+            {
+                document.InsertNote(paragraph, Math.Min(offset, document.Text(paragraph).Length), runs, endnote);
+                return null;
+            }))
+                objects.Noted(label, text, endnote);
+        }
+        objects.Written();
+        // The objects that moved here taken away where they stood, the last of a paragraph first.
+        foreach (var (id, (paragraph, offset)) in moved.OrderByDescending(m => m.From.Offset))
+        {
+            if (!objects.Stands(id, (paragraph, offset)))
+            {
+                problems.Add($"Object {id.ToString(CultureInfo.InvariantCulture)} could not be taken away where it stood before; it stands there too.");
+                continue;
+            }
             Step(() =>
             {
-                document.InsertNote(paragraph, Math.Min(offset, document.Text(paragraph).Length), runs);
+                document.Replace(paragraph, offset, 1, "");
                 return null;
-            });
+            }, quiet: true);
         }
         Frame();
     }

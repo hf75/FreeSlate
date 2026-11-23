@@ -18,8 +18,19 @@ public static partial class Notation
     /// <summary>A paragraph: its style (null for text), what it holds.</summary>
     public sealed record Paragraph(string? Style, IReadOnlyList<Piece> Pieces) : Block;
 
-    /// <summary>A table: its rows of cells, each the pieces of its text; the alignment of each column (left, center, right or null); whether the first row is its head.</summary>
-    public sealed record Table(IReadOnlyList<IReadOnlyList<IReadOnlyList<Piece>>> Rows, IReadOnlyList<string?> Aligns) : Block;
+    /// <summary>
+    /// A table: its rows of cells, each the pieces of its text; the alignment of each column (left, center, right or null). And as the
+    /// notation gives them besides GitHub's: the table's own settings, from a line "{table look=book head=none …}" right before it; each
+    /// cell's settings, from "{fill=yellow valign=middle …}" at its start; whether a cell is merged with the one before it ("&lt;") or
+    /// above it ("^"), else its own ('\0'); and each cell's text as written, its settings aside.
+    /// </summary>
+    public sealed record Table(IReadOnlyList<IReadOnlyList<IReadOnlyList<Piece>>> Rows, IReadOnlyList<string?> Aligns) : Block
+    {
+        public IReadOnlyDictionary<string, string> Settings { get; init; } = new Dictionary<string, string>();
+        public IReadOnlyList<IReadOnlyList<IReadOnlyDictionary<string, string>>> Looks { get; init; } = [];
+        public IReadOnlyList<IReadOnlyList<char>> Merged { get; init; } = [];
+        public IReadOnlyList<IReadOnlyList<string>> Texts { get; init; } = [];
+    }
 
     /// <summary>A fenced block of a kind of its own (svg, wordart): the settings on its first line, its body.</summary>
     public sealed record Fenced(string Kind, IReadOnlyDictionary<string, string> Settings, string Body) : Block;
@@ -52,6 +63,9 @@ public static partial class Notation
     /// <summary>WordprocessingML among the text as it is given (w:r, m:oMath, w:fldSimple, w:hyperlink …).</summary>
     public sealed record RawRun(string Markup) : Piece;
 
+    /// <summary>An object of the document by its token ("[picture 3]", see Objects): it stands here, as it was.</summary>
+    public sealed record Kept(int Id) : Piece;
+
     /// <summary>The text block being written as far as it reads: its style, and its text without the notation's marks.</summary>
     public sealed record Tail(string? Style, string Text);
 
@@ -64,7 +78,7 @@ public static partial class Notation
     /// <summary>The styles of the headings # to ###: the title, a chapter, a section (deeper ones are sections too).</summary>
     static readonly string[] Headings = ["Title", "Heading1", "Heading2"];
 
-    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, Fence, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled }
+    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled }
 
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
     private static partial Regex HeadingLine();
@@ -84,8 +98,25 @@ public static partial class Notation
     [GeneratedRegex(@"^\s*<(w:p|w:tbl|w:sdt|w:customXml|w:bookmarkStart|w:bookmarkEnd)[\s/>]")]
     private static partial Regex RawLine();
 
-    [GeneratedRegex(@"(\w+)\s*=\s*(""[^""]*""|'[^']*'|\S+)")]
+    [GeneratedRegex(@"(\w+)\s*=\s*(""[^""]*""|'[^']*'|[^\s}]+)")]
     private static partial Regex Setting();
+
+    /// <summary>A table's own settings on a line before it: "{table look=book head=none}".</summary>
+    [GeneratedRegex(@"^\s*\{table(?:\s+([^}]*))?\}\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex TableSettingsLine();
+
+    /// <summary>A cell's settings at its start: "{fill=yellow valign=middle}".</summary>
+    [GeneratedRegex(@"^\{\s*(\w+\s*=[^}]*)\}\s*")]
+    private static partial Regex CellSettings();
+
+    /// <summary>Settings as key=value pairs, a value quoted where it holds spaces.</summary>
+    static Dictionary<string, string> SettingsOf(string text)
+    {
+        var settings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match setting in Setting().Matches(text))
+            settings[setting.Groups[1].Value] = setting.Groups[2].Value.Trim('"', '\'');
+        return settings;
+    }
 
     /// <summary>
     /// Reads a text into blocks. <paramref name="final"/> where the text is whole; else it is still coming, its last line maybe cut,
@@ -103,6 +134,8 @@ public static partial class Notation
         var problems = new List<string>();
         Tail? tail = null;
         var columnsOpen = 0;
+        // A table's own settings, read from the line right before it.
+        Dictionary<string, string>? tableSettings = null;
 
         // Whether a block whose last line is before line k ended there: the line there decides once it is written far enough to tell.
         bool Ended(int k, Func<string, bool> goesOn)
@@ -123,9 +156,16 @@ public static partial class Notation
             var line = lines[i];
             var open = Open(i);
             var kind = Classify(line, open);
+            if (kind is not (Kind.Table or Kind.TableSettings or Kind.Unsure))
+                tableSettings = null;
             switch (kind)
             {
                 case Kind.Blank or Kind.Unsure:
+                    i++;
+                    continue;
+                case Kind.TableSettings:
+                    if (!open)
+                        tableSettings = SettingsOf(TableSettingsLine().Match(line).Groups[1].Value);
                     i++;
                     continue;
                 case Kind.Heading:
@@ -195,7 +235,10 @@ public static partial class Notation
                         continue;
                     }
                     if (TableOf(lines[i..k]) is { } table)
-                        blocks.Add(table);
+                    {
+                        blocks.Add(tableSettings is { } settings ? table with { Settings = settings } : table);
+                        tableSettings = null;
+                    }
                     else
                         problems.Add("A table needs a row of cells and a line of dashes under it: | a | b | then |---|---|.");
                     i = k;
@@ -400,6 +443,8 @@ public static partial class Notation
             return Kind.Quote;
         if (trimmed.StartsWith('|'))
             return Kind.Table;
+        if (TableSettingsLine().IsMatch(line))
+            return open ? Kind.Unsure : Kind.TableSettings;
         if (RawLine().IsMatch(line))
             return Kind.Raw;
         if (NoteLine().IsMatch(trimmed))
@@ -454,13 +499,36 @@ public static partial class Notation
             return null;
         var aligns = dashes.Select(d => d.StartsWith(':') && d.EndsWith(':') ? "center" : d.EndsWith(':') ? "right" : d.StartsWith(':') ? "left" : null).ToList();
         var rows = new List<IReadOnlyList<IReadOnlyList<Piece>>>();
+        var looks = new List<IReadOnlyList<IReadOnlyDictionary<string, string>>>();
+        var merged = new List<IReadOnlyList<char>>();
+        var texts = new List<IReadOnlyList<string>>();
         foreach (var line in lines.Where((_, k) => k != 1))
         {
             var cells = Cells(line);
-            // As many cells as the head has: too few filled up empty, too many left out.
-            rows.Add([.. Enumerable.Range(0, dashes.Count).Select(k => k < cells.Count ? Inline(cells[k].Replace("<br>", "\n", StringComparison.OrdinalIgnoreCase), null) : (IReadOnlyList<Piece>)[])]);
+            var (rowPieces, rowLooks, rowMerged, rowTexts) = (new List<IReadOnlyList<Piece>>(), new List<IReadOnlyDictionary<string, string>>(), new List<char>(), new List<string>());
+            // As many cells as the head has: too few filled up empty, too many left out. A cell of "<" alone is merged with the one before
+            // it, of "^" alone with the one above (not in the first column or row); settings at a cell's start are its own.
+            for (var k = 0; k < dashes.Count; k++)
+            {
+                var raw = k < cells.Count ? cells[k] : "";
+                var mark = raw == "<" && k > 0 ? '<' : raw == "^" && rows.Count > 0 ? '^' : '\0';
+                var settings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if (mark == '\0' && CellSettings().Match(raw) is { Success: true } given)
+                {
+                    settings = SettingsOf(given.Groups[1].Value);
+                    raw = raw[given.Length..];
+                }
+                rowPieces.Add(mark == '\0' ? Inline(raw.Replace("<br>", "\n", StringComparison.OrdinalIgnoreCase), null) : []);
+                rowLooks.Add(settings);
+                rowMerged.Add(mark);
+                rowTexts.Add(mark == '\0' ? raw.Trim() : "");
+            }
+            rows.Add(rowPieces);
+            looks.Add(rowLooks);
+            merged.Add(rowMerged);
+            texts.Add(rowTexts);
         }
-        return new Table(rows, aligns);
+        return new Table(rows, aligns) { Looks = looks, Merged = merged, Texts = texts };
     }
 
     /// <summary>
@@ -526,7 +594,7 @@ public static partial class Notation
     /// <summary>A text without the notation's marks, as it shows while it is being written.</summary>
     static string Plain(string text) => PlainMarks().Replace(text.Replace("<br>", " ", StringComparison.OrdinalIgnoreCase), "").Replace("\\", "", StringComparison.Ordinal);
 
-    [GeneratedRegex(@"\{[A-Za-z][A-Za-z0-9]*\||\[\^[^\]]*\]?|[*_`}]|<[^>]*>?")]
+    [GeneratedRegex(@"\{[A-Za-z][A-Za-z0-9]*\||\[\^[^\]]*\]?|\[(?:" + Objects.Kinds + @")\s+\d[^\]]*\]?|[*_`}]|<[^>]*>?", RegexOptions.IgnoreCase)]
     private static partial Regex PlainMarks();
 
     /// <summary>
@@ -551,7 +619,7 @@ public static partial class Notation
         {
             var c = text[k];
             var rest = text.AsSpan(k);
-            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#".Contains(text[k + 1]))
+            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^".Contains(text[k + 1]))
             {
                 buffer.Append(text[k + 1]);
                 k += 2;
@@ -599,6 +667,14 @@ public static partial class Notation
                 k += note.Length;
                 continue;
             }
+            if (c == '[' && KeptText().Match(text, k) is { Success: true } kept
+                && int.TryParse(kept.Groups[1].Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var id))
+            {
+                Flush();
+                pieces.Add(new Kept(id));
+                k += kept.Length;
+                continue;
+            }
             if (c == '[' && LinkText().Match(text, k) is { Success: true } link)
             {
                 buffer.Append(link.Groups[1].Value);
@@ -641,6 +717,10 @@ public static partial class Notation
 
     [GeneratedRegex(@"\G\[([^\]]*)\]\(([^)\s]*)\)")]
     private static partial Regex LinkText();
+
+    /// <summary>An object's token as Reading writes it (see Objects.Kinds), what may follow its number up to the bracket aside.</summary>
+    [GeneratedRegex(@"\G\[(?:" + Objects.Kinds + @")\s+(\d{1,5})(?:[:,\s][^\]\n]*)?\]", RegexOptions.IgnoreCase)]
+    private static partial Regex KeptText();
 
     [GeneratedRegex(@"\G`([^`]+)`")]
     private static partial Regex CodeText();

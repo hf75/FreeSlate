@@ -28,6 +28,9 @@ public sealed class Talk : GestureRing.IAsked
     /// <summary>The conversation, begun with the first wish (where Claude cannot be reached so, the line says why).</summary>
     IClaudeConversation? conversation;
 
+    /// <summary>The document's objects as Claude read them with the first wish, kept as it writes (see Objects).</summary>
+    Objects? objects;
+
     /// <summary>How many steps the session had done before the talk: its changes are all after them.</summary>
     readonly int before;
 
@@ -129,7 +132,10 @@ public sealed class Talk : GestureRing.IAsked
                             Say("AskAnswering");
                             break;
                         case ToolBegan { Name: "write" } began:
-                            writes[began.Id] = new Writing(editing, sheets, focus);
+                            writes[began.Id] = new Writing(editing, sheets, focus, objects!);
+                            Say("AskWriting");
+                            break;
+                        case ToolBegan { Name: "picture" or "tone" }:
                             Say("AskWriting");
                             break;
                         case ToolBegan { Name: "look" }:
@@ -139,7 +145,7 @@ public sealed class Talk : GestureRing.IAsked
                             writing.Grew(grew.Json);
                             break;
                         case ToolCalled called:
-                            results.Add(Use(called, writes));
+                            results.Add(await Use(called, writes));
                             break;
                         case FellBack:
                             // What came before the fallback is not read on: its writes go too.
@@ -193,9 +199,10 @@ public sealed class Talk : GestureRing.IAsked
     List<ClaudePart> First(string wish)
     {
         var document = editing.Document;
+        objects = new Objects(document);
         var message = new StringBuilder();
-        message.Append("<document>\n").Append(Reading.Document(document)).Append("</document>\n\n");
-        message.Append("<focus>\n").Append(Reading.Focus(document, focus)).Append("\n</focus>\n\n");
+        message.Append("<document>\n").Append(Reading.Document(document, objects)).Append("</document>\n\n");
+        message.Append("<focus>\n").Append(Reading.Focus(document, focus, objects)).Append("\n</focus>\n\n");
         message.Append("The user's interface is in ").Append(language).Append(".\n\n");
         message.Append("<wish>\n").Append(wish).Append("\n</wish>");
         List<ClaudePart> parts = [new TextPart(message.ToString())];
@@ -214,14 +221,14 @@ public sealed class Talk : GestureRing.IAsked
         _ => null,
     };
 
-    /// <summary>A tool used: a write made whole, a page shown, the picture described; what it gives Claude back.</summary>
-    ToolResultPart Use(ToolCalled called, Dictionary<string, Writing> writes)
+    /// <summary>A tool used: a write made whole, a page shown, an object changed, the document's tone; what it gives Claude back.</summary>
+    async Task<ToolResultPart> Use(ToolCalled called, Dictionary<string, Writing> writes)
     {
         switch (called.Name)
         {
             case "write":
             {
-                var writing = writes.TryGetValue(called.Id, out var going) ? going : writes[called.Id] = new Writing(editing, sheets, focus);
+                var writing = writes.TryGetValue(called.Id, out var going) ? going : writes[called.Id] = new Writing(editing, sheets, focus, objects!);
                 var (told, error) = writing.Finish(called.Json);
                 return new ToolResultPart(called.Id, told, [], error);
             }
@@ -239,28 +246,15 @@ public sealed class Talk : GestureRing.IAsked
                 var png = SkiaScene.Png(document.Scene(shown - 1), 1.25);
                 return new ToolResultPart(called.Id, $"Page {shown} of {count}.", [new ImagePart(png, "image/png")]);
             }
-            case "describe_picture":
+            case "picture":
             {
-                if (focus.Kind != Focus.Kinds.Picture || editing.Document.DrawingOf(focus.First, focus.Offset) == null)
-                    return new ToolResultPart(called.Id, "The focus is no picture.", [], Error: true);
-                var description = String(called.Json, "description") ?? "";
-                var done = false;
-                sheets.Edit(() =>
-                {
-                    try
-                    {
-                        editing.Handle(() =>
-                        {
-                            editing.Document.Format(focus.First, focus.Offset, new DrawingFormatting { Description = description, Decorative = false });
-                            return null;
-                        });
-                        done = true;
-                    }
-                    catch (NotSupportedException)
-                    {
-                    }
-                });
-                return new ToolResultPart(called.Id, done ? "The picture has its description." : "The picture could not take a description.", [], !done);
+                var (told, error) = Arranging.Picture(editing, sheets, objects!, focus, called.Json);
+                return new ToolResultPart(called.Id, told, [], error);
+            }
+            case "tone":
+            {
+                var (told, error) = await Arranging.Tone(editing, sheets, called.Json);
+                return new ToolResultPart(called.Id, told, [], error);
             }
             default:
                 return new ToolResultPart(called.Id, $"There is no tool {called.Name}.", [], Error: true);

@@ -59,7 +59,7 @@ sealed class ClaudeLink(AnthropicClient client) : IClaudeLink
                 InputSchema = new()
                 {
                     Properties = root.GetProperty("properties").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone()),
-                    Required = [.. root.GetProperty("required").EnumerateArray().Select(r => r.GetString()!)],
+                    Required = root.TryGetProperty("required", out var required) ? [.. required.EnumerateArray().Select(r => r.GetString()!)] : [],
                 },
                 EagerInputStreaming = tool.Streams ? true : null,
             };

@@ -83,6 +83,31 @@ public sealed partial class WordDocument
         notesAhead = null;
     }
 
+    /// <summary>
+    /// The note whose reference mark stands at a place of a paragraph's text (of the body, a table cell or a text box): its id (the
+    /// w:footnote's or w:endnote's w:id), whether it is an endnote, and its paragraphs in reading order (those of its tables and text boxes
+    /// too), whose text Text gives; null where no note's reference stands there.
+    /// </summary>
+    public (string Id, bool Endnote, IReadOnlyList<int> Paragraphs)? NoteAt(int paragraph, int offset)
+    {
+        var (p, _) = Find(paragraph);
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            var length = ParagraphText.Length(inline);
+            if (at == offset && length > 0)
+            {
+                if (inline is not NoteReferenceInline reference)
+                    return null;
+                KnowNotes();
+                return notesRead.TryGetValue(new NoteKey(reference.Endnote, reference.Id), out var blocks)
+                    ? (reference.Id, reference.Endnote, blocks.SelectMany(Flat).Select(b => b.Id).ToList()) : null;
+            }
+            at += length;
+        }
+        return null;
+    }
+
     /// <summary>The notes read where they are not known or read otherwise now (see NotesChanged).</summary>
     void KnowNotes()
     {

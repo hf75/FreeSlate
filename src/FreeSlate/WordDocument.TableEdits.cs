@@ -528,6 +528,39 @@ public sealed partial class WordDocument
     }
 
     /// <summary>
+    /// The color a table's cell is shaded with by its own properties (w:shd's fill, hex RRGGBB), as ShadeCells gives it; null where it has
+    /// none of its own, and where no cell begins at the place.
+    /// </summary>
+    public string? CellFill(int table, int row, int column)
+    {
+        if (CellsOf(table)?.Cells.FirstOrDefault(c => c.Top == row && c.Left <= column && column < c.Right) is not { } cell)
+            return null;
+        var (model, _) = TableById(table);
+        var fill = CellModelAt(model, cell)?.Format is { OwnShading: true, Shading: { } shading }
+            ? (string?)shading.Attributes().FirstOrDefault(a => a.Name.LocalName == "fill") : null;
+        return fill is { Length: 6 } && fill.All(Uri.IsHexDigit) ? fill.ToUpperInvariant() : null;
+    }
+
+    /// <summary>
+    /// The table style a table of the body names (w:tblStyle, null where it names none), and how it is aligned between the text's edges
+    /// (center or right, null at the left; see AlignTable); null where no table of the body has the id.
+    /// </summary>
+    public (string? Style, string? Alignment)? TableLook(int table)
+    {
+        TableBlock model;
+        try
+        {
+            model = TableById(table).Table;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+        var format = model.Table.Format;
+        return (format.Style, format.Justification switch { "center" => "center", "right" or "end" => "right", _ => null });
+    }
+
+    /// <summary>
     /// A table of the body floating beside the text, which goes round it, at its column's left edge (null, left), or aligned right or
     /// centered in it (see TextEdits.TableShape.Float), where it stood down; one wider than 60 % of its column made half as wide, its
     /// columns in proportion, so that text goes beside it. The paragraphs stay as they are.

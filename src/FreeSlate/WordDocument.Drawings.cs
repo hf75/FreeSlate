@@ -27,7 +27,17 @@ public sealed partial class WordDocument
     /// The bytes of the picture the drawing at a place of a paragraph's text shows (its a:blip's r:embed in the part it stands in); null
     /// where it shows none, or its part is not in the package.
     /// </summary>
-    public byte[]? PictureOf(int paragraph, int offset)
+    public byte[]? PictureOf(int paragraph, int offset) => Embedded(paragraph, offset, blip => blip);
+
+    /// <summary>
+    /// The bytes of the SVG the picture of the drawing at a place of a paragraph's text shows where it has one (Office's asvg:svgBlip in
+    /// its a:blip's extensions, the a:blip's own picture drawn from it for programs that read no SVG); null where it has none.
+    /// </summary>
+    public byte[]? VectorOf(int paragraph, int offset) =>
+        Embedded(paragraph, offset, blip => blip.Descendants().FirstOrDefault(e => e.Name.LocalName == "svgBlip"));
+
+    /// <summary>The bytes of the part an element of the first a:blip of the drawing at a place refers to by its r:embed; null where there is none.</summary>
+    byte[]? Embedded(int paragraph, int offset, Func<XElement, XElement?> referring)
     {
         var (p, _) = Find(paragraph);
         var at = p.TextOffset;
@@ -37,7 +47,8 @@ public sealed partial class WordDocument
             if (at == offset && length > 0)
             {
                 var (own, part) = inline switch { DrawingInline d => (d.Drawing, d.Part), AnchorInline a => (a.Anchor, a.Part), _ => (null, null) };
-                var id = (string?)own?.Descendants(A + "blip").FirstOrDefault()?.Attributes().FirstOrDefault(a => a.Name.LocalName == "embed");
+                var blip = own?.Descendants(A + "blip").FirstOrDefault() is { } first ? referring(first) : null;
+                var id = (string?)blip?.Attributes().FirstOrDefault(a => a.Name.LocalName == "embed");
                 return id != null && part != null && package.Relationship(part, id) is { External: false } related && package.Exists(related.Target)
                     ? package.ReadBytes(related.Target) : null;
             }

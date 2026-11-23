@@ -16,10 +16,11 @@ namespace FreeSlate.Editor.Asking;
 static class Markup
 {
     /// <summary>
-    /// The place the blocks go to: the width of the text there (points), the page setup of its section, and a new table there of so many
-    /// columns and rows in the tone's look as Word's Insert Table makes it (see WordDocument.TableMarkup).
+    /// The place the blocks go to: the width of the text there (points), the page setup of its section, a new table there of so many
+    /// columns and rows in the tone's look as Word's Insert Table makes it (see WordDocument.TableMarkup), and the markup an object's token
+    /// goes in as (see Objects.Markup; null where there is no such object).
     /// </summary>
-    public sealed record Place(double TextWidth, SectionFormatting Section, Func<int, int, string> EmptyTable);
+    public sealed record Place(double TextWidth, SectionFormatting Section, Func<int, int, string> EmptyTable, Func<int, string?>? Kept = null);
 
     /// <summary>
     /// A block made: its markup (blocks, or nothing where it makes none), the parts it brings, the footnotes whose marks it holds (the
@@ -57,7 +58,7 @@ static class Markup
     /// <summary>A block made at a place (see Made).</summary>
     public static Made Of(Notation.Block block, Place place) => block switch
     {
-        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null),
+        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null, kept: place.Kept),
         Notation.Table table => Table(table, place),
         Notation.Fenced { Kind: "svg" } svg => Svg(svg, place),
         Notation.Fenced { Kind: "wordart" } art => WordArt(art, place),
@@ -103,7 +104,7 @@ static class Markup
     }
 
     /// <summary>A paragraph of a style, its pieces as runs; with an alignment where one is given (a cell's column, a picture's line).</summary>
-    static Made Paragraph(string? style, IReadOnlyList<Notation.Piece> pieces, string? align, string? before = null)
+    static Made Paragraph(string? style, IReadOnlyList<Notation.Piece> pieces, string? align, string? before = null, Func<int, string?>? kept = null)
     {
         var markup = new StringBuilder("<w:p>");
         if (style != null || align != null)
@@ -118,21 +119,27 @@ static class Markup
         markup.Append(before);
         var notes = new List<(int, int, string)>();
         var offset = before != null ? 1 : 0;
-        markup.Append(Runs(pieces, notes, 0, ref offset));
+        markup.Append(Runs(pieces, notes, 0, ref offset, kept));
         return new(markup.Append("</w:p>").ToString(), [], notes);
     }
 
-    /// <summary>The runs of a paragraph's pieces of text, to go in among other text, and where in them footnotes' marks stand (offset, label).</summary>
-    public static (string Runs, IReadOnlyList<(int Offset, string Label)> Notes) RunsOf(IReadOnlyList<Notation.Piece> pieces)
+    /// <summary>
+    /// The runs of a paragraph's pieces of text, to go in among other text, objects by their tokens as <paramref name="kept"/> gives them,
+    /// and where in them footnotes' marks stand (offset, label).
+    /// </summary>
+    public static (string Runs, IReadOnlyList<(int Offset, string Label)> Notes) RunsOf(IReadOnlyList<Notation.Piece> pieces, Func<int, string?>? kept = null)
     {
         var notes = new List<(int, int, string)>();
         var offset = 0;
-        var runs = Runs(pieces, notes, 0, ref offset);
+        var runs = Runs(pieces, notes, 0, ref offset, kept);
         return (runs, notes.Select(n => (n.Item2, n.Item3)).ToList());
     }
 
-    /// <summary>The runs of pieces of text, counting the characters they make from an offset, the footnotes' marks noted where they stand.</summary>
-    static string Runs(IReadOnlyList<Notation.Piece> pieces, List<(int, int, string)> notes, int paragraph, ref int offset)
+    /// <summary>
+    /// The runs of pieces of text, counting the characters they make from an offset, the footnotes' marks noted where they stand, objects
+    /// by their tokens as <paramref name="kept"/> gives them (one character each; left out where it gives none).
+    /// </summary>
+    static string Runs(IReadOnlyList<Notation.Piece> pieces, List<(int, int, string)> notes, int paragraph, ref int offset, Func<int, string?>? kept = null)
     {
         var markup = new StringBuilder();
         foreach (var piece in pieces)
@@ -160,6 +167,10 @@ static class Markup
                 case Notation.RawRun raw when Checked(raw.Markup) == null:
                     markup.Append(raw.Markup);
                     offset += TextLength(raw.Markup);
+                    break;
+                case Notation.Kept token when kept?.Invoke(token.Id) is { } run:
+                    markup.Append(run);
+                    offset++;
                     break;
             }
         }
@@ -217,7 +228,7 @@ static class Markup
                 markup.Append("<w:jc w:val=\"").Append(align).Append("\"/>");
             markup.Append("</w:pPr>");
             var offset = 0;
-            markup.Append(Runs(table.Rows[row][column], notes, k, ref offset));
+            markup.Append(Runs(table.Rows[row][column], notes, k, ref offset, place.Kept));
             markup.Append("</w:p>").Append(parts[k + 1]);
         }
         return new(markup.ToString(), [], notes);
@@ -293,7 +304,7 @@ static class Markup
     }
 
     /// <summary>A length in points: given in cm, mm, in, pt or px (CSS pixels), or as a share of the text's width (60%); null where none is given or it reads as none.</summary>
-    static double? Length(string? given, double whole)
+    public static double? Length(string? given, double whole)
     {
         if (string.IsNullOrWhiteSpace(given))
             return null;
@@ -418,6 +429,38 @@ static class Markup
         _ => "textNoShape",
     };
 
+    /// <summary>The short name of Word's text warp as the notation writes it (see Warp), else Word's own name; none for straight text.</summary>
+    public static string ShapeName(string warp) => warp switch
+    {
+        "textNoShape" => "none",
+        "textArchUp" => "arch",
+        "textArchDown" => "arch-down",
+        "textCircle" => "circle",
+        "textButton" => "button",
+        "textWave1" => "wave",
+        "textWave2" => "wave2",
+        "textDoubleWave1" => "double-wave",
+        "textInflate" => "inflate",
+        "textDeflate" => "deflate",
+        "textSlantUp" => "slant-up",
+        "textSlantDown" => "slant-down",
+        "textTriangle" => "triangle",
+        "textTriangleInverted" => "triangle-down",
+        "textChevron" => "chevron",
+        "textChevronInverted" => "chevron-down",
+        "textCanUp" => "can",
+        "textCanDown" => "can-down",
+        "textFadeRight" => "fade-right",
+        "textFadeLeft" => "fade-left",
+        "textFadeUp" => "fade-up",
+        "textFadeDown" => "fade-down",
+        "textCascadeUp" => "cascade-up",
+        "textCascadeDown" => "cascade-down",
+        "textRingInside" => "ring",
+        "textStop" => "stop",
+        _ => warp,
+    };
+
     /// <summary>A colour as six hex digits (from #RRGGBB, RRGGBB or #RGB), or null.</summary>
     static string? Hex(string? given)
     {
@@ -448,7 +491,8 @@ static class Markup
         }
     }
 
-    static XElement Parsed(string markup)
+    /// <summary>Markup read with the usual prefixes declared, under an element of its own ("root").</summary>
+    public static XElement Parsed(string markup)
     {
         var declarations = string.Concat(Namespaces.Select(n => $" xmlns:{n.Prefix}=\"{n.Uri}\""));
         return XElement.Parse($"<root{declarations}>{markup}</root>");

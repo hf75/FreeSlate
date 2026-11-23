@@ -437,10 +437,22 @@ Claude works at the ring (`Asking/`): text typed while a ring shows goes to a li
 the ring at the selection or the cursor, ready to type), and Enter sends it as a wish, with no mode to choose: where the ring was
 opened says what the wish is about (`Focus`: words, paragraphs, the cursor, an empty paragraph, a picture, a table). The document
 goes to Claude in a notation of its own (`Reading`, `Notation`): each paragraph a line after its id, Markdown for the levels and
-the meanings ({Term|…} for those Markdown lacks), GitHub's tables, fenced blocks of a vector picture (```svg) and of WordArt
-(```wordart), "::: columns 2" to ":::", footnotes, and WordprocessingML for anything else. Claude writes in the same notation
-with its tools (`Prompt`): write (at the focus, after or before a paragraph, in place of paragraphs), look (a page as it is laid
-out, as a picture) and describe_picture. A write streams into the document as Claude writes it (`Writing`): the place is made
+the meanings ({Term|…} for those Markdown lacks), GitHub's tables with what the ring gives tables besides (a line
+"{table look=book head=none float=right across=yes}" before one, "{fill=yellow valign=middle turn=up}" at a cell's start, "<"
+and "^" for cells merged with the one before or above, see `TableWords`), fenced blocks of a vector picture (```svg) and of
+WordArt (```wordart), "::: columns 2" to ":::", footnotes, and WordprocessingML for anything else. The document's objects (its
+pictures, graphics, WordArt, text boxes, frames, fields, equations) stand in its text as tokens ("[picture 3]"), told after it
+with where and how each stands, a graphic's SVG and WordArt's block (`Objects`); its notes as marks ("[^1]") with their texts.
+Claude writes in the same notation with its tools (`Prompt`): write (at the focus, after or before a paragraph, in place of
+paragraphs), look (a page as it is laid out, as a picture), picture (`Arranging`: an object's place, size, crop, colours,
+frame, turn, mirror, tilt, caption and description, by the session's own handlings as the ring's) and tone (the document's
+tone, as its buttons give it). A token written is its object: one in text a write takes away is kept from before and goes in
+again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
+elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits
+after the place and is written again in place where the write gives a table like it (`Writing.Tables`): rows and columns added
+like its last ones or taken away at its end, cells merged or split back, the cells that read otherwise written anew, its looks
+as the notation says them, so that what the notation does not say (its widths, heights, lines) stays as it was; a new table
+is made as Word's Insert Table makes one and then given the same. A write streams into the document as Claude writes it (`Writing`): the place is made
 once it is read, blocks go in as they are finished (a block counts as finished only once what follows shows it ended, so that a
 block given once stays as it was), the one being written shows as plain text after them, taken back as it grows; `Markup` makes
 the blocks WordprocessingML of the document's own kind: levels and meanings as the tone's styles, a table as Word's Insert Table

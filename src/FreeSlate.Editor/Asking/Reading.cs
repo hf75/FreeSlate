@@ -54,7 +54,7 @@ public sealed record Focus(Focus.Kinds Kind, int First, int Last, int Offset = 0
 /// <summary>
 /// A document as Claude reads it (see Notation, Prompt): each paragraph on a line of its own after its id (¶12), in the notation it
 /// writes in; a table after the ids of its first and last paragraphs, as GitHub writes one; text in columns between "::: columns 2" and
-/// ":::". And the focus of a wish told in words.
+/// ":::"; its objects by their tokens (see Objects), told after the text with its notes. And the focus of a wish told in words.
 /// </summary>
 static class Reading
 {
@@ -70,8 +70,11 @@ static class Reading
         var other => "{" + other + "} ",
     };
 
-    /// <summary>The document's body in the notation, paragraph by paragraph from the first, with the ids Claude writes to.</summary>
-    public static string Document(IEditableDocument document)
+    /// <summary>
+    /// The document's body in the notation, paragraph by paragraph from the first, with the ids Claude writes to; then its objects (where
+    /// and how each stands, see Objects.Details) and its notes' texts.
+    /// </summary>
+    public static string Document(IEditableDocument document, Objects objects)
     {
         var text = new StringBuilder();
         var word = document as WordDocument;
@@ -98,15 +101,27 @@ static class Reading
                     continue;
                 tableShown = table;
                 if (word.CellsOf(table) is { } cells)
-                    Table(document, cells, text);
+                    Table(word, cells, text, objects);
                 continue;
             }
             tableShown = null;
             text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Prefix(document.ParagraphStyle(p))).Append(Line(document, p)).Append('\n');
+                .Append(Prefix(document.ParagraphStyle(p))).Append(Line(document, p, objects)).Append('\n');
         }
         if (columns > 1)
             text.Append(":::\n");
+        if (objects.Known.Any())
+        {
+            text.Append("\nObjects:\n");
+            foreach (var id in objects.Known.ToList())
+                text.Append(objects.Details(id)).Append('\n');
+        }
+        if (objects.Notes.Any())
+        {
+            text.Append("\nNotes:\n");
+            foreach (var note in objects.Notes)
+                text.Append("[^").Append(note.Label).Append("]: ").Append(note.Endnote ? "(endnote) " : "").Append(note.Text).Append('\n');
+        }
         return text.ToString();
     }
 
@@ -123,36 +138,92 @@ static class Reading
         }
     }
 
-    /// <summary>A table as GitHub writes one, after the ids of its first and last paragraph; a cell's paragraphs split by &lt;br&gt;.</summary>
-    static void Table(IEditableDocument document, TableCells table, StringBuilder text)
+    /// <summary>
+    /// A table as GitHub writes one, after the ids of its first and last paragraph, with what the notation says besides (see TableWords):
+    /// the table's own settings on a line before it where it is not as a new table is ("{table look=book head=none}"); each column's
+    /// alignment where its cells below the head share one; each cell's own settings at its start ("{fill=yellow valign=middle}"); a cell
+    /// merged with the one before it as "&lt;", with the one above it as "^"; a cell's paragraphs split by &lt;br&gt;.
+    /// </summary>
+    static void Table(WordDocument word, TableCells table, StringBuilder text, Objects objects)
     {
         text.Append('¶').Append(table.Cells[0].First.ToString(CultureInfo.InvariantCulture)).Append("–¶")
             .Append(table.Cells[^1].Last.ToString(CultureInfo.InvariantCulture))
             .Append(" table, ").Append(table.Rows.ToString(CultureInfo.InvariantCulture)).Append(" rows × ")
             .Append(table.Columns.ToString(CultureInfo.InvariantCulture)).Append(" columns:\n");
+        var settings = new List<string>();
+        var look = word.TableLook(table.Table);
+        if (TableWords.LookName(look?.Style) is { } name and not "tone")
+            settings.Add("look=" + name);
+        if (!table.HeadRow)
+            settings.Add("head=none");
+        if (look?.Alignment is { } alignment)
+            settings.Add("align=" + alignment);
+        if (word.TableFloat(table.Table) is { } floats)
+            settings.Add("float=" + floats);
+        if (word.TableAcross(table.Table))
+            settings.Add("across=yes");
+        if (settings.Count > 0)
+            text.Append("{table ").Append(string.Join(" ", settings)).Append("}\n");
+        var places = table.Cells.ToDictionary(c => c, c => word.CellPlace(table.Table, c.Top, c.Left));
+        var aligns = Aligns(table, places);
         for (var row = 0; row < table.Rows; row++)
         {
             text.Append('|');
             for (var column = 0; column < table.Columns; column++)
             {
                 var cell = table.Cells.FirstOrDefault(c => c.Top <= row && row < c.Bottom && c.Left <= column && column < c.Right);
-                // A merged cell shows its text where it begins.
-                var shown = cell != null && cell.Top == row && cell.Left == column
-                    ? string.Join("<br>", cell.Paragraphs.Select(p => Line(document, p).Replace("|", "\\|", StringComparison.Ordinal)))
-                    : "";
+                var shown = cell == null ? "" : cell.Top != row ? "^" : cell.Left != column ? "<" : Cell(word, table, cell, places[cell], aligns[column], objects);
                 text.Append(' ').Append(shown).Append(" |");
             }
             text.Append('\n');
             if (row == 0)
-                text.Append('|').Append(string.Concat(Enumerable.Repeat("---|", table.Columns))).Append('\n');
+                text.Append('|').Append(string.Concat(aligns.Select(a => a switch { "center" => ":---:|", "right" => "---:|", _ => "---|" }))).Append('\n');
         }
     }
 
-    /// <summary>A paragraph's text in the notation: its meanings marked, its drawings, tabs and breaks named.</summary>
-    public static string Line(IEditableDocument document, int paragraph) => Line(document, paragraph, 0, document.Text(paragraph).Length);
+    /// <summary>Each column's alignment: the one all its cells of their own below the head share (all of them in a table of a row), null where that is the left or there is none.</summary>
+    public static string?[] Aligns(TableCells table, IReadOnlyDictionary<TableCell, (string Vertical, string Horizontal)?> places)
+    {
+        var aligns = new string?[table.Columns];
+        for (var column = 0; column < table.Columns; column++)
+        {
+            var shared = table.Cells.Where(c => c.Left == column && c.Right == column + 1 && (c.Top > 0 || table.Rows == 1))
+                .Select(c => TableWords.Across(places[c]?.Horizontal)).Distinct().ToList();
+            aligns[column] = shared is [var one] && one != "left" ? one : null;
+        }
+        return aligns;
+    }
+
+    /// <summary>A cell as the notation writes it: its own settings where it has them (fill, align where not its column's, valign, turn), its text.</summary>
+    static string Cell(WordDocument word, TableCells table, TableCell cell, (string Vertical, string Horizontal)? place, string? align, Objects objects)
+    {
+        var settings = new List<string>();
+        if (word.CellFill(table.Table, cell.Top, cell.Left) is { } fill)
+            settings.Add("fill=" + TableWords.FillName(fill));
+        if (place is var (vertical, horizontal))
+        {
+            if (TableWords.Across(horizontal) != (align ?? "left"))
+                settings.Add("align=" + TableWords.Across(horizontal));
+            if (vertical != "top")
+                settings.Add("valign=" + TableWords.DownName(vertical));
+        }
+        if (TableWords.TurnName(word.CellDirection(table.Table, cell.Top, cell.Left)) is { } turn)
+            settings.Add("turn=" + turn);
+        var content = CellText(word, cell, objects);
+        if (content is "^" or "<")
+            content = "\\" + content;
+        return (settings.Count > 0 ? "{" + string.Join(" ", settings) + "} " : "") + content;
+    }
+
+    /// <summary>A cell's text in the notation: its paragraphs split by &lt;br&gt;, its bars escaped.</summary>
+    public static string CellText(IEditableDocument document, TableCell cell, Objects objects) =>
+        string.Join("<br>", cell.Paragraphs.Select(p => Line(document, p, objects).Replace("|", "\\|", StringComparison.Ordinal)));
+
+    /// <summary>A paragraph's text in the notation: its meanings marked, its objects' tokens and notes' marks, its tabs and breaks named.</summary>
+    public static string Line(IEditableDocument document, int paragraph, Objects objects) => Line(document, paragraph, 0, document.Text(paragraph).Length, objects);
 
     /// <summary>A stretch of a paragraph's text in the notation (see Line).</summary>
-    public static string Line(IEditableDocument document, int paragraph, int from, int to)
+    public static string Line(IEditableDocument document, int paragraph, int from, int to, Objects objects)
     {
         var text = document.Text(paragraph);
         var styles = document.CharacterStyles(paragraph);
@@ -164,7 +235,7 @@ static class Reading
             var end = styled.Length > 0 ? Math.Min(to, styled.Offset + styled.Length) : Math.Min(to, styles.Where(s => s.Offset > k).Select(s => s.Offset).DefaultIfEmpty(to).Min());
             var part = new StringBuilder();
             for (var c = k; c < end; c++)
-                part.Append(Character(document, paragraph, text, c));
+                part.Append(Character(paragraph, text, c, objects));
             var shown = part.ToString();
             line.Append(styled.Length > 0 && styled.Style.Length > 0 && shown.Trim().Length > 0 ? styled.Style switch
             {
@@ -177,16 +248,14 @@ static class Reading
         return line.ToString();
     }
 
-    /// <summary>A character as the notation writes it: a drawing or other object named, a tab, a line or page break marked, the notation's marks escaped.</summary>
-    static string Character(IEditableDocument document, int paragraph, string text, int offset)
+    /// <summary>A character as the notation writes it: an object by its token, a note by its mark, a line or page break marked, the notation's marks escaped.</summary>
+    static string Character(int paragraph, string text, int offset, Objects objects)
     {
         var c = text[offset];
         switch (c)
         {
             case '￼':
-                return document.DrawingOf(paragraph, offset) is { } drawing
-                    ? drawing.Description is { Length: > 0 } description ? $"[picture: {description}]" : "[picture]"
-                    : "[*]";
+                return objects.Token(paragraph, offset);
             case '\v':
                 return "<br>";
             case '\f':
@@ -203,14 +272,14 @@ static class Reading
     /// <summary>
     /// The focus of a wish told for Claude: what it is, its text, what writing to it does, and the page it stands on.
     /// </summary>
-    public static string Focus(IEditableDocument document, Focus focus)
+    public static string Focus(IEditableDocument document, Focus focus, Objects objects)
     {
         var said = new StringBuilder();
         string Id(int paragraph) => "¶" + paragraph.ToString(CultureInfo.InvariantCulture);
         switch (focus.Kind)
         {
             case Asking.Focus.Kinds.Words:
-                said.Append("The words \"").Append(Line(document, focus.First, focus.Offset, focus.Offset + focus.Length)).Append("\" in ").Append(Id(focus.First))
+                said.Append("The words \"").Append(Line(document, focus.First, focus.Offset, focus.Offset + focus.Length, objects)).Append("\" in ").Append(Id(focus.First))
                     .Append(" are selected. Writing to the focus replaces just these words: write them as text within the paragraph, without blocks.");
                 break;
             case Asking.Focus.Kinds.Paragraphs:
@@ -221,19 +290,16 @@ static class Reading
                 break;
             case Asking.Focus.Kinds.Cursor:
                 said.Append("The cursor stands in ").Append(Id(focus.First)).Append(" after \"")
-                    .Append(Tail(Line(document, focus.First, 0, focus.Offset), 60)).Append("\". Writing text without blocks to the focus puts it in at the cursor; blocks go after ")
+                    .Append(Tail(Line(document, focus.First, 0, focus.Offset, objects), 60)).Append("\". Writing text without blocks to the focus puts it in at the cursor; blocks go after ")
                     .Append(Id(focus.First)).Append('.');
                 break;
             case Asking.Focus.Kinds.Empty:
                 said.Append("The cursor stands in the empty paragraph ").Append(Id(focus.First)).Append(". Writing to the focus puts the content there.");
                 break;
             case Asking.Focus.Kinds.Picture:
-                var description = document.DrawingOf(focus.First, focus.Offset)?.Description;
-                said.Append("A picture in ").Append(Id(focus.First)).Append(" is selected");
-                if (description is { Length: > 0 })
-                    said.Append(" (its description: \"").Append(description).Append("\")");
-                said.Append("; it is attached. Writing to the focus puts the content after ").Append(Id(focus.First))
-                    .Append("; describe_picture gives the picture its description.");
+                said.Append("The object ").Append(objects.Token(focus.First, focus.Offset)).Append(" in ").Append(Id(focus.First))
+                    .Append(" is selected; where it is a picture, it is attached. Writing to the focus puts the content after ").Append(Id(focus.First))
+                    .Append("; the picture tool changes the object itself.");
                 break;
             case Asking.Focus.Kinds.Table:
                 said.Append("The table ").Append(Id(focus.First)).Append(" to ").Append(Id(focus.Last))
