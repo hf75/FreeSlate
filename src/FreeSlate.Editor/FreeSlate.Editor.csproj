@@ -11,6 +11,7 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <EmbeddedResource Include="Tones\*.xml" LogicalName="FreeSlate.Editor.Tones.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Asking\SmartArt\*.xml" LogicalName="FreeSlate.Editor.SmartArt.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

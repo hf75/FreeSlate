@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- A cycle: the points as circles round a ring, the first at the top, an arrow from each to the next and from the last back to the
+     first; a point's subpoints listed in its circle. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/cycle">
+  <dgm:title val="Cycle"/>
+  <dgm:desc val="Steps that come round again, circles on a ring with arrows between them."/>
+  <dgm:catLst>
+    <dgm:cat type="cycle" pri="500"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="diagram">
+    <dgm:varLst>
+      <dgm:dir/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:choose name="count">
+      <dgm:if name="many" axis="ch" ptType="node" func="cnt" op="gt" val="2">
+        <dgm:alg type="cycle">
+          <dgm:param type="stAng" val="0"/>
+          <dgm:param type="spanAng" val="360"/>
+        </dgm:alg>
+      </dgm:if>
+      <dgm:else name="few">
+        <dgm:alg type="cycle">
+          <dgm:param type="stAng" val="-90"/>
+          <dgm:param type="spanAng" val="360"/>
+        </dgm:alg>
+      </dgm:else>
+    </dgm:choose>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="point" refType="w"/>
+      <dgm:constr type="w" for="ch" forName="arrow" refType="w" refFor="ch" refForName="point" op="equ" fact="0.22"/>
+      <dgm:constr type="sibSp" refType="w" refFor="ch" refForName="point" fact="0.42"/>
+      <dgm:constr type="primFontSz" for="ch" forName="point" op="equ" val="14"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="points" axis="ch" ptType="node">
+      <dgm:layoutNode name="point" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx">
+          <dgm:param type="txAnchorVertCh" val="mid"/>
+        </dgm:alg>
+        <dgm:shape type="ellipse">
+          <dgm:adjLst/>
+        </dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst>
+          <dgm:constr type="h" refType="w"/>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.12"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.12"/>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.12"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.12"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:choose name="arrowed">
+        <dgm:if name="several" axis="par ch" ptType="doc node" func="cnt" op="gt" val="1">
+          <dgm:forEach name="arrows" axis="followSib" ptType="sibTrans" hideLastTrans="0" cnt="1">
+            <dgm:layoutNode name="arrow" styleLbl="sibTrans2D1">
+              <dgm:choose name="two">
+                <dgm:if name="pair" axis="par ch" ptType="doc node" func="cnt" op="lt" val="3">
+                  <dgm:alg type="conn">
+                    <dgm:param type="begPts" val="radial"/>
+                    <dgm:param type="endPts" val="radial"/>
+                  </dgm:alg>
+                </dgm:if>
+                <dgm:else name="ring">
+                  <dgm:alg type="conn">
+                    <dgm:param type="begPts" val="auto"/>
+                    <dgm:param type="endPts" val="auto"/>
+                  </dgm:alg>
+                </dgm:else>
+              </dgm:choose>
+              <dgm:shape type="conn">
+                <dgm:adjLst/>
+              </dgm:shape>
+              <dgm:presOf axis="self"/>
+              <dgm:constrLst>
+                <dgm:constr type="h" refType="w" fact="1.3"/>
+                <dgm:constr type="connDist"/>
+              </dgm:constrLst>
+              <dgm:ruleLst/>
+            </dgm:layoutNode>
+          </dgm:forEach>
+        </dgm:if>
+        <dgm:else name="alone"/>
+      </dgm:choose>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

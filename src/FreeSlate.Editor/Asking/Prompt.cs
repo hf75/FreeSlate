@@ -69,16 +69,24 @@ static class Prompt
           column and a series in each other column, its head naming them ("| Month | 2024 | 2025 |"). type: column, bar, line, area,
           pie or doughnut; stacked=yes or percent; labels=yes for the values on it; legend (bottom, right, top, left or none); x and y
           the axes' titles; width, height, align, float, caption, alt as a graphic's.
+        - SmartArt Word can edit: a fenced block ```smartart layout=cycle colors=blue with its points inside as "- " lines, "  - " for a
+          point's subpoints (they stand in its shape, or round it in a radial). layout: list (bars one under another, the subpoints
+          under each), process (steps in a row, arrows between), chevrons (stages as arrowheads in a row), cycle (circles round a
+          ring, arrows between), radial (the first point in the middle, its subpoints round it), venn (one to four overlapping
+          circles), pyramid (levels, the first at the top), blocks (boxes in rows). colors: blue, green, orange, violet, rose, teal,
+          gray or colorful. Points of a few words each; width, height, align, float, caption, alt as a graphic's.
         - Formulas in LaTeX: $…$ among the text, $$…$$ on a line of its own (centred): fractions, roots, powers and indices, sums,
           integrals and limits, \left( \right), matrices (pmatrix, bmatrix, cases), \vec, \overline, Greek letters, \text{…}.
         - Anything else Word can hold (a field, a shape, a content control): WordprocessingML, as a block (w:p, w:tbl) on lines of its
           own or among the text (w:r). The usual prefixes need no declarations. A paragraph you read as WordprocessingML (<w:p>…) has
           formatting the notation does not say: write it back as WordprocessingML where it is to keep it.
-        - Objects stand in the text as tokens: [picture 3], [graphic 4] (a vector graphic), [wordart 5], [text box 6], [field 7],
-          [equation 8] … "Objects:" after the document says where and how each stands, and gives a graphic's SVG and WordArt's block.
+        - Objects stand in the text as tokens: [picture 3], [graphic 4] (a vector graphic), [wordart 5], [smartart 6], [text box 7],
+          [field 8], [equation 9] … "Objects:" after the document says where and how each stands, and gives a graphic's SVG and the
+          block of WordArt, a chart or a SmartArt.
           A token is the object itself: write it where the object is to stand. Writing in place of text that holds one, write its
           token again (where it is to stay, also among words), or the object goes with the text; written elsewhere, the object moves
-          there. Never make up a token. To change a graphic or WordArt, write its block anew in place of its token.
+          there. Never make up a token. To change a graphic, WordArt, a chart or a SmartArt, write its block anew in place of its
+          token.
 
         # How to write
         - Write what things are, not how they look: levels and meanings, never fonts, sizes or colours for the text; the tone of the

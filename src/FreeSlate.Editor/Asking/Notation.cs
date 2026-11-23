@@ -290,7 +290,7 @@ public static partial class Notation
                         settings[setting.Groups[1].Value] = setting.Groups[2].Value.Trim('"', '\'');
                     if (close < 0)
                         problems.Add($"The ```{kindName} block was not closed; it was read to the end.");
-                    if (kindName is "svg" or "wordart" or "box" or "chart")
+                    if (kindName is "svg" or "wordart" or "box" or "chart" or "smartart")
                         blocks.Add(new Fenced(kindName, settings, body));
                     else if (kindName is "xml" or "ooxml" or "wordml")
                         blocks.Add(new Raw(body));

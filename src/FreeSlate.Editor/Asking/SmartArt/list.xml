@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- A list: the points one under the other, each a bar with its text, its subpoints listed under it. FreeSlate's own definition (see
+     SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/list">
+  <dgm:title val="List"/>
+  <dgm:desc val="Points one under the other, what belongs to each under it."/>
+  <dgm:catLst>
+    <dgm:cat type="list" pri="400"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="list">
+    <dgm:varLst>
+      <dgm:animLvl val="lvl"/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="lin">
+      <dgm:param type="linDir" val="fromT"/>
+      <dgm:param type="vertAlign" val="mid"/>
+    </dgm:alg>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="head" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="head" refType="primFontSz" refFor="ch" refForName="head" fact="0.58"/>
+      <dgm:constr type="h" for="ch" forName="head" op="equ"/>
+      <dgm:constr type="w" for="ch" forName="details" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="details" refType="primFontSz" refFor="ch" refForName="head" fact="0.9"/>
+      <dgm:constr type="primFontSz" for="ch" forName="head" op="equ" val="15"/>
+      <dgm:constr type="primFontSz" for="ch" forName="details" refType="primFontSz" refFor="ch" refForName="head" op="equ" fact="0.9"/>
+      <dgm:constr type="h" for="ch" forName="gap" refType="primFontSz" refFor="ch" refForName="head" fact="0.12"/>
+    </dgm:constrLst>
+    <dgm:ruleLst>
+      <dgm:rule type="primFontSz" for="ch" forName="head" val="7" fact="NaN" max="NaN"/>
+    </dgm:ruleLst>
+    <dgm:forEach name="all" axis="ch" ptType="node">
+      <dgm:layoutNode name="head" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:chMax val="0"/>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx">
+          <dgm:param type="parTxLTRAlign" val="l"/>
+          <dgm:param type="parTxRTLAlign" val="r"/>
+        </dgm:alg>
+        <dgm:shape type="roundRect">
+          <dgm:adjLst>
+            <dgm:adj idx="1" val="0.22"/>
+          </dgm:adjLst>
+        </dgm:shape>
+        <dgm:presOf axis="self"/>
+        <dgm:constrLst>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.55"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.55"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="h" val="INF" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:choose name="withDetails">
+        <dgm:if name="hasDetails" axis="ch" ptType="node" func="cnt" op="gte" val="1">
+          <dgm:layoutNode name="details" styleLbl="revTx">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx">
+              <dgm:param type="stBulletLvl" val="1"/>
+              <dgm:param type="lnSpAfChP" val="20"/>
+            </dgm:alg>
+            <dgm:shape type="rect">
+              <dgm:adjLst/>
+            </dgm:shape>
+            <dgm:presOf axis="des" ptType="node"/>
+            <dgm:constrLst>
+              <dgm:constr type="tMarg" refType="primFontSz" fact="0.15"/>
+              <dgm:constr type="bMarg" refType="primFontSz" fact="0.2"/>
+              <dgm:constr type="lMarg" refType="w" fact="0.04"/>
+            </dgm:constrLst>
+            <dgm:ruleLst>
+              <dgm:rule type="h" val="INF" fact="NaN" max="NaN"/>
+            </dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:else name="plain">
+          <dgm:choose name="spaced">
+            <dgm:if name="more" axis="par ch" ptType="doc node" func="cnt" op="gte" val="2">
+              <dgm:forEach name="after" axis="followSib" ptType="sibTrans" cnt="1">
+                <dgm:layoutNode name="gap">
+                  <dgm:alg type="sp"/>
+                  <dgm:shape>
+                    <dgm:adjLst/>
+                  </dgm:shape>
+                  <dgm:presOf/>
+                  <dgm:constrLst/>
+                  <dgm:ruleLst/>
+                </dgm:layoutNode>
+              </dgm:forEach>
+            </dgm:if>
+            <dgm:else name="last"/>
+          </dgm:choose>
+        </dgm:else>
+      </dgm:choose>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

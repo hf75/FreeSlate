@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Radial: the first point as a circle in the middle, its subpoints as circles round it, a line from the middle to each. FreeSlate's
+     own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/radial">
+  <dgm:title val="Radial"/>
+  <dgm:desc val="Something in the middle and what stands round it."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="600"/>
+    <dgm:cat type="cycle" pri="600"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="radial">
+    <dgm:varLst>
+      <dgm:chMax val="1"/>
+      <dgm:dir/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:choose name="around">
+      <dgm:if name="lone" axis="ch ch" ptType="node node" st="1 1" cnt="1 0" func="cnt" op="lte" val="1">
+        <dgm:alg type="cycle">
+          <dgm:param type="stAng" val="90"/>
+          <dgm:param type="spanAng" val="360"/>
+          <dgm:param type="ctrShpMap" val="fNode"/>
+        </dgm:alg>
+      </dgm:if>
+      <dgm:else name="round">
+        <dgm:alg type="cycle">
+          <dgm:param type="stAng" val="0"/>
+          <dgm:param type="spanAng" val="360"/>
+          <dgm:param type="ctrShpMap" val="fNode"/>
+        </dgm:alg>
+      </dgm:else>
+    </dgm:choose>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="centre" refType="w"/>
+      <dgm:constr type="w" for="ch" forName="satellite" refType="w" refFor="ch" refForName="centre" op="equ" fact="0.8"/>
+      <dgm:constr type="sp" refType="w" refFor="ch" refForName="satellite" fact="0.35"/>
+      <dgm:constr type="sibSp" refType="w" refFor="ch" refForName="satellite" fact="0.22"/>
+      <dgm:constr type="primFontSz" for="ch" forName="centre" val="16"/>
+      <dgm:constr type="primFontSz" for="des" forName="satellite" op="equ" val="13"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="middle" axis="ch" ptType="node" cnt="1">
+      <dgm:layoutNode name="centre" styleLbl="node0">
+        <dgm:alg type="tx"/>
+        <dgm:shape type="ellipse">
+          <dgm:adjLst/>
+        </dgm:shape>
+        <dgm:presOf axis="self"/>
+        <dgm:constrLst>
+          <dgm:constr type="h" refType="w"/>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:forEach name="ring" axis="ch">
+        <dgm:forEach name="spokes" axis="self" ptType="parTrans">
+          <dgm:layoutNode name="spoke" styleLbl="parChTrans1D2">
+            <dgm:alg type="conn">
+              <dgm:param type="dim" val="1D"/>
+              <dgm:param type="begPts" val="auto"/>
+              <dgm:param type="endPts" val="auto"/>
+              <dgm:param type="begSty" val="noArr"/>
+              <dgm:param type="endSty" val="noArr"/>
+            </dgm:alg>
+            <dgm:shape type="conn">
+              <dgm:adjLst/>
+            </dgm:shape>
+            <dgm:presOf axis="self"/>
+            <dgm:constrLst>
+              <dgm:constr type="connDist"/>
+              <dgm:constr type="w" val="1"/>
+              <dgm:constr type="h" val="5"/>
+              <dgm:constr type="begPad"/>
+              <dgm:constr type="endPad"/>
+            </dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="satellites" axis="self" ptType="node">
+          <dgm:layoutNode name="satellite" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx">
+              <dgm:param type="txAnchorVertCh" val="mid"/>
+            </dgm:alg>
+            <dgm:shape type="ellipse">
+              <dgm:adjLst/>
+            </dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst>
+              <dgm:constr type="h" refType="w"/>
+              <dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/>
+              <dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/>
+              <dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/>
+              <dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/>
+            </dgm:constrLst>
+            <dgm:ruleLst>
+              <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+            </dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

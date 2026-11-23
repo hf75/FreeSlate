@@ -449,14 +449,18 @@ text starting at its first number or going on in the list before where that numb
 "{table look=book head=none float=right across=yes}" before one, "{fill=yellow valign=middle turn=up}" at a cell's start, "<"
 and "^" for cells merged with the one before or above, see `TableWords`), fenced blocks of a vector picture (```svg), of
 WordArt (```wordart), of a box (```box: Word's text box with paragraphs of the notation inside, a fill, a line, as high as its
-text, see WordDocument.FitTextBox) and of a chart (```chart: a GitHub table of categories and series made a chart part with its
-data in an embedded workbook, `Charts`), formulas in LaTeX ($…$, $$…$$, made Office Math and read back so, `Formulas`), links
+text, see WordDocument.FitTextBox), of a chart (```chart: a GitHub table of categories and series made a chart part with its
+data in an embedded workbook, `Charts`) and of SmartArt (```smartart layout=cycle colors=blue with its points as "- " lines:
+a data model, colours and a style of its own and one of eight layout definitions written for FreeSlate, none of Office's
+(`Asking/SmartArt/*.xml`: list, process, chevrons, cycle, radial, venn, pyramid, blocks), without a drawing, which Word and
+the engine lay out alike from the definition; Word takes a definition only with names that are unique among all its
+elements, `SmartArts`), formulas in LaTeX ($…$, $$…$$, made Office Math and read back so, `Formulas`), links
 ([text](address) as HYPERLINK fields, in the tones' link style), fields ({page}, {pages}, {date}), "::: columns 2 line" to
 ":::", footnotes, \pagebreak and --- for a page break and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
 across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
-pictures, graphics, WordArt, text boxes, frames, fields, equations) stand in its text as tokens ("[picture 3]"), told after it
-with where and how each stands, a graphic's SVG and WordArt's block (`Objects`); its notes as marks ("[^1]") with their texts.
+pictures, graphics, WordArt, charts, SmartArt, text boxes, frames, fields, equations) stand in its text as tokens ("[picture 3]"),
+told after it with where and how each stands, a graphic's SVG and the block of WordArt, a chart or a SmartArt (`Objects`); its notes as marks ("[^1]") with their texts.
 Claude writes in the same notation with its tools (`Prompt`): write (at the focus, after or before a paragraph, in place of
 paragraphs), look (a page as it is laid out, as a picture), picture (`Arranging`: an object's place, size, crop, colours,
 frame, turn, mirror, tilt, caption and description, by the session's own handlings as the ring's), tone (the document's tone,

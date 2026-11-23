@@ -75,6 +75,7 @@ static class Markup
         Notation.Fenced { Kind: "wordart" } art => WordArt(art, place),
         Notation.Fenced { Kind: "box" } box => Box(box, place),
         Notation.Fenced { Kind: "chart" } chart => Charts.Of(chart, place),
+        Notation.Fenced { Kind: "smartart" } diagram => SmartArts.Of(diagram, place),
         // Sections of columns are the writing's to make, which knows where they begin (see Writing.Put, SectionEnd).
         Notation.Columns or Notation.ColumnsEnd => new("", [], []),
         Notation.PageBreak => new("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>", [], []),

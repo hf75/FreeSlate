@@ -16,7 +16,7 @@ namespace FreeSlate.Editor.Asking;
 sealed partial class Objects(IEditableDocument document)
 {
     /// <summary>The kinds a token names (see Kind), as the notation reads them back.</summary>
-    public const string Kinds = "picture|graphic|wordart|frame|chart|text box|group|shape|drawing|field|equation|check box|object";
+    public const string Kinds = "picture|graphic|wordart|frame|chart|smartart|text box|group|shape|drawing|field|equation|check box|object";
 
     /// <summary>An object: its number, its kind, its key (null where it cannot be copied, and so not kept), its markup kept, where it stood last.</summary>
     sealed class Entry(int id, string kind, string? key)
@@ -295,6 +295,8 @@ sealed partial class Objects(IEditableDocument document)
             return Has("prstTxWarp") || Has("textFill") || Has("textOutline") ? "wordart" : Has("pic") ? "picture" : "text box";
         if (Has("pic"))
             return "picture";
+        if (Has("relIds"))
+            return "smartart";
         if (Has("chart") || element.Descendants().Any(e => e.Name.NamespaceName.Contains("/chart", StringComparison.Ordinal)))
             return "chart";
         if (Has("wgp"))
@@ -385,6 +387,9 @@ sealed partial class Objects(IEditableDocument document)
                 line.Append('\n').Append(block);
                 break;
             case "chart" when word?.ChartOf(paragraph, offset) is { } part && Charts.Block(part, document.DrawingOf(paragraph, offset)) is { } block:
+                line.Append('\n').Append(block);
+                break;
+            case "smartart" when word?.DiagramOf(paragraph, offset) is { } diagram && SmartArts.Block(diagram.Data, diagram.Layout, document.DrawingOf(paragraph, offset)) is { } block:
                 line.Append('\n').Append(block);
                 break;
             case "text box" when element != null && word != null:

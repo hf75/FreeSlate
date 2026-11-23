@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Blocks: the points as rounded boxes in rows, as many to a row as fill the diagram best; a point's subpoints listed in its box.
+     FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/blocks">
+  <dgm:title val="Blocks"/>
+  <dgm:desc val="Points of equal weight side by side in rows."/>
+  <dgm:catLst>
+    <dgm:cat type="list" pri="500"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="blocks">
+    <dgm:varLst>
+      <dgm:dir/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="snake">
+      <dgm:param type="grDir" val="tL"/>
+      <dgm:param type="flowDir" val="row"/>
+      <dgm:param type="contDir" val="sameDir"/>
+      <dgm:param type="off" val="ctr"/>
+    </dgm:alg>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="block" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="block" refType="w" refFor="ch" refForName="block" fact="0.62"/>
+      <dgm:constr type="w" for="ch" forName="gap" refType="w" refFor="ch" refForName="block" fact="0.08"/>
+      <dgm:constr type="sp" refType="w" refFor="ch" refForName="gap"/>
+      <dgm:constr type="primFontSz" for="ch" forName="block" op="equ" val="15"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="all" axis="ch" ptType="node">
+      <dgm:layoutNode name="block" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"/>
+        <dgm:shape type="roundRect">
+          <dgm:adjLst>
+            <dgm:adj idx="1" val="0.1"/>
+          </dgm:adjLst>
+        </dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.45"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.45"/>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.4"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.4"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:forEach name="between" axis="followSib" ptType="sibTrans" cnt="1">
+        <dgm:layoutNode name="gap">
+          <dgm:alg type="sp"/>
+          <dgm:shape>
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst/>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

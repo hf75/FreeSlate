@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Chevrons: the points as arrowheads in a row, each reaching a little into the next; a point's subpoints listed in its chevron.
+     FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/chevrons">
+  <dgm:title val="Chevrons"/>
+  <dgm:desc val="Stages that lead into one another, as arrowheads in a row."/>
+  <dgm:catLst>
+    <dgm:cat type="process" pri="600"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="chevrons">
+    <dgm:varLst>
+      <dgm:dir/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="lin"/>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="chevron" refType="w"/>
+      <dgm:constr type="h" for="des" forName="chevron" op="equ"/>
+      <dgm:constr type="primFontSz" for="des" forName="chevron" op="equ" val="15"/>
+      <dgm:constr type="w" for="ch" forName="overlap" refType="w" refFor="ch" refForName="chevron" fact="-0.08"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="all" axis="ch" ptType="node">
+      <dgm:layoutNode name="chevron" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"/>
+        <dgm:shape type="chevron">
+          <dgm:adjLst/>
+        </dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst>
+          <dgm:constr type="h" refType="w" op="equ" fact="0.42"/>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.12"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.12"/>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.35"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.12"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:forEach name="between" axis="followSib" ptType="sibTrans" cnt="1">
+        <dgm:layoutNode name="overlap">
+          <dgm:alg type="sp"/>
+          <dgm:shape>
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst/>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>
