@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Gears: one to three gears in mesh, the first the largest, each point's text in its gear. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/gears">
+  <dgm:title val="Gears"/>
+  <dgm:desc val="Parts that drive one another, as gears in mesh."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="900"/>
+    <dgm:cat type="process" pri="950"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="gears">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="composite"><dgm:param type="ar" val="1.25"/></dgm:alg>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:choose name="gearCount">
+      <dgm:if name="gears1" axis="ch" ptType="node" func="cnt" op="equ" val="1"><dgm:constrLst><dgm:constr type="w" for="ch" forName="gear1" refType="h" fact="0.92"/><dgm:constr type="h" for="ch" forName="gear1" refType="h" fact="0.92"/><dgm:constr type="ctrX" for="ch" forName="gear1" refType="h" fact="0.625"/><dgm:constr type="ctrY" for="ch" forName="gear1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="gearText1" refType="h" fact="0.4784"/><dgm:constr type="h" for="ch" forName="gearText1" refType="h" fact="0.4784"/><dgm:constr type="ctrX" for="ch" forName="gearText1" refType="h" fact="0.625"/><dgm:constr type="ctrY" for="ch" forName="gearText1" refType="h" fact="0.5"/><dgm:constr for="des" ptType="node" type="primFontSz" op="equ" val="15"/></dgm:constrLst></dgm:if>
+      <dgm:if name="gears2" axis="ch" ptType="node" func="cnt" op="equ" val="2"><dgm:constrLst><dgm:constr type="w" for="ch" forName="gear1" refType="h" fact="0.66"/><dgm:constr type="h" for="ch" forName="gear1" refType="h" fact="0.66"/><dgm:constr type="ctrX" for="ch" forName="gear1" refType="h" fact="0.46"/><dgm:constr type="ctrY" for="ch" forName="gear1" refType="h" fact="0.44"/><dgm:constr type="w" for="ch" forName="gearText1" refType="h" fact="0.3432"/><dgm:constr type="h" for="ch" forName="gearText1" refType="h" fact="0.3432"/><dgm:constr type="ctrX" for="ch" forName="gearText1" refType="h" fact="0.46"/><dgm:constr type="ctrY" for="ch" forName="gearText1" refType="h" fact="0.44"/><dgm:constr type="w" for="ch" forName="gear2" refType="h" fact="0.5"/><dgm:constr type="h" for="ch" forName="gear2" refType="h" fact="0.5"/><dgm:constr type="ctrX" for="ch" forName="gear2" refType="h" fact="0.87"/><dgm:constr type="ctrY" for="ch" forName="gear2" refType="h" fact="0.7"/><dgm:constr type="w" for="ch" forName="gearText2" refType="h" fact="0.26"/><dgm:constr type="h" for="ch" forName="gearText2" refType="h" fact="0.26"/><dgm:constr type="ctrX" for="ch" forName="gearText2" refType="h" fact="0.87"/><dgm:constr type="ctrY" for="ch" forName="gearText2" refType="h" fact="0.7"/><dgm:constr for="des" ptType="node" type="primFontSz" op="equ" val="15"/></dgm:constrLst></dgm:if>
+      <dgm:else name="gearsMost"><dgm:constrLst><dgm:constr type="w" for="ch" forName="gear1" refType="h" fact="0.65"/><dgm:constr type="h" for="ch" forName="gear1" refType="h" fact="0.65"/><dgm:constr type="ctrX" for="ch" forName="gear1" refType="h" fact="0.4565"/><dgm:constr type="ctrY" for="ch" forName="gear1" refType="h" fact="0.4"/><dgm:constr type="w" for="ch" forName="gearText1" refType="h" fact="0.338"/><dgm:constr type="h" for="ch" forName="gearText1" refType="h" fact="0.338"/><dgm:constr type="ctrX" for="ch" forName="gearText1" refType="h" fact="0.4565"/><dgm:constr type="ctrY" for="ch" forName="gearText1" refType="h" fact="0.4"/><dgm:constr type="w" for="ch" forName="gear2" refType="h" fact="0.5"/><dgm:constr type="h" for="ch" forName="gear2" refType="h" fact="0.5"/><dgm:constr type="ctrX" for="ch" forName="gear2" refType="h" fact="0.869"/><dgm:constr type="ctrY" for="ch" forName="gear2" refType="h" fact="0.6625"/><dgm:constr type="w" for="ch" forName="gearText2" refType="h" fact="0.26"/><dgm:constr type="h" for="ch" forName="gearText2" refType="h" fact="0.26"/><dgm:constr type="ctrX" for="ch" forName="gearText2" refType="h" fact="0.869"/><dgm:constr type="ctrY" for="ch" forName="gearText2" refType="h" fact="0.6625"/><dgm:constr type="w" for="ch" forName="gear3" refType="h" fact="0.375"/><dgm:constr type="h" for="ch" forName="gear3" refType="h" fact="0.375"/><dgm:constr type="ctrX" for="ch" forName="gear3" refType="h" fact="0.844"/><dgm:constr type="ctrY" for="ch" forName="gear3" refType="h" fact="0.2"/><dgm:constr type="w" for="ch" forName="gearText3" refType="h" fact="0.195"/><dgm:constr type="h" for="ch" forName="gearText3" refType="h" fact="0.195"/><dgm:constr type="ctrX" for="ch" forName="gearText3" refType="h" fact="0.844"/><dgm:constr type="ctrY" for="ch" forName="gearText3" refType="h" fact="0.2"/><dgm:constr for="des" ptType="node" type="primFontSz" op="equ" val="15"/></dgm:constrLst></dgm:else>
+    </dgm:choose>
+    <dgm:ruleLst/>
+    <dgm:forEach name="gearPoint1" axis="ch" ptType="node" st="1" cnt="1">
+      <dgm:layoutNode name="gear1" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="gear9"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="self"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="gearText1" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="gearPoint2" axis="ch" ptType="node" st="2" cnt="1">
+      <dgm:layoutNode name="gear2" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="gear6"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="self"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="gearText2" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="gearPoint3" axis="ch" ptType="node" st="3" cnt="1">
+      <dgm:layoutNode name="gear3" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="gear6"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="self"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="gearText3" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

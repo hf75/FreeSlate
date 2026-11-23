@@ -22,7 +22,8 @@ static class SmartArts
     static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
     /// <summary>The layouts the notation names, each a definition of FreeSlate's own.</summary>
-    public static readonly string[] Layouts = ["list", "columns", "blocks", "process", "steps", "chevrons", "cycle", "radial", "venn", "equation", "matrix", "pyramid", "inverted", "org", "tree"];
+    public static readonly string[] Layouts = ["list", "columns", "blocks", "process", "steps", "chevrons", "bending", "stairs", "timeline", "cycle", "radial", "venn",
+        "equation", "target", "gears", "opposing", "matrix", "pyramid", "inverted", "org", "tree"];
 
     /// <summary>The colours of one hue: its shapes, a radial's middle (darker), arrows and lines (light).</summary>
     static readonly Dictionary<string, (string Shape, string Middle, string Light)> Hues = new(StringComparer.OrdinalIgnoreCase)
@@ -69,6 +70,12 @@ static class SmartArts
             "inverted-pyramid" or "funnel" => "inverted",
             "sum" or "plus" => "equation",
             "table-list" or "horizontal-list" => "columns",
+            "snake" or "bending-process" or "rows" => "bending",
+            "staircase" or "step-up" or "rising" => "stairs",
+            "time-line" or "milestones" or "history" => "timeline",
+            "rings" or "concentric" or "bullseye" or "nested" => "target",
+            "gear" or "cogs" or "cogwheels" => "gears",
+            "versus" or "vs" or "opposites" or "contrast" => "opposing",
             var named => named,
         };
         if (!Layouts.Contains(layout))
@@ -94,6 +101,14 @@ static class SmartArts
             return new("", [], [], Problem: "A matrix smartart holds two to four points, a quadrant for each.");
         if (layout is "org" or "tree" && Depth(items) > 5)
             return new("", [], [], Problem: $"An {layout} smartart goes five levels deep at most.");
+        if (layout == "timeline" && items.Count > 8)
+            return new("", [], [], Problem: "A timeline smartart holds one to eight points, a dot on the arrow for each.");
+        if (layout == "target" && items.Count > 5)
+            return new("", [], [], Problem: "A target smartart holds one to five points, a ring for each.");
+        if (layout == "gears" && items.Count > 3)
+            return new("", [], [], Problem: "A gears smartart holds one to three points, a gear for each.");
+        if (layout == "opposing" && items.Count != 2)
+            return new("", [], [], Problem: "An opposing smartart holds two points, an arrow for each.");
         var width = Math.Clamp(Markup.Length(settings.GetValueOrDefault("width"), place.TextWidth) ?? place.TextWidth, 72, place.TextWidth);
         var height = Markup.Length(settings.GetValueOrDefault("height"), place.TextWidth) ?? Height(layout, items, width);
         var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));
@@ -189,6 +204,34 @@ static class SmartArts
                 var term = width / (n + (n - 1) * (0.4 + 0.12));
                 return Clamp(Math.Min(term, width * 0.3));
             }
+            case "bending":
+            {
+                // As many steps in a row as fit best (three, four for seven and more), the rows an arrow's length apart.
+                var columns = n <= 3 ? n : n <= 6 ? 3 : 4;
+                var rows = (n + columns - 1) / columns;
+                var stage = width / (columns + (columns - 1) * 0.28);
+                return Clamp(rows * stage * 0.6 + (rows - 1) * stage * 0.28 + 4);
+            }
+            case "stairs":
+            {
+                // A step for each point across the width, each 0.45 of a step's height above the one before.
+                var step = width / (n + (n - 1) * 0.06);
+                return Clamp(step * 0.7 * (1 + 0.45 * (n - 1)) + 2);
+            }
+            case "timeline":
+            {
+                // The text above the arrow and the subpoints below it each in 0.43 of the height.
+                var column = width / n;
+                var above = items.Max(i => Lines(i, column * 13 / 15)) * 18 + 10;
+                var below = items.Max(i => i.Children.Sum(c => Lines(c, column))) * 15 + 10;
+                return Clamp(Math.Max(90, Math.Max(above, below) / 0.43));
+            }
+            case "target":
+                return Clamp(n == 1 ? 120 : 120 + 40 * n);
+            case "gears":
+                return Clamp(n == 1 ? 160 : 230);
+            case "opposing":
+                return Clamp(Math.Max(80, (26 + items.Max(i => i.Children.Sum(c => Lines(c, width / 2 - 60))) * 15) / 0.7 + 10));
             case "matrix":
                 return Clamp(width / 1.4 * 0.9);
             case "columns":
@@ -285,9 +328,9 @@ static class SmartArts
 
     static string Category(string layout) => layout switch
     {
-        "process" or "chevrons" or "steps" => "process",
+        "process" or "chevrons" or "steps" or "bending" or "stairs" or "timeline" => "process",
         "cycle" => "cycle",
-        "radial" or "venn" or "equation" => "relationship",
+        "radial" or "venn" or "equation" or "target" or "gears" or "opposing" => "relationship",
         "pyramid" or "inverted" => "pyramid",
         "matrix" => "matrix",
         "org" or "tree" => "hierarchy",
@@ -449,7 +492,9 @@ static class SmartArts
     static string Nearest(string id, XElement? definition)
     {
         var last = id[(id.LastIndexOf('/') + 1)..].ToLowerInvariant();
-        foreach (var (part, layout) in new[] { ("chevron", "chevrons"), ("cycle", "cycle"), ("radial", "radial"), ("venn", "venn"), ("pyramid3", "inverted"),
+        foreach (var (part, layout) in new[] { ("chevron", "chevrons"), ("timeline", "timeline"), ("dots", "timeline"), ("stepup", "stairs"), ("bprocess", "bending"),
+                     ("bending", "bending"), ("target", "target"), ("gear", "gears"), ("opposing", "opposing"), ("arrow4", "opposing"), ("arrow6", "opposing"),
+                     ("cycle", "cycle"), ("radial", "radial"), ("venn", "venn"), ("pyramid3", "inverted"),
                      ("pyramid", "pyramid"), ("orgchart", "org"), ("hierarchy2", "tree"), ("hierarchy", "org"), ("equation", "equation"), ("matrix", "matrix"),
                      ("hlist", "columns"), ("process2", "steps"), ("process", "process"), ("arrow", "process"), ("default", "blocks"), ("list", "list") })
         {

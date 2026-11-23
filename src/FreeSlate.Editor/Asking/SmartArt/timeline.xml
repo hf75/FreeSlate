@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- A timeline: an arrow across the middle, each point a dot on it, its text above the dot and its subpoints below. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/timeline">
+  <dgm:title val="Timeline"/>
+  <dgm:desc val="Events in order along an arrow, each with its text above and its details below."/>
+  <dgm:catLst>
+    <dgm:cat type="process" pri="700"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="timeline">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="composite"/>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst><dgm:constr type="l" for="ch" forName="axis" refType="w" fact="0"/><dgm:constr type="w" for="ch" forName="axis" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="axis" refType="h" fact="0.07"/><dgm:constr type="ctrY" for="ch" forName="axis" refType="h" fact="0.5"/><dgm:constr type="l" for="ch" forName="events" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="events" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="events" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="events" refType="h" fact="1"/><dgm:constr type="primFontSz" for="des" forName="when" op="equ" val="15"/><dgm:constr type="primFontSz" for="des" forName="what" op="equ" val="12"/></dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:layoutNode name="axis" styleLbl="sibTrans2D1">
+      <dgm:alg type="sp"/>
+      <dgm:shape type="rightArrow"><dgm:adjLst><dgm:adj idx="1" val="0.42"/><dgm:adj idx="2" val="0.9"/></dgm:adjLst></dgm:shape>
+      <dgm:presOf/>
+      <dgm:constrLst></dgm:constrLst>
+      <dgm:ruleLst/>
+    </dgm:layoutNode>
+    <dgm:layoutNode name="events">
+      <dgm:alg type="lin"/>
+      <dgm:shape><dgm:adjLst/></dgm:shape>
+      <dgm:presOf/>
+      <dgm:choose name="byCount">
+        <dgm:if name="count1" axis="ch" ptType="node" func="cnt" op="equ" val="1"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.96"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.04"/></dgm:constrLst></dgm:if>
+        <dgm:if name="count2" axis="ch" ptType="node" func="cnt" op="equ" val="2"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.48"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.02"/></dgm:constrLst></dgm:if>
+        <dgm:if name="count3" axis="ch" ptType="node" func="cnt" op="equ" val="3"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.32"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.0133"/></dgm:constrLst></dgm:if>
+        <dgm:if name="count4" axis="ch" ptType="node" func="cnt" op="equ" val="4"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.24"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.01"/></dgm:constrLst></dgm:if>
+        <dgm:if name="count5" axis="ch" ptType="node" func="cnt" op="equ" val="5"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.192"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.008"/></dgm:constrLst></dgm:if>
+        <dgm:if name="count6" axis="ch" ptType="node" func="cnt" op="equ" val="6"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.16"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.0067"/></dgm:constrLst></dgm:if>
+        <dgm:if name="count7" axis="ch" ptType="node" func="cnt" op="equ" val="7"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.1371"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.0057"/></dgm:constrLst></dgm:if>
+        <dgm:if name="count8" axis="ch" ptType="node" func="cnt" op="equ" val="8"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.12"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.005"/></dgm:constrLst></dgm:if>
+        <dgm:else name="countMore"><dgm:constrLst><dgm:constr type="w" for="ch" forName="event" refType="w" fact="0.1067"/><dgm:constr type="h" for="ch" forName="event" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.0044"/></dgm:constrLst></dgm:else>
+      </dgm:choose>
+      <dgm:ruleLst/>
+      <dgm:forEach name="eventsEach" axis="ch" ptType="node">
+        <dgm:layoutNode name="event">
+          <dgm:alg type="composite"/>
+          <dgm:shape><dgm:adjLst/></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst><dgm:constr type="l" for="ch" forName="when" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="when" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="when" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="when" refType="h" fact="0.43"/><dgm:constr type="w" for="ch" forName="dot" refType="h" fact="0.13"/><dgm:constr type="h" for="ch" forName="dot" refType="h" fact="0.13"/><dgm:constr type="ctrX" for="ch" forName="dot" refType="w" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="dot" refType="h" fact="0.5"/><dgm:constr type="l" for="ch" forName="what" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="what" refType="h" fact="0.57"/><dgm:constr type="w" for="ch" forName="what" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="what" refType="h" fact="0.43"/></dgm:constrLst>
+          <dgm:ruleLst/>
+          <dgm:layoutNode name="when" styleLbl="revTx">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="b"/><dgm:param type="parTxLTRAlign" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="self"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.2"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="dot" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="what" styleLbl="revTx">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="t"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="stBulletLvl" val="2"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="des" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.2"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:layoutNode>
+        <dgm:forEach name="gapsEach" axis="followSib" ptType="sibTrans" cnt="1">
+          <dgm:layoutNode name="gap">
+            <dgm:alg type="sp"/>
+            <dgm:shape><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:forEach>
+    </dgm:layoutNode>
+  </dgm:layoutNode>
+</dgm:layoutDef>

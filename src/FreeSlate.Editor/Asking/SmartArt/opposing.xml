@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Opposing: two block arrows back to back pointing apart, each point's text and subpoints in its arrow. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/opposing">
+  <dgm:title val="Opposing"/>
+  <dgm:desc val="Two sides that pull apart, an arrow for each."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="1000"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="opposing">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="composite"/>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst><dgm:constr type="l" for="ch" forName="left" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="left" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="left" refType="w" fact="0.495"/><dgm:constr type="h" for="ch" forName="left" refType="h" fact="1"/><dgm:constr type="l" for="ch" forName="right" refType="w" fact="0.505"/><dgm:constr type="t" for="ch" forName="right" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="right" refType="w" fact="0.495"/><dgm:constr type="h" for="ch" forName="right" refType="h" fact="1"/><dgm:constr for="des" ptType="node" type="primFontSz" op="equ" val="15"/></dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="leftPoint" axis="ch" ptType="node" st="1" cnt="1">
+      <dgm:layoutNode name="left" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/></dgm:alg>
+        <dgm:shape type="leftArrow"><dgm:adjLst><dgm:adj idx="1" val="0.7"/><dgm:adj idx="2" val="0.42"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.6"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.5"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="rightPoint" axis="ch" ptType="node" st="2" cnt="1">
+      <dgm:layoutNode name="right" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/></dgm:alg>
+        <dgm:shape type="rightArrow"><dgm:adjLst><dgm:adj idx="1" val="0.7"/><dgm:adj idx="2" val="0.42"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.5"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.6"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

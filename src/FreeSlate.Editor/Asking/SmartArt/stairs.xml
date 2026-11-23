@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Stairs: the points as blocks rising from the bottom left to the top right, each a step above the one before; a point's
+     subpoints listed in its block. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/stairs">
+  <dgm:title val="Stairs"/>
+  <dgm:desc val="Steps rising like stairs, each above and beside the one before."/>
+  <dgm:catLst>
+    <dgm:cat type="process" pri="650"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="stairs">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="snake">
+      <dgm:param type="grDir" val="bL"/>
+      <dgm:param type="flowDir" val="row"/>
+      <dgm:param type="off" val="off"/>
+      <dgm:param type="bkpt" val="fixed"/>
+      <dgm:param type="bkPtFixedVal" val="1"/>
+    </dgm:alg>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="alignOff" val="1"/>
+      <dgm:constr type="w" for="ch" forName="step" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="step" refType="w" refFor="ch" refForName="step" fact="0.7"/>
+      <dgm:constr type="w" for="ch" forName="riser" refType="w" refFor="ch" refForName="step" fact="0.06"/>
+      <dgm:constr type="h" for="ch" forName="riser" refType="w" refFor="ch" refForName="step" fact="0.06"/>
+      <dgm:constr type="sp" refType="h" refFor="ch" refForName="step" op="equ" fact="-0.55"/>
+      <dgm:constr type="primFontSz" for="ch" forName="step" op="equ" val="15"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="steps" axis="ch" ptType="node">
+      <dgm:layoutNode name="step" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx">
+          <dgm:param type="txAnchorVert" val="t"/>
+          <dgm:param type="txAnchorVertCh" val="t"/>
+        </dgm:alg>
+        <dgm:shape type="roundRect">
+          <dgm:adjLst>
+            <dgm:adj idx="1" val="0.08"/>
+          </dgm:adjLst>
+        </dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.35"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.45"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:forEach name="between" axis="followSib" ptType="sibTrans" cnt="1">
+        <dgm:layoutNode name="riser">
+          <dgm:alg type="sp"/>
+          <dgm:shape>
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst/>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>
