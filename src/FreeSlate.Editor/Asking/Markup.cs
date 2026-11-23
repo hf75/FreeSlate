@@ -74,6 +74,7 @@ static class Markup
         Notation.Fenced { Kind: "svg" } svg => Svg(svg, place),
         Notation.Fenced { Kind: "wordart" } art => WordArt(art, place),
         Notation.Fenced { Kind: "box" } box => Box(box, place),
+        Notation.Fenced { Kind: "shape" } shape => Shape(shape, place),
         Notation.Fenced { Kind: "chart" } chart => Charts.Of(chart, place),
         Notation.Fenced { Kind: "smartart" } diagram => SmartArts.Of(diagram, place),
         // Sections of columns are the writing's to make, which knows where they begin (see Writing.Put, SectionEnd).
@@ -325,8 +326,11 @@ static class Markup
         if (floats != null)
             return new(run, parts, [], Float: floats);
         var align = settings.GetValueOrDefault("align")?.ToLowerInvariant() is "left" or "right" ? settings["align"].ToLowerInvariant() : "center";
-        var markup = $"<w:p><w:pPr><w:keepNext/><w:jc w:val=\"{align}\"/></w:pPr>{run}</w:p>";
-        if (settings.GetValueOrDefault("caption") is { Length: > 0 } caption)
+        // Kept with the next paragraph only where that is its caption: drawings one after another would otherwise hold each other and the
+        // headings between them together, pushing them all to the next page as one.
+        var caption = settings.GetValueOrDefault("caption") is { Length: > 0 } given ? given : null;
+        var markup = $"<w:p><w:pPr>{(caption != null ? "<w:keepNext/>" : "")}<w:jc w:val=\"{align}\"/></w:pPr>{run}</w:p>";
+        if (caption != null)
             markup += Paragraph("Caption", Notation.Inline(caption, null), align == "center" ? "center" : null).Blocks;
         return new(markup, parts, []);
     }
@@ -480,6 +484,156 @@ static class Markup
             + "</wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>";
         var made = Placed(run, [], settings.ContainsKey("align") ? settings : new Dictionary<string, string>(settings, StringComparer.OrdinalIgnoreCase) { ["align"] = "left" }, place);
         return made with { Fit = true };
+    }
+
+    /// <summary>Short names of preset shapes the notation takes besides DrawingML's own (any case).</summary>
+    static readonly Dictionary<string, string> ShapeNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["arrow"] = "rightArrow", ["right-arrow"] = "rightArrow", ["left-arrow"] = "leftArrow", ["up-arrow"] = "upArrow", ["down-arrow"] = "downArrow",
+        ["double-arrow"] = "leftRightArrow", ["circle"] = "ellipse", ["oval"] = "ellipse", ["square"] = "rect", ["rectangle"] = "rect",
+        ["rounded"] = "roundRect", ["star"] = "star5", ["callout"] = "wedgeRoundRectCallout", ["speech"] = "wedgeEllipseCallout",
+        ["thought"] = "cloudCallout", ["banner"] = "ribbon2", ["scroll"] = "horizontalScroll", ["decision"] = "flowChartDecision",
+        ["process"] = "flowChartProcess", ["terminator"] = "flowChartTerminator", ["document"] = "flowChartDocument", ["data"] = "flowChartInputOutput",
+        ["smiley"] = "smileyFace", ["lightning"] = "lightningBolt", ["gear"] = "gear6", ["cylinder"] = "can", ["cross"] = "plus",
+        ["explosion"] = "irregularSeal1", ["burst"] = "irregularSeal2", ["arrow-line"] = "straightConnector1", ["connector"] = "straightConnector1",
+        ["home-plate"] = "homePlate", ["tab"] = "homePlate",
+    };
+
+    /// <summary>A preset shape's name as DrawingML has it, from its own name in any case or a short one (see ShapeNames); null for none.</summary>
+    public static string? PresetName(string? given)
+    {
+        var name = given?.Trim() ?? "";
+        if (name.Length == 0)
+            return "rect";
+        if (ShapeNames.TryGetValue(name, out var known))
+            return known;
+        return FreeSlate.Drawing.Geometry.PresetGeometries.Names.FirstOrDefault(n => n.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// A shape of Word's (```shape type=star5 fill=yellow): a preset shape (wps:wsp) of any of DrawingML's 187 kinds or the notation's short
+    /// names, filled (a fill's name or #RRGGBB, a strong fill white text on it), outlined as a box is or in a colour (color=#…), turned and
+    /// mirrored, with a shadow, with paragraphs of the notation inside it, in the middle; lines and arrows (line, arrow-line) a line of their
+    /// length with arrowheads (ends=start|end|both). As large as its width and height say, else four centimetres across and as high as its
+    /// kind is (a text box's grows with its text). In a line of its own or floating beside the paragraph after it.
+    /// </summary>
+    static Made Shape(Notation.Fenced block, Place place)
+    {
+        var settings = block.Settings;
+        if (PresetName(settings.GetValueOrDefault("type") ?? settings.GetValueOrDefault("shape")) is not { } preset)
+            return new("", [], [], Problem: $"type={settings.GetValueOrDefault("type")} is no shape: one of Word's (rect, ellipse, triangle, rightArrow, star5, heart, cloud, wedgeRoundRectCallout, flowChartDecision …) or arrow, circle, star, callout, speech, thought, banner, decision, process, line, arrow-line.");
+        var isLine = preset is "line" or "lineInv" or "straightConnector1" || preset.StartsWith("bentConnector", StringComparison.Ordinal) || preset.StartsWith("curvedConnector", StringComparison.Ordinal);
+        var inner = Notation.Parse(block.Body, final: true);
+        var paragraphs = new StringBuilder();
+        // A rectangle without a height of its own grows with its text as a box does, its text at the left (see Box); others centre it.
+        var growing = !isLine && Length(settings.GetValueOrDefault("height"), place.TextWidth) == null && preset is "rect" or "roundRect";
+        foreach (var piece in inner.Blocks)
+        {
+            if (piece is not Notation.Paragraph paragraph)
+                return new("", [], [], Problem: "A shape holds paragraphs, points and their meanings, no tables, graphics or columns.");
+            var pieces = paragraph.Pieces.Where(p => p is not Notation.NoteMark).ToList();
+            paragraphs.Append(Paragraph(paragraph.Style, pieces, growing ? null : "center", kept: place.Kept).Blocks);
+        }
+        if (isLine && paragraphs.Length > 0)
+            return new("", [], [], Problem: "A line holds no text: write the text beside it, or take a shape that holds it (a callout).");
+        var fill = TableWords.FillHex(settings.GetValueOrDefault("fill") ?? (isLine ? "none" : "#2F6DB5"), out var knownFill);
+        if (!knownFill)
+            return new("", [], [], Problem: $"fill={settings["fill"]} is no fill (gray, yellow, orange, green, blue, rose, violet, none or #RRGGBB).");
+        var line = settings.GetValueOrDefault("line")?.Trim().ToLowerInvariant() ?? (isLine || fill == null ? "strong" : "none");
+        var kind = FreeSlate.Editor.Writing.Tables.Lines.FirstOrDefault(l => l.NameKey[4..].Equals(line, StringComparison.OrdinalIgnoreCase));
+        if (kind == null && line != "none")
+            return new("", [], [], Problem: $"line={line} is no line (fine, strong, double, dotted, dashed or none).");
+        var color = TableWords.FillHex(settings.GetValueOrDefault("color"), out var knownColor);
+        if (!knownColor)
+            return new("", [], [], Problem: $"color={settings["color"]} is no colour (#RRGGBB or a fill's name).");
+        var width = Math.Clamp(Length(settings.GetValueOrDefault("width"), place.TextWidth) ?? (isLine ? place.TextWidth * 0.5 : 4 / 2.54 * 72), 6, place.TextWidth);
+        var given = Length(settings.GetValueOrDefault("height"), place.TextWidth);
+        var square = preset is "ellipse" or "star4" or "star5" or "star6" or "star7" or "star8" or "star10" or "star12" or "star16" or "star24" or "star32"
+            or "heart" or "smileyFace" or "sun" or "moon" or "gear6" or "gear9" or "donut" or "noSmoking" or "plus" or "octagon" or "hexagon"
+            or "pentagon" or "decagon" or "dodecagon" or "heptagon" or "cube" or "teardrop" or "pie" or "chord" or "blockArc" or "flowChartConnector"
+            or "mathPlus" or "mathMinus" or "mathMultiply" or "mathDivide" or "mathEqual" or "mathNotEqual" or "irregularSeal1" or "irregularSeal2";
+        var height = isLine ? Math.Max(0, given ?? 0) : given ?? width * (square ? 1 : preset.Contains("Arrow", StringComparison.Ordinal) ? 0.5 : 0.62);
+        var fit = growing && paragraphs.Length > 0;
+        var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));
+        var outline = kind == null ? "<a:ln><a:noFill/></a:ln>" : Outline(kind, color != null ? (color, color) : fill != null && line != "none" && !isLine ? ("FFFFFF", "FFFFFF") : place.Lines);
+        if (isLine)
+        {
+            var ends = settings.GetValueOrDefault("ends")?.Trim().ToLowerInvariant() ?? (preset == "straightConnector1" ? "end" : "none");
+            var arrows = (ends is "start" or "both" ? "<a:headEnd type=\"triangle\"/>" : "") + (ends is "end" or "both" ? "<a:tailEnd type=\"triangle\"/>" : "");
+            outline = outline.Replace("</a:ln>", arrows + "</a:ln>", StringComparison.Ordinal);
+        }
+        var filled = fill != null ? $"<a:solidFill><a:srgbClr val=\"{fill}\"/></a:solidFill>" : "<a:noFill/>";
+        // Text on a strong fill is white: the fill's lightness (relative luminance) under the middle.
+        var dark = fill != null && Luminance(fill) < 0.45;
+        if (dark)
+            paragraphs = new StringBuilder(Recoloured(paragraphs.ToString(), "FFFFFF"));
+        var turn = Number(settings.GetValueOrDefault("turn")) is { } degrees ? $" rot=\"{(long)Math.Round((((degrees % 360) + 360) % 360) * 60000)}\"" : "";
+        var flip = settings.GetValueOrDefault("flip")?.Trim().ToLowerInvariant() switch { "across" or "h" or "horizontal" => " flipH=\"1\"", "down" or "v" or "vertical" => " flipV=\"1\"", "both" => " flipH=\"1\" flipV=\"1\"", _ => "" };
+        var shadow = settings.GetValueOrDefault("shadow")?.Trim().ToLowerInvariant() is "yes" or "true"
+            ? "<a:effectLst><a:outerShdw blurRad=\"50800\" dist=\"25400\" dir=\"5400000\" algn=\"t\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"35000\"/></a:srgbClr></a:outerShdw></a:effectLst>"
+            : "";
+        var alt = settings.GetValueOrDefault("alt") ?? settings.GetValueOrDefault("description") ?? "";
+        var text = paragraphs.Length > 0
+            ? $"<wps:txbx><w:txbxContent>{paragraphs}</w:txbxContent></wps:txbx>"
+              // A rectangle growing with its text is a box, with a box's margins (see Box); other shapes keep their text closer.
+              + (fit
+                  ? "<wps:bodyPr rot=\"0\" vert=\"horz\" wrap=\"square\" lIns=\"108000\" tIns=\"79200\" rIns=\"108000\" bIns=\"79200\" anchor=\"t\" anchorCtr=\"0\"><a:spAutoFit/></wps:bodyPr>"
+                  : "<wps:bodyPr rot=\"0\" vert=\"horz\" wrap=\"square\" lIns=\"72000\" tIns=\"36000\" rIns=\"72000\" bIns=\"36000\" anchor=\"ctr\" anchorCtr=\"0\"><a:noAutofit/></wps:bodyPr>")
+            : "<wps:bodyPr rot=\"0\" vert=\"horz\" wrap=\"square\" anchor=\"ctr\" anchorCtr=\"0\"><a:noAutofit/></wps:bodyPr>";
+        var run = $"<w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"{cx}\" cy=\"{cy}\"/><wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/>"
+            + $"<wp:docPr id=\"1\" name=\"Form\" descr=\"{Escape(alt)}\"/><wp:cNvGraphicFramePr/>"
+            + "<a:graphic><a:graphicData uri=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\"><wps:wsp>"
+            + (isLine ? "<wps:cNvCnPr/>" : "<wps:cNvSpPr/>")
+            + $"<wps:spPr><a:xfrm{turn}{flip}><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"{preset}\"><a:avLst/></a:prstGeom>{(isLine ? "<a:noFill/>" : filled)}{outline}{shadow}</wps:spPr>"
+            + text + "</wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>";
+        var made = Placed(run, [], settings, place);
+        return made with { Fit = fit };
+    }
+
+    static double? Number(string? text) =>
+        double.TryParse(text?.Trim().TrimEnd('°'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
+
+    /// <summary>The relative luminance of a colour (hex RRGGBB), 0 black to 1 white.</summary>
+    static double Luminance(string hex)
+    {
+        static double Channel(int value) => value / 255.0 is var c && c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        var rgb = Convert.ToInt32(hex, 16);
+        return 0.2126 * Channel(rgb >> 16 & 255) + 0.7152 * Channel(rgb >> 8 & 255) + 0.0722 * Channel(rgb & 255);
+    }
+
+    /// <summary>Paragraphs' runs given a colour (white text on a strong fill), their own properties kept, the colour where the schema has it.</summary>
+    static string Recoloured(string paragraphs, string color)
+    {
+        var root = Parsed(paragraphs);
+        XNamespace w = Namespaces[0].Uri;
+        string[] before = ["rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps", "strike", "dstrike", "outline", "shadow", "emboss", "imprint", "noProof", "snapToGrid", "vanish", "webHidden"];
+        void Colour(XElement properties)
+        {
+            properties.Elements(w + "color").Remove();
+            var colour = new XElement(w + "color", new XAttribute(w + "val", color));
+            if (properties.Elements().LastOrDefault(e => before.Contains(e.Name.LocalName)) is { } last)
+                last.AddAfterSelf(colour);
+            else
+                properties.AddFirst(colour);
+        }
+        foreach (var run in root.Descendants(w + "r"))
+        {
+            var properties = run.Element(w + "rPr");
+            if (properties == null)
+                run.AddFirst(properties = new XElement(w + "rPr"));
+            Colour(properties);
+        }
+        foreach (var paragraph in root.Elements(w + "p"))
+        {
+            var pPr = paragraph.Element(w + "pPr");
+            if (pPr == null)
+                paragraph.AddFirst(pPr = new XElement(w + "pPr"));
+            var mark = pPr.Element(w + "rPr");
+            if (mark == null)
+                pPr.Add(mark = new XElement(w + "rPr"));
+            Colour(mark);
+        }
+        return string.Concat(root.Elements().Select(e => e.ToString(SaveOptions.DisableFormatting)));
     }
 
     /// <summary>A shape's line of a kind of the table lines' (see Tables.Lines) in the tone's colours: its width, its colour, double, dotted or dashed.</summary>

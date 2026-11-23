@@ -291,8 +291,11 @@ sealed partial class Objects(IEditableDocument document)
             return "frame";
         if (Has("svgBlip"))
             return "graphic";
+        // A text box is a rectangle with text; another preset with text inside is a shape (see Markup.Shape).
+        var preset = (string?)element.Descendants().FirstOrDefault(e => e.Name.LocalName == "prstGeom")?.Attribute("prst");
         if (Has("txbxContent"))
-            return Has("prstTxWarp") || Has("textFill") || Has("textOutline") ? "wordart" : Has("pic") ? "picture" : "text box";
+            return Has("prstTxWarp") || Has("textFill") || Has("textOutline") ? "wordart" : Has("pic") ? "picture"
+                : preset is null or "rect" or "roundRect" && Has("spAutoFit") ? "text box" : "shape";
         if (Has("pic"))
             return "picture";
         if (Has("relIds"))
@@ -395,6 +398,9 @@ sealed partial class Objects(IEditableDocument document)
             case "text box" when element != null && word != null:
                 line.Append('\n').Append(Box(word, paragraph, offset, element));
                 break;
+            case "shape" when element != null && word != null && element.Descendants().Any(e => e.Name.LocalName == "prstGeom"):
+                line.Append('\n').Append(ShapeBlock(word, paragraph, offset, element));
+                break;
             case "field" when element != null:
             {
                 var instruction = (string?)element.Descendants().FirstOrDefault(e => e.Name.LocalName == "fldSimple")?.Attributes().FirstOrDefault(a => a.Name.LocalName == "instr")
@@ -458,6 +464,64 @@ sealed partial class Objects(IEditableDocument document)
         }
         var lines = word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Paragraph(document, p, this));
         return "```box " + string.Join(" ", settings) + "\n" + string.Join("\n\n", lines) + "\n```";
+    }
+
+    /// <summary>
+    /// A shape as the notation writes it (see Markup.Shape): its preset, fill, line (and the line's colour where it is not the tone's), a
+    /// line's arrowheads, its shadow, size, turn, mirror and place, its text.
+    /// </summary>
+    string ShapeBlock(WordDocument word, int paragraph, int offset, XElement element)
+    {
+        var settings = new List<string>();
+        var properties = element.Descendants().FirstOrDefault(e => e.Name.LocalName == "spPr");
+        var preset = (string?)properties?.Elements().FirstOrDefault(e => e.Name.LocalName == "prstGeom")?.Attribute("prst") ?? "rect";
+        settings.Add("type=" + preset);
+        var isLine = element.Descendants().Any(e => e.Name.LocalName == "cNvCnPr") || preset is "line" or "lineInv" or "straightConnector1";
+        var fill = properties?.Elements().FirstOrDefault(e => e.Name.LocalName == "solidFill")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "srgbClr");
+        if ((string?)fill?.Attribute("val") is { Length: 6 } hex)
+            settings.Add("fill=" + TableWords.FillName(hex));
+        else if (!isLine)
+            settings.Add("fill=none");
+        var outline = properties?.Elements().FirstOrDefault(e => e.Name.LocalName == "ln");
+        var width = (long?)outline?.Attribute("w") ?? 0;
+        var dash = (string?)outline?.Elements().FirstOrDefault(e => e.Name.LocalName == "prstDash")?.Attribute("val");
+        var none = outline == null || outline.Elements().Any(e => e.Name.LocalName == "noFill");
+        settings.Add("line=" + (none ? "none"
+            : (string?)outline!.Attribute("cmpd") == "dbl" ? "double"
+            : dash is "sysDot" or "dot" ? "dotted"
+            : dash is "dash" or "sysDash" or "lgDash" ? "dashed"
+            : width >= 15875 ? "strong" : "fine"));
+        if (!none && (string?)outline!.Descendants().FirstOrDefault(e => e.Name.LocalName == "srgbClr")?.Attribute("val") is { Length: 6 } lineColor && lineColor != "FFFFFF"
+            && !string.Equals(lineColor, "D6D3CD", StringComparison.OrdinalIgnoreCase) && !string.Equals(lineColor, "3F3C37", StringComparison.OrdinalIgnoreCase))
+            settings.Add("color=" + TableWords.FillName(lineColor));
+        if (isLine)
+        {
+            bool End(string name) => outline?.Elements().Any(e => e.Name.LocalName == name && (string?)e.Attribute("type") is { } type && type != "none") == true;
+            var (head, tail) = (End("headEnd"), End("tailEnd"));
+            settings.Add("ends=" + (head && tail ? "both" : head ? "start" : tail ? "end" : "none"));
+        }
+        if (properties?.Descendants().Any(e => e.Name.LocalName == "outerShdw") == true)
+            settings.Add("shadow=yes");
+        if (document.DrawingOf(paragraph, offset) is { } drawing)
+        {
+            if (drawing.Width is { } across)
+                settings.Add("width=" + Centimetres(across));
+            if (drawing.Height is { } down && !(isLine && down < 0.5) && !element.Descendants().Any(e => e.Name.LocalName == "spAutoFit"))
+                settings.Add("height=" + Centimetres(down));
+            if (Place(drawing) is "left" or "right")
+                settings.Add("float=" + Place(drawing));
+        }
+        // The shape's own turn and mirror (its spPr's xfrm).
+        var xfrm = properties?.Elements().FirstOrDefault(e => e.Name.LocalName == "xfrm");
+        if ((long?)xfrm?.Attribute("rot") is { } rot && rot != 0)
+            settings.Add("turn=" + Math.Round(rot / 60000.0).ToString(CultureInfo.InvariantCulture));
+        var (flipH, flipV) = ((string?)xfrm?.Attribute("flipH") is "1" or "true", (string?)xfrm?.Attribute("flipV") is "1" or "true");
+        if (flipH || flipV)
+            settings.Add("flip=" + (flipH && flipV ? "both" : flipH ? "across" : "down"));
+        var lines = element.Descendants().Any(e => e.Name.LocalName == "txbxContent")
+            ? word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Paragraph(document, p, this)).ToList()
+            : [];
+        return "```shape " + string.Join(" ", settings) + "\n" + string.Concat(lines.Select(l => l + "\n\n")).TrimEnd('\n') + (lines.Count > 0 ? "\n" : "") + "```";
     }
 
     /// <summary>Where a drawing stands, as the picture tool names it: inline, left, right, own, behind, front (floating otherwise).</summary>

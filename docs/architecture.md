@@ -449,7 +449,9 @@ text starting at its first number or going on in the list before where that numb
 "{table look=book head=none float=right across=yes}" before one, "{fill=yellow valign=middle turn=up}" at a cell's start, "<"
 and "^" for cells merged with the one before or above, see `TableWords`), fenced blocks of a vector picture (```svg), of
 WordArt (```wordart), of a box (```box: Word's text box with paragraphs of the notation inside, a fill, a line, as high as its
-text, see WordDocument.FitTextBox), of a chart (```chart: a GitHub table of categories and series made a chart part with its
+text, see WordDocument.FitTextBox), of a shape (```shape: any of DrawingML's 187 preset shapes or a short name for one, with
+text inside, filled, outlined, turned, mirrored, with a shadow; lines with arrowheads; read back as the block, a rectangle
+growing with its text as a box), of a chart (```chart: a GitHub table of categories and series made a chart part with its
 data in an embedded workbook, `Charts`: Word's classic types as c:chartSpace, in 3D, stacked, combined with lines and a second
 axis, with trendlines, error bars and a data table; Office 2016's waterfall, funnel, treemap, sunburst, histogram, Pareto and
 box and whisker as cx:chartSpace behind markup compatibility, with a chart style and colour style of our own beside it, without

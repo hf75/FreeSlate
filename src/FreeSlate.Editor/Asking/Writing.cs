@@ -355,7 +355,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         {
             var block = parsed.Blocks[done];
             // A drawing to float beside the text waits for the paragraph after it, and goes into it.
-            if (block is Notation.Fenced { Kind: "svg" or "wordart" or "box" or "chart" or "smartart" } fenced && fenced.Settings.GetValueOrDefault("float")?.ToLowerInvariant() is "left" or "right")
+            if (block is Notation.Fenced { Kind: "svg" or "wordart" or "box" or "chart" or "smartart" or "shape" } fenced && fenced.Settings.GetValueOrDefault("float")?.ToLowerInvariant() is "left" or "right")
             {
                 if (done + 1 >= parsed.Blocks.Count && !final)
                     break;

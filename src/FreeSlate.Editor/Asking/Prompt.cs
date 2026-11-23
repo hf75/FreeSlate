@@ -65,6 +65,15 @@ static class Prompt
           shape=rounded with paragraphs in the notation inside (levels, points, meanings, links, formulas; no tables or graphics).
           Settings: fill (gray, yellow, orange, green, blue, rose, violet or none), line (fine, the default, strong, double, dotted,
           dashed or none), shape=rounded, width (as wide as the text without it), align, float=left|right beside the paragraph after it.
+        - A shape of Word's: a fenced block ```shape type=rightArrow fill=#2F6DB5 width=5cm with its text inside (paragraphs of the
+          notation, centred; none for a shape without text). type: any of Word's shapes by its DrawingML name (rect, roundRect,
+          ellipse, triangle, diamond, hexagon, rightArrow, leftRightArrow, chevron, star5, star8, heart, cloud, sun, moon,
+          lightningBolt, wedgeRoundRectCallout, cloudCallout, ribbon2, horizontalScroll, flowChartProcess, flowChartDecision,
+          flowChartTerminator, can, cube, plus, mathEqual …) or arrow, circle, star, callout, speech, thought, banner, decision,
+          process; line or arrow-line for a line (its width its length, turn its direction, ends=start|end|both). fill (gray,
+          yellow, orange, green, blue, rose, violet, none or #RRGGBB; text on a strong fill is white), line (fine, strong, double,
+          dotted, dashed or none) and color=#RRGGBB for its colour, turn (degrees), flip=across|down, shadow=yes, width, height,
+          align, float, alt.
         - A chart Word can edit: a fenced block ```chart type=column title="…" y="…" with a table inside, the categories down its first
           column and a series in each other column, its head naming them ("| Month | 2024 | 2025 |").
           - type: column, bar, line, area, pie, doughnut, pie-of-pie, bar-of-pie, radar, surface (contour: seen from above), scatter
