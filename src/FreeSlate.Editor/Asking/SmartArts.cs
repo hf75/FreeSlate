@@ -22,7 +22,7 @@ static class SmartArts
     static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main";
 
     /// <summary>The layouts the notation names, each a definition of FreeSlate's own.</summary>
-    public static readonly string[] Layouts = ["list", "process", "chevrons", "cycle", "radial", "venn", "pyramid", "blocks"];
+    public static readonly string[] Layouts = ["list", "columns", "blocks", "process", "steps", "chevrons", "cycle", "radial", "venn", "equation", "matrix", "pyramid", "inverted", "org", "tree"];
 
     /// <summary>The colours of one hue: its shapes, a radial's middle (darker), arrows and lines (light).</summary>
     static readonly Dictionary<string, (string Shape, string Middle, string Light)> Hues = new(StringComparer.OrdinalIgnoreCase)
@@ -57,11 +57,18 @@ static class SmartArts
         var settings = block.Settings;
         var layout = (settings.GetValueOrDefault("layout") ?? settings.GetValueOrDefault("type") ?? "list").Trim().ToLowerInvariant() switch
         {
-            "steps" or "flow" => "process",
+            "flow" => "process",
             "circle" or "loop" => "cycle",
             "hub" or "center" or "centre" => "radial",
             "overlap" or "overlapping" => "venn",
             "grid" or "tiles" => "blocks",
+            "hierarchy" or "organization" or "organisation" or "orgchart" or "org-chart" => "org",
+            "mindmap" or "mind-map" or "horizontal-tree" => "tree",
+            "vertical" or "vertical-process" or "down" => "steps",
+            "quadrants" or "2x2" => "matrix",
+            "inverted-pyramid" or "funnel" => "inverted",
+            "sum" or "plus" => "equation",
+            "table-list" or "horizontal-list" => "columns",
             var named => named,
         };
         if (!Layouts.Contains(layout))
@@ -83,6 +90,10 @@ static class SmartArts
         }
         if (layout == "venn" && items.Count > 4)
             return new("", [], [], Problem: "A venn smartart holds one to four points, a circle for each.");
+        if (layout == "matrix" && items.Count > 4)
+            return new("", [], [], Problem: "A matrix smartart holds two to four points, a quadrant for each.");
+        if (layout is "org" or "tree" && Depth(items) > 5)
+            return new("", [], [], Problem: $"An {layout} smartart goes five levels deep at most.");
         var width = Math.Clamp(Markup.Length(settings.GetValueOrDefault("width"), place.TextWidth) ?? place.TextWidth, 72, place.TextWidth);
         var height = Markup.Length(settings.GetValueOrDefault("height"), place.TextWidth) ?? Height(layout, items, width);
         var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));
@@ -161,8 +172,36 @@ static class SmartArts
                 return Clamp(width * 0.62);
             case "venn":
                 return Clamp(width * (n == 1 ? 0.5 : n == 2 ? 0.5 : 0.6));
-            case "pyramid":
+            case "pyramid" or "inverted":
                 return Clamp(Math.Clamp(n * 40.0, 140, 260));
+            case "steps":
+            {
+                // Bars of one height: a bar's at its proportions, more where a step's text needs it (a line of 15-point
+                // text, lines of 12-point subpoints under it); the arrows between them as the bars' proportions make them.
+                var bar = width * 0.8 * 0.16;
+                var stage = Math.Max(bar, items.Max(i => 26 + i.Children.Sum(c => Lines(c, width * 0.8)) * 13.0));
+                return Clamp(n * stage + (n - 1) * bar * 0.55 + 2);
+            }
+            case "equation":
+            {
+                // As high as a term is wide: Word scales a row's heights to the frame apart from its widths, so a frame
+                // higher than the circles makes them ovals.
+                var term = width / (n + (n - 1) * (0.4 + 0.12));
+                return Clamp(Math.Min(term, width * 0.3));
+            }
+            case "matrix":
+                return Clamp(width / 1.4 * 0.9);
+            case "columns":
+                return Clamp(Math.Max(120, 26 + items.Max(i => i.Children.Sum(c => Lines(c, width / Math.Max(1, n)))) * 18 + 30));
+            case "org" or "tree":
+            {
+                // The tree's depth down (across for a tree from the left) and its breadth: the most points on one level.
+                var depth = Depth(items);
+                var breadth = Math.Max(1, Breadth(items));
+                return layout == "org"
+                    ? Clamp(Math.Min(width * 0.75, depth * Math.Min(width / breadth * 0.6, 60) * 1.4 + 10))
+                    : Clamp(Math.Min(width * 0.75, breadth * 34 + 10));
+            }
             case "blocks":
             {
                 var columns = n <= 4 ? n : n <= 6 || n == 9 ? 3 : 4;
@@ -179,6 +218,18 @@ static class SmartArts
                 return Clamp(height + 6);
             }
         }
+    }
+
+    /// <summary>How many levels deep the points go.</summary>
+    static int Depth(List<Item> items) => items.Count == 0 ? 0 : 1 + items.Max(i => Depth(i.Children));
+
+    /// <summary>The most points on one level of the tree.</summary>
+    static int Breadth(List<Item> items)
+    {
+        var most = 0;
+        for (var level = items; level.Count > 0; level = level.SelectMany(i => i.Children).ToList())
+            most = Math.Max(most, level.Count);
+        return most;
     }
 
     /// <summary>The lines a subpoint and its own take in a list as wide as given (about 13-point text).</summary>
@@ -234,10 +285,12 @@ static class SmartArts
 
     static string Category(string layout) => layout switch
     {
-        "process" or "chevrons" => "process",
+        "process" or "chevrons" or "steps" => "process",
         "cycle" => "cycle",
-        "radial" or "venn" => "relationship",
-        "pyramid" => "pyramid",
+        "radial" or "venn" or "equation" => "relationship",
+        "pyramid" or "inverted" => "pyramid",
+        "matrix" => "matrix",
+        "org" or "tree" => "hierarchy",
         _ => "list",
     };
 
@@ -281,7 +334,7 @@ static class SmartArts
             new XElement(Dgm + "catLst", new XElement(Dgm + "cat", new XAttribute("type", "simple"), new XAttribute("pri", 500))),
             new XElement(Dgm + "scene3d", new XElement(A + "camera", new XAttribute("prst", "orthographicFront")), new XElement(A + "lightRig", new XAttribute("rig", "threePt"), new XAttribute("dir", "t"))),
             Label("node0", 1, 1), Label("node1", 1, 1), Label("vennNode1", 2, 1), Label("sibTrans2D1", 0, 1), Label("sibTrans1D1", 1, 0),
-            Label("parChTrans1D2", 2, 0), Label("revTx", 0, 0));
+            Label("parChTrans1D2", 2, 0), Label("revTx", 0, 0), Label("alignAcc1", 0, 1));
     }
 
     /// <summary>The colours of a hue (or colorful): fill, line and text of each style label the layouts use.</summary>
@@ -291,6 +344,8 @@ static class SmartArts
         var shapes = colors == "colorful" ? Colorful : [shape];
         if (colors == "colorful")
             middle = "3F444D";
+        // A light panel under a heading (columns): the hue's light colour, lighter still.
+        var panel = Lighter(light);
         static XElement Color(string hex, int? alpha = null) => new(A + "srgbClr", new XAttribute("val", hex), alpha is { } a ? new XElement(A + "alpha", new XAttribute("val", a)) : null);
         static XElement List(string name, IEnumerable<XElement> colors) => new(Dgm + name, new XAttribute("meth", "repeat"), colors);
         XElement Label(string name, IEnumerable<XElement> fill, IEnumerable<XElement> line, XElement text) => new(Dgm + "styleLbl", new XAttribute("name", name),
@@ -308,7 +363,16 @@ static class SmartArts
             Label("sibTrans2D1", [Color(light)], [Color(light)], Color(Ink)),
             Label("sibTrans1D1", [Color(light)], [Color(light)], Color(Ink)),
             Label("parChTrans1D2", [Color(light)], [Color(light)], Color(Ink)),
-            Label("revTx", Clear(), Clear(), Color(Ink)));
+            Label("revTx", Clear(), Clear(), Color(Ink)),
+            Label("alignAcc1", [Color(panel)], [Color(panel)], Color(Ink)));
+    }
+
+    /// <summary>A colour (hex) halfway to white.</summary>
+    static string Lighter(string hex)
+    {
+        var rgb = Convert.ToInt32(hex, 16);
+        static int Half(int channel) => channel + (255 - channel) / 2;
+        return $"{Half(rgb >> 16 & 255):X2}{Half(rgb >> 8 & 255):X2}{Half(rgb & 255):X2}";
     }
 
     /// <summary>
@@ -385,8 +449,9 @@ static class SmartArts
     static string Nearest(string id, XElement? definition)
     {
         var last = id[(id.LastIndexOf('/') + 1)..].ToLowerInvariant();
-        foreach (var (part, layout) in new[] { ("chevron", "chevrons"), ("cycle", "cycle"), ("radial", "radial"), ("venn", "venn"), ("pyramid", "pyramid"),
-                     ("process", "process"), ("arrow", "process"), ("default", "blocks"), ("matrix", "blocks"), ("list", "list") })
+        foreach (var (part, layout) in new[] { ("chevron", "chevrons"), ("cycle", "cycle"), ("radial", "radial"), ("venn", "venn"), ("pyramid3", "inverted"),
+                     ("pyramid", "pyramid"), ("orgchart", "org"), ("hierarchy2", "tree"), ("hierarchy", "org"), ("equation", "equation"), ("matrix", "matrix"),
+                     ("hlist", "columns"), ("process2", "steps"), ("process", "process"), ("arrow", "process"), ("default", "blocks"), ("list", "list") })
         {
             if (last.Contains(part, StringComparison.Ordinal))
                 return layout;
@@ -398,7 +463,8 @@ static class SmartArts
             "cycle" => "cycle",
             "relationship" => "venn",
             "pyramid" => "pyramid",
-            "matrix" => "blocks",
+            "matrix" => "matrix",
+            "hierarchy" => "org",
             _ => "list",
         };
     }

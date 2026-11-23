@@ -462,10 +462,11 @@ data in an embedded workbook, `Charts`: Word's classic types as c:chartSpace, in
 axis, with trendlines, error bars and a data table; Office 2016's waterfall, funnel, treemap, sunburst, histogram, Pareto and
 box and whisker as cx:chartSpace behind markup compatibility, with a chart style and colour style of our own beside it, without
 which Word does not open the document) and of SmartArt (```smartart layout=cycle colors=blue with its points as "- " lines:
-a data model, colours and a style of its own and one of eight layout definitions written for FreeSlate, none of Office's
-(`Asking/SmartArt/*.xml`: list, process, chevrons, cycle, radial, venn, pyramid, blocks), without a drawing, which Word and
-the engine lay out alike from the definition; Word takes a definition only with names that are unique among all its
-elements, `SmartArts`), formulas in LaTeX ($…$, $$…$$, made Office Math and read back so, `Formulas`), links
+a data model, colours and a style of its own and one of fifteen layout definitions written for FreeSlate, none of Office's
+(`Asking/SmartArt/*.xml`: list, columns, blocks, process, steps, chevrons, cycle, radial, venn, equation, matrix, pyramid,
+inverted, org and tree, whose levels are written out to five as the layout language has no recursion), without a drawing,
+which Word and the engine lay out alike from the definition; Word takes a definition only with names that are unique among
+all its elements and connection points it knows (midR, not rCtr), `SmartArts`), formulas in LaTeX ($…$, $$…$$, made Office Math and read back so, `Formulas`), links
 ([text](address) as HYPERLINK fields, in the tones' link style), fields ({page}, {pages}, {date}), "::: columns 2 line" to
 ":::", footnotes, \pagebreak and --- for a page break and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages

@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- A tree from the left to the right: the first point at the left, its subpoints in a column beside it, lines between. FreeSlate's own definition (see SmartArts), written by its generator level by level, five levels deep. -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/tree">
+  <dgm:title val="Tree"/>
+  <dgm:desc val="A tree from the left to the right: the first point at the left, its subpoints in a column beside it, lines between."/>
+  <dgm:catLst>
+    <dgm:cat type="hierarchy" pri="500"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="tree">
+    <dgm:varLst>
+      <dgm:dir/>
+      <dgm:resizeHandles/>
+    </dgm:varLst>
+    <dgm:alg type="hierChild"><dgm:param type="linDir" val="fromT"/></dgm:alg>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/>
+      <dgm:constr type="w" for="des" forName="box1" refType="w"/>
+      <dgm:constr type="h" for="des" forName="box1" refType="w" refFor="des" refForName="box1" fact="0.5"/>
+      <dgm:constr type="w" for="des" forName="box2" refType="w" refFor="des" refForName="box1"/>
+      <dgm:constr type="h" for="des" forName="box2" refType="h" refFor="des" refForName="box1"/>
+      <dgm:constr type="w" for="des" forName="box3" refType="w" refFor="des" refForName="box1"/>
+      <dgm:constr type="h" for="des" forName="box3" refType="h" refFor="des" refForName="box1"/>
+      <dgm:constr type="w" for="des" forName="box4" refType="w" refFor="des" refForName="box1"/>
+      <dgm:constr type="h" for="des" forName="box4" refType="h" refFor="des" refForName="box1"/>
+      <dgm:constr type="w" for="des" forName="box5" refType="w" refFor="des" refForName="box1"/>
+      <dgm:constr type="h" for="des" forName="box5" refType="h" refFor="des" refForName="box1"/>
+      <dgm:constr type="sibSp" refType="w" refFor="des" refForName="box1" fact="0.15"/>
+      <dgm:constr type="sibSp" for="des" forName="children2" refType="sibSp"/>
+      <dgm:constr type="sibSp" for="des" forName="children3" refType="sibSp"/>
+      <dgm:constr type="sibSp" for="des" forName="children4" refType="sibSp"/>
+      <dgm:constr type="sibSp" for="des" forName="children5" refType="sibSp"/>
+      <dgm:constr type="sp" for="des" forName="level1" refType="w" refFor="des" refForName="box1" fact="0.25"/>
+      <dgm:constr type="sp" for="des" forName="level2" refType="sp" refFor="des" refForName="level1"/>
+      <dgm:constr type="sp" for="des" forName="level3" refType="sp" refFor="des" refForName="level1"/>
+      <dgm:constr type="sp" for="des" forName="level4" refType="sp" refFor="des" refForName="level1"/>
+      <dgm:constr type="sp" for="des" forName="level5" refType="sp" refFor="des" refForName="level1"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="top" axis="ch">
+      <dgm:forEach name="point1" axis="self" ptType="node">
+        <dgm:layoutNode name="level1">
+          <dgm:alg type="hierRoot"><dgm:param type="hierAlign" val="lCtrCh"/></dgm:alg>
+          <dgm:shape><dgm:adjLst/></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst>
+            <dgm:constr type="bendDist" for="des" ptType="parTrans" refType="sp" fact="0.5"/>
+          </dgm:constrLst>
+          <dgm:ruleLst/>
+          <dgm:layoutNode name="box1" styleLbl="node0">
+            <dgm:varLst><dgm:bulletEnabled val="1"/></dgm:varLst>
+            <dgm:alg type="tx"/>
+            <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.12"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="self"/>
+            <dgm:constrLst>
+              <dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/>
+              <dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/>
+              <dgm:constr type="lMarg" refType="primFontSz" fact="0.25"/>
+              <dgm:constr type="rMarg" refType="primFontSz" fact="0.25"/>
+            </dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="6" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="children2">
+            <dgm:alg type="hierChild"><dgm:param type="linDir" val="fromT"/><dgm:param type="chAlign" val="l"/></dgm:alg>
+            <dgm:shape><dgm:adjLst/></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst/>
+            <dgm:ruleLst/>
+            <dgm:forEach name="under2" axis="ch">
+              <dgm:forEach name="line2" axis="self" ptType="parTrans" cnt="1">
+                <dgm:layoutNode name="link2" styleLbl="parChTrans1D2">
+                  <dgm:alg type="conn">
+                    <dgm:param type="dim" val="1D"/>
+                    <dgm:param type="endSty" val="noArr"/>
+                    <dgm:param type="connRout" val="bend"/>
+                    <dgm:param type="bendPt" val="end"/>
+                    <dgm:param type="begPts" val="midR"/>
+                    <dgm:param type="endPts" val="midL"/>
+                    <dgm:param type="srcNode" val="box1"/>
+                    <dgm:param type="dstNode" val="box2"/>
+                  </dgm:alg>
+                  <dgm:shape type="conn" zOrderOff="-999"><dgm:adjLst/></dgm:shape>
+                  <dgm:presOf axis="self"/>
+                  <dgm:constrLst>
+                    <dgm:constr type="begPad"/>
+                    <dgm:constr type="endPad"/>
+                  </dgm:constrLst>
+                  <dgm:ruleLst/>
+                </dgm:layoutNode>
+              </dgm:forEach>
+              <dgm:forEach name="point2" axis="self" ptType="node">
+                <dgm:layoutNode name="level2">
+                  <dgm:alg type="hierRoot"><dgm:param type="hierAlign" val="lCtrCh"/></dgm:alg>
+                  <dgm:shape><dgm:adjLst/></dgm:shape>
+                  <dgm:presOf/>
+                  <dgm:constrLst>
+                    <dgm:constr type="bendDist" for="des" ptType="parTrans" refType="sp" fact="0.5"/>
+                  </dgm:constrLst>
+                  <dgm:ruleLst/>
+                  <dgm:layoutNode name="box2" styleLbl="node1">
+                    <dgm:varLst><dgm:bulletEnabled val="1"/></dgm:varLst>
+                    <dgm:alg type="tx"/>
+                    <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.12"/></dgm:adjLst></dgm:shape>
+                    <dgm:presOf axis="self"/>
+                    <dgm:constrLst>
+                      <dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/>
+                      <dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/>
+                      <dgm:constr type="lMarg" refType="primFontSz" fact="0.25"/>
+                      <dgm:constr type="rMarg" refType="primFontSz" fact="0.25"/>
+                    </dgm:constrLst>
+                    <dgm:ruleLst><dgm:rule type="primFontSz" val="6" fact="NaN" max="NaN"/></dgm:ruleLst>
+                  </dgm:layoutNode>
+                  <dgm:layoutNode name="children3">
+                    <dgm:alg type="hierChild"><dgm:param type="linDir" val="fromT"/><dgm:param type="chAlign" val="l"/></dgm:alg>
+                    <dgm:shape><dgm:adjLst/></dgm:shape>
+                    <dgm:presOf/>
+                    <dgm:constrLst/>
+                    <dgm:ruleLst/>
+                    <dgm:forEach name="under3" axis="ch">
+                      <dgm:forEach name="line3" axis="self" ptType="parTrans" cnt="1">
+                        <dgm:layoutNode name="link3" styleLbl="parChTrans1D2">
+                          <dgm:alg type="conn">
+                            <dgm:param type="dim" val="1D"/>
+                            <dgm:param type="endSty" val="noArr"/>
+                            <dgm:param type="connRout" val="bend"/>
+                            <dgm:param type="bendPt" val="end"/>
+                            <dgm:param type="begPts" val="midR"/>
+                            <dgm:param type="endPts" val="midL"/>
+                            <dgm:param type="srcNode" val="box2"/>
+                            <dgm:param type="dstNode" val="box3"/>
+                          </dgm:alg>
+                          <dgm:shape type="conn" zOrderOff="-999"><dgm:adjLst/></dgm:shape>
+                          <dgm:presOf axis="self"/>
+                          <dgm:constrLst>
+                            <dgm:constr type="begPad"/>
+                            <dgm:constr type="endPad"/>
+                          </dgm:constrLst>
+                          <dgm:ruleLst/>
+                        </dgm:layoutNode>
+                      </dgm:forEach>
+                      <dgm:forEach name="point3" axis="self" ptType="node">
+                        <dgm:layoutNode name="level3">
+                          <dgm:alg type="hierRoot"><dgm:param type="hierAlign" val="lCtrCh"/></dgm:alg>
+                          <dgm:shape><dgm:adjLst/></dgm:shape>
+                          <dgm:presOf/>
+                          <dgm:constrLst>
+                            <dgm:constr type="bendDist" for="des" ptType="parTrans" refType="sp" fact="0.5"/>
+                          </dgm:constrLst>
+                          <dgm:ruleLst/>
+                          <dgm:layoutNode name="box3" styleLbl="node1">
+                            <dgm:varLst><dgm:bulletEnabled val="1"/></dgm:varLst>
+                            <dgm:alg type="tx"/>
+                            <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.12"/></dgm:adjLst></dgm:shape>
+                            <dgm:presOf axis="self"/>
+                            <dgm:constrLst>
+                              <dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/>
+                              <dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/>
+                              <dgm:constr type="lMarg" refType="primFontSz" fact="0.25"/>
+                              <dgm:constr type="rMarg" refType="primFontSz" fact="0.25"/>
+                            </dgm:constrLst>
+                            <dgm:ruleLst><dgm:rule type="primFontSz" val="6" fact="NaN" max="NaN"/></dgm:ruleLst>
+                          </dgm:layoutNode>
+                          <dgm:layoutNode name="children4">
+                            <dgm:alg type="hierChild"><dgm:param type="linDir" val="fromT"/><dgm:param type="chAlign" val="l"/></dgm:alg>
+                            <dgm:shape><dgm:adjLst/></dgm:shape>
+                            <dgm:presOf/>
+                            <dgm:constrLst/>
+                            <dgm:ruleLst/>
+                            <dgm:forEach name="under4" axis="ch">
+                              <dgm:forEach name="line4" axis="self" ptType="parTrans" cnt="1">
+                                <dgm:layoutNode name="link4" styleLbl="parChTrans1D2">
+                                  <dgm:alg type="conn">
+                                    <dgm:param type="dim" val="1D"/>
+                                    <dgm:param type="endSty" val="noArr"/>
+                                    <dgm:param type="connRout" val="bend"/>
+                                    <dgm:param type="bendPt" val="end"/>
+                                    <dgm:param type="begPts" val="midR"/>
+                                    <dgm:param type="endPts" val="midL"/>
+                                    <dgm:param type="srcNode" val="box3"/>
+                                    <dgm:param type="dstNode" val="box4"/>
+                                  </dgm:alg>
+                                  <dgm:shape type="conn" zOrderOff="-999"><dgm:adjLst/></dgm:shape>
+                                  <dgm:presOf axis="self"/>
+                                  <dgm:constrLst>
+                                    <dgm:constr type="begPad"/>
+                                    <dgm:constr type="endPad"/>
+                                  </dgm:constrLst>
+                                  <dgm:ruleLst/>
+                                </dgm:layoutNode>
+                              </dgm:forEach>
+                              <dgm:forEach name="point4" axis="self" ptType="node">
+                                <dgm:layoutNode name="level4">
+                                  <dgm:alg type="hierRoot"><dgm:param type="hierAlign" val="lCtrCh"/></dgm:alg>
+                                  <dgm:shape><dgm:adjLst/></dgm:shape>
+                                  <dgm:presOf/>
+                                  <dgm:constrLst>
+                                    <dgm:constr type="bendDist" for="des" ptType="parTrans" refType="sp" fact="0.5"/>
+                                  </dgm:constrLst>
+                                  <dgm:ruleLst/>
+                                  <dgm:layoutNode name="box4" styleLbl="node1">
+                                    <dgm:varLst><dgm:bulletEnabled val="1"/></dgm:varLst>
+                                    <dgm:alg type="tx"/>
+                                    <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.12"/></dgm:adjLst></dgm:shape>
+                                    <dgm:presOf axis="self"/>
+                                    <dgm:constrLst>
+                                      <dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/>
+                                      <dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/>
+                                      <dgm:constr type="lMarg" refType="primFontSz" fact="0.25"/>
+                                      <dgm:constr type="rMarg" refType="primFontSz" fact="0.25"/>
+                                    </dgm:constrLst>
+                                    <dgm:ruleLst><dgm:rule type="primFontSz" val="6" fact="NaN" max="NaN"/></dgm:ruleLst>
+                                  </dgm:layoutNode>
+                                  <dgm:layoutNode name="children5">
+                                    <dgm:alg type="hierChild"><dgm:param type="linDir" val="fromT"/><dgm:param type="chAlign" val="l"/></dgm:alg>
+                                    <dgm:shape><dgm:adjLst/></dgm:shape>
+                                    <dgm:presOf/>
+                                    <dgm:constrLst/>
+                                    <dgm:ruleLst/>
+                                    <dgm:forEach name="under5" axis="ch">
+                                      <dgm:forEach name="line5" axis="self" ptType="parTrans" cnt="1">
+                                        <dgm:layoutNode name="link5" styleLbl="parChTrans1D2">
+                                          <dgm:alg type="conn">
+                                            <dgm:param type="dim" val="1D"/>
+                                            <dgm:param type="endSty" val="noArr"/>
+                                            <dgm:param type="connRout" val="bend"/>
+                                            <dgm:param type="bendPt" val="end"/>
+                                            <dgm:param type="begPts" val="midR"/>
+                                            <dgm:param type="endPts" val="midL"/>
+                                            <dgm:param type="srcNode" val="box4"/>
+                                            <dgm:param type="dstNode" val="box5"/>
+                                          </dgm:alg>
+                                          <dgm:shape type="conn" zOrderOff="-999"><dgm:adjLst/></dgm:shape>
+                                          <dgm:presOf axis="self"/>
+                                          <dgm:constrLst>
+                                            <dgm:constr type="begPad"/>
+                                            <dgm:constr type="endPad"/>
+                                          </dgm:constrLst>
+                                          <dgm:ruleLst/>
+                                        </dgm:layoutNode>
+                                      </dgm:forEach>
+                                      <dgm:forEach name="point5" axis="self" ptType="node">
+                                        <dgm:layoutNode name="level5">
+                                          <dgm:alg type="hierRoot"><dgm:param type="hierAlign" val="lCtrCh"/></dgm:alg>
+                                          <dgm:shape><dgm:adjLst/></dgm:shape>
+                                          <dgm:presOf/>
+                                          <dgm:constrLst>
+                                            <dgm:constr type="bendDist" for="des" ptType="parTrans" refType="sp" fact="0.5"/>
+                                          </dgm:constrLst>
+                                          <dgm:ruleLst/>
+                                          <dgm:layoutNode name="box5" styleLbl="node1">
+                                            <dgm:varLst><dgm:bulletEnabled val="1"/></dgm:varLst>
+                                            <dgm:alg type="tx"/>
+                                            <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.12"/></dgm:adjLst></dgm:shape>
+                                            <dgm:presOf axis="self"/>
+                                            <dgm:constrLst>
+                                              <dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/>
+                                              <dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/>
+                                              <dgm:constr type="lMarg" refType="primFontSz" fact="0.25"/>
+                                              <dgm:constr type="rMarg" refType="primFontSz" fact="0.25"/>
+                                            </dgm:constrLst>
+                                            <dgm:ruleLst><dgm:rule type="primFontSz" val="6" fact="NaN" max="NaN"/></dgm:ruleLst>
+                                          </dgm:layoutNode>
+                                        </dgm:layoutNode>
+                                      </dgm:forEach>
+                                    </dgm:forEach>
+                                  </dgm:layoutNode>
+                                </dgm:layoutNode>
+                              </dgm:forEach>
+                            </dgm:forEach>
+                          </dgm:layoutNode>
+                        </dgm:layoutNode>
+                      </dgm:forEach>
+                    </dgm:forEach>
+                  </dgm:layoutNode>
+                </dgm:layoutNode>
+              </dgm:forEach>
+            </dgm:forEach>
+          </dgm:layoutNode>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Steps down the page: the points one under the other as wide bars, an arrow from each down to the next; a point's subpoints listed in
+     its bar. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/steps">
+  <dgm:title val="Steps down"/>
+  <dgm:desc val="Steps one under the other, an arrow down between each and the next."/>
+  <dgm:catLst>
+    <dgm:cat type="process" pri="550"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="column">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="lin">
+      <dgm:param type="linDir" val="fromT"/>
+    </dgm:alg>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.8"/>
+      <dgm:constr type="h" for="ch" forName="stage" refType="w" refFor="ch" refForName="stage" fact="0.16"/>
+      <dgm:constr type="h" for="ch" forName="stage" op="equ"/>
+      <dgm:constr type="primFontSz" for="ch" forName="stage" op="equ" val="15"/>
+      <dgm:constr type="h" for="ch" forName="down" refType="h" refFor="ch" refForName="stage" fact="0.55"/>
+      <dgm:constr type="w" for="ch" forName="down" refType="h" refFor="ch" refForName="down" fact="0.9"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="stages" axis="ch" ptType="node">
+      <dgm:layoutNode name="stage" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"/>
+        <dgm:shape type="roundRect">
+          <dgm:adjLst>
+            <dgm:adj idx="1" val="0.16"/>
+          </dgm:adjLst>
+        </dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.6"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.6"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="h" val="NaN" fact="2" max="NaN"/>
+          <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+          <dgm:rule type="h" val="INF" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:forEach name="arrowsDown" axis="followSib" ptType="sibTrans" cnt="1">
+        <dgm:layoutNode name="down" styleLbl="sibTrans2D1">
+          <dgm:alg type="conn">
+            <dgm:param type="begPts" val="auto"/>
+            <dgm:param type="endPts" val="auto"/>
+          </dgm:alg>
+          <dgm:shape type="conn">
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf axis="self"/>
+          <dgm:constrLst>
+            <dgm:constr type="connDist"/>
+            <dgm:constr type="begPad" refType="connDist" fact="0.15"/>
+            <dgm:constr type="endPad" refType="connDist" fact="0.15"/>
+          </dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

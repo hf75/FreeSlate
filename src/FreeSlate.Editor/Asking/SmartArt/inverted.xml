@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- An inverted pyramid: the points as its levels, the first (the widest) at the top; a point's subpoints listed in its level. Each level's text stands in a
+     box over the level, the apex's as large as it, the others' the middle of it, so that the narrow apex does not make all the text
+     small (Word lays the box out by the level as the pyramid places it). FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/inverted">
+  <dgm:title val="Inverted pyramid"/>
+  <dgm:desc val="Levels narrowing downwards: from the many to the one."/>
+  <dgm:catLst>
+    <dgm:cat type="pyramid" pri="500"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="pyramid">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="pyra">
+      <dgm:param type="linDir" val="fromT"/>
+      <dgm:param type="txDir" val="fromT"/>
+      <dgm:param type="pyraAcctPos" val="aft"/>
+      <dgm:param type="pyraAcctTxMar" val="step"/>
+      <dgm:param type="pyraLvlNode" val="level"/>
+    </dgm:alg>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="primFontSz" for="des" forName="words" op="equ" val="15"/>
+      <dgm:constr type="pyraAcctRatio"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="levels" axis="ch" ptType="node">
+      <dgm:layoutNode name="tier">
+        <dgm:alg type="composite">
+          <dgm:param type="horzAlign" val="none"/>
+        </dgm:alg>
+        <dgm:shape>
+          <dgm:adjLst/>
+        </dgm:shape>
+        <dgm:presOf/>
+        <dgm:choose name="apex">
+          <dgm:if name="top" axis="self" ptType="node" func="pos" op="equ" val="1">
+            <dgm:constrLst>
+              <dgm:constr type="ctrX" for="ch" forName="level" val="1"/>
+              <dgm:constr type="ctrY" for="ch" forName="level" val="1"/>
+              <dgm:constr type="w" for="ch" forName="level" val="1"/>
+              <dgm:constr type="h" for="ch" forName="level" val="1"/>
+              <dgm:constr type="ctrX" for="ch" forName="words" refType="ctrX" refFor="ch" refForName="level"/>
+              <dgm:constr type="ctrY" for="ch" forName="words" refType="ctrY" refFor="ch" refForName="level"/>
+              <dgm:constr type="w" for="ch" forName="words" refType="w" refFor="ch" refForName="level"/>
+              <dgm:constr type="h" for="ch" forName="words" refType="h" refFor="ch" refForName="level"/>
+            </dgm:constrLst>
+          </dgm:if>
+          <dgm:else name="below">
+            <dgm:constrLst>
+              <dgm:constr type="ctrX" for="ch" forName="level" val="1"/>
+              <dgm:constr type="ctrY" for="ch" forName="level" val="1"/>
+              <dgm:constr type="w" for="ch" forName="level" val="1"/>
+              <dgm:constr type="h" for="ch" forName="level" val="1"/>
+              <dgm:constr type="ctrX" for="ch" forName="words" refType="ctrX" refFor="ch" refForName="level"/>
+              <dgm:constr type="ctrY" for="ch" forName="words" refType="ctrY" refFor="ch" refForName="level"/>
+              <dgm:constr type="w" for="ch" forName="words" refType="w" refFor="ch" refForName="level" fact="0.65"/>
+              <dgm:constr type="h" for="ch" forName="words" refType="h" refFor="ch" refForName="level"/>
+            </dgm:constrLst>
+          </dgm:else>
+        </dgm:choose>
+        <dgm:ruleLst/>
+        <dgm:layoutNode name="level" styleLbl="node1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="trapezoid">
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf axis="self"/>
+          <dgm:constrLst/>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+        <dgm:layoutNode name="words" styleLbl="node1">
+          <dgm:varLst>
+            <dgm:bulletEnabled val="1"/>
+          </dgm:varLst>
+          <dgm:alg type="tx"/>
+          <dgm:shape type="rect" hideGeom="1">
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf axis="desOrSelf" ptType="node"/>
+          <dgm:constrLst>
+            <dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/>
+            <dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/>
+            <dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/>
+            <dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/>
+          </dgm:constrLst>
+          <dgm:ruleLst>
+            <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+          </dgm:ruleLst>
+        </dgm:layoutNode>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

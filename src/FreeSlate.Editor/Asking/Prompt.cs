@@ -92,11 +92,15 @@ static class Prompt
             table under it); colors=blue (green, orange, violet, rose, teal, gray: shades of one hue); width, height, align, float,
             caption, alt as a graphic's.
         - SmartArt Word can edit: a fenced block ```smartart layout=cycle colors=blue with its points inside as "- " lines, "  - " for a
-          point's subpoints (they stand in its shape, or round it in a radial). layout: list (bars one under another, the subpoints
-          under each), process (steps in a row, arrows between), chevrons (stages as arrowheads in a row), cycle (circles round a
-          ring, arrows between), radial (the first point in the middle, its subpoints round it), venn (one to four overlapping
-          circles), pyramid (levels, the first at the top), blocks (boxes in rows). colors: blue, green, orange, violet, rose, teal,
-          gray or colorful. Points of a few words each; width, height, align, float, caption, alt as a graphic's.
+          point's subpoints (they stand in its shape or under its heading, round it in a radial, the level below it in org and
+          tree). layout: list (bars one under another, the subpoints under each), columns (headings side by side, the subpoints
+          listed under each), blocks (boxes in rows), process (steps in a row, arrows between), steps (steps one under another,
+          arrows down), chevrons (stages as arrowheads in a row), cycle (circles round a ring, arrows between), radial (the first
+          point in the middle, its subpoints round it), venn (one to four overlapping circles), equation (circles, + between them
+          and = before the last), matrix (two to four quadrants), pyramid (levels, the first at the top), inverted (a pyramid on
+          its point, the first level widest), org (an organization chart down from each top point, five levels at most), tree
+          (the same from the left). colors: blue, green, orange, violet, rose, teal, gray or colorful. Points of a few words each;
+          width, height, align, float, caption, alt as a graphic's.
         - Formulas in LaTeX: $…$ among the text, $$…$$ on a line of its own (centred): fractions, roots, powers and indices, sums,
           integrals and limits, \left( \right), matrices (pmatrix, bmatrix, cases), \vec, \overline, Greek letters, \text{…}.
         - Anything else Word can hold (a field, a shape, a content control): WordprocessingML, as a block (w:p, w:tbl) on lines of its

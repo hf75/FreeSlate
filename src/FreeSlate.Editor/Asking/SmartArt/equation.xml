@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- An equation: the points as circles in a row, a plus between them and an equals sign before the last, the result. FreeSlate's own
+     definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/equation">
+  <dgm:title val="Equation"/>
+  <dgm:desc val="Parts that add up to a whole: A + B = C."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="700"/>
+    <dgm:cat type="process" pri="900"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="equation">
+    <dgm:varLst>
+      <dgm:dir/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="lin"/>
+    <dgm:shape>
+      <dgm:adjLst/>
+    </dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="term" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="term" refType="w" refFor="ch" refForName="term"/>
+      <dgm:constr type="w" for="ch" forName="plus" refType="w" refFor="ch" refForName="term" fact="0.4"/>
+      <dgm:constr type="h" for="ch" forName="plus" refType="w" refFor="ch" refForName="plus"/>
+      <dgm:constr type="w" for="ch" forName="equals" refType="w" refFor="ch" refForName="term" fact="0.4"/>
+      <dgm:constr type="h" for="ch" forName="equals" refType="w" refFor="ch" refForName="equals"/>
+      <dgm:constr type="w" for="ch" forName="gapBefore" refType="w" refFor="ch" refForName="term" fact="0.06"/>
+      <dgm:constr type="w" for="ch" forName="gapAfter" refType="w" refFor="ch" refForName="term" fact="0.06"/>
+      <dgm:constr type="primFontSz" for="ch" forName="term" op="equ" val="15"/>
+    </dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="terms" axis="ch" ptType="node">
+      <dgm:layoutNode name="term" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"/>
+        <dgm:shape type="ellipse">
+          <dgm:adjLst/>
+        </dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/>
+          <dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/>
+          <dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/>
+        </dgm:constrLst>
+        <dgm:ruleLst>
+          <dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/>
+        </dgm:ruleLst>
+      </dgm:layoutNode>
+      <dgm:forEach name="between" axis="followSib" ptType="sibTrans" cnt="1">
+        <dgm:layoutNode name="gapBefore">
+          <dgm:alg type="sp"/>
+          <dgm:shape>
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst/>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+        <dgm:choose name="which">
+          <dgm:if name="beforeLast" axis="followSib" ptType="node" func="cnt" op="equ" val="1">
+            <dgm:layoutNode name="equals" styleLbl="sibTrans2D1">
+              <dgm:alg type="sp"/>
+              <dgm:shape type="mathEqual">
+                <dgm:adjLst/>
+              </dgm:shape>
+              <dgm:presOf axis="self"/>
+              <dgm:constrLst/>
+              <dgm:ruleLst/>
+            </dgm:layoutNode>
+          </dgm:if>
+          <dgm:else name="otherwise">
+            <dgm:layoutNode name="plus" styleLbl="sibTrans2D1">
+              <dgm:alg type="sp"/>
+              <dgm:shape type="mathPlus">
+                <dgm:adjLst/>
+              </dgm:shape>
+              <dgm:presOf axis="self"/>
+              <dgm:constrLst/>
+              <dgm:ruleLst/>
+            </dgm:layoutNode>
+          </dgm:else>
+        </dgm:choose>
+        <dgm:layoutNode name="gapAfter">
+          <dgm:alg type="sp"/>
+          <dgm:shape>
+            <dgm:adjLst/>
+          </dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst/>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>
