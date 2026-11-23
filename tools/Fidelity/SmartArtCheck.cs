@@ -157,15 +157,14 @@ public static class SmartArtCheck
                     var size = sp.Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz")?.Value;
                     string? builtSize = null;
                     // The font size of a shape's text where its node holds the text: its first run's, as the output
-                    // builds it (child text in the secondary size).
+                    // builds it (child text in the secondary size, both in whole points), alike to PowerPoint's.
                     if (size != null && node.Text.Count > 0 && Output.TextSource(root, node) is { } source)
                     {
-                        var primary = TextBody.PrimaryFont(source);
-                        var secondary = source.Values.TryGetValue("secFontSz", out var sec) && double.IsFinite(sec) ? sec : primary * 0.78;
+                        var (primary, secondary) = Output.FontSizes(source);
                         var ours = (string?)TextBody.Build(source, primary, secondary).Descendants(A + "rPr").FirstOrDefault()?.Attribute("sz");
                         builtSize = ours;
                         fonts++;
-                        if (ours != null && Math.Abs(int.Parse(ours, CultureInfo.InvariantCulture) - int.Parse(size, CultureInfo.InvariantCulture)) < 100)
+                        if (ours == size)
                             fontsGood++;
                     }
                     lines.Add(string.Create(CultureInfo.InvariantCulture, $"      {name,-20} ppt ({px,7:0.0} {py,7:0.0} {pw,7:0.0} {ph,7:0.0}) sz {size,-5} ours ({nx * k,7:0.0} {ny * k,7:0.0} {nw * k,7:0.0} {nh * k,7:0.0}) sz {builtSize,-5} {error * 100,5:0.0} %  {node.Note}"));

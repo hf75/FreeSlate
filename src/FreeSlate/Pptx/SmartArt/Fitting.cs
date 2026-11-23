@@ -98,8 +98,13 @@ static class Fitting
 
     public static double Font(LayoutNode node) => TextBody.PrimaryFont(node);
 
+    /// <summary>
+    /// A node's secondary font size: its secFontSz, else 78 % of the primary, rounded to whole points as Office writes
+    /// every size of a diagram (measured: PowerPoint's drawings 36 → 28, 46 → 36, 65 → 51, none of 3884 sizes in the
+    /// decks fractional; Word's 15 → 12, 13 → 10).
+    /// </summary>
     public static double SecondaryFont(LayoutNode node) =>
-        node.Values.TryGetValue("secFontSz", out var s) && double.IsFinite(s) ? s : Font(node) * 0.78;
+        Math.Round(node.Values.TryGetValue("secFontSz", out var s) && double.IsFinite(s) ? s : Font(node) * 0.78, MidpointRounding.AwayFromZero);
 
     /// <summary>Sets a node's font size for a trial: margins given in font sizes follow it.</summary>
     static void SetFont(LayoutNode node, double size)

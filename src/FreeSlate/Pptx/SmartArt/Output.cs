@@ -241,6 +241,13 @@ public static class Output
 
     static string Angle(double degrees) => ((long)Math.Round(degrees * 60000)).ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// A text node's primary and secondary font sizes as its text body is written: whole points, as Office writes every
+    /// size of a diagram (see Fitting.SecondaryFont).
+    /// </summary>
+    public static (double Primary, double Secondary) FontSizes(LayoutNode textNode) =>
+        (Math.Round(Fitting.Font(textNode), MidpointRounding.AwayFromZero), Fitting.SecondaryFont(textNode));
+
     /// <summary>The box of the geometry a node draws (millimeters, a quarter-turned shape's box turned), or null.</summary>
     public static (double X, double Y, double W, double H)? DrawnBox(LayoutNode node) =>
         GeometryOf(node) is { } g ? (g.X, g.Y, g.W, g.H) : null;
@@ -480,8 +487,8 @@ public static class Output
 
         if (textNode != null)
         {
-            var primary = Fitting.Font(textNode);
-            var body = TextBody.Build(textNode, primary, Fitting.SecondaryFont(textNode));
+            var (primary, secondary) = FontSizes(textNode);
+            var body = TextBody.Build(textNode, primary, secondary);
             if (listStyle != null)
                 Styling.ApplyListStyle(body, textNode.Text, listStyle);
             // The label's text properties of the style definition go into the body (measured: the 3d9 quick style's
