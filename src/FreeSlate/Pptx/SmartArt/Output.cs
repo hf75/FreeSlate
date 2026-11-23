@@ -206,7 +206,9 @@ public static class Output
     static Dictionary<LayoutNode, (int Index, int Count)> StyleIndices(List<LayoutNode> all, Dictionary<LayoutNode, string> labels)
     {
         var result = new Dictionary<LayoutNode, (int, int)>();
-        foreach (var group in all.Where(n => n.Shape != null).GroupBy(n => labels[n]))
+        // Only nodes of a shape type count: a node with an empty shape (the diagram's root, a space) takes no colour (measured:
+        // Word's colourful cycle starting at the first colour, its root's presentation point saved with presStyleCnt 0).
+        foreach (var group in all.Where(n => ShapeType(n) is { } type && type != "none").GroupBy(n => labels[n]))
         {
             var keys = new List<string>();
             var keyOf = new Dictionary<LayoutNode, int>();
@@ -487,7 +489,10 @@ public static class Output
             if (styling.StyleElement(label, "txPr") is { HasElements: true } txPr)
                 body.Element(A + "bodyPr")?.Add(txPr.Elements().Select(e => new XElement(e)));
             shape.Add(body);
-            shape.Add(TextTransform(geometry, textNode == node ? geometry : GeometryOf(textNode) ?? geometry, textNode));
+            // A text node without a box of its own lays its text out in the shape showing it, as it is fitted there (see
+            // Fitting.Check: a pyramid's level showing its text node's text, its text in the level's text rectangle).
+            var shown = textNode == node || textNode.W * textNode.H <= 1e-9 ? geometry : GeometryOf(textNode) ?? geometry;
+            shape.Add(TextTransform(geometry, shown, textNode));
         }
         return shape;
     }

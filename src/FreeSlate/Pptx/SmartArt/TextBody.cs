@@ -82,7 +82,9 @@ public static class TextBody
     {
         var paragraphs = Paragraphs(node);
         var hasChildren = paragraphs.Any(p => p.Level > 0);
-        var anchor = hasChildren && paragraphs.All(p => p.Level > 0)
+        // Text with child text, its own above it or not, anchors as txAnchorVertCh says, at the top by default (measured:
+        // Word's blocks and steps with subpoints, their node's text at the top of the box).
+        var anchor = hasChildren
             ? Anchor(node.Param("txAnchorVertCh") ?? "t")
             : Anchor(node.Param("txAnchorVert") ?? "mid");
         static string Emu(double points) => ((long)Math.Round(points * EmuPerPt)).ToString(CultureInfo.InvariantCulture);
