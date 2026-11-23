@@ -76,6 +76,13 @@ public sealed record ParagraphFormatting
 
     /// <summary>The lines at least so high, in points (w:spacing, the rule atLeast); Word documents only.</summary>
     public double? LinesAtLeast { get; init; }
+
+    /// <summary>
+    /// The list the paragraph is numbered in, by its numbering instance's id (w:numPr w:numId; see WordDocument.AddList), "" for none of
+    /// its own (its style's list then numbering it, where the style has one), and its level in it, from 0 (w:ilvl); Word documents only.
+    /// </summary>
+    public string? List { get; init; }
+    public int? ListLevel { get; init; }
 }
 
 /// <summary>

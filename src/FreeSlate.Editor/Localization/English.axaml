@@ -26,6 +26,8 @@
   <x:String x:Key="LevelText">Text</x:String>
   <x:String x:Key="LevelPoint">Point</x:String>
   <x:String x:Key="LevelSubpoint">Subpoint</x:String>
+  <x:String x:Key="LevelNumber">Number</x:String>
+  <x:String x:Key="LevelSubnumber">Subnumber</x:String>
   <x:String x:Key="LevelMarginNote">Margin note</x:String>
   <x:String x:Key="StyleTable">Table</x:String>
   <x:String x:Key="StyleTableText">Table text</x:String>

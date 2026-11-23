@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using FreeSlate.Editing;
 using FreeSlate.Editor.Writing;
@@ -57,10 +58,13 @@ public sealed record Focus(Focus.Kinds Kind, int First, int Last, int Offset = 0
 /// writes in; a table after the ids of its first and last paragraphs, as GitHub writes one; text in columns between "::: columns 2" and
 /// ":::"; its objects by their tokens (see Objects), told after the text with its notes. And the focus of a wish told in words.
 /// </summary>
-static class Reading
+static partial class Reading
 {
-    /// <summary>Prefixes of the levels' styles (see Levels), as the notation writes them.</summary>
-    public static string Prefix(string? style) => style switch
+    /// <summary>
+    /// Prefixes of the levels' styles (see Levels), as the notation writes them: a numbered point's with the number or letter it shows
+    /// (its list's label, "3.", "b)").
+    /// </summary>
+    public static string Prefix(string? style, string? label = null) => style switch
     {
         null or "" or "Normal" => "",
         "Title" => "# ",
@@ -68,8 +72,27 @@ static class Reading
         "Heading2" => "### ",
         "ListBullet" => "- ",
         "ListBullet2" => "  - ",
+        "ListNumber" => (label is { Length: > 0 } ? label : "1.") + " ",
+        "ListNumber2" => "  " + (label is { Length: > 0 } ? label : "a)") + " ",
         var other => "{" + other + "} ",
     };
+
+    /// <summary>
+    /// A paragraph's line in the notation: its level's prefix and its text, text whose start would read as the mark of another block (a
+    /// heading's "#", a point's "-" or "1.", a quotation's "&gt;") with that mark escaped, so that it writes back as text.
+    /// </summary>
+    public static string Paragraph(IEditableDocument document, int paragraph, Objects objects)
+    {
+        var prefix = Prefix(document.ParagraphStyle(paragraph), (document as WordDocument)?.ListLabel(paragraph));
+        var line = Line(document, paragraph, objects);
+        if (prefix.Length == 0 && BlockStart().Match(line) is { Success: true } start)
+            line = start.Groups[1].Success ? line.Insert(start.Groups[1].Length, "\\") : "\\" + line;
+        return prefix + line;
+    }
+
+    /// <summary>The start of a line that the notation reads as a block's mark: a number and its point (the number the group), "#", "-", "+", "&gt;".</summary>
+    [GeneratedRegex(@"^(?:(\d{1,3})[.)]\s|#{1,6}\s|[-+]\s|>)")]
+    private static partial Regex BlockStart();
 
     /// <summary>
     /// The document's body in the notation, paragraph by paragraph from the first, with the ids Claude writes to; then its objects (where
@@ -120,8 +143,7 @@ static class Reading
                 text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(" $$").Append(latex).Append("$$\n");
                 continue;
             }
-            text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Prefix(document.ParagraphStyle(p))).Append(Line(document, p, objects)).Append('\n');
+            text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(' ').Append(Paragraph(document, p, objects)).Append('\n');
         }
         if (columns > 1)
             text.Append(":::\n");
@@ -241,7 +263,11 @@ static class Reading
         }
         if (Copied(word, paragraph) is not var (copied, properties) || properties == null)
             return null;
-        var own = properties.Elements().Where(e => !Said.Contains(e.Name.LocalName)).ToList();
+        // A numbered point's own list, of the tone's at its depth, is said by its number (see Prefix).
+        var level = Levels.Of(word.ParagraphStyle(paragraph));
+        var listed = level.Numbered && word.ListDefinition(paragraph) == Lists.Definition && word.OwnList(paragraph).Level is var depth
+            && (depth == null || depth == level.Depth - 1);
+        var own = properties.Elements().Where(e => !Said.Contains(e.Name.LocalName) && !(listed && e.Name.LocalName == "numPr")).ToList();
         if (own.Count == 0)
             return null;
         if (text.Length == 0 && own is [{ Name.LocalName: "pBdr" } border] && border.Elements().All(e => e.Name.LocalName == "bottom"))

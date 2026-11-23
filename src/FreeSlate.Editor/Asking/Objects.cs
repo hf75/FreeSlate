@@ -451,7 +451,7 @@ sealed partial class Objects(IEditableDocument document)
             if (Place(drawing) is "left" or "right")
                 settings.Add("float=" + Place(drawing));
         }
-        var lines = word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Prefix(document.ParagraphStyle(p)) + Reading.Line(document, p, this));
+        var lines = word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Paragraph(document, p, this));
         return "```box " + string.Join(" ", settings) + "\n" + string.Join("\n\n", lines) + "\n```";
     }
 

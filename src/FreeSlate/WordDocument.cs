@@ -1510,11 +1510,17 @@ public sealed partial class WordDocument : IEditableDocument
         var stories = StoriesDiffering(partBytes, to.Parts);
         var settings = SettingsPart() is { } settingsPart
             && (partBytes.TryGetValue(settingsPart, out var was) != to.Parts.TryGetValue(settingsPart, out var now) || !ReferenceEquals(was, now));
-        // Styles or lists the version defines otherwise (see DefineStyles) are those of every block: the body is read whole again.
+        // Styles or lists the version defines otherwise (see DefineStyles) are those of every block: the body is read whole again; not
+        // for lists alone that one of them has and the other not (see AddList), which are taken in as the version has them.
         bool Differs(string? part) => part != null
             && (partBytes.TryGetValue(part, out var wasThen) != to.Parts.TryGetValue(part, out var nowThen) || !ReferenceEquals(wasThen, nowThen));
-        var restyled = Differs(StylesPart()) || Differs(NumberingPart());
+        byte[]? BytesOf(ImmutableDictionary<string, byte[]?> parts, string part) => parts.TryGetValue(part, out var bytes) ? bytes : package.Original(part);
+        var numbering = NumberingPart();
+        var lists = numbering != null && Differs(numbering) && !Differs(StylesPart()) ? ListsOnly(BytesOf(partBytes, numbering), BytesOf(to.Parts, numbering)) : null;
+        var restyled = Differs(StylesPart()) || Differs(numbering) && lists == null;
         Restore(to.Parts);
+        foreach (var list in lists ?? [])
+            context.Numbering.Take(list);
         if (restyled)
         {
             var previous = wholeText;

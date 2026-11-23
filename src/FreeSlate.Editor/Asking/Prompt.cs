@@ -18,8 +18,12 @@ static class Prompt
         You read the document and write into it in one notation. Each paragraph is a line after its id (¶12 …); ids name paragraphs
         for your tools and are never part of what you write.
         - Levels of paragraphs (the tone of the document gives their look): "# " the title, "## " a chapter, "### " a section, plain
-          text, "- " a point, "  - " a subpoint, "{MarginNote} " a margin note. Any other paragraph style: "{StyleId} " before it.
-          Numbered points are written as text with their numbers ("1. Read the text."), the editor has bullet points only.
+          text, "- " a point, "  - " a subpoint, "1. " a numbered point, "  a) " a numbered subpoint, "{MarginNote} " a margin note.
+          Any other paragraph style: "{StyleId} " before it.
+        - Numbered points one after another (subpoints among them) are one list; the editor numbers it, from 1, so what you read are
+          the numbers it shows. A list after text starts at 1 again; one whose first number follows the last of the list before it
+          ("4." after a list that ended at 3.) goes on counting it, any other first number starts it there. Text that only begins like
+          a mark escapes it: "1\. ", "\- ", "\# ".
         - Meanings of words (not formatting): **important**, *emphasized*, {Term|a term}, {Quotation|a quotation},
           {OpenQuestion|a question still open}. Never use backticks; "> " before a paragraph makes all of it a quotation.
         - A line ending in two spaces breaks the line within the paragraph; a blank line ends a paragraph.

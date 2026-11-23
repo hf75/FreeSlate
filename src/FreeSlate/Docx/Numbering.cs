@@ -147,6 +147,18 @@ public sealed class NumberingDefinitions
         return abstractId == null ? null : instances.FirstOrDefault(n => n.Value.Child("abstractNumId").Val() == abstractId).Key;
     }
 
+    /// <summary>
+    /// A numbering instance (w:num) the part has now, in place of one of its id (see WordDocument.AddList): paragraphs numbered in it count
+    /// from then on, read by any counter of these definitions.
+    /// </summary>
+    public void Take(XElement num)
+    {
+        if (num.Attr("numId") is not { } id)
+            return;
+        instances[id] = num;
+        resolved.Remove(id);
+    }
+
     public Instance? Find(string? numId)
     {
         if (numId == null || numId == "0")

@@ -16,7 +16,11 @@ public static partial class Notation
     public abstract record Block;
 
     /// <summary>A paragraph: its style (null for text), what it holds.</summary>
-    public sealed record Paragraph(string? Style, IReadOnlyList<Piece> Pieces) : Block;
+    public sealed record Paragraph(string? Style, IReadOnlyList<Piece> Pieces) : Block
+    {
+        /// <summary>A numbered point's number as written ("3." gives 3), which a list beginning with it starts at (see Writing.Lists).</summary>
+        public int? Number { get; init; }
+    }
 
     /// <summary>
     /// A table: its rows of cells, each the pieces of its text; the alignment of each column (left, center, right or null). And as the
@@ -95,7 +99,11 @@ public static partial class Notation
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
     private static partial Regex HeadingLine();
 
-    [GeneratedRegex(@"^( *)([-*+]|\d{1,3}[.)])\s+(.*)$")]
+    /// <summary>
+    /// A point: "- " (or "* ", "+ ") bulleted, "1. " (or "1) ") numbered; indented by two spaces or more a subpoint, a numbered one also by
+    /// its letter ("  a) ").
+    /// </summary>
+    [GeneratedRegex(@"^( *)([-*+]|\d{1,3}[.)]|(?<= {2})[a-z][.)])\s+(.*)$")]
     private static partial Regex ItemLine();
 
     [GeneratedRegex(@"^\[\^([^\]\s]+)\]:\s?(.*)$")]
@@ -198,22 +206,24 @@ public static partial class Notation
                 {
                     var match = ItemLine().Match(line);
                     var deep = match.Groups[1].Value.Length >= 2;
-                    var ordered = char.IsDigit(match.Groups[2].Value[0]);
+                    var marker = match.Groups[2].Value;
+                    var ordered = marker[0] is not ('-' or '*' or '+');
+                    int? number = char.IsDigit(marker[0]) ? int.Parse(marker[..^1], System.Globalization.CultureInfo.InvariantCulture) : null;
                     var body = new StringBuilder(match.Groups[3].Value);
                     var k = i + 1;
                     // Lines indented under the point go on with it.
                     static bool Continues(string next) => next.StartsWith("  ", StringComparison.Ordinal) && next.Trim().Length > 0 && !ItemLine().IsMatch(next);
                     while (k < count && !Open(k) && Continues(lines[k]))
                         body.Append(' ').Append(lines[k++].Trim());
-                    var point = ordered ? match.Groups[2].Value + " " + body : body.ToString();
-                    var style = ordered ? null : deep ? "ListBullet2" : "ListBullet";
+                    var point = body.ToString();
+                    var style = ordered ? deep ? "ListNumber2" : "ListNumber" : deep ? "ListBullet2" : "ListBullet";
                     if (!Ended(k, Continues))
                     {
                         tail = new Tail(style, Plain(point + (k < count && Open(k) ? " " + lines[k].Trim() : "")));
                         i = count;
                         continue;
                     }
-                    blocks.Add(new Paragraph(style, Inline(point, null)));
+                    blocks.Add(new Paragraph(style, Inline(point, null)) { Number = number });
                     i = k;
                     continue;
                 }
@@ -676,7 +686,7 @@ public static partial class Notation
         {
             var c = text[k];
             var rest = text.AsSpan(k);
-            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^$".Contains(text[k + 1]))
+            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^$.-+)".Contains(text[k + 1]))
             {
                 buffer.Append(text[k + 1]);
                 k += 2;

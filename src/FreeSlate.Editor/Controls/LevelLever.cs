@@ -293,7 +293,8 @@ public sealed class LevelLever : Canvas
 
     /// <summary>
     /// Gives a level to the paragraphs the lever acts on, those not at it already, as one step: the selection's, where the paragraph it
-    /// stands at is among them, else that one alone. Whether there was one to change.
+    /// stands at is among them, else that one alone; numbered points in the list beside them, or in a new one (see Lists.Settle). Whether
+    /// there was one to change.
     /// </summary>
     static bool Give(EditSession session, DocumentView view, int at, Level level)
     {
@@ -306,6 +307,7 @@ public sealed class LevelLever : Canvas
         {
             foreach (var paragraph in changing)
                 document.Format(paragraph, new ParagraphFormatting { Style = level.Style });
+            Lists.Settle(document, changing);
             return null;
         }));
         return true;

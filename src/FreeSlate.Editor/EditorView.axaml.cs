@@ -779,10 +779,11 @@ public sealed partial class EditorView : Panel
     }
 
     /// <summary>
-    /// The structure by the keys, while the sheets have them: Tab moves the paragraphs of the selection, or the cursor's, a level to the
-    /// right, Shift+Tab a level to the left (see Levels); in a table Tab goes to the next cell instead, Shift+Tab to the one before, as in
-    /// Word (see EditSession.NextCell). Enter in an empty point or subpoint moves it a level to the left instead of making another one.
-    /// Enter after a heading or a margin note makes text, as their styles say (w:next).
+    /// The structure by the keys, while the sheets have them: Tab moves the paragraphs of the selection, or the cursor's, a place to the
+    /// right along the outline, Shift+Tab a place to the left (see Levels.Indented: a point to a subpoint, numbered ones staying numbered);
+    /// in a table Tab goes to the next cell instead, Shift+Tab to the one before, as in Word (see EditSession.NextCell). Enter in an empty
+    /// point or subpoint, numbered or not, moves it a place to the left instead of making another one. Enter after a heading or a margin
+    /// note makes text, as their styles say (w:next); after a point another point, in the same list.
     /// </summary>
     void Structure(object? sender, KeyEventArgs e)
     {
@@ -812,7 +813,7 @@ public sealed partial class EditorView : Panel
                 Shift(shift ? -1 : 1);
         }
         else if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None && !editing.Selecting
-            && editing.Document.Text(editing.Caret.Paragraph).Length == 0 && Levels.Of(editing.Document.ParagraphStyle(editing.Caret.Paragraph)).Step is 1 or 2)
+            && editing.Document.Text(editing.Caret.Paragraph).Length == 0 && Levels.Of(editing.Document.ParagraphStyle(editing.Caret.Paragraph)).Depth > 0)
         {
             e.Handled = true;
             Shift(-1);
@@ -820,16 +821,19 @@ public sealed partial class EditorView : Panel
     }
 
     /// <summary>
-    /// Moves the paragraphs of the selection, or the cursor's (see EditSession.SelectedParagraphs), so many levels, those that can go so
-    /// far: one step to undo.
+    /// Moves the paragraphs of the selection, or the cursor's (see EditSession.SelectedParagraphs), so many places along the outline
+    /// (see Levels.Indented), those that can go so far, numbered points in their lists (see Lists.Settle): one step to undo.
     /// </summary>
     void Shift(int steps)
     {
         var document = editing.Document;
         var moved = new List<(int Paragraph, Level To)>();
-        foreach (var paragraph in editing.SelectedParagraphs)
+        // Text becomes numbered points after one, all of the selection alike.
+        var paragraphs = editing.SelectedParagraphs;
+        var numbered = paragraphs.Count > 0 && document.Before(paragraphs[0]) is { } before && Levels.Of(document.ParagraphStyle(before)).Numbered;
+        foreach (var paragraph in paragraphs)
         {
-            if (Levels.Beside(Levels.Of(document.ParagraphStyle(paragraph)), steps) is { } to)
+            if (Levels.Indented(Levels.Of(document.ParagraphStyle(paragraph)), steps, numbered) is { } to)
                 moved.Add((paragraph, to));
         }
         if (moved.Count == 0)
@@ -838,6 +842,7 @@ public sealed partial class EditorView : Panel
         {
             foreach (var (paragraph, to) in moved)
                 document.Format(paragraph, new ParagraphFormatting { Style = to.Style });
+            Lists.Settle(document, moved.Select(m => m.Paragraph));
             return null;
         }));
     }

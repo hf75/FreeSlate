@@ -565,6 +565,10 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 return new TextPlace(cells.Cells[^1].Last, document.Text(cells.Cells[^1].Last).Length);
             }
             written.AddRange(ids);
+            // A numbered point in the list of the points before it, or beginning one: at its number, or going on in the list before
+            // whose last point shows the number before it (see Lists).
+            if (block is Notation.Paragraph { Style: "ListNumber" or "ListNumber2" } point)
+                Lists.Settle(document, ids, point.Number ?? 1, ids.Count > 0 ? Lists.Continued(document, ids[0], point.Number) : null);
             notes.AddRange(made.Notes.Where(n => n.Paragraph < ids.Count).Select(n => (ids[n.Paragraph], n.Offset + (n.Paragraph == 0 ? shift : 0), n.Label)));
             return ids.Count > 0 ? new TextPlace(ids[^1], document.Text(ids[^1]).Length) : null;
         });
@@ -576,7 +580,10 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         tail = now;
         if (anchor is not { } at || now is not { Text.Length: > 0 } shown)
             return;
-        var style = shown.Style is { } s ? $"<w:pPr><w:pStyle w:val=\"{SecurityElement.Escape(s)}\"/></w:pPr>" : "";
+        // A numbered point counting on in the list before it as it will once it is put in.
+        var list = shown.Style is "ListNumber" or "ListNumber2" && Lists.Before(document, at) is { } before
+            ? $"<w:numPr><w:ilvl w:val=\"{(shown.Style == "ListNumber" ? 0 : 1)}\"/><w:numId w:val=\"{before}\"/></w:numPr>" : "";
+        var style = shown.Style is { } s ? $"<w:pPr><w:pStyle w:val=\"{SecurityElement.Escape(s)}\"/>{list}</w:pPr>" : "";
         var markup = $"<w:p>{style}<w:r><w:t xml:space=\"preserve\">{SecurityElement.Escape(Safe(shown.Text))}</w:t></w:r></w:p>";
         tailShown = Step(() => document.InsertBlocks(at, markup, before: true) is [var id, ..] ? new TextPlace(id, document.Text(id).Length) : null);
     }
@@ -615,6 +622,13 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             if (!removed && document.Before(made) is { } previous && !sectionEnds.Contains(previous) && written.Contains(previous))
                 Step(() => new TextPlace(document.Join(previous, backward: true), document.Text(previous).Length), quiet: true);
         }
+        // The numbered points written one list with the points they now meet, that place's paragraph gone.
+        if (written.Where(document.Contains).Where(p => Levels.Of(document.ParagraphStyle(p)).Numbered).ToList() is { Count: > 0 } numbered)
+            Step(() =>
+            {
+                Lists.Settle(document, numbered);
+                return null;
+            }, quiet: true);
         // The notes in tables' cells at their cells' first paragraphs as they are now (a table changed is read anew).
         foreach (var (table, row, column, offset, label) in tableNotes)
         {

@@ -159,7 +159,9 @@ over each grid column at its top and bottom, as the layout resolves the cells' a
   `NotSupportedException`. Text can mean something without a look of its own: a character style (`TextFormatting.Style`,
   `CharacterStyles`), as a paragraph can have a paragraph style (`ParagraphStyle`), whose look the style definitions give,
   which `DefineStyles` replaces all at once as a style set does in Word, with the lists they name: a Word document is then
-  read whole again, and so is a version with other styles that undoing goes to.
+  read whole again, and so is a version with other styles that undoing goes to. A Word document's paragraph names the list
+  it is numbered in by its formatting (`ParagraphFormatting.List`, `ListLevel`; `OwnList`, `ListLabel` read it back), and
+  `AddList` makes a list of a numbering definition that starts over where it is first used (`WordDocument.Lists.cs`).
 - `WordDocument` makes a change in the XML of the blocks it touches: their text is parsed afresh, changed
   (`Docx/TextEdits`; as tracked changes through `Docx/Tracking` where an author is set), made ready as the part was when
   it was loaded and read anew in place of those blocks (`ModelReader.Reread`, `Docx/Reread.cs`). The reader records the
@@ -317,9 +319,14 @@ that looks alike in Word. The editor's documents hyphenate (`WordDocument.New(hy
 the whole document): the magazine tone justifies and hyphenates its text, the others suppress hyphenation in their normal
 paragraph, which the other levels are based on. `DocumentView.ShowsMeanings` frames the stretches with a meaning and names it in the page's margin,
 drawn over the pages, which do not move for it. The engine gets the app's Inter beside the system's fonts (`EngineFonts`).
-A paragraph's level lies on one axis from title to margin note (`Levels`, Word's own styles where it has them): `LevelLever`
-is the grip beside the paragraph the pointer is at, dragged sideways a level per 32 pixels with the page showing it at once, one
-step to undo; Tab and Shift+Tab move the selection's paragraphs a level, Enter in an empty point moves it out. Meanings are
+A paragraph's level lies on one axis from title to margin note, points and numbered points among them (`Levels`, Word's own
+styles where it has them): `LevelLever` is the grip beside the paragraph the pointer is at, dragged sideways a level per 32
+pixels with the page showing it at once, one step to undo; Tab and Shift+Tab move the selection's paragraphs along the outline
+(a point to a subpoint, numbered ones staying numbered, text after a numbered point becoming one), Enter in an empty point moves
+it out. Numbered points one after another are a list that counts from 1 (`Lists`): each list is a list of its own of the tone's
+numbered points (`WordDocument.AddList`, a w:num that starts over where it is first used, as Word's Restart Numbering makes
+one), which each of its paragraphs names (w:numPr, `ParagraphFormatting.List`), so that a list after text starts at 1 again,
+however many came before, and text put between two points leaves those after it counting on, in Word as in the editor. Meanings are
 given with `GestureRing`, a marking menu whose fields share the circle in an order that stays (six: the five meanings, then
 taking one away): the right button held on the selection or a word, moved blindly or into a field; a short click opens it to be
 clicked; the left button held on the selection, or Space held, bring it too. A field may hold a ring of its own (a second level,
@@ -437,7 +444,8 @@ Claude works at the ring (`Asking/`): text typed while a ring shows goes to a li
 the ring at the selection or the cursor, ready to type), and Enter sends it as a wish, with no mode to choose: where the ring was
 opened says what the wish is about (`Focus`: words, paragraphs, the cursor, an empty paragraph, a picture, a table). The document
 goes to Claude in a notation of its own (`Reading`, `Notation`): each paragraph a line after its id, Markdown for the levels and
-the meanings ({Term|…} for those Markdown lacks), GitHub's tables with what the ring gives tables besides (a line
+the meanings ({Term|…} for those Markdown lacks; numbered points by the numbers they show, "1." and "  a)", a list written after
+text starting at its first number or going on in the list before where that number follows its last), GitHub's tables with what the ring gives tables besides (a line
 "{table look=book head=none float=right across=yes}" before one, "{fill=yellow valign=middle turn=up}" at a cell's start, "<"
 and "^" for cells merged with the one before or above, see `TableWords`), fenced blocks of a vector picture (```svg), of
 WordArt (```wordart), of a box (```box: Word's text box with paragraphs of the notation inside, a fill, a line, as high as its

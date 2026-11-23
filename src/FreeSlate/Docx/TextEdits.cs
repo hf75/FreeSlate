@@ -2713,6 +2713,31 @@ static partial class TextEdits
             properties.Element(w + "pStyle")?.Remove();
         else if (format.Style is { } style)
             Property(properties, "pStyle", ParagraphOrder).SetAttributeValue(w + "val", style);
+        // The list: its level before its numbering instance, as w:numPr has them (CT_NumPr).
+        if (format.List is { Length: 0 })
+            properties.Element(w + "numPr")?.Remove();
+        else if (format.List != null || format.ListLevel != null)
+        {
+            var numPr = Property(properties, "numPr", ParagraphOrder);
+            if (format.ListLevel is { } level)
+            {
+                if (numPr.Element(w + "ilvl") is not { } ilvl)
+                    numPr.AddFirst(ilvl = new XElement(w + "ilvl"));
+                ilvl.SetAttributeValue(w + "val", level.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+            if (format.List is { } list)
+            {
+                if (numPr.Element(w + "numId") is not { } numId)
+                {
+                    numId = new XElement(w + "numId");
+                    if (numPr.Element(w + "ilvl") is { } before)
+                        before.AddAfterSelf(numId);
+                    else
+                        numPr.AddFirst(numId);
+                }
+                numId.SetAttributeValue(w + "val", list);
+            }
+        }
         if (format.Alignment is { } alignment)
             Property(properties, "jc", ParagraphOrder).SetAttributeValue(w + "val", strict ? alignment switch { "left" => "start", "right" => "end", _ => alignment } : alignment);
         if (format.Left != null || format.Right != null || format.FirstLine != null)
