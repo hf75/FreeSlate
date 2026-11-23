@@ -587,9 +587,11 @@ public static class Engine
                 var (alongType, acrossType) = horizontal ? ("w", "h") : ("h", "w");
                 var length = (horizontal ? extents[i].W : extents[i].H) * shrink;
                 var cross = horizontal ? extents[i].H : extents[i].W;
-                // A composite takes the room of its children, whose lengths follow it where they relate to it.
+                // A composite takes the room of its children, whose lengths follow it where they relate to it. A size across
+                // the text's fitting made larger holds, shrunk with the line (measured: Word's steps with subpoints, all as
+                // high as the highest text needs, up to their rule's 1.6 of their height).
                 if (shrink < 1 && children[i].AlgorithmType != "composite" && Derived(children[i], acrossType, alongType, length) is { } derived)
-                    cross = derived;
+                    cross = pins.TryGet(children[i], acrossType, out var fitted) ? Math.Max(derived, fitted * shrink) : derived;
                 // A composite's own bound across by its length holds for its new length (measured: NumberedTitleCard-
                 // List's cards, h <= 1.2 w, as high as 1.2 times the width the row leaves them).
                 if (children[i].AlgorithmType == "composite" && UpperAcross(children[i], acrossType, alongType, length) is { } cap)
