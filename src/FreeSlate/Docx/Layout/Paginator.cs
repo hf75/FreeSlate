@@ -1900,13 +1900,31 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return new Relaid(finishedPages!, from, 0);
         }
         if (paused is { } at)
-            return Lay(given, at, [.. checkpoints!.SkipWhile(c => c != at).Skip(1)], given.Count, 0, sectionEnds, pages, null);
+            return Lay(given, at, After(at), given.Count, 0, sectionEnds, pages, null);
         // Fields to lay out again (see refields): from the first page that holds one, meeting the pages before only after
         // the last.
         if (refields is var (fieldsAt, through))
-            return Lay(given, fieldsAt, [.. checkpoints!.SkipWhile(c => c != through).Skip(1)], given.Count, 0, sectionEnds, pages, through);
+            return Lay(given, fieldsAt, After(through), given.Count, 0, sectionEnds, pages, through);
         return null;
     }
+
+    /// <summary>The checkpoints a run stops at, by their place: the first where two stand at one.</summary>
+    static Dictionary<(int Section, int Block, int Row), Checkpoint> Stops(List<Checkpoint> after)
+    {
+        var stops = new Dictionary<(int Section, int Block, int Row), Checkpoint>();
+        foreach (var c in after)
+            stops.TryAdd((c.Section, c.Block, c.Row), c);
+        return stops;
+    }
+
+    /// <summary>
+    /// The checkpoints after one in the flow: after it where the list holds it, else after its place. A run that laid fields
+    /// out again keeps copies of the checkpoints after it, which know what it knew (see Lay), where a pause or the fields to
+    /// lay out again may still name the checkpoint copied (found with a table of contents laid out again while text was written
+    /// before it: the run after took all checkpoints and added its own again, the next one met a place twice).
+    /// </summary>
+    List<Checkpoint> After(Checkpoint at) =>
+        checkpoints!.Contains(at) ? [.. checkpoints!.SkipWhile(c => c != at).Skip(1)] : [.. checkpoints!.Where(c => Position(c).CompareTo(Position(at)) > 0)];
 
     /// <summary>
     /// Where the last layout paused (see Relayout): the checkpoint its flow goes on from, the pages from its page on as
@@ -2031,7 +2049,7 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 refinish = restoried.Count > 0 ? restoried : null,
                 // The run stops only after the last block that differs, and not where the pages after it may read
                 // otherwise (see throughToEnd) or headers look back over the pages before theirs (STYLEREF).
-                stops = throughToEnd || StoriesLookBack() || before == null ? null : after.ToDictionary(c => (c.Section, c.Block, c.Row)),
+                stops = throughToEnd || StoriesLookBack() || before == null ? null : Stops(after),
                 pauseAt = limit == int.MaxValue ? null : from.Page + limit, pausedBeyond = held,
             };
             run.Take(from.State, CollectionsMarshal.AsSpan(laid)[..Math.Min(from.Page - 1, laid!.Count)]);
@@ -2064,7 +2082,9 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
                 var stop = run.stoppedAt;
                 var keptAfter = run.pausedHere ? after.Where(c => Position(c).CompareTo(Position(stop!)) > 0 && (held == null || Position(c).CompareTo(Position(held)) > 0))
                     : stop != null ? after.SkipWhile(c => c != stop) : [];
-                checkpoints = [.. checkpoints!.TakeWhile(c => c != from), .. run.checkpoints!, .. refielding ? keptAfter.Select(c => c.Knowing(knowing)) : keptAfter];
+                // Those before the run's: up to its checkpoint, or up to its place where the list holds a copy of it (see After).
+                checkpoints = [.. checkpoints!.TakeWhile(c => c != from && Position(c).CompareTo(Position(from)) < 0), .. run.checkpoints!,
+                    .. refielding ? keptAfter.Select(c => c.Knowing(knowing)) : keptAfter];
                 paused = run.pausedHere ? stop : stop != null && held != null && Position(stop).CompareTo(Position(held)) <= 0 ? held : null;
                 // A run that went on to the end laid out the pages as they now read; one that met the pages before did
                 // so with the changed notes laid out (see SameFlow).
