@@ -2382,6 +2382,30 @@ static partial class TextEdits
             else
                 Set("vAlign").SetAttributeValue(w + "val", align);
         }
+        if (format.Border is { } border)
+        {
+            if (border.Kind == "none")
+                Unset("pgBorders");
+            else
+            {
+                // Every side alike, as the Box setting of Word's Page Borders writes them: widths in eighths of a point (2 to 96), the
+                // distance in points (up to 31).
+                var borders = Set("pgBorders");
+                borders.RemoveAll();
+                if (border.FromPage)
+                    borders.SetAttributeValue(w + "offsetFrom", "page");
+                var size = Math.Clamp((int)Math.Round(border.Width * 8), 2, 96).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var space = Math.Clamp((int)Math.Round(border.Space), 0, 31).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                foreach (var side in new[] { "top", "left", "bottom", "right" })
+                {
+                    var line = new XElement(w + side, new XAttribute(w + "val", border.Kind), new XAttribute(w + "sz", size), new XAttribute(w + "space", space),
+                        new XAttribute(w + "color", border.Color ?? "auto"));
+                    if (border.Shadow)
+                        line.SetAttributeValue(w + "shadow", "1");
+                    borders.Add(line);
+                }
+            }
+        }
         if (format.PageNumberStart != null || format.PageNumberFormat != null)
         {
             var numbers = Set("pgNumType");

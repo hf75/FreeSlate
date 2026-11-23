@@ -47,7 +47,8 @@ static class Prompt
             paragraphs then have new ids, as the write tells you.
         - Footnotes: text[^1] and anywhere in the same content "[^1]: the note's text". The notes you read are marks like these, their
           texts under "Notes:" after the document: writing a mark again keeps its note (with its text, or with the text you give it), a
-          new note takes a label not in use.
+          new note takes a label not in use. An endnote (at the end of the document) begins its text with "(endnote) ", as endnotes
+          read: "[^2]: (endnote) the note's text".
         - \pagebreak alone on a line starts a new page; "---" draws a line across.
         - Columns: "::: columns 2" on a line of its own, the text, then ":::" (add "line" for a line between them:
           "::: columns 2 line"). Text in columns you read stands between the same marks.
@@ -125,8 +126,8 @@ static class Prompt
           replace it in sensible pieces.
         - Change how a picture or another object stands or looks with the picture tool (where it stands, size, crop, colours, frame,
           turn, mirror, tilt, caption, description), not by writing it anew. Give the document another look with the tone tool, only
-          where the wish asks for one. Headers, footers, page numbers, margins, paper and orientation are the page tool's ("Page:"
-          after the document says how they are).
+          where the wish asks for one. Headers, footers, page numbers, margins, paper, orientation, watermarks and page borders
+          are the page tool's ("Page:" after the document says how they are).
         - Write a whole new document in a few writes of a few pages each, in order, so that the user sees it grow.
         - After writing WordArt, columns, graphics, tables or page breaks, look at the pages they are on and fix what does not sit
           well (text cut off, a graphic too large, a heading alone at the bottom of a page, an empty page). Plain text needs no look.
@@ -205,7 +206,9 @@ static class Prompt
             "first_page": { "type": "string", "enum": ["own", "same"], "description": "own: the first page without header and footer (a title page); same: as the other pages." },
             "margins": { "type": "string", "description": "The margins: one length for all (2cm), two for top and bottom and for the sides (2cm 2.5cm), or four (top right bottom left)." },
             "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
-            "size": { "type": "string", "enum": ["A4", "A5", "A3", "Letter", "Legal"] }
+            "size": { "type": "string", "enum": ["A4", "A5", "A3", "Letter", "Legal"] },
+            "watermark": { "type": "string", "description": "A word or two pale and diagonal across every page behind the text, as Word's watermark (\"DRAFT\", \"CONFIDENTIAL\", \"SAMPLE\"); empty to take it away." },
+            "border": { "type": "string", "description": "A line round every page: single, double, thick, dotted, dashed, triple, wave, thin-thick or thick-thin, then a colour (#RRGGBB) and a width in points if wanted (\"double #2F6DB5 1.5\"); none to take it away." }
           }
         }
         """;
@@ -226,6 +229,6 @@ static class Prompt
         new("look", "Shows a page of the document as it is laid out now, exactly as Word prints it.", LookSchema),
         new("picture", "Changes an object of the document as the user's ring does: where it stands, its size, crop, colours, frame, turn, mirror, tilt, caption and description; or takes it away. Give only what changes.", PictureSchema),
         new("tone", "Gives the whole document another tone, the look its levels, meanings and tables take: plain, magazine or notebook.", ToneSchema),
-        new("page", "Sets up the document's pages: header and footer (with page numbers), margins, paper, orientation, a first page of its own. Give only what changes.", PageSchema),
+        new("page", "Sets up the document's pages: header and footer (with page numbers), margins, paper, orientation, a first page of its own, a watermark, a border round the pages. Give only what changes.", PageSchema),
     ];
 }

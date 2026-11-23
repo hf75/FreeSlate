@@ -105,6 +105,17 @@ static class Markup
             .Append("\" w:bottom=\"").Append(Twips(section.Bottom ?? 72)).Append("\" w:left=\"").Append(Twips(section.Left ?? 72))
             .Append("\" w:header=\"").Append(Twips(section.Header ?? 35.4)).Append("\" w:footer=\"").Append(Twips(section.Footer ?? 35.4))
             .Append("\" w:gutter=\"").Append(Twips(section.Gutter ?? 0)).Append("\"/>");
+        // The border round the pages, as the page tool gives it (see TextEdits.Format).
+        if (section.Border is { Kind: not "none" } border)
+        {
+            markup.Append("<w:pgBorders").Append(border.FromPage ? " w:offsetFrom=\"page\"" : "").Append('>');
+            var size = Math.Clamp((int)Math.Round(border.Width * 8), 2, 96).ToString(CultureInfo.InvariantCulture);
+            var space = Math.Clamp((int)Math.Round(border.Space), 0, 31).ToString(CultureInfo.InvariantCulture);
+            foreach (var side in new[] { "top", "left", "bottom", "right" })
+                markup.Append($"<w:{side} w:val=\"{border.Kind}\" w:sz=\"{size}\" w:space=\"{space}\" w:color=\"{border.Color ?? "auto"}\"")
+                    .Append(border.Shadow ? " w:shadow=\"1\"/>" : "/>");
+            markup.Append("</w:pgBorders>");
+        }
         var (count, line) = columns ?? (section.Columns ?? 1, false);
         markup.Append("<w:cols w:space=\"").Append(Twips(section.ColumnSpace ?? 36)).Append('"');
         if (count > 1)

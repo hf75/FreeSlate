@@ -276,6 +276,13 @@ static class Arranging
             else
                 failed.Add($"size {size} (A3, A4, A5, Letter or Legal)");
         }
+        if (input.GetValueOrDefault("border") is { } borderText)
+        {
+            if (Border(borderText) is { } border)
+                format = format with { Border = border };
+            else
+                failed.Add($"border {borderText} (single, double, thick, dotted, dashed, triple, wave or none, a colour #RRGGBB and a width in points after it)");
+        }
         if (input.GetValueOrDefault("orientation")?.Trim().ToLowerInvariant() is { } orientation)
         {
             if (orientation is "portrait" or "landscape")
@@ -354,6 +361,8 @@ static class Arranging
                     continue;
                 Do(name, () => Story(word, first, footer, text));
             }
+            if (input.GetValueOrDefault("watermark") is { } watermark)
+                Do("watermark", () => Watermark(word, first, watermark.Trim()));
         });
         var told = "Now: " + Reading.PageOf(word, objects);
         if (failed.Count > 0)
@@ -368,6 +377,8 @@ static class Arranging
     public static void Story(WordDocument word, int first, bool footer, string text)
     {
         var story = word.Header(first, "default", footer);
+        // A watermark the header holds stays (see Watermark).
+        var watermark = footer ? null : WatermarkText(word, story);
         while (word.After(story) is { } next)
             story = word.Join(story);
         word.Replace(story, 0, word.Text(story).Length, "");
@@ -384,10 +395,134 @@ static class Arranging
         }
         if (runs.Length > 0)
             word.InsertMarkup(story, 0, runs.ToString());
+        if (watermark != null)
+            word.InsertMarkup(story, 0, WatermarkRun(word, first, watermark));
     }
 
-    /// <summary>The header's and the footer's text in the notation (the parts between tabs), and whether the first page has none, as the first section has them.</summary>
-    public static (string Header, string Footer, bool Title)? Stories(WordDocument word, Objects objects)
+    /// <summary>The name Word gives its text watermark (a WordArt of VML in a header), by which its Watermark dialog finds one.</summary>
+    const string WatermarkName = "PowerPlusWaterMarkObject";
+
+    /// <summary>
+    /// The page tool's watermark: a word or two across every page behind the text, silver and half see-through, rising from the bottom
+    /// left, as Word's Watermark dialog puts one in: a WordArt of VML in each header the first section's pages show (the first page's
+    /// own and the even pages' too where they have their own), centred on the margins. An empty text takes it away.
+    /// </summary>
+    public static void Watermark(WordDocument word, int first, string text)
+    {
+        var kinds = new List<string> { "default" };
+        if (word.SectionOf(first).TitlePage == true)
+            kinds.Add("first");
+        if (word.EvenAndOddHeaders)
+            kinds.Add("even");
+        foreach (var kind in kinds)
+        {
+            var story = word.Header(first, kind, false);
+            for (int? paragraph = story; paragraph is { } at; paragraph = word.After(at))
+            {
+                while (WatermarkAt(word, at) is { } offset)
+                    word.Replace(at, offset, 1, "");
+            }
+            if (text.Length > 0)
+                word.InsertMarkup(story, 0, WatermarkRun(word, first, text));
+        }
+    }
+
+    /// <summary>Where a paragraph of a header holds a watermark (see Watermark): its character's offset, or null.</summary>
+    public static int? WatermarkAt(WordDocument word, int paragraph)
+    {
+        var text = word.Text(paragraph);
+        for (var k = 0; k < text.Length; k++)
+        {
+            if (text[k] == '￼' && word.DrawingName(paragraph, k)?.StartsWith(WatermarkName, StringComparison.Ordinal) == true)
+                return k;
+        }
+        return null;
+    }
+
+    /// <summary>The text of the watermark a header (its first paragraph given) shows, or null.</summary>
+    public static string? WatermarkText(WordDocument word, int story)
+    {
+        for (int? paragraph = story; paragraph is { } at; paragraph = word.After(at))
+        {
+            if (WatermarkAt(word, at) is { } offset)
+                return word.DrawingWords(at, offset) ?? "";
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// A watermark's run as Word's Watermark dialog writes it (a VML WordArt of shape type 136 behind the text, turned 315 degrees,
+    /// centred on the margins), as long as the text is wide and as high as its letters make it, no higher than 0.45 of the width.
+    /// </summary>
+    static string WatermarkRun(WordDocument word, int first, string text)
+    {
+        var section = word.SectionOf(first);
+        var across = (section.PageWidth ?? 595.3) - Math.Abs(section.Left ?? 72) - Math.Abs(section.Right ?? 72);
+        var aspect = Math.Max(1.2, 0.56 * text.Length + 0.3);
+        var (width, height) = (across * 0.92, across * 0.92 / aspect);
+        if (height > across * 0.45)
+            (width, height) = (across * 0.45 * aspect, across * 0.45);
+        static string Pt(double points) => points.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        var id = Random.Shared.Next(100_000_000, 999_999_999).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var spid = Random.Shared.Next(2049, 9999).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return "<w:r><w:rPr><w:noProof/></w:rPr><w:pict>"
+            + "<v:shapetype id=\"_x0000_t136\" coordsize=\"21600,21600\" o:spt=\"136\" adj=\"10800\" path=\"m@7,l@8,m@5,21600l@6,21600e\"><v:formulas>"
+            + "<v:f eqn=\"sum #0 0 10800\"/><v:f eqn=\"prod #0 2 1\"/><v:f eqn=\"sum 21600 0 @1\"/><v:f eqn=\"sum 0 0 @2\"/><v:f eqn=\"sum 21600 0 @3\"/>"
+            + "<v:f eqn=\"if @0 @3 0\"/><v:f eqn=\"if @0 21600 @1\"/><v:f eqn=\"if @0 0 @2\"/><v:f eqn=\"if @0 @4 21600\"/><v:f eqn=\"mid @5 @6\"/>"
+            + "<v:f eqn=\"mid @8 @5\"/><v:f eqn=\"mid @7 @8\"/><v:f eqn=\"mid @6 @7\"/><v:f eqn=\"sum @6 0 @5\"/></v:formulas>"
+            + "<v:path textpathok=\"t\" o:connecttype=\"custom\" o:connectlocs=\"@9,0;@10,10800;@11,21600;@12,10800\" o:connectangles=\"270,180,90,0\"/>"
+            + "<v:textpath on=\"t\" fitshape=\"t\"/><v:handles><v:h position=\"#0,bottomRight\" xrange=\"6629,14971\"/></v:handles>"
+            + "<o:lock v:ext=\"edit\" text=\"t\" shapetype=\"t\"/></v:shapetype>"
+            + $"<v:shape id=\"{WatermarkName}{id}\" o:spid=\"_x0000_s{spid}\" type=\"#_x0000_t136\" style=\"position:absolute;margin-left:0;margin-top:0;"
+            + $"width:{Pt(width)}pt;height:{Pt(height)}pt;rotation:315;z-index:-251657216;mso-position-horizontal:center;mso-position-horizontal-relative:margin;"
+            + "mso-position-vertical:center;mso-position-vertical-relative:margin\" o:allowincell=\"f\" fillcolor=\"silver\" stroked=\"f\">"
+            + "<v:fill opacity=\".5\"/>"
+            + $"<v:textpath style=\"font-family:&quot;Calibri&quot;;font-size:1pt\" string=\"{System.Security.SecurityElement.Escape(text)}\"/>"
+            + "<w10:wrap xmlns:w10=\"urn:schemas-microsoft-com:office:word\" anchorx=\"margin\" anchory=\"margin\"/></v:shape></w:pict></w:r>";
+    }
+
+    /// <summary>A page border as the page tool names it: a kind, then a colour (#RRGGBB) and a width in points if given; null for none known.</summary>
+    static PageBorder? Border(string text)
+    {
+        var words = text.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0)
+            return null;
+        var kind = words[0].ToLowerInvariant() switch
+        {
+            "none" or "no" => "none",
+            "single" or "line" or "box" => "single",
+            "double" => "double",
+            "thick" => "thick",
+            "dotted" => "dotted",
+            "dashed" => "dashed",
+            "triple" => "triple",
+            "wave" or "wavy" => "wave",
+            "thin-thick" => "thinThickSmallGap",
+            "thick-thin" => "thickThinSmallGap",
+            _ => null,
+        };
+        if (kind == null)
+            return null;
+        string? color = null;
+        var width = kind is "thick" ? 2.25 : kind is "double" or "triple" or "wave" ? 0.75 : 0.5;
+        foreach (var word in words.Skip(1))
+        {
+            if (word.TrimStart('#') is { Length: 6 } hex && hex.All(Uri.IsHexDigit))
+                color = hex.ToUpperInvariant();
+            else if (double.TryParse(word.Replace("pt", "", StringComparison.OrdinalIgnoreCase), System.Globalization.NumberStyles.Float,
+                         System.Globalization.CultureInfo.InvariantCulture, out var points) && points is > 0 and <= 12)
+                width = points;
+            else
+                return null;
+        }
+        return new PageBorder(kind, width, color);
+    }
+
+    /// <summary>
+    /// The header's and the footer's text in the notation (the parts between tabs), whether the first page has none, and the watermark's
+    /// text (see Watermark), as the first section has them.
+    /// </summary>
+    public static (string Header, string Footer, bool Title, string? Watermark)? Stories(WordDocument word, Objects objects)
     {
         if (word.Beginning is not { } first)
             return null;
@@ -404,12 +539,13 @@ static class Arranging
             }
             var lines = new List<string>();
             for (var paragraph = story; paragraph is { } p; paragraph = word.After(p))
-                lines.Add(Reading.Line(word, p, objects));
+                lines.Add(Reading.StoryLine(word, p, objects));
             return string.Join(" ", lines).Trim();
         }
         try
         {
-            return (Of(false), Of(true), word.SectionOf(first).TitlePage == true);
+            return (Of(false), Of(true), word.SectionOf(first).TitlePage == true,
+                word.ShownHeader(first, "default", false) is { } header ? WatermarkText(word, header) : null);
         }
         catch (NotSupportedException)
         {

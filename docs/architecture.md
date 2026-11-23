@@ -469,7 +469,7 @@ language has no recursion; those that place each point by their count choose by 
 which Word and the engine lay out alike from the definition; Word takes a definition only with names that are unique among
 all its elements and connection points it knows (midR, not rCtr), `SmartArts`), formulas in LaTeX ($…$, $$…$$, made Office Math and read back so, `Formulas`), links
 ([text](address) as HYPERLINK fields, in the tones' link style), fields ({page}, {pages}, {date}), "::: columns 2 line" to
-":::", footnotes, \pagebreak and --- for a page break and a line, and WordprocessingML for anything else: a paragraph with
+":::", footnotes and endnotes (a note's text beginning "(endnote)"), \pagebreak and --- for a page break and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
 across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
 pictures, graphics, WordArt, charts, SmartArt, text boxes, frames, fields, equations) stand in its text as tokens ("[picture 3]"),
@@ -478,8 +478,9 @@ Claude writes in the same notation with its tools (`Prompt`): write (at the focu
 paragraphs), look (a page as it is laid out, as a picture), picture (`Arranging`: an object's place, size, crop, colours,
 frame, turn, mirror, tilt, caption and description, by the session's own handlings as the ring's), tone (the document's tone,
 as its buttons give it) and page (the header and footer every page shows, their parts placed by positional tabs, margins,
-paper, orientation, a title page; read with the document as "Page:", and given again where a write takes a section's end
-away). A token written is its object: one in text a write takes away is kept from before and goes in
+paper, orientation, a title page, a watermark as Word's dialog writes one, a VML WordArt in each header the pages show, found
+again by its name (`WordDocument.DrawingName`, `DrawingWords`), and a border round the pages, `SectionFormatting.Border`;
+read with the document as "Page:", and given again where a write takes a section's end away). A token written is its object: one in text a write takes away is kept from before and goes in
 again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
 elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits
 after the place and is written again in place where the write gives a table like it (`Writing.Tables`): rows and columns added

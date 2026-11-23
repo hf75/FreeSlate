@@ -133,7 +133,20 @@ public sealed record SectionFormatting
     /// </summary>
     public int? PageNumberStart { get; init; }
     public string? PageNumberFormat { get; init; }
+
+    /// <summary>
+    /// A line round the pages (w:pgBorders, Word's Page Borders as its Box setting draws it), every side alike; a border of the kind
+    /// "none" takes it away.
+    /// </summary>
+    public PageBorder? Border { get; init; }
 }
+
+/// <summary>
+/// A page border (see SectionFormatting.Border): its kind as w:val names it (single, double, thick, dotted, dashed, dotDash, triple,
+/// thinThickSmallGap, wave …), its width in points, its colour (RRGGBB, null for automatic), its distance from the page's edge (with
+/// <paramref name="FromPage"/>, Word's default) or from the text in points, and whether it casts a shadow.
+/// </summary>
+public sealed record PageBorder(string Kind, double Width = 0.5, string? Color = null, double Space = 24, bool FromPage = true, bool Shadow = false);
 
 /// <summary>
 /// How a drawing stands among the text of a Word document (catalog: drawing.inline, drawing.anchor), as Word's Layout Options and its

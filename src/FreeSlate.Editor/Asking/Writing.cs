@@ -54,7 +54,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     /// The header, the footer and the title page the document had as the write took text away that ends a section (whose page setup holds
     /// them): given again at the end where that took them with it (see End).
     /// </summary>
-    (string Header, string Footer, bool Title)? stories;
+    (string Header, string Footer, bool Title, string? Watermark)? stories;
 
     /// <summary>The objects whose tokens went in while they stood elsewhere, and where: taken away there at the end (they moved).</summary>
     readonly List<(int Id, (int Paragraph, int Offset) From)> moved = [];
@@ -645,7 +645,13 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 problems.Add($"The footnote [^{label}] has no text: give it as [^{label}]: text.");
                 continue;
             }
+            // A note whose text begins "(endnote)" is an endnote, as an endnote reads (see Reading); "(footnote)" makes one a footnote.
             var endnote = known?.Endnote == true;
+            foreach (var (mark, kind) in new[] { ("(endnote)", true), ("(footnote)", false) })
+            {
+                if (text.StartsWith(mark, StringComparison.OrdinalIgnoreCase))
+                    (endnote, text) = (kind, text[mark.Length..].TrimStart());
+            }
             var runs = Markup.RunsOf(Notation.Inline(text, null), Kept).Runs;
             if (Step(() =>
             {
@@ -656,7 +662,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         }
         objects.Written();
         // The header, footer and title page that went with a section's end taken away, given again.
-        if (stories is var (header, footer, title) && word?.Beginning is { } beginning && Arranging.Stories(word, objects) is var (header2, footer2, title2))
+        if (stories is var (header, footer, title, watermark) && word?.Beginning is { } beginning
+            && Arranging.Stories(word, objects) is var (header2, footer2, title2, watermark2))
         {
             if (header.Length > 0 && header2.Length == 0)
                 Step(() =>
@@ -674,6 +681,13 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 Step(() =>
                 {
                     word.Format(beginning, new SectionFormatting { TitlePage = true });
+                    return null;
+                }, quiet: true);
+            // The watermark after the title page, so that the first page's header gets it too.
+            if (watermark is { Length: > 0 } words && watermark2 == null)
+                Step(() =>
+                {
+                    Arranging.Watermark(word, beginning, words);
                     return null;
                 }, quiet: true);
         }

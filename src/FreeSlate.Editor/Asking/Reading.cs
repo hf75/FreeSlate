@@ -203,12 +203,23 @@ static partial class Reading
             }
             var lines = new List<string>();
             for (var paragraph = story; paragraph is { } p; paragraph = word.After(p))
-                lines.Add(Line(word, p, objects).Replace("\t", "\\t", StringComparison.Ordinal));
+                lines.Add(StoryLine(word, p, objects).Replace("\t", "\\t", StringComparison.Ordinal));
             if (string.Concat(lines).Trim().Length > 0)
                 said.Append(", ").Append(name).Append(": \"").Append(string.Join(" / ", lines)).Append('"');
+            if (!footer && story is { } header && Arranging.WatermarkText(word, header) is { } watermark)
+                said.Append(", watermark: \"").Append(watermark).Append('"');
         }
+        if (section.Border is { Kind: not "none" } border)
+            said.Append(", border: ").Append(border.Kind).Append(border.Color is { } color ? " #" + color : "")
+                .Append(' ').Append(border.Width.ToString("0.##", CultureInfo.InvariantCulture)).Append("pt round the pages");
         return said.ToString();
     }
+
+    /// <summary>A paragraph of a header or footer in the notation (see Line), a watermark it holds left out (see Arranging.Watermark).</summary>
+    public static string StoryLine(WordDocument word, int paragraph, Objects objects) =>
+        Arranging.WatermarkAt(word, paragraph) is { } mark
+            ? Line(word, paragraph, 0, mark, objects) + Line(word, paragraph, mark + 1, word.Text(paragraph).Length, objects)
+            : Line(word, paragraph, objects);
 
     /// <summary>The properties a paragraph of the body has (its w:pPr as copying keeps it), with the paragraph as copied; null where it cannot be copied.</summary>
     static (XElement Paragraph, XElement? Properties)? Copied(WordDocument word, int paragraph)

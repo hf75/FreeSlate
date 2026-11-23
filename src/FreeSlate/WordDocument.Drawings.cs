@@ -428,6 +428,24 @@ public sealed partial class WordDocument
     }
 
     /// <summary>The wp:inline or wp:anchor of the drawing whose character stands at a place of a paragraph's text, or null.</summary>
+    /// <summary>
+    /// The name of the drawing at a place of a paragraph's text (its wp:docPr name; a VML shape's id, by which Word finds its
+    /// watermark), of the body, a note, a header or footer or a comment; null where no drawing stands there.
+    /// </summary>
+    public string? DrawingName(int paragraph, int offset) => (string?)DrawingAt(Find(paragraph).Paragraph, offset)?.Element(Wp + "docPr")?.Attribute("name");
+
+    /// <summary>The words the drawing at a place of a paragraph's text shows (a WordArt's, a text box's, a watermark's), or null where none stands there.</summary>
+    public string? DrawingWords(int paragraph, int offset) =>
+        DrawingAt(Find(paragraph).Paragraph, offset) is { } own
+            ? string.Concat(own.Descendants().Select(e => e.Name.LocalName switch
+            {
+                "t" when e.Name.Namespace != Wp => e.Value,
+                // A VML WordArt's text, as the drawing read from it keeps it (see Vml).
+                "txbxWordArt" => string.Concat(e.Nodes().OfType<XText>().Select(t => t.Value)),
+                _ => "",
+            }))
+            : null;
+
     static XElement? DrawingAt(ParagraphBlock paragraph, int offset)
     {
         var at = paragraph.TextOffset;

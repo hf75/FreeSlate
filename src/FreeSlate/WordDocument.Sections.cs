@@ -24,7 +24,19 @@ public sealed partial class WordDocument
             ColumnLine = s.Element?.Element(Wml.W + "cols")?.Attribute(Wml.W + "sep")?.Value is "1" or "true" or "on",
             Start = s.Start, TitlePage = s.TitlePage, VerticalAlign = s.VerticalAlign,
             PageNumberStart = s.PageNumberStart ?? -1, PageNumberFormat = s.PageNumberFormat,
+            Border = BorderOf(s.Element?.Element(Wml.W + "pgBorders")),
         };
+    }
+
+    /// <summary>A section's page border as its top line gives it (see PageBorder), "none" where it has none.</summary>
+    static PageBorder BorderOf(XElement? borders)
+    {
+        var side = borders?.Elements().FirstOrDefault(e => e.Name.LocalName is "top" or "left" or "bottom" or "right" && e.Attr("val") is not (null or "nil" or "none"));
+        if (side == null)
+            return new PageBorder("none");
+        static double Number(string? text) => double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+        return new PageBorder(side.Attr("val")!, Number(side.Attr("sz")) / 8, side.Attr("color") is { Length: 6 } color ? color : null, Number(side.Attr("space")),
+            borders!.Attr("offsetFrom") == "page", side.Attr("shadow") is "1" or "true" or "on");
     }
 
     /// <summary>
