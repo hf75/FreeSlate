@@ -47,6 +47,9 @@ public static partial class Notation
 
     public sealed record PageBreak : Block;
 
+    /// <summary>A table of contents ("{contents Title}" on a line of its own; see Contents), with its title, or none.</summary>
+    public sealed record ContentsTable(string? Title) : Block;
+
     /// <summary>A line across the text (Markdown's thematic break).</summary>
     public sealed record Rule : Block;
 
@@ -94,7 +97,11 @@ public static partial class Notation
     /// <summary>The styles of the headings # to ###: the title, a chapter, a section (deeper ones are sections too).</summary>
     static readonly string[] Headings = ["Title", "Heading1", "Heading2"];
 
-    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, Formula, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled }
+    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, Formula, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled, Contents }
+
+    /// <summary>A table of contents: "{contents}" (or "{toc}") on a line of its own, its title after the word.</summary>
+    [GeneratedRegex(@"^\{\s*(?:contents|toc)(?:\s+([^{}]*?))?\s*\}$", RegexOptions.IgnoreCase)]
+    private static partial Regex ContentsLine();
 
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
     private static partial Regex HeadingLine();
@@ -384,6 +391,13 @@ public static partial class Notation
                     i++;
                     continue;
                 }
+                case Kind.Contents:
+                {
+                    if (!open)
+                        blocks.Add(new ContentsTable(ContentsLine().Match(lines[i].Trim()).Groups[1].Value is { Length: > 0 } title ? title : null));
+                    i++;
+                    continue;
+                }
                 case Kind.Raw:
                 {
                     var rest = string.Join("\n", lines[i..]);
@@ -496,6 +510,8 @@ public static partial class Notation
             return ColumnsLine().IsMatch(trimmed) ? Kind.ColumnsOpen : open ? Kind.Unsure : Kind.Text;
         if (trimmed == "\\pagebreak")
             return Kind.PageBreak;
+        if (ContentsLine().IsMatch(trimmed))
+            return open ? Kind.Unsure : Kind.Contents;
         if (trimmed.Length >= 3 && (trimmed.All(c => c == '-') || trimmed.All(c => c == '*') || trimmed.All(c => c == '_')))
             return open ? Kind.Unsure : Kind.Rule;
         if (HeadingLine().IsMatch(line))

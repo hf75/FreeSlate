@@ -129,6 +129,16 @@ static partial class Reading
                 continue;
             }
             tableShown = null;
+            // A table of contents as one line, with the ids of its first and last paragraph (see Contents).
+            if (word != null && Contents.At(word, p) is var (last, title))
+            {
+                text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append("–¶").Append(last.ToString(CultureInfo.InvariantCulture))
+                    .Append(" {contents").Append(title is { } named ? " " + named : "").Append("}\n");
+                while (document.Next(p) is { } next && p != last)
+                    p = next;
+                paragraph = p;
+                continue;
+            }
             // What the notation says otherwise than by a paragraph's text: a page break alone, a line across, a section's end (said by the
             // columns' marks and the tables' settings, else as WordprocessingML), formatting of its own (as WordprocessingML).
             if (word != null && Special(word, p) is var (shownAs, hidden))

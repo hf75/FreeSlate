@@ -255,6 +255,12 @@ public sealed class StyleSheet
     public StyleDefinition? Find(string? id) => id != null && styles.TryGetValue(id, out var style) ? style : null;
 
     /// <summary>
+    /// A style by its name, in any case (Word's built-in styles by their English names, "heading 1", "toc 1", whatever their ids, which
+    /// Word writes in the language of its interface: "berschrift1", "Verzeichnis1"), or null.
+    /// </summary>
+    public StyleDefinition? Named(string name) => styles.Values.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
     /// Adds a paragraph style of imported content (an RTF chunk's style the document lacks) with its own paragraph and
     /// run properties; returns its id.
     /// </summary>

@@ -604,6 +604,9 @@ public sealed partial class WordDocument : IEditableDocument
         return null;
     }
 
+    /// <summary>The names of the bookmarks that begin in a paragraph (or right before it, between the paragraphs), in order.</summary>
+    public IReadOnlyList<string> BookmarksOf(int paragraph) => [.. Find(paragraph).Paragraph.Content.OfType<BookmarkInline>().Select(b => b.Name)];
+
     /// <summary>
     /// The links of a paragraph's text (w:hyperlink, and HYPERLINK fields), in order: the stretch of the text each shows and where it leads
     /// (an address, or "#" and a bookmark's name).
@@ -980,6 +983,13 @@ public sealed partial class WordDocument : IEditableDocument
     {
         Read();
         return context.Styles.Find(id)?.Name;
+    }
+
+    /// <summary>The id of a style the document defines, by its name in any case ("heading 1", "toc 1"; see StyleSheet.Named), or null.</summary>
+    public string? StyleIdNamed(string name)
+    {
+        Read();
+        return context.Styles.Named(name)?.Id;
     }
 
     /// <summary>The paragraph style of a paragraph (its w:pStyle), null for the default one.</summary>

@@ -146,8 +146,12 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         keptTables.Clear();
         parking.Clear();
         tableNotes.Clear();
+        contentsTables.Clear();
         stories = null;
     }
+
+    /// <summary>The tables of contents written: the paragraph each line put in, made a table once the write is in (see End), and its title.</summary>
+    readonly List<(int Placeholder, string? Title)> contentsTables = [];
 
     /// <summary>Takes back what the write did so far (input that could not be read): its steps are the session's last.</summary>
     void TakeBackAll()
@@ -176,12 +180,14 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             refused = $"There is no paragraph {(paragraph is { } given ? "¶" + given.ToString(CultureInfo.InvariantCulture) : "given")} to write {place}.";
             return false;
         }
+        // After or before a paragraph of a table of contents: after or before the whole table, as for a table's (see Contents).
+        var table = place is "after" or "before" && word != null ? Contents.Around(word, paragraph!.Value) : null;
         switch (place)
         {
             case "after":
-                return Step(() => (placeholder = anchor = After(paragraph!.Value)) is { } made ? new TextPlace(made, 0) : null);
+                return Step(() => (placeholder = anchor = After(table?.Last ?? paragraph!.Value)) is { } made ? new TextPlace(made, 0) : null);
             case "before":
-                return Step(() => (placeholder = anchor = Before(paragraph!.Value)) is { } made ? new TextPlace(made, 0) : null);
+                return Step(() => (placeholder = anchor = Before(table?.First ?? paragraph!.Value)) is { } made ? new TextPlace(made, 0) : null);
             case "replace":
                 return Replace(paragraph!.Value, through ?? paragraph!.Value);
         }
@@ -517,6 +523,16 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             case Notation.Table kept when word != null && keptTables.Count > 0:
                 Rework(Kept(kept), kept);
                 return;
+            case Notation.ContentsTable contents when word != null:
+                // A paragraph in its place, made the table once the write is in, when the headings written after it stand too.
+                Step(() =>
+                {
+                    var made = document.InsertBlocks(at, "<w:p/>", before: true)[0];
+                    contentsTables.Add((made, contents.Title));
+                    written.Add(made);
+                    return new TextPlace(made, 0);
+                });
+                return;
         }
         var made = Markup.Of(block, PlaceAt());
         if (made.Problem != null)
@@ -703,6 +719,23 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             {
                 document.Replace(paragraph, offset, 1, "");
                 return null;
+            }, quiet: true);
+        }
+        // The tables of contents made last, of the headings as they all stand now.
+        foreach (var (place, named) in contentsTables)
+        {
+            if (word == null || !document.Contains(place))
+                continue;
+            Step(() =>
+            {
+                var ids = Contents.Make(word, place, named);
+                var at = written.IndexOf(place);
+                if (at >= 0)
+                {
+                    written.RemoveAt(at);
+                    written.InsertRange(at, ids);
+                }
+                return ids.Count > 0 ? new TextPlace(ids[^1], document.Text(ids[^1]).Length) : null;
             }, quiet: true);
         }
         Frame();

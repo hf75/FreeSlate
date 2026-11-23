@@ -469,7 +469,10 @@ language has no recursion; those that place each point by their count choose by 
 which Word and the engine lay out alike from the definition; Word takes a definition only with names that are unique among
 all its elements and connection points it knows (midR, not rCtr), `SmartArts`), formulas in LaTeX ($…$, $$…$$, made Office Math and read back so, `Formulas`), links
 ([text](address) as HYPERLINK fields, in the tones' link style), fields ({page}, {pages}, {date}), "::: columns 2 line" to
-":::", footnotes and endnotes (a note's text beginning "(endnote)"), \pagebreak and --- for a page break and a line, and WordprocessingML for anything else: a paragraph with
+":::", footnotes and endnotes (a note's text beginning "(endnote)"), a table of contents ("{contents Title}": Word's TOC field over
+the headings of levels 1 to 3 in the styles toc 1 to 3, made once the write is in, each entry linked to a _Toc bookmark round its
+heading and its page a PAGEREF field, read back as one line with its first and last paragraph, `Contents`), \pagebreak and --- for a
+page break and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
 across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
 pictures, graphics, WordArt, charts, SmartArt, text boxes, frames, fields, equations) stand in its text as tokens ("[picture 3]"),

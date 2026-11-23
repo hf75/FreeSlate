@@ -50,6 +50,10 @@ static class Prompt
           new note takes a label not in use. An endnote (at the end of the document) begins its text with "(endnote) ", as endnotes
           read: "[^2]: (endnote) the note's text".
         - \pagebreak alone on a line starts a new page; "---" draws a line across.
+        - A table of contents: "{contents Title}" on a line of its own (its title in the document's language, or "{contents}" without
+          one): the chapters and sections with their pages and links, as Word makes one, of the headings as they stand once the write
+          is in. It reads back as that line with the ids of its first and last paragraph; after adding, renaming or moving headings,
+          write it again in its place to bring it up to date.
         - Columns: "::: columns 2" on a line of its own, the text, then ":::" (add "line" for a line between them:
           "::: columns 2 line"). Text in columns you read stands between the same marks.
         - A vector graphic: a fenced block ```svg width=8cm caption="Fig. 1: …" alt="what it shows" with a whole <svg> element
