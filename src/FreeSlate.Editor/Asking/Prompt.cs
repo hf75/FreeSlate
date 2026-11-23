@@ -66,9 +66,22 @@ static class Prompt
           Settings: fill (gray, yellow, orange, green, blue, rose, violet or none), line (fine, the default, strong, double, dotted,
           dashed or none), shape=rounded, width (as wide as the text without it), align, float=left|right beside the paragraph after it.
         - A chart Word can edit: a fenced block ```chart type=column title="…" y="…" with a table inside, the categories down its first
-          column and a series in each other column, its head naming them ("| Month | 2024 | 2025 |"). type: column, bar, line, area,
-          pie or doughnut; stacked=yes or percent; labels=yes for the values on it; legend (bottom, right, top, left or none); x and y
-          the axes' titles; width, height, align, float, caption, alt as a graphic's.
+          column and a series in each other column, its head naming them ("| Month | 2024 | 2025 |").
+          - type: column, bar, line, area, pie, doughnut, pie-of-pie, bar-of-pie, radar, surface (contour: seen from above), scatter
+            (the first column the x values), bubble (x, then each series' y and size: "| x | A | A size |"), stock (dates, then High,
+            Low, Close, or Open, High, Low, Close), waterfall (steps and values; totals="Start,End" names the totals), funnel,
+            treemap and sunburst (levels of categories in the first columns, the largest first, the values last), histogram (one
+            column of values; bins=6 or binwidth=10), pareto (values, or categories and counts), boxwhisker (a column of
+            observations for each series, categories first if any).
+          - stacked=yes or percent; 3d=yes (column, bar, line, area, pie) with shape=cylinder, cone or pyramid for columns and bars;
+            line="B,C" draws those series as lines over columns, bars or areas, right="C" puts them on a second axis (y2 its
+            title); explode=yes (pie), split=2 (the last points into a pie of pie's second plot), filled=yes (radar),
+            wireframe=yes (surface), lines=yes or smooth and markers=no (scatter, line), smooth=yes (line).
+          - labels=yes for the values on it (values or percent for pies); legend (bottom, right, top, left or none); x and y the
+            axes' titles; min, max, log=yes and format="0%" for the value axis; gridlines (none, major, minor, both); trend=linear
+            (exponential, logarithmic, polynomial, power, average; or by series: "Sales:linear"); errors=yes; table=yes (a data
+            table under it); colors=blue (green, orange, violet, rose, teal, gray: shades of one hue); width, height, align, float,
+            caption, alt as a graphic's.
         - SmartArt Word can edit: a fenced block ```smartart layout=cycle colors=blue with its points inside as "- " lines, "  - " for a
           point's subpoints (they stand in its shape, or round it in a radial). layout: list (bars one under another, the subpoints
           under each), process (steps in a row, arrows between), chevrons (stages as arrowheads in a row), cycle (circles round a

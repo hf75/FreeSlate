@@ -450,7 +450,10 @@ text starting at its first number or going on in the list before where that numb
 and "^" for cells merged with the one before or above, see `TableWords`), fenced blocks of a vector picture (```svg), of
 WordArt (```wordart), of a box (```box: Word's text box with paragraphs of the notation inside, a fill, a line, as high as its
 text, see WordDocument.FitTextBox), of a chart (```chart: a GitHub table of categories and series made a chart part with its
-data in an embedded workbook, `Charts`) and of SmartArt (```smartart layout=cycle colors=blue with its points as "- " lines:
+data in an embedded workbook, `Charts`: Word's classic types as c:chartSpace, in 3D, stacked, combined with lines and a second
+axis, with trendlines, error bars and a data table; Office 2016's waterfall, funnel, treemap, sunburst, histogram, Pareto and
+box and whisker as cx:chartSpace behind markup compatibility, with a chart style and colour style of our own beside it, without
+which Word does not open the document) and of SmartArt (```smartart layout=cycle colors=blue with its points as "- " lines:
 a data model, colours and a style of its own and one of eight layout definitions written for FreeSlate, none of Office's
 (`Asking/SmartArt/*.xml`: list, process, chevrons, cycle, radial, venn, pyramid, blocks), without a drawing, which Word and
 the engine lay out alike from the definition; Word takes a definition only with names that are unique among all its
