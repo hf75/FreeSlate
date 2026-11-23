@@ -830,10 +830,14 @@ public sealed class GestureRing : Control
 
     /// <summary>
     /// Space went down while the sheets have the keys and a selection: the ring comes at the pointer if it stays down for a moment (see
-    /// SpaceUp). Space then types nothing, nor while the ring has another gesture.
+    /// SpaceUp). Space then types nothing, nor while the ring has another gesture; while its line is typed into, a space there (false: the
+    /// key is not the ring's, so that its text comes).
     /// </summary>
     public bool SpaceDown(Point pointer)
     {
+        // Typing at the ring's line, Space is a space there.
+        if (mode == Mode.Asking)
+            return false;
         if (mode == Mode.None)
             Begin(Mode.KeysWaiting, pointer, null, RestTime);
         return true;
@@ -886,12 +890,12 @@ public sealed class GestureRing : Control
     {
         if (mode == Mode.None)
             return false;
-        // While the ring asks Claude, the keys are the line's.
+        // While the ring asks Claude, the keys are the line's; those that type are left to come as text (see Types).
         if (mode == Mode.Asking)
         {
             if (down)
                 AskingKey(key, modifiers);
-            return true;
+            return !Types(key, modifiers);
         }
         if (key == Key.Escape)
         {
@@ -946,7 +950,22 @@ public sealed class GestureRing : Control
             }
         }
         InvalidateVisual();
-        return true;
+        // A key that types while the ring is up for the keys begins the line (see Typed): its text is to come.
+        return mode == Mode.KeysWaiting || !Types(key, modifiers);
+    }
+
+    /// <summary>
+    /// Whether a key types a character: none of the keys that edit or move (the line's, the ring's) and no shortcut (Ctrl or Cmd without
+    /// Alt; Ctrl and Alt together are AltGr, which types). Its press is left unhandled, so that its text comes: Windows drops the
+    /// character of a key whose press was handled (Avalonia ignores the WM_CHAR after a handled WM_KEYDOWN), and only the first letter
+    /// typed at the ring would show.
+    /// </summary>
+    static bool Types(Key key, KeyModifiers modifiers)
+    {
+        if ((modifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0 && (modifiers & KeyModifiers.Alt) == 0)
+            return false;
+        return key is not (Key.Escape or Key.Enter or Key.Back or Key.Delete or Key.Tab or Key.Left or Key.Right or Key.Up or Key.Down
+            or Key.Home or Key.End or Key.PageUp or Key.PageDown or Key.Insert);
     }
 
     /// <summary>
