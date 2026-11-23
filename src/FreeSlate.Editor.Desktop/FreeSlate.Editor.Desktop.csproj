@@ -8,6 +8,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\FreeSlate.Editor\Assets\FreeSlate.ico</ApplicationIcon>
     <PublishAot>true</PublishAot>
+    <!-- Anthropic's SDK serializes by reflection, which PublishAot switches off in every build, dotnet run's too: the editor run so, not
+         published, keeps it, so that Claude works there (the build compiled ahead of time has no such reflection). -->
+    <JsonSerializerIsReflectionEnabledByDefault Condition="'$(_IsPublishing)' != 'true'">true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>

@@ -481,8 +481,9 @@ the desktop sets it with Anthropic's SDK where `ANTHROPIC_API_KEY` is set (`Desk
 adaptive, its answers and the inputs of writes streamed, the instructions and the talk cached, a declined request taken on by the
 model Anthropic recommends); without a key the line says that one is needed. The SDK serializes by reflection and so does not
 work ahead-of-time compiled yet (System.Text.Json's reflection is off there, and allowed, its converters for the SDK's generic
-types have no native code); the link is begun with the first wish, so that such a failure shows on the line instead of ending
-the editor.
+types have no native code); PublishAot switches that reflection off in every build of the desktop's project, so the project
+switches it on again where it is not published (`JsonSerializerIsReflectionEnabledByDefault`), for `dotnet run`. The link is
+begun with the first wish, so that such a failure shows on the line instead of ending the editor.
 
 It uses no ready-made Avalonia theme, so that nothing is there that was not designed:
 
