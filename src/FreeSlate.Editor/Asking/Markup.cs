@@ -110,13 +110,19 @@ static partial class Markup
         if (section.Border is { Kind: not "none" } border)
         {
             markup.Append("<w:pgBorders").Append(border.FromPage ? " w:offsetFrom=\"page\"" : "").Append('>');
-            var size = Math.Clamp((int)Math.Round(border.Width * 8), 2, 96).ToString(CultureInfo.InvariantCulture);
+            // An art border's width in points, a line's in eighths of a point.
+            var size = (FreeSlate.Docx.Layout.ArtBorders.Names.Contains(border.Kind) ? Math.Clamp((int)Math.Round(border.Width), 1, 31)
+                : Math.Clamp((int)Math.Round(border.Width * 8), 2, 96)).ToString(CultureInfo.InvariantCulture);
             var space = Math.Clamp((int)Math.Round(border.Space), 0, 31).ToString(CultureInfo.InvariantCulture);
             foreach (var side in new[] { "top", "left", "bottom", "right" })
                 markup.Append($"<w:{side} w:val=\"{border.Kind}\" w:sz=\"{size}\" w:space=\"{space}\" w:color=\"{border.Color ?? "auto"}\"")
                     .Append(border.Shadow ? " w:shadow=\"1\"/>" : "/>");
             markup.Append("</w:pgBorders>");
         }
+        // The lines' numbers, as the page tool gives them (see TextEdits.Format).
+        if (section.LineNumbers is { CountBy: > 0 } numbered)
+            markup.Append("<w:lnNumType w:countBy=\"").Append(numbered.CountBy.ToString(CultureInfo.InvariantCulture)).Append('"')
+                .Append(numbered.Restart is "newSection" or "continuous" ? $" w:restart=\"{numbered.Restart}\"" : "").Append("/>");
         var (count, line) = columns ?? (section.Columns ?? 1, false);
         markup.Append("<w:cols w:space=\"").Append(Twips(section.ColumnSpace ?? 36)).Append('"');
         if (count > 1)
@@ -148,6 +154,8 @@ static partial class Markup
                 markup.Append("<w:jc w:val=\"").Append(align == "justify" ? "both" : align).Append("\"/>");
             markup.Append("</w:pPr>");
         }
+        // Marks at its end (anchors, index marks, as a paragraph reads back) without the spaces before them.
+        pieces = TrailingMarksTrimmed(pieces);
         // A caption's anchors number it; another paragraph's are bookmarks round its text (see Notation.Anchor).
         var anchors = new List<string>();
         if (style == CaptionStyle)
@@ -164,6 +172,28 @@ static partial class Markup
         foreach (var id in ids)
             markup.Append("<w:bookmarkEnd w:id=\"").Append(id).Append("\"/>");
         return new(markup.Append("</w:p>").ToString(), [], notes);
+    }
+
+    /// <summary>
+    /// A paragraph's pieces with the marks at its end (anchors and index marks, which Reading writes there after a space each) kept, the
+    /// spaces before and between them left out, so that a paragraph written back as it reads keeps its text.
+    /// </summary>
+    static IReadOnlyList<Notation.Piece> TrailingMarksTrimmed(IReadOnlyList<Notation.Piece> pieces)
+    {
+        var k = pieces.Count;
+        while (k > 0 && (pieces[k - 1] is Notation.Anchor or Notation.IndexMark || pieces[k - 1] is Notation.Run { Text: var blank } && string.IsNullOrWhiteSpace(blank)))
+            k--;
+        if (k == pieces.Count || !pieces.Skip(k).Any(p => p is Notation.Anchor or Notation.IndexMark))
+            return pieces;
+        var result = pieces.Take(k).ToList();
+        if (result.Count > 0 && result[^1] is Notation.Run last)
+        {
+            result.RemoveAt(result.Count - 1);
+            if (last.Text.TrimEnd(' ', '\t') is { Length: > 0 } kept)
+                result.Add(last with { Text = kept });
+        }
+        result.AddRange(pieces.Skip(k).Where(p => p is not Notation.Run));
+        return result;
     }
 
     /// <summary>The style of captions, Word's (whose name is "caption"), which numbers their anchors (see Numbered).</summary>
@@ -320,6 +350,12 @@ static partial class Markup
                         markup.Append("<w:bookmarkEnd w:id=\"").Append(id).Append("\"/>");
                     break;
                 }
+                case Notation.IndexMark mark:
+                    // Word's Mark Entry: an XE field of the term, which shows nothing (no character of the text).
+                    markup.Append("<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> XE \"")
+                        .Append(Escape(mark.Term.Replace("\"", "", StringComparison.Ordinal).Replace(": ", ":", StringComparison.Ordinal)))
+                        .Append("\" </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>");
+                    break;
                 case Notation.Reference reference:
                     // Word's cross-reference (\h: a link to it), its result the anchor's name till the write's end (see above).
                     markup.Append("<w:fldSimple w:instr=\"").Append(reference.Page ? " PAGEREF " : " REF ").Append(Escape(BookmarkName(reference.Name)))

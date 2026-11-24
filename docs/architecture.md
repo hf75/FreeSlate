@@ -474,7 +474,9 @@ all its elements and connection points it knows (midR, not rCtr), `SmartArts`), 
 ":::", footnotes and endnotes (a note's text beginning "(endnote)"), a table of contents ("{contents Title}": Word's TOC field over
 the headings of levels 1 to 3 in the styles toc 1 to 3, made once the write is in, each entry linked to a _Toc bookmark round its
 heading and its page a PAGEREF field, read back as one line with its first and last paragraph, `Contents`; "{figures Figure}" a table
-of figures, the same over the captions numbered with a label, TOC \c, in the style table of figures), numbered captions and
+of figures, the same over the captions numbered with a label, TOC \c, in the style table of figures; "{index}" an index, Word's
+INDEX field over the terms "{index term}" marks among the text as XE fields, which the model leaves out and `WordDocument.IndexEntriesOf`
+reads from a paragraph's XML, a heading for each first letter and the pages as they show their numbers, `Index`), numbered captions and
 cross-references as Word's Insert Caption and Cross-reference make them ("Figure {#sales}: …" in a caption: a SEQ field of the
 label in a bookmark of the name with the label; {#name} elsewhere a bookmark round its paragraph's text; {ref name} and {page name}
 REF and PAGEREF fields; the fields' results saved as the pages show them once the write is in, `WordDocument.RefreshFields`, as
@@ -493,8 +495,14 @@ as its buttons give it) and page (the header and footer every page shows, their 
 paper, orientation, a title page, a watermark as Word's dialog writes one, a VML WordArt in each header the pages show, found
 again by its name (`WordDocument.DrawingName`, `DrawingWords`), a border round the pages, `SectionFormatting.Border`, and the
 pages' colour, `WordDocument.SetPageColor`: w:background before the body, which no stretch of the body holds, so the document is
-read again whole for it and for a version with another colour, as for its styles;
-read with the document as "Page:", and given again where a write takes a section's end away). A token written is its object: one in text a write takes away is kept from before and goes in
+read again whole for it and for a version with another colour, as for its styles; Word's art borders by their names, drawn as
+tiles of FreeSlate's own motifs in their spirit (`ArtMotifs`, Resources/artMotifs.json: upright pictures or bands turning with the
+side, tiled as Word tiles its pictures); line numbers (`SectionFormatting.LineNumbers`, w:lnNumType) and automatic hyphenation
+(`WordDocument.AutoHyphenation`, w:autoHyphenation in the settings), the page numbers' format and start; read with the document as
+"Page:", and given again where a
+write takes a section's end away) and comment (`Commenting`: a comment on a paragraph or on words in it, an answer, one marked
+done or taken away, by "Claude", through the engine's `AddComment`, `Reply`, `Resolve` and `DeleteComment`; the comments read
+after the document as "Comments:", answers under the comments they answer). A token written is its object: one in text a write takes away is kept from before and goes in
 again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
 elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits
 after the place and is written again in place where the write gives a table like it (`Writing.Tables`): rows and columns added

@@ -51,7 +51,11 @@ public static partial class Notation
     /// A table of contents ("{contents Title}" on a line of its own; see Contents), with its title, or none; a table of figures ("{figures
     /// Figure}") lists the captions of a label instead, its label given (Word's Insert Table of Figures).
     /// </summary>
-    public sealed record ContentsTable(string? Title, string? Label = null) : Block;
+    public sealed record ContentsTable(string? Title, string? Label = null) : Block
+    {
+        /// <summary>Whether it is an index ("{index}" on a line of its own; see Index) rather than a table of contents.</summary>
+        public bool Index { get; init; }
+    }
 
     /// <summary>A line across the text (Markdown's thematic break).</summary>
     public sealed record Rule : Block;
@@ -101,6 +105,9 @@ public static partial class Notation
     /// </summary>
     public sealed record DropMark(int Lines, bool Margin) : Piece;
 
+    /// <summary>A mark for the index, "{index term}" ("{index main: sub}" a subentry): Word's XE field, showing nothing (see Index).</summary>
+    public sealed record IndexMark(string Term) : Piece;
+
     /// <summary>A formula among the text ($…$): its LaTeX (see Formulas).</summary>
     public sealed record Formula(string Latex) : Piece;
 
@@ -121,6 +128,10 @@ public static partial class Notation
     /// <summary>A table of contents: "{contents}" (or "{toc}") on a line of its own, its title after the word; "{figures Label}" a table of figures.</summary>
     [GeneratedRegex(@"^\{\s*(contents|toc|figures)(?:\s+([^{}]*?))?\s*\}$", RegexOptions.IgnoreCase)]
     private static partial Regex ContentsLine();
+
+    /// <summary>An index: "{index}" on a line of its own (see Index).</summary>
+    [GeneratedRegex(@"^\{\s*index\s*\}$", RegexOptions.IgnoreCase)]
+    private static partial Regex IndexLine();
 
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
     private static partial Regex HeadingLine();
@@ -412,7 +423,9 @@ public static partial class Notation
                 }
                 case Kind.Contents:
                 {
-                    if (!open && ContentsLine().Match(lines[i].Trim()) is { } contents)
+                    if (!open && IndexLine().IsMatch(lines[i].Trim()))
+                        blocks.Add(new ContentsTable(null) { Index = true });
+                    else if (!open && ContentsLine().Match(lines[i].Trim()) is { } contents)
                     {
                         var words = contents.Groups[2].Value is { Length: > 0 } given ? given : null;
                         blocks.Add(contents.Groups[1].Value.Equals("figures", StringComparison.OrdinalIgnoreCase)
@@ -533,7 +546,7 @@ public static partial class Notation
             return ColumnsLine().IsMatch(trimmed) ? Kind.ColumnsOpen : open ? Kind.Unsure : Kind.Text;
         if (trimmed == "\\pagebreak")
             return Kind.PageBreak;
-        if (ContentsLine().IsMatch(trimmed))
+        if (ContentsLine().IsMatch(trimmed) || IndexLine().IsMatch(trimmed))
             return open ? Kind.Unsure : Kind.Contents;
         if (trimmed.Length >= 3 && (trimmed.All(c => c == '-') || trimmed.All(c => c == '*') || trimmed.All(c => c == '_')))
             return open ? Kind.Unsure : Kind.Rule;
@@ -809,6 +822,13 @@ public static partial class Notation
                 k += drop.Length;
                 continue;
             }
+            if (c == '{' && IndexText().Match(text, k) is { Success: true } indexed)
+            {
+                Flush();
+                pieces.Add(new IndexMark(indexed.Groups[1].Value.Trim()));
+                k += indexed.Length;
+                continue;
+            }
             if (c == '{' && AnchorText().Match(text, k) is { Success: true } anchor)
             {
                 Flush();
@@ -873,6 +893,10 @@ public static partial class Notation
     /// <summary>A drop cap's mark at a paragraph's start: {drop}, {drop 4}, {drop margin}, {drop 2 margin}, the spaces after it left out.</summary>
     [GeneratedRegex(@"\G\{drop(?:\s+(\d{1,2}))?(?:\s+(margin))?\}\s*", RegexOptions.IgnoreCase)]
     private static partial Regex DropText();
+
+    /// <summary>A mark for the index: {index term}, the term what follows the word ("main: sub" a subentry).</summary>
+    [GeneratedRegex(@"\G\{index\s+([^{}]+?)\s*\}", RegexOptions.IgnoreCase)]
+    private static partial Regex IndexText();
 
     /// <summary>An anchor: {#name}, or {#} alone; a name of letters, digits and _ - . : (see Markup.BookmarkName).</summary>
     [GeneratedRegex(@"\G\{#\s*([\p{L}\p{N}_.:-]*)\s*\}")]

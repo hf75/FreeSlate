@@ -135,7 +135,7 @@ public sealed class Talk : GestureRing.IAsked
                             writes[began.Id] = new Writing(editing, sheets, focus, objects!);
                             Say("AskWriting");
                             break;
-                        case ToolBegan { Name: "picture" or "tone" or "page" }:
+                        case ToolBegan { Name: "picture" or "tone" or "page" or "comment" }:
                             Say("AskWriting");
                             break;
                         case ToolBegan { Name: "look" }:
@@ -259,6 +259,11 @@ public sealed class Talk : GestureRing.IAsked
             case "page":
             {
                 var (told, error) = Arranging.Page(editing, sheets, objects!, called.Json);
+                return new ToolResultPart(called.Id, told, [], error);
+            }
+            case "comment":
+            {
+                var (told, error) = Commenting.Comment(editing, sheets, objects!, called.Json);
                 return new ToolResultPart(called.Id, told, [], error);
             }
             default:

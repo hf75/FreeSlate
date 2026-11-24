@@ -151,7 +151,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     }
 
     /// <summary>The tables of contents written: the paragraph each line put in, made a table once the write is in (see End), its title, a table of figures' label.</summary>
-    readonly List<(int Placeholder, string? Title, string? Label)> contentsTables = [];
+    readonly List<(int Placeholder, string? Title, string? Label, bool Index)> contentsTables = [];
 
     /// <summary>Takes back what the write did so far (input that could not be read): its steps are the session's last.</summary>
     void TakeBackAll()
@@ -181,7 +181,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             return false;
         }
         // After or before a paragraph of a table of contents: after or before the whole table, as for a table's (see Contents).
-        var table = place is "after" or "before" && word != null ? Contents.Around(word, paragraph!.Value) : null;
+        var table = place is "after" or "before" && word != null ? Contents.Around(word, paragraph!.Value) ?? Index.Around(word, paragraph!.Value) : null;
         switch (place)
         {
             case "after":
@@ -313,6 +313,10 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                     throw new NotSupportedException("A table right at the start of the document, or right after another table, cannot be replaced; write after it and remove it by replacing it together with the paragraph before.");
                 document.RemoveBetween(previous, made);
             }
+            // From the paragraph before at once where there is one, so that a field over the paragraphs (an index's, a table of contents'
+            // without its title) goes whole: taking away the ones after the first first leaves its beginning without its end.
+            else if (document.Before(first) is { } before)
+                document.RemoveBetween(before, made);
             else
             {
                 document.RemoveBetween(first, made);
@@ -528,7 +532,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 Step(() =>
                 {
                     var made = document.InsertBlocks(at, "<w:p/>", before: true)[0];
-                    contentsTables.Add((made, contents.Title, contents.Label));
+                    contentsTables.Add((made, contents.Title, contents.Label, contents.Index));
                     written.Add(made);
                     return new TextPlace(made, 0);
                 });
@@ -640,7 +644,10 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     {
         // The tables kept that were not written again taken away first, so that the place is seen as it then stands.
         EndTables();
-        // The empty paragraph made for the place stays where it stands between two tables, which would join without it.
+        // The empty paragraph made for the place stays where it stands between two tables, which would join without it. Where it cannot
+        // go (the last of its body), it is joined with the paragraph written before it; where that is the place of a table of contents or
+        // an index, once that is made, which takes its own place away (see Contents.Make).
+        int? joinLater = null;
         if (placeholder is { } made && document.Contains(made) && !(AfterTable(made) && BeforeTable(made)))
         {
             var removed = Step(() =>
@@ -648,8 +655,10 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 document.Remove(made);
                 return written.Count > 0 && document.Contains(written[^1]) ? new TextPlace(written[^1], document.Text(written[^1]).Length) : null;
             }, quiet: true);
-            if (!removed && document.Before(made) is { } previous && !sectionEnds.Contains(previous) && written.Contains(previous))
-                Step(() => new TextPlace(document.Join(previous, backward: true), document.Text(previous).Length), quiet: true);
+            if (!removed && document.Before(made) is { } previous && contentsTables.Any(c => c.Placeholder == previous))
+                joinLater = made;
+            else if (!removed)
+                JoinPlace(made);
         }
         Unpark();
         // The numbered points written one list with the points they now meet, that place's paragraph gone.
@@ -736,13 +745,13 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             }, quiet: true);
         }
         // The tables of contents and of figures made last, of the headings and captions as they all stand now.
-        foreach (var (place, named, label) in contentsTables)
+        foreach (var (place, named, label, index) in contentsTables)
         {
             if (word == null || !document.Contains(place))
                 continue;
             Step(() =>
             {
-                var ids = Contents.Make(word, place, named, label);
+                var ids = index ? Index.Make(word, place) : Contents.Make(word, place, named, label);
                 var at = written.IndexOf(place);
                 if (at >= 0)
                 {
@@ -752,8 +761,26 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 return ids.Count > 0 ? new TextPlace(ids[^1], document.Text(ids[^1]).Length) : null;
             }, quiet: true);
         }
+        if (joinLater is { } later && document.Contains(later))
+            JoinPlace(later);
         Refresh(word, Step, problems, written);
         Frame();
+    }
+
+    /// <summary>
+    /// The place's empty paragraph, the last of its body, joined with the paragraph written before it. Two empty paragraphs joined go by
+    /// either's id (see WordDocument.Join): the written one's in the list by the joined one's.
+    /// </summary>
+    void JoinPlace(int made)
+    {
+        var at = document.Before(made) is { } previous && !sectionEnds.Contains(previous) ? written.IndexOf(previous) : -1;
+        if (at >= 0)
+            Step(() =>
+            {
+                var joined = document.Join(written[at], backward: true);
+                written[at] = joined;
+                return new TextPlace(joined, document.Text(joined).Length);
+            }, quiet: true);
     }
 
     /// <summary>

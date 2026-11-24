@@ -139,7 +139,16 @@ public sealed record SectionFormatting
     /// "none" takes it away.
     /// </summary>
     public PageBorder? Border { get; init; }
+
+    /// <summary>
+    /// The lines' numbers in the margin (w:lnNumType, Word's Layout > Line Numbers): every how many lines a number shows (0 takes them
+    /// away), and where they start again: on every page (newPage), in every section (newSection) or not (continuous).
+    /// </summary>
+    public LineNumbering? LineNumbers { get; init; }
 }
+
+/// <summary>Line numbers (see SectionFormatting.LineNumbers): every <paramref name="CountBy"/>th line numbered, 0 for none, restarting so.</summary>
+public sealed record LineNumbering(int CountBy, string Restart = "newPage");
 
 /// <summary>
 /// A page border (see SectionFormatting.Border): its kind as w:val names it (single, double, thick, dotted, dashed, dotDash, triple,

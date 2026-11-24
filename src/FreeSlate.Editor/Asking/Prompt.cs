@@ -62,7 +62,9 @@ static class Prompt
           one): the chapters and sections with their pages and links, as Word makes one, of the headings as they stand once the write
           is in. It reads back as that line with the ids of its first and last paragraph; after adding, renaming or moving headings,
           write it again in its place to bring it up to date. "{figures Figure}" makes a table of figures, of the captions numbered
-          with that label ("{figures Table}" of the tables'), its heading a line of yours before it.
+          with that label ("{figures Table}" of the tables'), its heading a line of yours before it. An index: "{index term}" among the
+          text marks the paragraph for a term ("{index Fruit: apples}" a subentry; it reads back at the end of the paragraph), and
+          "{index}" on a line of its own makes the index of all marks, with their pages, once the write is in.
         - Columns: "::: columns 2" on a line of its own, the text, then ":::" (add "line" for a line between them:
           "::: columns 2 line"). Text in columns you read stands between the same marks.
         - A vector graphic: a fenced block ```svg width=8cm caption="Figure {#name}: …" alt="what it shows" with a whole <svg> element
@@ -221,7 +223,10 @@ static class Prompt
             "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
             "size": { "type": "string", "enum": ["A4", "A5", "A3", "Letter", "Legal"] },
             "watermark": { "type": "string", "description": "A word or two pale and diagonal across every page behind the text, as Word's watermark (\"DRAFT\", \"CONFIDENTIAL\", \"SAMPLE\"); empty to take it away." },
-            "border": { "type": "string", "description": "A line round every page: single, double, thick, dotted, dashed, triple, wave, thin-thick or thick-thin, then a colour (#RRGGBB) and a width in points if wanted (\"double #2F6DB5 1.5\"); none to take it away." },
+            "border": { "type": "string", "description": "A line round every page: single, double, thick, dotted, dashed, triple, wave, thin-thick or thick-thin, then a colour (#RRGGBB) and a width in points if wanted (\"double #2F6DB5 1.5\"); or one of Word's art borders by its name, a row of little pictures or a patterned band, 1 to 31 points wide (\"apples 20\", \"celticKnotwork #2F6DB5 16\": apples, balloons3Colors, balloonsHotAir, birdsFlight, cakeSlice, celticKnotwork, chainLink, checkered, christmasTree, confetti, flowersDaisies, flowersRoses, hearts, holly, iceCreamCones, musicNotes, palmsColor, pencils, snowflakes, stars, sun, trees, triangles, vine, weavingBraid, zigZag and Word's others); none to take it away." },
+            "page_numbers": { "type": "string", "description": "The page numbers' format, 1, i, I, a or A, and where they start: \"i\" for a preface in small roman numbers, \"1 from 1\" to count from 1 again." },
+            "line_numbers": { "type": "string", "description": "Numbers beside the lines in the margin, as for a poem, a contract or a text to discuss: \"every 1\" or \"every 5\", restarting on each page unless \"each section\" or \"continuous\" follows; none to take them away." },
+            "hyphenation": { "type": "string", "enum": ["on", "off"], "description": "Words hyphenated at the ends of lines, as Word's automatic hyphenation (narrow columns, justified text)." },
             "color": { "type": "string", "description": "The pages' colour behind everything (#RRGGBB, light ones keep the text readable: \"#FFF8E7\"); none to take it away." }
           }
         }
@@ -237,12 +242,27 @@ static class Prompt
         }
         """;
 
+    const string CommentSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "paragraph": { "type": "integer", "description": "The paragraph the new comment is on." },
+            "words": { "type": "string", "description": "The words in it the comment is on, exactly as they read there; the whole paragraph where left out." },
+            "text": { "type": "string", "description": "The comment, or the answer, in the notation's text." },
+            "reply_to": { "type": "string", "description": "The id of the comment this answers (\"3\" for [comment 3])." },
+            "resolve": { "type": "string", "description": "The id of a comment to mark done." },
+            "remove": { "type": "string", "description": "The id of a comment to take away, with its answers." }
+          }
+        }
+        """;
+
     public static readonly IReadOnlyList<ClaudeTool> Tools =
     [
         new("write", "Writes into the document: at the focus, after or before a paragraph, or in place of paragraphs. The content streams into the document as you write it. Give place and paragraph before content.", WriteSchema, Streams: true),
         new("look", "Shows a page of the document as it is laid out now, exactly as Word prints it.", LookSchema),
         new("picture", "Changes an object of the document as the user's ring does: where it stands, its size, crop, colours, frame, turn, mirror, tilt, caption and description; or takes it away. Give only what changes.", PictureSchema),
         new("tone", "Gives the whole document another tone, the look its levels, meanings and tables take: plain, magazine or notebook.", ToneSchema),
+        new("comment", "Comments on the document as Word's reviewing does, without changing its text: a comment on a paragraph or on words in it (feedback, a question, a suggestion), an answer to a comment, a comment marked done or taken away. The document's comments read after it, each with its id.", CommentSchema),
         new("page", "Sets up the document's pages: header and footer (with page numbers), margins, paper, orientation, a first page of its own, a watermark, a border round the pages, their colour. Give only what changes.", PageSchema),
     ];
 }

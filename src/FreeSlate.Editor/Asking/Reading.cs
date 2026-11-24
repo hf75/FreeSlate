@@ -129,6 +129,15 @@ static partial class Reading
                 continue;
             }
             tableShown = null;
+            // An index as one line, with the ids of its first and last paragraph (see Index).
+            if (word != null && Index.At(word, p) is { } indexEnd)
+            {
+                text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append("–¶").Append(indexEnd.ToString(CultureInfo.InvariantCulture)).Append(" {index}\n");
+                while (document.Next(p) is { } next && p != indexEnd)
+                    p = next;
+                paragraph = p;
+                continue;
+            }
             // A table of contents as one line, with the ids of its first and last paragraph (see Contents).
             if (word != null && Contents.At(word, p) is var (last, title, label))
             {
@@ -178,6 +187,8 @@ static partial class Reading
             foreach (var id in objects.Known.ToList())
                 text.Append(objects.Details(id)).Append('\n');
         }
+        if (word != null && Commenting.Read(word, objects) is { Length: > 0 } comments)
+            text.Append("\nComments:\n").Append(comments);
         if (objects.Notes.Any())
         {
             text.Append("\nNotes:\n");
@@ -235,6 +246,20 @@ static partial class Reading
         if (section.Border is { Kind: not "none" } border)
             said.Append(", border: ").Append(border.Kind).Append(border.Color is { } color ? " #" + color : "")
                 .Append(' ').Append(border.Width.ToString("0.##", CultureInfo.InvariantCulture)).Append("pt round the pages");
+        if (section.PageNumberFormat is { } numbering and not "decimal" || section.PageNumberStart is >= 0)
+            said.Append(", page numbers ").Append(section.PageNumberFormat switch
+            {
+                "lowerRoman" => "i",
+                "upperRoman" => "I",
+                "lowerLetter" => "a",
+                "upperLetter" => "A",
+                _ => "1",
+            }).Append(section.PageNumberStart is >= 0 and var start ? " from " + start.ToString(CultureInfo.InvariantCulture) : "");
+        if (section.LineNumbers is { CountBy: > 0 } numbered)
+            said.Append(", line numbers every ").Append(numbered.CountBy.ToString(CultureInfo.InvariantCulture))
+                .Append(numbered.Restart switch { "newSection" => " (each section)", "continuous" => " (continuous)", _ => "" });
+        if (word.AutoHyphenation)
+            said.Append(", words hyphenated");
         if (word.PageColor is { } pages)
             said.Append(", page colour: #").Append(pages);
         return said.ToString();
@@ -443,7 +468,8 @@ static partial class Reading
     /// anchors at its end (see Anchors).
     /// </summary>
     public static string Line(IEditableDocument document, int paragraph, Objects objects) =>
-        Line(document, paragraph, 0, document.Text(paragraph).Length, objects) + (document is WordDocument word ? Anchors(word, paragraph) : "");
+        Line(document, paragraph, 0, document.Text(paragraph).Length, objects)
+        + (document is WordDocument word ? Anchors(word, paragraph) + string.Concat(word.IndexEntriesOf(paragraph).Select(e => " {index " + e.Replace(":", ": ", StringComparison.Ordinal) + "}")) : "");
 
     /// <summary>
     /// The anchors a paragraph's line ends with, " {#name}" each: the bookmarks that begin in it, but those round a caption's number (which

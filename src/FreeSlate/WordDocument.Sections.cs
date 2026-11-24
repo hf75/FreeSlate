@@ -24,6 +24,8 @@ public sealed partial class WordDocument
             ColumnLine = s.Element?.Element(Wml.W + "cols")?.Attribute(Wml.W + "sep")?.Value is "1" or "true" or "on",
             Start = s.Start, TitlePage = s.TitlePage, VerticalAlign = s.VerticalAlign,
             PageNumberStart = s.PageNumberStart ?? -1, PageNumberFormat = s.PageNumberFormat,
+            LineNumbers = s.Element?.Element(Wml.W + "lnNumType") is { } numbering && int.TryParse(numbering.Attr("countBy"), out var countBy) && countBy > 0
+                ? new LineNumbering(countBy, numbering.Attr("restart") ?? "newPage") : new LineNumbering(0),
             Border = BorderOf(s.Element?.Element(Wml.W + "pgBorders")),
         };
     }
@@ -35,7 +37,9 @@ public sealed partial class WordDocument
         if (side == null)
             return new PageBorder("none");
         static double Number(string? text) => double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
-        return new PageBorder(side.Attr("val")!, Number(side.Attr("sz")) / 8, side.Attr("color") is { Length: 6 } color ? color : null, Number(side.Attr("space")),
+        // An art border's width is in points, a line's in eighths of a point.
+        var kind = side.Attr("val")!;
+        return new PageBorder(kind, Number(side.Attr("sz")) / (Docx.Layout.ArtBorders.Names.Contains(kind) ? 1 : 8), side.Attr("color") is { Length: 6 } color ? color : null, Number(side.Attr("space")),
             borders!.Attr("offsetFrom") == "page", side.Attr("shadow") is "1" or "true" or "on");
     }
 
@@ -260,17 +264,58 @@ public sealed partial class WordDocument
 
     /// <summary>
     /// The settings the layout reads (DocumentContext.Settings, loaded with the document) given what the settings part says
-    /// now of those the document changes (EvenAndOddHeaders), after a change or going to another version (see Go): the
-    /// pages laid out anew.
+    /// now of those the document changes (EvenAndOddHeaders, AutoHyphenation), after a change or going to another version (see
+    /// Go): the pages laid out anew, by a layout of their own (its paragraphs' lines kept are the old settings').
     /// </summary>
     void SettingsChanged()
     {
         if (SettingsPart() is not { } part || context.Settings is not { } settings)
             return;
-        settings.Elements(Wml.W + "evenAndOddHeaders").Remove();
-        if (context.Load(part).Root?.Element(Wml.W + "evenAndOddHeaders") is { } now)
-            settings.Add(new XElement(now));
-        (paginator, laid) = (null, null);
+        foreach (var name in new[] { "evenAndOddHeaders", "autoHyphenation" })
+        {
+            settings.Elements(Wml.W + name).Remove();
+            if (context.Load(part).Root?.Element(Wml.W + name) is { } now)
+                settings.Add(new XElement(now));
+        }
+        (paginator, laid, layout) = (null, null, null);
+    }
+
+    /// <summary>
+    /// Whether words break with a hyphen at the ends of lines as Word's automatic hyphenation breaks them (w:autoHyphenation in the
+    /// settings, Word's Layout > Hyphenation > Automatic). Set, a change of its own: the settings part given it, the pages laid out anew.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The document has no settings part; nothing changes.</exception>
+    public bool AutoHyphenation
+    {
+        get
+        {
+            Read();
+            return context.Settings.Child("autoHyphenation").OnOff() == true;
+        }
+        set
+        {
+            if (AutoHyphenation == value)
+                return;
+            ChangeParts(new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase) { [SettingsPart() ?? throw new NotSupportedException("The document has no settings part.")] = Flagged("autoHyphenation", value) });
+            SettingsChanged();
+        }
+    }
+
+    /// <summary>The settings part's bytes with a flag of its (w:evenAndOddHeaders, w:autoHyphenation …) set or taken away, in CT_Settings' order.</summary>
+    byte[] Flagged(string name, bool on)
+    {
+        var part = SettingsPart() ?? throw new NotSupportedException("The document has no settings part.");
+        var text = new PartText(package.ReadBytes(part));
+        var root = context.Load(part).Root!;
+        var w = root.Name.Namespace;
+        if (!on)
+            return text.Spliced([.. root.Elements(w + name).Select(e => text.Start(e)).Select(at => (at, text.End(at), ""))]);
+        var rank = Array.IndexOf(SettingsOrder, name);
+        var prefix = root.GetPrefixOfNamespace(w) is { Length: > 0 } p ? p + ":" : "";
+        var made = $"<{prefix}{name}/>";
+        return root.Elements().FirstOrDefault(e => e.Name.Namespace != w || Array.IndexOf(SettingsOrder, e.Name.LocalName) > rank) is { } after
+            ? text.Spliced([(text.Start(after), text.Start(after), made)])
+            : text.Spliced([(text.Text.LastIndexOf('<'), text.Text.LastIndexOf('<'), made)]);
     }
 
     /// <summary>The order of the document's settings in w:settings (CT_Settings), as far as those after even and odd headers.</summary>

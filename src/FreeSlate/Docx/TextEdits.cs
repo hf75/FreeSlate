@@ -2473,13 +2473,14 @@ static partial class TextEdits
                 Unset("pgBorders");
             else
             {
-                // Every side alike, as the Box setting of Word's Page Borders writes them: widths in eighths of a point (2 to 96), the
-                // distance in points (up to 31).
+                // Every side alike, as the Box setting of Word's Page Borders writes them: widths in eighths of a point (2 to 96), an art
+                // border's in points (1 to 31), the distance in points (up to 31).
                 var borders = Set("pgBorders");
                 borders.RemoveAll();
                 if (border.FromPage)
                     borders.SetAttributeValue(w + "offsetFrom", "page");
-                var size = Math.Clamp((int)Math.Round(border.Width * 8), 2, 96).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var size = (Layout.ArtBorders.Names.Contains(border.Kind) ? Math.Clamp((int)Math.Round(border.Width), 1, 31)
+                    : Math.Clamp((int)Math.Round(border.Width * 8), 2, 96)).ToString(System.Globalization.CultureInfo.InvariantCulture);
                 var space = Math.Clamp((int)Math.Round(border.Space), 0, 31).ToString(System.Globalization.CultureInfo.InvariantCulture);
                 foreach (var side in new[] { "top", "left", "bottom", "right" })
                 {
@@ -2489,6 +2490,20 @@ static partial class TextEdits
                         line.SetAttributeValue(w + "shadow", "1");
                     borders.Add(line);
                 }
+            }
+        }
+        // Line numbers as Word's Line Numbers writes them: every so many lines, restarting so (its default, every page, unsaid).
+        if (format.LineNumbers is { } counted)
+        {
+            if (counted.CountBy <= 0)
+                Unset("lnNumType");
+            else
+            {
+                var numbering = Set("lnNumType");
+                numbering.RemoveAttributes();
+                numbering.SetAttributeValue(w + "countBy", counted.CountBy.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                if (counted.Restart is "newSection" or "continuous")
+                    numbering.SetAttributeValue(w + "restart", counted.Restart);
             }
         }
         if (format.PageNumberStart != null || format.PageNumberFormat != null)

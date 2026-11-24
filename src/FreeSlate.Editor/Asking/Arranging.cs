@@ -297,7 +297,44 @@ static class Arranging
             if (Border(borderText) is { } border)
                 format = format with { Border = border };
             else
-                failed.Add($"border {borderText} (single, double, thick, dotted, dashed, triple, wave or none, a colour #RRGGBB and a width in points after it)");
+                failed.Add($"border {borderText} (single, double, thick, dotted, dashed, triple, wave, one of Word's art borders by name, or none; a colour #RRGGBB and a width in points after it)");
+        }
+        // Line numbers in the margin: every so many lines ("5", "every 5"), restarting on each page unless "each section" or
+        // "continuous" says otherwise; none takes them away.
+        if (input.GetValueOrDefault("line_numbers")?.Trim().ToLowerInvariant() is { } lineNumbers)
+        {
+            var every = System.Text.RegularExpressions.Regex.Match(lineNumbers, @"\d+");
+            if (lineNumbers is "none" or "no" or "off" or "0")
+                format = format with { LineNumbers = new LineNumbering(0) };
+            else if (every.Success || lineNumbers is "yes" or "on" or "every line")
+                format = format with
+                {
+                    LineNumbers = new LineNumbering(every.Success ? Math.Clamp(int.Parse(every.Value, CultureInfo.InvariantCulture), 1, 100) : 1,
+                        lineNumbers.Contains("section", StringComparison.Ordinal) ? "newSection" : lineNumbers.Contains("continu", StringComparison.Ordinal) ? "continuous" : "newPage"),
+                };
+            else
+                failed.Add($"line_numbers {lineNumbers} (every 1, every 5, each section, continuous, or none)");
+        }
+        // The page numbers' format ("1", "i", "I", "a", "A" for arabic, small and capital roman numbers and letters) and where they start
+        // ("i from 1"; "from 5"; "on": going on from the section before).
+        if (input.GetValueOrDefault("page_numbers")?.Trim() is { Length: > 0 } pageNumbers)
+        {
+            var parts = pageNumbers.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries);
+            var numberFormat = parts[0] switch
+            {
+                "1" or "arabic" or "decimal" => "decimal",
+                "i" or "roman" => "lowerRoman",
+                "I" or "ROMAN" => "upperRoman",
+                "a" => "lowerLetter",
+                "A" => "upperLetter",
+                _ => null,
+            };
+            var from = parts.SkipWhile(p => p != "from").Skip(1).FirstOrDefault() is { } begin
+                && int.TryParse(begin, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) && number >= 0 ? number : (int?)null;
+            if (numberFormat == null && parts[0] != "from")
+                failed.Add($"page_numbers {pageNumbers} (1, i, I, a or A, then \"from N\" to start at N)");
+            else
+                format = format with { PageNumberFormat = numberFormat ?? format.PageNumberFormat, PageNumberStart = from ?? format.PageNumberStart };
         }
         if (input.GetValueOrDefault("orientation")?.Trim().ToLowerInvariant() is { } orientation)
         {
@@ -379,6 +416,14 @@ static class Arranging
             }
             if (input.GetValueOrDefault("watermark") is { } watermark)
                 Do("watermark", () => Watermark(word, first, watermark.Trim()));
+            // Words hyphenated at the ends of lines, as Word's automatic hyphenation (a setting of the document's).
+            if (input.GetValueOrDefault("hyphenation")?.Trim().ToLowerInvariant() is { } hyphenation)
+            {
+                if (hyphenation is "true" or "yes" or "on" or "automatic" or "false" or "no" or "off" or "none")
+                    Do("hyphenation", () => word.AutoHyphenation = hyphenation is "true" or "yes" or "on" or "automatic");
+                else
+                    failed.Add($"hyphenation {hyphenation} (on or off)");
+            }
             // The pages' colour as Word's Page Color gives it (see WordDocument.SetPageColor); none takes it away.
             if (input.GetValueOrDefault("color")?.Trim() is { } colored)
             {
@@ -526,18 +571,20 @@ static class Arranging
             "wave" or "wavy" => "wave",
             "thin-thick" => "thinThickSmallGap",
             "thick-thin" => "thickThinSmallGap",
-            _ => null,
+            // One of Word's art borders by its name (apples, celticKnotwork, stars …), drawn as tiles of its pictures (see ArtBorders).
+            var name => FreeSlate.Docx.Layout.ArtBorders.Named(name),
         };
         if (kind == null)
             return null;
         string? color = null;
-        var width = kind is "thick" ? 2.25 : kind is "double" or "triple" or "wave" ? 0.75 : 0.5;
+        var art = FreeSlate.Docx.Layout.ArtBorders.Names.Contains(kind);
+        var width = art ? 20 : kind is "thick" ? 2.25 : kind is "double" or "triple" or "wave" ? 0.75 : 0.5;
         foreach (var word in words.Skip(1))
         {
             if (word.TrimStart('#') is { Length: 6 } hex && hex.All(Uri.IsHexDigit))
                 color = hex.ToUpperInvariant();
             else if (double.TryParse(word.Replace("pt", "", StringComparison.OrdinalIgnoreCase), System.Globalization.NumberStyles.Float,
-                         System.Globalization.CultureInfo.InvariantCulture, out var points) && points is > 0 and <= 12)
+                         System.Globalization.CultureInfo.InvariantCulture, out var points) && points > 0 && points <= (art ? 31 : 12))
                 width = points;
             else
                 return null;

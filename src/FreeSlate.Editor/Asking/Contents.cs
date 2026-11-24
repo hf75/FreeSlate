@@ -56,11 +56,12 @@ static partial class Contents
         word.Remove(placeholder);
         // The pages again once the table stands, which may push the headings on: the entries anew where one moved.
         var now = Pages(word, names);
-        if (!now.SequenceEqual(pages))
+        if (!now.SequenceEqual(pages) && word.After(ids[^1]) is { } following)
         {
+            // The table made before has its field over its paragraphs: taken away in one, up to the paragraph after it (the place was
+            // not the last of the body, see Writing.End).
             var again = word.InsertBlocks(ids[0], Markup(title, styles, entries, names, now, right, instruction), before: true);
-            foreach (var id in ids)
-                word.Remove(id);
+            word.RemoveBetween(again[^1], following);
             ids = again;
         }
         return ids;

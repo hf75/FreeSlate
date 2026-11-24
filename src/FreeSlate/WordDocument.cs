@@ -697,6 +697,51 @@ public sealed partial class WordDocument : IEditableDocument
     public IReadOnlyList<string> BookmarksOf(int paragraph) => [.. Find(paragraph).Paragraph.Content.OfType<BookmarkInline>().Select(b => b.Name)];
 
     /// <summary>
+    /// The index entries a paragraph marks (Word's Mark Entry: XE fields, which show nothing and the model leaves out), each its text as
+    /// the field gives it ("main:sub" for a subentry), in order; read from the paragraph's XML, simple and complex fields alike.
+    /// </summary>
+    public IReadOnlyList<string> IndexEntriesOf(int paragraph)
+    {
+        var p = Find(paragraph).Paragraph.Element;
+        var w = p.Name.Namespace;
+        var entries = new List<string>();
+        void Instruction(string text)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"^\s*XE\s+(?:""((?:[^""\\]|\\.)*)""|(\S+))", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (match.Success)
+                entries.Add((match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value).Replace("\\\"", "\"", StringComparison.Ordinal));
+        }
+        // Complex fields: the instruction of each at its own depth, up to its separator or end.
+        var open = new Stack<System.Text.StringBuilder?>();
+        foreach (var e in p.Descendants())
+        {
+            if (e.Name == w + "fldSimple")
+                Instruction((string?)e.Attribute(w + "instr") ?? "");
+            else if (e.Name == w + "fldChar")
+            {
+                switch ((string?)e.Attribute(w + "fldCharType"))
+                {
+                    case "begin":
+                        open.Push(new System.Text.StringBuilder());
+                        break;
+                    case "separate" when open.Count > 0:
+                        if (open.Pop() is { } instruction)
+                            Instruction(instruction.ToString());
+                        open.Push(null);
+                        break;
+                    case "end" when open.Count > 0:
+                        if (open.Pop() is { } ended)
+                            Instruction(ended.ToString());
+                        break;
+                }
+            }
+            else if (e.Name == w + "instrText" && open.Count > 0 && open.Peek() is { } building)
+                building.Append(e.Value);
+        }
+        return entries;
+    }
+
+    /// <summary>
     /// The bookmarks that begin in a paragraph, in order: each one's name, the place of its text it begins at and the one it ends at,
     /// null where it ends in another paragraph.
     /// </summary>
@@ -1531,6 +1576,17 @@ public sealed partial class WordDocument : IEditableDocument
             }
         }
         return last;
+    }
+
+    /// <summary>
+    /// The number a page (0-based, of those laid out so far) shows, as its section numbers its pages (its format, its start, a chapter's
+    /// number before it), as PAGE prints it there; null for a page not laid out.
+    /// </summary>
+    public string? PageNumberText(int page)
+    {
+        Scenes();
+        return page >= 0 && page < shown.Count && shown[page] is { } box
+            ? box.ChapterPrefix + Docx.NumberText.Format(box.DisplayNumber, box.Section.PageNumberFormat) : null;
     }
 
     /// <summary>The page the layout puts a bookmark on (0-based), of those laid out so far; null where none has it.</summary>
