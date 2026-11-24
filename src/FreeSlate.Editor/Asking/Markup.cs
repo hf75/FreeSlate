@@ -199,6 +199,9 @@ static partial class Markup
     /// <summary>The style of captions, Word's (whose name is "caption"), which numbers their anchors (see Numbered).</summary>
     public const string CaptionStyle = "Caption";
 
+    /// <summary>The language a write's citations name (CITATION's \l, a Windows language id): the text's where it is written, set as a write begins.</summary>
+    public static int CitationLanguage { get; set; } = 1033;
+
     /// <summary>
     /// The runs of a paragraph's pieces of text, to go in among other text, objects by their tokens as <paramref name="kept"/> gives them,
     /// and where in them footnotes' marks stand (offset, label); a caption's anchors numbering it (see Numbered).
@@ -355,6 +358,13 @@ static partial class Markup
                     markup.Append("<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> XE \"")
                         .Append(Escape(mark.Term.Replace("\"", "", StringComparison.Ordinal).Replace(": ", ":", StringComparison.Ordinal)))
                         .Append("\" </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>");
+                    break;
+                case Notation.CiteMark cite:
+                    // Word's Insert Citation: the CITATION field in its content control, its text the tags till the write's end, when the
+                    // document's citation style formats them (see Citing).
+                    markup.Append(FreeSlate.Docx.Citations.CitationMarkup.Citation(Citing.Instruction(cite.Items, CitationLanguage),
+                        [new FreeSlate.Docx.Citations.Piece("(" + string.Join("; ", cite.Items.Select(i => i.Tag)) + ")")], Random.Shared.Next(1, int.MaxValue)));
+                    offset++;
                     break;
                 case Notation.Reference reference:
                     // Word's cross-reference (\h: a link to it), its result the anchor's name till the write's end (see above).

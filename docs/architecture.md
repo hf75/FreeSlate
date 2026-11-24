@@ -487,7 +487,12 @@ the headings of levels 1 to 3 in the styles toc 1 to 3, made once the write is i
 heading and its page a PAGEREF field, read back as one line with its first and last paragraph, `Contents`; "{figures Figure}" a table
 of figures, the same over the captions numbered with a label, TOC \c, in the style table of figures; "{index}" an index, Word's
 INDEX field over the terms "{index term}" marks among the text as XE fields, which the model leaves out and `WordDocument.IndexEntriesOf`
-reads from a paragraph's XML, a heading for each first letter and the pages as they show their numbers, `Index`), numbered captions and
+reads from a paragraph's XML, a heading for each first letter and the pages as they show their numbers, `Index`), citations and
+bibliographies as Word's References tab makes them (a ```bibtex block's entries the document's sources in Word's kinds, its style=…
+Word's citation style; "[@key]", "[see @key, p. 33; -@other]" Pandoc's citations as CITATION fields in w:citation controls;
+"{bibliography}" Word's bibliography building block of all the sources; the citations' and bibliographies' text set as the style
+formats them once the write is in; read back as written, the bibliography as one line and the sources after the document, `Citing`;
+a block-level content control goes in as the blocks it holds, `WordDocument.InsertBlocks`), numbered captions and
 cross-references as Word's Insert Caption and Cross-reference make them ("Figure {#sales}: …" in a caption: a SEQ field of the
 label in a bookmark of the name with the label; {#name} elsewhere a bookmark round its paragraph's text; {ref name} and {page name}
 REF and PAGEREF fields; the fields' results saved as the pages show them once the write is in, `WordDocument.RefreshFields`, as

@@ -65,6 +65,18 @@ static class Prompt
           with that label ("{figures Table}" of the tables'), its heading a line of yours before it. An index: "{index term}" among the
           text marks the paragraph for a term ("{index Fruit: apples}" a subentry; it reads back at the end of the paragraph), and
           "{index}" on a line of its own makes the index of all marks, with their pages, once the write is in.
+        - Citations as Word keeps them (References > Insert Citation): the sources in a fenced block ```bibtex style=APA with BibTeX
+          entries (@book, @article, @incollection, @inproceedings, @report, @online, @webdocument, @magazine, @thesis, @movie,
+          @interview, @patent, @jurisdiction, @audio, @performance, @artwork, @misc; author = {Smith, John and Lee, Kim}, an
+          organization in double braces {{UNESCO}}, title, year, publisher, address, journal, volume, number, pages, url, urldate,
+          doi …), anywhere in the content (it makes no paragraph; the document's sources are those of every block, a key given again
+          replacing its source). style is Word's citation style: APA (the default), MLA, Chicago, IEEE, "Harvard - Anglia", "ISO 690 -
+          First Element and Date", "ISO 690 - Numerical Reference", Turabian, GB7714, "GOST - Name Sort", "GOST - Title Sort",
+          SIST02; a block with only style=… changes it. A citation in the text: [@key], [@key, p. 33], [@key, vol. 2, p. 12],
+          [see @key], [@key, ch. 4], [-@key] (without the author), [@key -year], several at once [@one; @two]; it shows as the style
+          formats it ("(Smith, 2020, p. 33)", "[1]"). "{bibliography}" on a line of its own makes the bibliography of all the
+          document's sources in the style, its heading a line of yours before it. Citations read back as you write them, the
+          bibliography as one line with its first and last paragraph's ids, the sources after the document under "Sources:".
         - Columns: "::: columns 2" on a line of its own, the text, then ":::" (add "line" for a line between them:
           "::: columns 2 line"). Text in columns you read stands between the same marks.
         - A vector graphic: a fenced block ```svg width=8cm caption="Figure {#name}: …" alt="what it shows" with a whole <svg> element

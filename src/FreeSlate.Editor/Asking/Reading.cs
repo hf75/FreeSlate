@@ -119,6 +119,16 @@ static partial class Reading
                     columns = section;
                 }
             }
+            // A bibliography as one line, with the ids of its first and last paragraph (see Citing), its table (IEEE's) within it.
+            if (word != null && Citing.Around(word, p) is var (bibliographyFirst, bibliographyLast) && bibliographyFirst == p)
+            {
+                text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append("–¶").Append(bibliographyLast.ToString(CultureInfo.InvariantCulture)).Append(" {bibliography}\n");
+                while (document.Next(p) is { } next && p != bibliographyLast)
+                    p = next;
+                paragraph = p;
+                tableShown = null;
+                continue;
+            }
             if (word?.TableOf(p) is { } table)
             {
                 if (tableShown == table)
@@ -189,6 +199,8 @@ static partial class Reading
         }
         if (word != null && Commenting.Read(word, objects) is { Length: > 0 } comments)
             text.Append("\nComments:\n").Append(comments);
+        if (word != null && Citing.Block(word) is { } sources)
+            text.Append("\nSources:\n").Append(sources).Append('\n');
         if (objects.Notes.Any())
         {
             text.Append("\nNotes:\n");
@@ -541,10 +553,18 @@ static partial class Reading
         var word = document as WordDocument;
         // Its links as the notation writes them, their text as it reads within them, the link's own style aside.
         var links = word != null && !inLink ? word.LinksOf(paragraph).Where(l => l.Start >= from && l.End <= to && l.End > l.Start).ToList() : [];
+        // Its citations as the notation writes them, "[@key, p. 33]" for the text they show (see Citing).
+        var citations = word != null ? word.CitationsOf(paragraph).Where(c => c.Start >= from && c.End <= to && c.End > c.Start).ToList() : [];
         var line = new StringBuilder();
         var k = from;
         while (k < to)
         {
+            if (citations.FirstOrDefault(c => c.Start == k) is { End: > 0 } citation && Citing.ItemsOf(citation.Instruction) is { } cited)
+            {
+                line.Append(Notation.CiteText(cited));
+                k = citation.End;
+                continue;
+            }
             if (links.FirstOrDefault(l => l.Start == k) is { End: > 0 } link)
             {
                 line.Append('[').Append(Line(document, paragraph, link.Start, link.End, objects, inLink: true)).Append("](").Append(link.Target).Append(')');
@@ -554,6 +574,7 @@ static partial class Reading
             var styled = styles.FirstOrDefault(s => s.Offset <= k && k < s.Offset + s.Length);
             var end = styled.Length > 0 ? Math.Min(to, styled.Offset + styled.Length) : Math.Min(to, styles.Where(s => s.Offset > k).Select(s => s.Offset).DefaultIfEmpty(to).Min());
             end = Math.Min(end, links.Where(l => l.Start > k).Select(l => l.Start).DefaultIfEmpty(end).Min());
+            end = Math.Min(end, citations.Where(c => c.Start > k).Select(c => c.Start).DefaultIfEmpty(end).Min());
             var part = new StringBuilder();
             for (var c = k; c < end; c++)
                 part.Append(Character(word, paragraph, text, c, objects));

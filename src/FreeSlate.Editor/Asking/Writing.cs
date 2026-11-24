@@ -147,11 +147,15 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         parking.Clear();
         tableNotes.Clear();
         contentsTables.Clear();
+        citing = false;
         stories = null;
     }
 
     /// <summary>The tables of contents written: the paragraph each line put in, made a table once the write is in (see End), its title, a table of figures' label.</summary>
-    readonly List<(int Placeholder, string? Title, string? Label, bool Index)> contentsTables = [];
+    readonly List<(int Placeholder, string? Title, string? Label, bool Index, bool Bibliography)> contentsTables = [];
+
+    /// <summary>Whether the write gives sources or citations (a ```bibtex block, "[@key]"): its citations and bibliographies set anew at its end.</summary>
+    bool citing;
 
     /// <summary>Takes back what the write did so far (input that could not be read): its steps are the session's last.</summary>
     void TakeBackAll()
@@ -180,8 +184,12 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             refused = $"There is no paragraph {(paragraph is { } given ? "¶" + given.ToString(CultureInfo.InvariantCulture) : "given")} to write {place}.";
             return false;
         }
+        // Citations name the language of the text where they are written (see Citing).
+        if (word != null && (paragraph ?? focus.First) is var language && document.Contains(language))
+            Markup.CitationLanguage = word.LanguageOf(language);
         // After or before a paragraph of a table of contents: after or before the whole table, as for a table's (see Contents).
-        var table = place is "after" or "before" && word != null ? Contents.Around(word, paragraph!.Value) ?? Index.Around(word, paragraph!.Value) : null;
+        var table = place is "after" or "before" && word != null
+            ? Contents.Around(word, paragraph!.Value) ?? Index.Around(word, paragraph!.Value) ?? Citing.Around(word, paragraph!.Value) : null;
         switch (place)
         {
             case "after":
@@ -247,6 +255,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     /// <summary>An empty paragraph made after one: after its table where it ends one, else right after it (in its cell, where it stands in one).</summary>
     int After(int paragraph)
     {
+        // After a bibliography's paragraph: after the whole content control, before the paragraph that follows it (see Citing).
+        if (word != null && Citing.Around(word, paragraph) is var (_, last) && document.After(last) is { } following)
+            return document.InsertBlocks(following, "<w:p/>", before: true)[0];
         if (ClosesTable(paragraph) && document.Next(paragraph) is { } next)
         {
             if (word!.TableOf(next) != null)
@@ -259,6 +270,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     /// <summary>An empty paragraph made before one: before its table where it begins one (after the paragraph before the table), else right before it.</summary>
     int Before(int paragraph)
     {
+        // Before a bibliography's paragraph: before the whole content control, after the paragraph before it (see Citing).
+        if (word != null && Citing.Around(word, paragraph) is var (first, _) && document.Before(first) is { } preceding)
+            return document.InsertBlocks(preceding, "<w:p/>")[0];
         if (OpensTable(paragraph) && document.Previous(paragraph) is { } previous)
         {
             if (word!.TableOf(previous) != null)
@@ -357,6 +371,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     /// <summary>The content as far as it is written: the blocks finished put in, the one being written shown after them.</summary>
     void Update(string content, bool final)
     {
+        // Citations among the text ("[@key]"): set as the style formats them at the write's end.
+        citing |= content.Contains('@', StringComparison.Ordinal);
         var parsed = Notation.Parse(content, final);
         if (among != null && !Among(parsed, final))
             return;
@@ -527,12 +543,22 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             case Notation.Table kept when word != null && keptTables.Count > 0:
                 Rework(Kept(kept), kept);
                 return;
+            case Notation.Fenced { Kind: "bibtex" or "bib" } sources when word != null:
+                // Sources for citations: the document's, no paragraph of their own (see Citing).
+                citing = true;
+                Step(() =>
+                {
+                    Citing.Merge(word, sources, Markup.CitationLanguage, problems);
+                    return null;
+                });
+                return;
             case Notation.ContentsTable contents when word != null:
                 // A paragraph in its place, made the table once the write is in, when the headings written after it stand too.
                 Step(() =>
                 {
                     var made = document.InsertBlocks(at, "<w:p/>", before: true)[0];
-                    contentsTables.Add((made, contents.Title, contents.Label, contents.Index));
+                    contentsTables.Add((made, contents.Title, contents.Label, contents.Index, contents.Bibliography));
+                    citing |= contents.Bibliography;
                     written.Add(made);
                     return new TextPlace(made, 0);
                 });
@@ -655,8 +681,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 document.Remove(made);
                 return written.Count > 0 && document.Contains(written[^1]) ? new TextPlace(written[^1], document.Text(written[^1]).Length) : null;
             }, quiet: true);
-            if (!removed && document.Before(made) is { } previous && contentsTables.Any(c => c.Placeholder == previous))
-                joinLater = made;
+            // After a bibliography the place stays: the body ends with a paragraph after a content control, as Word keeps one there.
+            if (!removed && document.Before(made) is { } previous && contentsTables.FirstOrDefault(c => c.Placeholder == previous) is { Placeholder: > 0 } table)
+                joinLater = table.Bibliography ? null : made;
             else if (!removed)
                 JoinPlace(made);
         }
@@ -744,14 +771,18 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 return null;
             }, quiet: true);
         }
-        // The tables of contents and of figures made last, of the headings and captions as they all stand now.
-        foreach (var (place, named, label, index) in contentsTables)
+        // The tables of contents and of figures made last, of the headings and captions as they all stand now; the bibliographies of the
+        // sources as the citations now name them.
+        var bibliographies = new HashSet<int>();
+        foreach (var (place, named, label, index, bibliography) in contentsTables)
         {
             if (word == null || !document.Contains(place))
                 continue;
             Step(() =>
             {
-                var ids = index ? Index.Make(word, place) : Contents.Make(word, place, named, label);
+                var ids = bibliography ? Citing.Make(word, place) : index ? Index.Make(word, place) : Contents.Make(word, place, named, label);
+                if (bibliography)
+                    bibliographies.UnionWith(ids);
                 var at = written.IndexOf(place);
                 if (at >= 0)
                 {
@@ -763,8 +794,30 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         }
         if (joinLater is { } later && document.Contains(later))
             JoinPlace(later);
+        if (citing && word != null)
+            Cite(word, bibliographies);
         Refresh(word, Step, problems, written);
         Frame();
+    }
+
+    /// <summary>
+    /// The write's citations as the document's citation style formats them (Word's Update Citations and Bibliography), the document's other
+    /// bibliographies (than those it made) made anew; a citation of a key no source has told back.
+    /// </summary>
+    void Cite(WordDocument word, HashSet<int> made)
+    {
+        Step(() =>
+        {
+            word.RefreshCitations();
+            return null;
+        }, quiet: true);
+        Step(() =>
+        {
+            Citing.Refresh(word, made);
+            return null;
+        }, quiet: true);
+        foreach (var tag in Citing.Unknown(word))
+            problems.Add($"No source has the key {tag}: give it in a ```bibtex block (its citations show the key till then).");
     }
 
     /// <summary>
@@ -838,6 +891,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         var told = new System.Text.StringBuilder();
         if (alive.Count == 0 && amongWritten is var (paragraph, _) && amongLength > 0)
             told.Append(CultureInfo.InvariantCulture, $"Written into ¶{paragraph}.");
+        else if (alive.Count == 0 && citing && word?.Sources is { } list)
+            told.Append(CultureInfo.InvariantCulture, $"No text written; the document's sources: {list.Sources.Count}, in the style {word.CitationStyleOf(list).Name}.");
         else if (alive.Count == 0)
             told.Append("Nothing was written.");
         else

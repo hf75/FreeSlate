@@ -55,6 +55,9 @@ public static partial class Notation
     {
         /// <summary>Whether it is an index ("{index}" on a line of its own; see Index) rather than a table of contents.</summary>
         public bool Index { get; init; }
+
+        /// <summary>Whether it is a bibliography ("{bibliography}" on a line of its own; see Citing) of the document's sources.</summary>
+        public bool Bibliography { get; init; }
     }
 
     /// <summary>A line across the text (Markdown's thematic break).</summary>
@@ -108,6 +111,77 @@ public static partial class Notation
     /// <summary>A mark for the index, "{index term}" ("{index main: sub}" a subentry): Word's XE field, showing nothing (see Index).</summary>
     public sealed record IndexMark(string Term) : Piece;
 
+    /// <summary>
+    /// A citation, "[@smith20]" as Pandoc writes one ("[see @smith20, p. 33; -@lee18]"): Word's CITATION field of the sources it names
+    /// by their tags, its text as the document's citation style formats them (see Citing).
+    /// </summary>
+    public sealed record CiteMark(IReadOnlyList<CiteItem> Items) : Piece;
+
+    /// <summary>
+    /// One source of a citation: its tag, the words before it ("see "), its pages and volume (", p. 33", ", vol. 2"), the words after it
+    /// (", ch. 4"), and what it leaves out: the author ("-@tag"), the year (" -year"), the title (" -title").
+    /// </summary>
+    public sealed record CiteItem(string Tag, string? Prefix = null, string? Pages = null, string? Volume = null, string? Suffix = null,
+        bool NoAuthor = false, bool NoYear = false, bool NoTitle = false);
+
+    /// <summary>A citation's sources from the text between its brackets ("see @smith20, p. 33; -@lee18"), or null where it is none.</summary>
+    public static IReadOnlyList<CiteItem>? CiteItems(string inner)
+    {
+        var items = new List<CiteItem>();
+        foreach (var part in inner.Split(';'))
+        {
+            if (CiteItemText().Match(part) is not { Success: true } item)
+                return null;
+            var rest = item.Groups[4].Value;
+            var (noYear, noTitle) = (CiteFlag("year").IsMatch(rest), CiteFlag("title").IsMatch(rest));
+            rest = CiteFlag("year").Replace(CiteFlag("title").Replace(rest, ""), "");
+            string? pages = null, volume = null, suffix = null;
+            var trimmed = rest.Trim();
+            if (trimmed.StartsWith(','))
+            {
+                var segments = trimmed[1..].Split(',').Select(s => s.Trim()).ToList();
+                var k = 0;
+                for (; k < segments.Count; k++)
+                {
+                    if (pages == null && PagesText().Match(segments[k]) is { Success: true } p)
+                        pages = p.Groups[1].Value.Trim();
+                    else if (volume == null && VolumeText().Match(segments[k]) is { Success: true } v)
+                        volume = v.Groups[1].Value.Trim();
+                    else
+                        break;
+                }
+                if (k < segments.Count)
+                    suffix = ", " + string.Join(", ", segments.Skip(k));
+            }
+            else if (trimmed.Length > 0)
+                suffix = " " + trimmed;
+            items.Add(new CiteItem(item.Groups[3].Value, item.Groups[1].Value is { Length: > 0 } prefix ? prefix.TrimStart() : null, pages, volume, suffix,
+                item.Groups[2].Success && item.Groups[2].Value.Length > 0, noYear, noTitle));
+        }
+        return items.Count > 0 ? items : null;
+    }
+
+    /// <summary>A citation's sources as the notation writes them (see CiteItems).</summary>
+    public static string CiteText(IEnumerable<CiteItem> items) =>
+        "[" + string.Join("; ", items.Select(i => (i.Prefix ?? "") + (i.NoAuthor ? "-" : "") + "@" + i.Tag + (i.NoYear ? " -year" : "") + (i.NoTitle ? " -title" : "")
+            + (i.Volume != null ? ", vol. " + i.Volume : "") + (i.Pages != null ? ", p. " + i.Pages : "") + (i.Suffix ?? ""))) + "]";
+
+    /// <summary>A citation in brackets: a source's tag after an "@" among its words, not a link's text.</summary>
+    [GeneratedRegex(@"\G\[([^\[\]\n]*@[\p{L}\p{N}_][^\[\]\n]*)\](?!\()")]
+    private static partial Regex CiteBrackets();
+
+    /// <summary>One source of a citation: the words before it (ending in a space), "-" leaving the author out, "@" and the tag, the rest.</summary>
+    [GeneratedRegex(@"^\s*((?:[^@]*\s)?)(-?)@([\p{L}\p{N}_](?:[\p{L}\p{N}_:.\-/]*[\p{L}\p{N}_])?)(.*)$")]
+    private static partial Regex CiteItemText();
+
+    static Regex CiteFlag(string what) => new(@"(?:^|\s)-" + what + @"\b", RegexOptions.IgnoreCase);
+
+    [GeneratedRegex(@"^(?:pp?\.|pages?|S\.|Seiten?)\s*(\S.*)$", RegexOptions.IgnoreCase)]
+    private static partial Regex PagesText();
+
+    [GeneratedRegex(@"^(?:vol\.|volume|Bd\.|Band)\s*(\S.*)$", RegexOptions.IgnoreCase)]
+    private static partial Regex VolumeText();
+
     /// <summary>A formula among the text ($…$): its LaTeX (see Formulas).</summary>
     public sealed record Formula(string Latex) : Piece;
 
@@ -132,6 +206,10 @@ public static partial class Notation
     /// <summary>An index: "{index}" on a line of its own (see Index).</summary>
     [GeneratedRegex(@"^\{\s*index\s*\}$", RegexOptions.IgnoreCase)]
     private static partial Regex IndexLine();
+
+    /// <summary>A bibliography: "{bibliography}" on a line of its own (see Citing).</summary>
+    [GeneratedRegex(@"^\{\s*bibliography\s*\}$", RegexOptions.IgnoreCase)]
+    private static partial Regex BibliographyLine();
 
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
     private static partial Regex HeadingLine();
@@ -327,7 +405,7 @@ public static partial class Notation
                         settings[setting.Groups[1].Value] = setting.Groups[2].Value.Trim('"', '\'');
                     if (close < 0)
                         problems.Add($"The ```{kindName} block was not closed; it was read to the end.");
-                    if (kindName is "svg" or "wordart" or "box" or "chart" or "smartart" or "shape")
+                    if (kindName is "svg" or "wordart" or "box" or "chart" or "smartart" or "shape" or "bibtex" or "bib")
                         blocks.Add(new Fenced(kindName, settings, body));
                     else if (kindName is "xml" or "ooxml" or "wordml")
                         blocks.Add(new Raw(body));
@@ -425,6 +503,8 @@ public static partial class Notation
                 {
                     if (!open && IndexLine().IsMatch(lines[i].Trim()))
                         blocks.Add(new ContentsTable(null) { Index = true });
+                    else if (!open && BibliographyLine().IsMatch(lines[i].Trim()))
+                        blocks.Add(new ContentsTable(null) { Bibliography = true });
                     else if (!open && ContentsLine().Match(lines[i].Trim()) is { } contents)
                     {
                         var words = contents.Groups[2].Value is { Length: > 0 } given ? given : null;
@@ -546,7 +626,7 @@ public static partial class Notation
             return ColumnsLine().IsMatch(trimmed) ? Kind.ColumnsOpen : open ? Kind.Unsure : Kind.Text;
         if (trimmed == "\\pagebreak")
             return Kind.PageBreak;
-        if (ContentsLine().IsMatch(trimmed) || IndexLine().IsMatch(trimmed))
+        if (ContentsLine().IsMatch(trimmed) || IndexLine().IsMatch(trimmed) || BibliographyLine().IsMatch(trimmed))
             return open ? Kind.Unsure : Kind.Contents;
         if (trimmed.Length >= 3 && (trimmed.All(c => c == '-') || trimmed.All(c => c == '*') || trimmed.All(c => c == '_')))
             return open ? Kind.Unsure : Kind.Rule;
@@ -792,6 +872,13 @@ public static partial class Notation
                 Flush();
                 pieces.Add(new Kept(id));
                 k += kept.Length;
+                continue;
+            }
+            if (c == '[' && CiteBrackets().Match(text, k) is { Success: true } cite && CiteItems(cite.Groups[1].Value) is { } cited)
+            {
+                Flush();
+                pieces.Add(new CiteMark(cited));
+                k += cite.Length;
                 continue;
             }
             if (c == '[' && LinkText().Match(text, k) is { Success: true } link)
