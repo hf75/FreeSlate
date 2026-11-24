@@ -4442,6 +4442,11 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
         var gapWidth = (ChartModel.Number(group.Element, "gapWidth") ?? 100) / 100;
         var (secondWidth, gap) = bar ? (size / 2, 0.259 * gapWidth) : (size, 0.514 * gapWidth);
         var diameter = Math.Max(1, Math.Min(plot.W / (1 + gap + secondWidth), plot.H));
+        // With labels that may go outside, the main pie keeps the margin a pie keeps for them (see Pie; measured in Word's PDF of a
+        // bar of pie with percentages at bestFit: its pie 169.9 pt across where the plot gives 198).
+        var seriesLabel = DataLabel(group, series, -1);
+        if (seriesLabel != null && (seriesLabel.Position ?? "bestFit") is "bestFit" or "outEnd" && PlotLayout() == null)
+            diameter = Math.Max(1, 2 * (PieLabelShare * diameter / 2 - PieLabelMargin * seriesLabel.Style.Size));
         var left = plot.X + (plot.W - diameter * (1 + gap + secondWidth)) / 2;
         var cy = plot.Y + plot.H / 2;
         var (cx, r) = (left + diameter / 2, diameter / 2);
@@ -4455,10 +4460,18 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
                 continue;
             var sweep = values[i] / total * 360;
             svg.Append(ShapePart(series, i, $"<path d=\"{Slice(cx, cy, r, 0, angle, sweep)}\"{FillOver(PointFill(group, series, i), SliceBounds(cx, cy, r, 0, angle, sweep))}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
+            // Its label as a pie's (see PieLabel).
+            if (DataLabel(group, series, i) is { } spec)
+                PieLabel(spec, series, i, values[i], total, cx, cy, r, angle, sweep);
             angle += sweep;
         }
         if (other > 0)
+        {
             svg.Append(ShapePart(series, n, $"<path d=\"{Slice(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep)}\"{FillOver(PointFill(group, series, n), SliceBounds(cx, cy, r, 0, 90 - otherSweep / 2, otherSweep))}{paint.Stroke(PointOutline(series, n), 0, 0, defs)}/>"));
+            // The combined slice's label: the points it stands for together (Word's 18 % for 8, 6 and 4 %).
+            if ((DataLabel(group, series, n) ?? seriesLabel) is { } combined)
+                PieLabel(combined, series, n, other, total, cx, cy, r, 90 - otherSweep / 2, otherSweep);
+        }
 
         // The second plot.
         var secondLeft = left + diameter * (1 + gap);
@@ -4472,6 +4485,14 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             {
                 var h = other > 0 ? values[i] / other * height : 0;
                 svg.Append(ShapePart(series, i, Bar(new Box(secondLeft, y, w, h), PointFill(group, series, i), PointOutline(series, i))));
+                // Its label right of the bar beside its middle, its text 6 pt off the bar (measured in Word's PDF: 6.08 pt).
+                if (h > 0 && DataLabel(group, series, i) is { } spec)
+                {
+                    var text = LabelText(spec, series, i, values[i], total);
+                    var (lw, lh) = LabelSize(spec, text);
+                    var placed = Moved(spec, new Box(secondLeft + w + 6.08 - spec.Insets.L, y + h / 2 - lh / 2, lw, lh));
+                    DrawLabel(spec, text, placed.X, placed.Y);
+                }
                 y += h;
             }
             (top, bottom) = ((secondLeft, cy - height / 2), (secondLeft, cy + height / 2));
@@ -4484,6 +4505,8 @@ public sealed partial class ChartRenderer(SlideContext slide, SvgPaint paint, Te
             {
                 var sweep = other > 0 ? values[i] / other * 360 : 0;
                 svg.Append(ShapePart(series, i, $"<path d=\"{Slice(cx2, cy, r2, 0, a, sweep)}\"{FillOver(PointFill(group, series, i), SliceBounds(cx2, cy, r2, 0, a, sweep))}{paint.Stroke(PointOutline(series, i), 0, 0, defs)}/>"));
+                if (sweep > 0 && DataLabel(group, series, i) is { } spec)
+                    PieLabel(spec, series, i, values[i], total, cx2, cy, r2, a, sweep);
                 a += sweep;
             }
             (top, bottom) = ((cx2, cy - r2), (cx2, cy + r2));
