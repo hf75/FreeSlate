@@ -301,10 +301,19 @@ public sealed class FieldEvaluator
         var counters = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var section = 0;
         var open = new Dictionary<string, string>(StringComparer.Ordinal);
-        void Inlines(IEnumerable<Inline> inlines, ParagraphBlock paragraph)
+        // Whether the walk is in a text box (see Boxes).
+        var boxed = false;
+        // shown: whether the inlines' text is what the bookmarks around them hold (not where a sequence's saved result
+        // stands, whose number the bookmarks hold as Word prints it).
+        void Inlines(IEnumerable<Inline> inlines, ParagraphBlock paragraph, bool shown = true)
         {
             foreach (var inline in inlines)
             {
+                if (BoxesOf(inline) is { Count: > 0 } boxes)
+                {
+                    Boxes(boxes);
+                    continue;
+                }
                 switch (inline)
                 {
                     case BookmarkInline start:
@@ -316,8 +325,11 @@ public sealed class FieldEvaluator
                         open.Remove(end.Id);
                         continue;
                     case TextInline text:
-                        foreach (var name in open.Values)
-                            bookmarks[name].Text.Append(text.Text);
+                        if (shown)
+                        {
+                            foreach (var name in open.Values)
+                                bookmarks[name].Text.Append(text.Text);
+                        }
                         continue;
                     case NoteReferenceInline note when !note.Own:
                         foreach (var name in open.Values)
@@ -328,16 +340,42 @@ public sealed class FieldEvaluator
                     continue;
                 paragraphOf[field] = paragraph;
                 var type = KindOf(field).Type;
-                bodyUpdates |= type is not ("IF" or "SYMBOL" or "DOCPROPERTY" or "");
+                bodyUpdates |= !boxed && type is not ("IF" or "SYMBOL" or "DOCPROPERTY" or "");
                 if (type is "PAGE" or "SECTIONPAGES" || type == "PAGEREF" && WordsOf(field).Contains("\\p"))
                     pagedParagraphs.Add(paragraph.Id);
                 if (Paged(type))
                     pagedFields.Add(field);
                 sections[field] = section;
                 if (type == "SEQ")
-                    sequences[field] = Sequence(field, counters) ?? T("Error! No sequence specified.", "Fehler! Es wurde keine Folge festgelegt.");
-                Inlines(field.Cached, paragraph);
+                {
+                    // A REF of a caption's bookmark prints the caption's number as Word prints it, not the result saved, before
+                    // the caption as after it (measured with docx/local/refseq-stale: captions saved stale, simple and complex
+                    // fields, arabic and roman: Word's PDF shows "Figure 2" and "Table II" where both saved 1, and its fields read
+                    // so after F9). A bookmark in a text box holds the result saved (see Boxes).
+                    var number = sequences[field] = Sequence(field, counters) ?? T("Error! No sequence specified.", "Fehler! Es wurde keine Folge festgelegt.");
+                    if (shown && !boxed)
+                    {
+                        foreach (var name in open.Values)
+                            bookmarks[name].Text.Append(number);
+                    }
+                    Inlines(field.Cached, paragraph, shown && boxed);
+                    continue;
+                }
+                Inlines(field.Cached, paragraph, shown);
             }
+        }
+        // The text boxes of a drawing where it stands: Word numbers their sequences on from there, a text box's caption among
+        // the body's by its anchor, inline or floating; a REF of a bookmark in one prints the bookmark's text as saved, the
+        // number of a caption's sequence too (measured with docx/local/refseq-boxes: captions in the body, an inline and a
+        // floating box print 1 to 5 where all saved 1, REFs of the boxes' bookmarks "Figure 1" before and after F9). Their
+        // bookmarks hold their own text alone, not the body's around their anchor, nor the body's theirs.
+        void Boxes(List<List<Block>> boxes)
+        {
+            var (outer, wasBoxed) = (open, boxed);
+            (open, boxed) = (new Dictionary<string, string>(StringComparer.Ordinal), true);
+            foreach (var box in boxes)
+                Blocks(box);
+            (open, boxed) = (outer, wasBoxed);
         }
         void Blocks(IEnumerable<Block> list)
         {
@@ -391,14 +429,36 @@ public sealed class FieldEvaluator
     internal FieldEvaluator For(List<Block> blocks, IEnumerable<Block> differing) =>
         differing.Any(Affects) ? new FieldEvaluator(context, blocks) : new FieldEvaluator(this, blocks);
 
-    /// <summary>Whether a block changes what fields read (see For), in its paragraphs and its tables' cells.</summary>
+    /// <summary>Whether a block changes what fields read (see For), in its paragraphs, its tables' cells and its text boxes.</summary>
     bool Affects(Block block) => block switch
     {
-        ParagraphBlock paragraph => paragraph.Content.Any(i => i is BookmarkInline or BookmarkEndInline or FieldInline or NoteReferenceInline)
+        ParagraphBlock paragraph => paragraph.Content.Any(i => i is BookmarkInline or BookmarkEndInline or FieldInline or NoteReferenceInline
+                || BoxesOf(i).Any(box => box.Any(Affects)))
             || covered.Contains(paragraph) || sequences.Count > 0 && paragraph.Format.OutlineLevel is < 9,
         TableBlock table => table.Table.Rows.SelectMany(r => r.Cells).SelectMany(c => c.Blocks).Any(Affects),
         _ => false,
     };
+
+    static readonly List<List<Block>> none = [];
+
+    /// <summary>The text boxes of a drawing, a shape's own and those of the shapes in its group or canvas; none for other inlines.</summary>
+    static List<List<Block>> BoxesOf(Inline inline)
+    {
+        var (text, children) = inline switch
+        {
+            DrawingInline drawing => (drawing.Text, drawing.ChildText),
+            AnchorInline anchor => (anchor.Text, anchor.ChildText),
+            _ => (null, null),
+        };
+        if (text == null && children == null)
+            return none;
+        var boxes = new List<List<Block>>();
+        if (text != null)
+            boxes.Add(text);
+        foreach (var (_, child) in children ?? [])
+            boxes.Add(child);
+        return boxes;
+    }
 
     /// <summary>The fields of the body whose results came out otherwise in the last Update, and the paragraph each stands in.</summary>
     internal IReadOnlyList<FieldInline> Changed => changed;
