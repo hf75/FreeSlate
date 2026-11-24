@@ -259,7 +259,10 @@ public static class HtmlScene
                     foreach (var path in paths.Paths)
                     {
                         var stroke = path.Stroke is { } color ? $" stroke=\"{color.ToHex()}\" stroke-width=\"{Units.Css4(path.StrokeWidth)}\"" : "";
-                        html.Append($"<path d=\"{path.Data}\" fill=\"{path.Fill?.ToHex() ?? "none"}\"{stroke}/>");
+                        if (path.Stroke != null && path.Round)
+                            stroke += " stroke-linejoin=\"round\" stroke-linecap=\"round\"";
+                        var opacity = path.Opacity < 1 ? $" opacity=\"{Units.Css4(path.Opacity)}\"" : "";
+                        html.Append($"<path d=\"{path.Data}\" fill=\"{path.Fill?.ToHex() ?? "none"}\"{stroke}{opacity}/>");
                     }
                     html.Append("</g>");
                     break;

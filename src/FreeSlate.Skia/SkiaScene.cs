@@ -489,6 +489,12 @@ public static class SkiaScene
                         using var shape = SKPath.ParseSvgPathData(path.Data);
                         if (shape == null)
                             continue;
+                        // A motif's tint, drawn see-through as a whole (its fill and its stroke together, as SVG's opacity).
+                        if (path.Opacity < 1)
+                        {
+                            using var layer = new SKPaint { Color = SKColors.Black.WithAlpha((byte)Math.Round(Math.Clamp(path.Opacity, 0, 1) * 255)) };
+                            canvas.SaveLayer(layer);
+                        }
                         if (path.Fill is { } fill)
                         {
                             using var brush = Brush(fill);
@@ -497,8 +503,12 @@ public static class SkiaScene
                         if (path.Stroke is { } stroke)
                         {
                             using var pen = Pen(stroke, (float)path.StrokeWidth);
+                            if (path.Round)
+                                (pen.StrokeJoin, pen.StrokeCap) = (SKStrokeJoin.Round, SKStrokeCap.Round);
                             canvas.DrawPath(shape, pen);
                         }
+                        if (path.Opacity < 1)
+                            canvas.Restore();
                     }
                     canvas.Restore();
                     break;

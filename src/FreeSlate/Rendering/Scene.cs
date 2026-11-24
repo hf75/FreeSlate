@@ -337,7 +337,14 @@ public sealed record LineItem(double X1, double Y1, double X2, double Y2, double
 public sealed record DashesItem(List<(double X1, double Y1, double X2, double Y2)> Dashes, double Width, RgbColor Color) : SceneItem;
 
 /// <summary>A path filled and stroked, its data in points (an art border's shape).</summary>
-public sealed record PathItem(string Data, RgbColor? Fill, RgbColor? Stroke, double StrokeWidth);
+public sealed record PathItem(string Data, RgbColor? Fill, RgbColor? Stroke, double StrokeWidth)
+{
+    /// <summary>How opaque the path is drawn, 1 wholly (an art border's motif's tints).</summary>
+    public double Opacity { get; init; } = 1;
+
+    /// <summary>Whether its strokes join and end round (an art border's drawn motifs) rather than mitred and cut.</summary>
+    public bool Round { get; init; }
+}
 
 /// <summary>Paths in points drawn together (the shapes of an art border).</summary>
 public sealed record PathsItem(List<PathItem> Paths) : SceneItem;

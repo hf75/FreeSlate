@@ -5,17 +5,52 @@ using FreeSlate.Drawing;
 namespace FreeSlate.Docx.Layout;
 
 /// <summary>A shape of an art border: SVG path data in points, its fill and outline.</summary>
-public sealed record ArtShape(string Path, RgbColor? Fill, RgbColor? Stroke, double StrokeWidth);
+public sealed record ArtShape(string Path, RgbColor? Fill, RgbColor? Stroke, double StrokeWidth)
+{
+    /// <summary>How opaque it is drawn (a drawn motif's tint, see ArtMotifs).</summary>
+    public double Opacity { get; init; } = 1;
+
+    /// <summary>Whether its strokes join and end round (a drawn motif's, see ArtMotifs).</summary>
+    public bool Round { get; init; }
+}
 
 /// <summary>
 /// Art page borders (catalog: section.pageBorders) Word draws as tiles of its own pictures, measured with
 /// docx/local/pgb-art, pgb-art2, pgb-art3 and pgb-c (sizes 10 to 31 pt on A4, Letter and A5 landscape): a square tile
 /// of the border's width in each corner and between them on every side as many tiles as fit whole of the picture's
 /// length, stretched to fill the side. The basic borders (dots, dashes, squares, thin and wide lines) are drawn here
-/// from their geometry; Word's other art borders are pictures of its own and are left out.
+/// from their geometry; Word's other art borders are pictures of its own, for which FreeSlate draws motifs of its own in
+/// their spirit (see ArtMotifs), tiled alike.
 /// </summary>
 public static class ArtBorders
 {
+    /// <summary>The names of Word's art borders (ST_Border from apples on, custom aside), whose widths are in points, not eighths.</summary>
+    public static readonly IReadOnlySet<string> Names = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "apples", "archedScallops", "babyPacifier", "babyRattle", "balloons3Colors", "balloonsHotAir", "basicBlackDashes", "basicBlackDots",
+        "basicBlackSquares", "basicThinLines", "basicWhiteDashes", "basicWhiteDots", "basicWhiteSquares", "basicWideInline", "basicWideMidline",
+        "basicWideOutline", "bats", "birds", "birdsFlight", "cabins", "cakeSlice", "candyCorn", "celticKnotwork", "certificateBanner", "chainLink",
+        "champagneBottle", "checkedBarBlack", "checkedBarColor", "checkered", "christmasTree", "circlesLines", "circlesRectangles", "classicalWave",
+        "clocks", "compass", "confetti", "confettiGrays", "confettiOutline", "confettiStreamers", "confettiWhite", "cornerTriangles",
+        "couponCutoutDashes", "couponCutoutDots", "crazyMaze", "creaturesButterfly", "creaturesFish", "creaturesInsects", "creaturesLadyBug",
+        "crossStitch", "cup", "decoArch", "decoArchColor", "decoBlocks", "diamondsGray", "doubleD", "doubleDiamonds", "earth1", "earth2", "earth3",
+        "eclipsingSquares1", "eclipsingSquares2", "eggsBlack", "fans", "film", "firecrackers", "flowersBlockPrint", "flowersDaisies",
+        "flowersModern1", "flowersModern2", "flowersPansy", "flowersRedRose", "flowersRoses", "flowersTeacup", "flowersTiny", "gems",
+        "gingerbreadMan", "gradient", "handmade1", "handmade2", "heartBalloon", "heartGray", "hearts", "heebieJeebies", "holly", "houseFunky",
+        "hypnotic", "iceCreamCones", "lightBulb", "lightning1", "lightning2", "mapPins", "mapleLeaf", "mapleMuffins", "marquee", "marqueeToothed",
+        "moons", "mosaic", "musicNotes", "northwest", "ovals", "packages", "palmsBlack", "palmsColor", "paperClips", "papyrus", "partyFavor",
+        "partyGlass", "pencils", "people", "peopleWaving", "peopleHats", "poinsettias", "postageStamp", "pumpkin1", "pushPinNote2", "pushPinNote1",
+        "pyramids", "pyramidsAbove", "quadrants", "rings", "safari", "sawtooth", "sawtoothGray", "scaredCat", "seattle", "shadowedSquares",
+        "sharksTeeth", "shorebirdTracks", "skyrocket", "snowflakeFancy", "snowflakes", "sombrero", "southwest", "stars", "starsTop", "stars3d",
+        "starsBlack", "starsShadowed", "sun", "swirligig", "tornPaper", "tornPaperBlack", "trees", "triangleParty", "triangles", "triangle1",
+        "triangle2", "triangleCircle1", "triangleCircle2", "shapes1", "shapes2", "twistedLines1", "twistedLines2", "vine", "waveline",
+        "weavingAngles", "weavingBraid", "weavingRibbon", "weavingStrips", "whiteFlowers", "woodwork", "xIllusions", "zanyTriangles", "zigZag",
+        "zigZagStitch"
+    };
+
+    /// <summary>An art border's name as Word writes it, whatever its letters' case; null for no art border's.</summary>
+    public static string? Named(string name) => Names.FirstOrDefault(n => n.Equals(name, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>
     /// The length of a side tile of a basic art border in border widths, horizontal and vertical (from Word's tile
     /// counts at all sizes: the line borders' 4.42 to 4.52 and 5.57 to 5.89).
@@ -47,8 +82,12 @@ public static class ArtBorders
     static Part[] Grown(Part[] parts, double s, double v) =>
         s == 0 && v == 0 ? parts : [.. parts.Select(p => p is Box b ? b with { S0 = b.S0 - s, S1 = b.S1 + s, V0 = b.V0 - v, V1 = b.V1 + v } : p)];
 
-    /// <summary>Whether Word's art border of a style is drawn here.</summary>
-    public static bool Drawn(string style) => Nominal(style) != null;
+    /// <summary>Whether Word's art border of a style is drawn here: from its geometry, or by a motif of FreeSlate's own (see ArtMotifs).</summary>
+    public static bool Drawn(string style) => Nominal(style) != null || ArtMotifs.Of(style) != null;
+
+    /// <summary>The length of a side tile in border widths, horizontal and vertical: a basic border's, a drawn motif's (see ArtMotifs).</summary>
+    static (double Horizontal, double Vertical)? TileLength(string style) =>
+        Nominal(style) ?? (ArtMotifs.Of(style) is { } motif ? (motif.Length, motif.Length) : null);
 
     /// <summary>
     /// A motif in its tile: along (0 to 1, the tile's length) and across (0 at the border's outer edge, 1 at its inner
@@ -107,8 +146,9 @@ public static class ArtBorders
     /// </summary>
     public static void Side(string style, RgbColor color, double width, bool horizontal, bool far, double edge, double from, double to, List<ArtShape> shapes)
     {
-        if (Nominal(style) is not { } nominal || to - from <= 0.01 || width <= 0)
+        if (TileLength(style) is not { } nominal || to - from <= 0.01 || width <= 0)
             return;
+        var motif = Nominal(style) == null ? ArtMotifs.Of(style) : null;
         // As many whole tiles as fit between the corners (a picture's length in whole dots of Word's device and one more:
         // 10 pt 84 dots, 12 pt 101, 16 pt 134), stretched to the side on the device's grid: each tile whole dots long,
         // the first ones a dot shorter than the last ones.
@@ -117,6 +157,15 @@ public static class ArtBorders
         var length = (Math.Floor((horizontal ? nominal.Horizontal : nominal.Vertical) * width / WordDevice.Dot + 1e-6) + 1) * WordDevice.Dot;
         var count = Math.Max(1, (int)Math.Floor((to - from) / length + 1e-9));
         var (shorter, longer) = (dots / count, dots % count);
+        if (motif != null)
+        {
+            for (var k = 0; k < count; k++)
+            {
+                var start = (first + k * shorter + Math.Max(0, k - (count - longer))) * WordDevice.Dot;
+                ArtMotifs.Side(motif, color, width, horizontal, far, edge, start, (shorter + (k >= count - longer ? 1 : 0)) * WordDevice.Dot, shapes);
+            }
+            return;
+        }
         var (side, _) = Motif(style, color, horizontal && far);
         var outward = Far(style);
         if (far)
@@ -137,6 +186,11 @@ public static class ArtBorders
     /// <summary>A corner's tile at the corner where the outer edges <paramref name="x"/> and <paramref name="y"/> meet.</summary>
     public static void Corner(string style, RgbColor color, double width, double x, double y, bool right, bool bottom, List<ArtShape> shapes)
     {
+        if (width > 0 && Nominal(style) == null && ArtMotifs.Of(style) is { } motif)
+        {
+            ArtMotifs.Corner(motif, color, width, x, y, right, bottom, shapes);
+            return;
+        }
         if (Nominal(style) == null || width <= 0)
             return;
         var (_, corner) = Motif(style, color, bottom);

@@ -251,7 +251,8 @@ public sealed partial class PageRenderer(DocumentContext context, Drawings? draw
     {
         Fills(border.Fills, border.Strokes, items);
         if (border.Art.Count > 0)
-            items.Add(new PathsItem(border.Art.Select(shape => new PathItem(shape.Path, shape.Fill, shape.Stroke, shape.StrokeWidth)).ToList()));
+            items.Add(new PathsItem(border.Art.Select(shape => new PathItem(shape.Path, shape.Fill, shape.Stroke, shape.StrokeWidth)
+                { Opacity = shape.Opacity, Round = shape.Round }).ToList()));
     }
 
     /// <summary>Fills, then strokes.</summary>

@@ -121,7 +121,9 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   paragraphs into lines by Word's rules (line heights, spacing, tabs, justification, kinsoku, bidi, vertical text);
   `Layout/TableLayout` sizes and lays out tables; `Layout/Paginator` breaks the body into pages: sections, columns,
   headers and footers, notes, floating objects and text wrapping (`DrawingBox`: a drawing's extent, effect extents,
-  distances and wrapping), page borders (`PageBorders`, `ArtBorders`); `Layout/FieldEvaluator` computes the fields
+  distances and wrapping), page borders (`PageBorders`, `ArtBorders`: Word's art borders tiled as Word tiles its pictures,
+  the basic ones from their geometry, the others as FreeSlate's own motifs in their spirit, `ArtMotifs` from
+  Resources/artMotifs.json); `Layout/FieldEvaluator` computes the fields
   Word recomputes when it prints.
 - `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
