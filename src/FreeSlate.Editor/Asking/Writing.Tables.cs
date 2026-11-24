@@ -67,7 +67,10 @@ sealed partial class Writing
         }
     }
 
-    /// <summary>The tables kept that were not written again taken away, and the paragraphs they waited before.</summary>
+    /// <summary>
+    /// The tables kept that were not written again taken away, and the paragraphs they waited before; one that is the last of the body
+    /// (its table written again before the place, the document's end after it) waits till the place is gone (see Unpark).
+    /// </summary>
     void EndTables()
     {
         foreach (var unused in keptTables.ToList())
@@ -78,11 +81,27 @@ sealed partial class Writing
             }, quiet: true);
         keptTables.Clear();
         foreach (var empty in parking.Where(document.Contains).ToList())
-            Step(() =>
+        {
+            if (Step(() =>
             {
                 document.Remove(empty);
                 return null;
-            }, quiet: true);
+            }, quiet: true))
+                parking.Remove(empty);
+        }
+    }
+
+    /// <summary>
+    /// The paragraphs tables waited before that end the body (see EndTables), once the place is gone: each joined into the paragraph before
+    /// it, as the place's own is (see End); one right after a table stays, as a table cannot end the body.
+    /// </summary>
+    void Unpark()
+    {
+        foreach (var empty in parking.Where(document.Contains).ToList())
+        {
+            if (document.Before(empty) is { } previous)
+                Step(() => new TextPlace(document.Join(previous, backward: true), document.Text(previous).Length), quiet: true);
+        }
         parking.Clear();
     }
 

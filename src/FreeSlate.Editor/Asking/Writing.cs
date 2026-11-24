@@ -638,6 +638,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             if (!removed && document.Before(made) is { } previous && !sectionEnds.Contains(previous) && written.Contains(previous))
                 Step(() => new TextPlace(document.Join(previous, backward: true), document.Text(previous).Length), quiet: true);
         }
+        Unpark();
         // The numbered points written one list with the points they now meet, that place's paragraph gone.
         if (written.Where(document.Contains).Where(p => Levels.Of(document.ParagraphStyle(p)).Numbered).ToList() is { Count: > 0 } numbered)
             Step(() =>
