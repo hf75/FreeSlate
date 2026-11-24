@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Hexagons: the points in hexagons packed like a honeycomb, two rows, the second set half a cell along; each point's text and subpoints in its hexagon. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/hexagons">
+  <dgm:title val="Hexagons"/>
+  <dgm:desc val="Things that belong together, as the cells of a honeycomb."/>
+  <dgm:catLst>
+    <dgm:cat type="list" pri="1100"/>
+    <dgm:cat type="relationship" pri="1200"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="hexagons">
+    <dgm:varLst>
+      <dgm:chMax val="7"/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:choose name="cellCount">
+      <dgm:if name="cells1" axis="ch" ptType="node" func="cnt" op="equ" val="1"><dgm:alg type="composite"><dgm:param type="ar" val="0.866"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="cell1" refType="h" fact="0.8141"/><dgm:constr type="h" for="ch" forName="cell1" refType="h" fact="0.94"/><dgm:constr type="ctrX" for="ch" forName="cell1" refType="h" fact="0.433"/><dgm:constr type="ctrY" for="ch" forName="cell1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="cellText1" refType="h" fact="0.6675"/><dgm:constr type="h" for="ch" forName="cellText1" refType="h" fact="0.5452"/><dgm:constr type="ctrX" for="ch" forName="cellText1" refType="h" fact="0.433"/><dgm:constr type="ctrY" for="ch" forName="cellText1" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="cells2" axis="ch" ptType="node" func="cnt" op="equ" val="2"><dgm:alg type="composite"><dgm:param type="ar" val="1.7321"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="cell1" refType="h" fact="0.8141"/><dgm:constr type="h" for="ch" forName="cell1" refType="h" fact="0.94"/><dgm:constr type="ctrX" for="ch" forName="cell1" refType="h" fact="0.433"/><dgm:constr type="ctrY" for="ch" forName="cell1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="cellText1" refType="h" fact="0.6675"/><dgm:constr type="h" for="ch" forName="cellText1" refType="h" fact="0.5452"/><dgm:constr type="ctrX" for="ch" forName="cellText1" refType="h" fact="0.433"/><dgm:constr type="ctrY" for="ch" forName="cellText1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="cell2" refType="h" fact="0.8141"/><dgm:constr type="h" for="ch" forName="cell2" refType="h" fact="0.94"/><dgm:constr type="ctrX" for="ch" forName="cell2" refType="h" fact="1.299"/><dgm:constr type="ctrY" for="ch" forName="cell2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="cellText2" refType="h" fact="0.6675"/><dgm:constr type="h" for="ch" forName="cellText2" refType="h" fact="0.5452"/><dgm:constr type="ctrX" for="ch" forName="cellText2" refType="h" fact="1.299"/><dgm:constr type="ctrY" for="ch" forName="cellText2" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="cells3" axis="ch" ptType="node" func="cnt" op="equ" val="3"><dgm:alg type="composite"><dgm:param type="ar" val="0.9897"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="cell1" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell1" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cell1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText1" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText1" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cellText1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell2" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell2" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cell2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText2" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText2" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cellText2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell3" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell3" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell3" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cell3" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText3" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText3" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText3" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cellText3" refType="h" fact="0.7143"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="cells4" axis="ch" ptType="node" func="cnt" op="equ" val="4"><dgm:alg type="composite"><dgm:param type="ar" val="1.2372"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="cell1" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell1" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cell1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText1" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText1" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cellText1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell2" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell2" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cell2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText2" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText2" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cellText2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell3" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell3" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell3" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cell3" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText3" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText3" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText3" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cellText3" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cell4" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell4" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell4" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cell4" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText4" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText4" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText4" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cellText4" refType="h" fact="0.7143"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="cells5" axis="ch" ptType="node" func="cnt" op="equ" val="5"><dgm:alg type="composite"><dgm:param type="ar" val="1.4846"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="cell1" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell1" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cell1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText1" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText1" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cellText1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell2" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell2" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cell2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText2" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText2" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cellText2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell3" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell3" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell3" refType="h" fact="1.2372"/><dgm:constr type="ctrY" for="ch" forName="cell3" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText3" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText3" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText3" refType="h" fact="1.2372"/><dgm:constr type="ctrY" for="ch" forName="cellText3" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell4" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell4" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell4" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cell4" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText4" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText4" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText4" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cellText4" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cell5" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell5" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell5" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cell5" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText5" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText5" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText5" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cellText5" refType="h" fact="0.7143"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="cells6" axis="ch" ptType="node" func="cnt" op="equ" val="6"><dgm:alg type="composite"><dgm:param type="ar" val="1.7321"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="cell1" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell1" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cell1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText1" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText1" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cellText1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell2" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell2" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cell2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText2" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText2" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cellText2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell3" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell3" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell3" refType="h" fact="1.2372"/><dgm:constr type="ctrY" for="ch" forName="cell3" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText3" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText3" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText3" refType="h" fact="1.2372"/><dgm:constr type="ctrY" for="ch" forName="cellText3" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell4" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell4" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell4" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cell4" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText4" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText4" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText4" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cellText4" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cell5" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell5" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell5" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cell5" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText5" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText5" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText5" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cellText5" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cell6" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell6" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell6" refType="h" fact="1.4846"/><dgm:constr type="ctrY" for="ch" forName="cell6" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText6" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText6" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText6" refType="h" fact="1.4846"/><dgm:constr type="ctrY" for="ch" forName="cellText6" refType="h" fact="0.7143"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:else name="cells7"><dgm:alg type="composite"><dgm:param type="ar" val="1.9795"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="cell1" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell1" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cell1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText1" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText1" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText1" refType="h" fact="0.2474"/><dgm:constr type="ctrY" for="ch" forName="cellText1" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell2" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell2" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cell2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText2" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText2" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText2" refType="h" fact="0.7423"/><dgm:constr type="ctrY" for="ch" forName="cellText2" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell3" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell3" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell3" refType="h" fact="1.2372"/><dgm:constr type="ctrY" for="ch" forName="cell3" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText3" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText3" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText3" refType="h" fact="1.2372"/><dgm:constr type="ctrY" for="ch" forName="cellText3" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell4" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell4" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell4" refType="h" fact="1.7321"/><dgm:constr type="ctrY" for="ch" forName="cell4" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cellText4" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText4" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText4" refType="h" fact="1.7321"/><dgm:constr type="ctrY" for="ch" forName="cellText4" refType="h" fact="0.2857"/><dgm:constr type="w" for="ch" forName="cell5" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell5" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell5" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cell5" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText5" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText5" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText5" refType="h" fact="0.4949"/><dgm:constr type="ctrY" for="ch" forName="cellText5" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cell6" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell6" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell6" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cell6" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText6" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText6" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText6" refType="h" fact="0.9897"/><dgm:constr type="ctrY" for="ch" forName="cellText6" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cell7" refType="h" fact="0.4652"/><dgm:constr type="h" for="ch" forName="cell7" refType="h" fact="0.5371"/><dgm:constr type="ctrX" for="ch" forName="cell7" refType="h" fact="1.4846"/><dgm:constr type="ctrY" for="ch" forName="cell7" refType="h" fact="0.7143"/><dgm:constr type="w" for="ch" forName="cellText7" refType="h" fact="0.3814"/><dgm:constr type="h" for="ch" forName="cellText7" refType="h" fact="0.3115"/><dgm:constr type="ctrX" for="ch" forName="cellText7" refType="h" fact="1.4846"/><dgm:constr type="ctrY" for="ch" forName="cellText7" refType="h" fact="0.7143"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:else>
+    </dgm:choose>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:ruleLst/>
+    <dgm:forEach name="cellPoint1" axis="ch" ptType="node" st="1" cnt="1">
+      <dgm:layoutNode name="cell1" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="hexagon" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.2887"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="cellText1" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="cellPoint2" axis="ch" ptType="node" st="2" cnt="1">
+      <dgm:layoutNode name="cell2" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="hexagon" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.2887"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="cellText2" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="cellPoint3" axis="ch" ptType="node" st="3" cnt="1">
+      <dgm:layoutNode name="cell3" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="hexagon" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.2887"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="cellText3" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="cellPoint4" axis="ch" ptType="node" st="4" cnt="1">
+      <dgm:layoutNode name="cell4" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="hexagon" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.2887"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="cellText4" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="cellPoint5" axis="ch" ptType="node" st="5" cnt="1">
+      <dgm:layoutNode name="cell5" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="hexagon" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.2887"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="cellText5" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="cellPoint6" axis="ch" ptType="node" st="6" cnt="1">
+      <dgm:layoutNode name="cell6" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="hexagon" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.2887"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="cellText6" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="cellPoint7" axis="ch" ptType="node" st="7" cnt="1">
+      <dgm:layoutNode name="cell7" styleLbl="node1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="hexagon" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.2887"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="cellText7" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

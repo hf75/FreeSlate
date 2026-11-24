@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Vertical chevrons: the points down the left as chevrons pointing down, each reaching into the next, each point's subpoints in a box to its right. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/vchevrons">
+  <dgm:title val="Vertical chevrons"/>
+  <dgm:desc val="Stages one under the other as chevrons pointing down, what belongs to each beside it."/>
+  <dgm:catLst>
+    <dgm:cat type="process" pri="750"/>
+    <dgm:cat type="list" pri="750"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="vchevrons">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="lin"><dgm:param type="linDir" val="fromT"/></dgm:alg>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:choose name="rowHeight">
+      <dgm:if name="tallRows" axis="ch ch" ptType="node node" func="cnt" op="gte" val="1"><dgm:constrLst><dgm:constr type="w" for="ch" forName="row" refType="w"/><dgm:constr type="h" for="ch" forName="row" refType="w" refFor="ch" refForName="row" fact="0.13"/><dgm:constr type="h" for="ch" forName="overlap" refType="h" refFor="ch" refForName="row" fact="-0.19"/><dgm:constr type="primFontSz" for="des" forName="title" op="equ" val="15"/><dgm:constr type="primFontSz" for="des" forName="details" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:else name="lowRows"><dgm:constrLst><dgm:constr type="w" for="ch" forName="row" refType="w"/><dgm:constr type="h" for="ch" forName="row" refType="w" refFor="ch" refForName="row" fact="0.09"/><dgm:constr type="h" for="ch" forName="overlap" refType="h" refFor="ch" refForName="row" fact="-0.19"/><dgm:constr type="primFontSz" for="des" forName="title" op="equ" val="15"/><dgm:constr type="primFontSz" for="des" forName="details" op="equ" val="14"/></dgm:constrLst></dgm:else>
+    </dgm:choose>
+    <dgm:ruleLst/>
+    <dgm:forEach name="rows" axis="ch" ptType="node">
+      <dgm:layoutNode name="row">
+        <dgm:alg type="composite"/>
+        <dgm:shape><dgm:adjLst/></dgm:shape>
+        <dgm:presOf/>
+        <dgm:choose name="rowKind">
+          <dgm:if name="listRow" axis="par ch ch" ptType="doc node node" func="cnt" op="gte" val="1"><dgm:constrLst><dgm:constr type="l" for="ch" forName="anchor" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="anchor" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="anchor" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="anchor" refType="h" fact="1"/><dgm:constr type="l" for="ch" forName="chevron" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="chevron" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="chevron" refType="w" fact="0.22"/><dgm:constr type="h" for="ch" forName="chevron" refType="h" fact="1"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.22"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="0.2068"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.56"/><dgm:constr type="ctrX" for="ch" forName="title" refType="w" fact="0.11"/><dgm:constr type="l" for="ch" forName="details" refType="w" fact="0.245"/><dgm:constr type="t" for="ch" forName="details" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="details" refType="w" fact="0.755"/><dgm:constr type="h" for="ch" forName="details" refType="h" fact="0.77"/></dgm:constrLst></dgm:if>
+          <dgm:else name="plainRow"><dgm:constrLst><dgm:constr type="l" for="ch" forName="anchor" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="anchor" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="anchor" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="anchor" refType="h" fact="1"/><dgm:constr type="t" for="ch" forName="chevron" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="chevron" refType="w" fact="0.46"/><dgm:constr type="h" for="ch" forName="chevron" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="chevron" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.22"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="0.4"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.56"/><dgm:constr type="ctrX" for="ch" forName="title" refType="w" fact="0.5"/></dgm:constrLst></dgm:else>
+        </dgm:choose>
+        <dgm:ruleLst/>
+        <dgm:layoutNode name="anchor">
+          <dgm:alg type="sp"/>
+          <dgm:shape><dgm:adjLst></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+        <dgm:layoutNode name="chevron" styleLbl="node1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="chevron" rot="90"><dgm:adjLst><dgm:adj idx="1" val="0.22"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+        <dgm:layoutNode name="title" styleLbl="node0">
+          <dgm:varLst>
+            <dgm:bulletEnabled val="1"/>
+          </dgm:varLst>
+          <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/></dgm:alg>
+          <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+          <dgm:presOf axis="self"/>
+          <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.15"/></dgm:constrLst>
+          <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+        </dgm:layoutNode>
+        <dgm:choose name="ownDetails">
+          <dgm:if name="hasDetails" axis="ch" ptType="node" func="cnt" op="gte" val="1">
+            <dgm:layoutNode name="details" styleLbl="sibTrans2D1">
+              <dgm:varLst>
+                <dgm:bulletEnabled val="1"/>
+              </dgm:varLst>
+              <dgm:alg type="tx"><dgm:param type="stBulletLvl" val="1"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+              <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.1"/></dgm:adjLst></dgm:shape>
+              <dgm:presOf axis="des" ptType="node"/>
+              <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+              <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+            </dgm:layoutNode>
+          </dgm:if>
+          <dgm:else name="noDetails"/>
+        </dgm:choose>
+      </dgm:layoutNode>
+      <dgm:forEach name="between" axis="followSib" ptType="sibTrans" cnt="1">
+        <dgm:layoutNode name="overlap">
+          <dgm:alg type="sp"/>
+          <dgm:shape><dgm:adjLst></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

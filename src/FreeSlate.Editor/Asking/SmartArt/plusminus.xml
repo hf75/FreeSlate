@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Plus and minus: two points side by side, the first under a plus sign, the second under a minus sign, each point's subpoints listed under its text (pros and cons). FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/plusminus">
+  <dgm:title val="Plus and minus"/>
+  <dgm:desc val="Pros and cons: what speaks for something and what against it."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="1100"/>
+    <dgm:cat type="list" pri="1100"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="plusminus">
+    <dgm:varLst>
+      <dgm:chMax val="2"/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="lin"/>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst><dgm:constr type="w" for="ch" forName="side" refType="w" fact="0.47"/><dgm:constr type="h" for="ch" forName="side" refType="h"/><dgm:constr type="w" for="ch" forName="gap" refType="w" fact="0.06"/><dgm:constr type="primFontSz" for="des" forName="title" op="equ" val="16"/><dgm:constr type="primFontSz" for="des" forName="list" op="equ" val="15"/></dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:forEach name="sides" axis="ch" ptType="node" cnt="2">
+      <dgm:layoutNode name="side">
+        <dgm:alg type="composite"/>
+        <dgm:shape><dgm:adjLst/></dgm:shape>
+        <dgm:presOf/>
+        <dgm:choose name="sideKind">
+          <dgm:if name="listed" axis="par ch ch" ptType="doc node node" func="cnt" op="gte" val="1"><dgm:constrLst><dgm:constr type="t" for="ch" forName="plusSign" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="plusSign" refType="h" fact="0.26"/><dgm:constr type="h" for="ch" forName="plusSign" refType="h" fact="0.26"/><dgm:constr type="ctrX" for="ch" forName="plusSign" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="minusSign" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="minusSign" refType="h" fact="0.26"/><dgm:constr type="h" for="ch" forName="minusSign" refType="h" fact="0.26"/><dgm:constr type="ctrX" for="ch" forName="minusSign" refType="w" fact="0.5"/><dgm:constr type="l" for="ch" forName="title" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.28"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.15"/><dgm:constr type="l" for="ch" forName="list" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="list" refType="h" fact="0.45"/><dgm:constr type="w" for="ch" forName="list" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="list" refType="h" fact="0.55"/></dgm:constrLst></dgm:if>
+          <dgm:else name="unlisted"><dgm:constrLst><dgm:constr type="t" for="ch" forName="plusSign" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="plusSign" refType="h" fact="0.52"/><dgm:constr type="h" for="ch" forName="plusSign" refType="h" fact="0.52"/><dgm:constr type="ctrX" for="ch" forName="plusSign" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="minusSign" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="minusSign" refType="h" fact="0.52"/><dgm:constr type="h" for="ch" forName="minusSign" refType="h" fact="0.52"/><dgm:constr type="ctrX" for="ch" forName="minusSign" refType="w" fact="0.5"/><dgm:constr type="l" for="ch" forName="title" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.56"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.44"/></dgm:constrLst></dgm:else>
+        </dgm:choose>
+        <dgm:ruleLst/>
+        <dgm:choose name="whichSign">
+          <dgm:if name="first" axis="self" ptType="node" func="pos" op="equ" val="1">
+            <dgm:layoutNode name="plusSign" styleLbl="node1">
+              <dgm:alg type="sp"/>
+              <dgm:shape type="mathPlus"><dgm:adjLst><dgm:adj idx="1" val="0.26"/></dgm:adjLst></dgm:shape>
+              <dgm:presOf/>
+              <dgm:constrLst></dgm:constrLst>
+              <dgm:ruleLst/>
+            </dgm:layoutNode>
+          </dgm:if>
+          <dgm:else name="second">
+            <dgm:layoutNode name="minusSign" styleLbl="node1">
+              <dgm:alg type="sp"/>
+              <dgm:shape type="mathMinus"><dgm:adjLst><dgm:adj idx="1" val="0.26"/></dgm:adjLst></dgm:shape>
+              <dgm:presOf/>
+              <dgm:constrLst></dgm:constrLst>
+              <dgm:ruleLst/>
+            </dgm:layoutNode>
+          </dgm:else>
+        </dgm:choose>
+        <dgm:layoutNode name="title" styleLbl="revTx">
+          <dgm:varLst>
+            <dgm:bulletEnabled val="1"/>
+          </dgm:varLst>
+          <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/></dgm:alg>
+          <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+          <dgm:presOf axis="self"/>
+          <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.2"/></dgm:constrLst>
+          <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+        </dgm:layoutNode>
+        <dgm:choose name="listedOrNot">
+          <dgm:if name="hasList" axis="ch" ptType="node" func="cnt" op="gte" val="1">
+            <dgm:layoutNode name="list" styleLbl="sibTrans2D1">
+              <dgm:varLst>
+                <dgm:bulletEnabled val="1"/>
+              </dgm:varLst>
+              <dgm:alg type="tx"><dgm:param type="stBulletLvl" val="1"/><dgm:param type="txAnchorVertCh" val="t"/></dgm:alg>
+              <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.06"/></dgm:adjLst></dgm:shape>
+              <dgm:presOf axis="des" ptType="node"/>
+              <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/></dgm:constrLst>
+              <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+            </dgm:layoutNode>
+          </dgm:if>
+          <dgm:else name="noList"/>
+        </dgm:choose>
+      </dgm:layoutNode>
+      <dgm:choose name="gapAfter">
+        <dgm:if name="afterFirst" axis="self" ptType="node" func="pos" op="equ" val="1">
+          <dgm:forEach name="between" axis="followSib" ptType="sibTrans" cnt="1">
+            <dgm:layoutNode name="gap">
+              <dgm:alg type="sp"/>
+              <dgm:shape><dgm:adjLst></dgm:adjLst></dgm:shape>
+              <dgm:presOf/>
+              <dgm:constrLst></dgm:constrLst>
+              <dgm:ruleLst/>
+            </dgm:layoutNode>
+          </dgm:forEach>
+        </dgm:if>
+        <dgm:else name="afterSecond"/>
+      </dgm:choose>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

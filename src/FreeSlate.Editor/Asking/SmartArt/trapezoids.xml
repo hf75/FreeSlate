@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Trapezoids: the points side by side as trapezoids wider at the bottom, each point's text at the top of its trapezoid and its subpoints below it. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/trapezoids">
+  <dgm:title val="Trapezoids"/>
+  <dgm:desc val="Points side by side as trapezoids, each with its text at the top and its details below."/>
+  <dgm:catLst>
+    <dgm:cat type="list" pri="600"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="trapezoids">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="lin"/>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:choose name="bodySize">
+      <dgm:if name="fewPieces" axis="ch" ptType="node" func="cnt" op="lte" val="4"><dgm:constrLst><dgm:constr type="w" for="ch" forName="piece" refType="w"/><dgm:constr type="h" for="ch" forName="piece" refType="h"/><dgm:constr type="w" for="ch" forName="gap" refType="w" refFor="ch" refForName="piece" fact="0.04"/><dgm:constr type="primFontSz" for="des" forName="title" op="equ" val="15"/><dgm:constr type="primFontSz" for="des" forName="body" op="equ" val="12"/></dgm:constrLst></dgm:if>
+      <dgm:else name="manyPieces"><dgm:constrLst><dgm:constr type="w" for="ch" forName="piece" refType="w"/><dgm:constr type="h" for="ch" forName="piece" refType="h"/><dgm:constr type="w" for="ch" forName="gap" refType="w" refFor="ch" refForName="piece" fact="0.04"/><dgm:constr type="primFontSz" for="des" forName="title" op="equ" val="15"/><dgm:constr type="primFontSz" for="des" forName="body" op="equ" val="11"/></dgm:constrLst></dgm:else>
+    </dgm:choose>
+    <dgm:ruleLst/>
+    <dgm:forEach name="pieces" axis="ch" ptType="node">
+      <dgm:layoutNode name="piece">
+        <dgm:alg type="composite"/>
+        <dgm:shape><dgm:adjLst/></dgm:shape>
+        <dgm:presOf/>
+        <dgm:choose name="withSubpoints">
+          <dgm:if name="detailed" axis="par ch ch" ptType="doc node node" func="cnt" op="gte" val="1"><dgm:choose name="detailedSlant"><dgm:if name="detailedSteep" axis="par ch" ptType="doc node" func="cnt" op="lte" val="4"><dgm:constrLst><dgm:constr type="l" for="ch" forName="slab" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="slab" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="slab" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="slab" refType="h" fact="1"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.05"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="0.62"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.255"/><dgm:constr type="ctrX" for="ch" forName="title" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="rule" refType="h" fact="0.31"/><dgm:constr type="w" for="ch" forName="rule" refType="w" fact="0.36"/><dgm:constr type="h" for="ch" forName="rule" refType="h" fact="0.008"/><dgm:constr type="ctrX" for="ch" forName="rule" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="body" refType="h" fact="0.33"/><dgm:constr type="w" for="ch" forName="body" refType="w" fact="0.732"/><dgm:constr type="h" for="ch" forName="body" refType="h" fact="0.63"/><dgm:constr type="ctrX" for="ch" forName="body" refType="w" fact="0.5"/></dgm:constrLst></dgm:if><dgm:else name="detailedGentle"><dgm:constrLst><dgm:constr type="l" for="ch" forName="slab" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="slab" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="slab" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="slab" refType="h" fact="1"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.05"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="0.734"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.255"/><dgm:constr type="ctrX" for="ch" forName="title" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="rule" refType="h" fact="0.31"/><dgm:constr type="w" for="ch" forName="rule" refType="w" fact="0.36"/><dgm:constr type="h" for="ch" forName="rule" refType="h" fact="0.008"/><dgm:constr type="ctrX" for="ch" forName="rule" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="body" refType="h" fact="0.33"/><dgm:constr type="w" for="ch" forName="body" refType="w" fact="0.8124"/><dgm:constr type="h" for="ch" forName="body" refType="h" fact="0.63"/><dgm:constr type="ctrX" for="ch" forName="body" refType="w" fact="0.5"/></dgm:constrLst></dgm:else></dgm:choose></dgm:if>
+          <dgm:else name="plain"><dgm:choose name="plainSlant"><dgm:if name="plainSteep" axis="par ch" ptType="doc node" func="cnt" op="lte" val="4"><dgm:constrLst><dgm:constr type="l" for="ch" forName="slab" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="slab" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="slab" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="slab" refType="h" fact="1"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.22"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="0.688"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.72"/><dgm:constr type="ctrX" for="ch" forName="title" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="body" refType="h" fact="0.22"/><dgm:constr type="w" for="ch" forName="body" refType="w" fact="0.688"/><dgm:constr type="h" for="ch" forName="body" refType="h" fact="0.72"/><dgm:constr type="ctrX" for="ch" forName="body" refType="w" fact="0.5"/></dgm:constrLst></dgm:if><dgm:else name="plainGentle"><dgm:constrLst><dgm:constr type="l" for="ch" forName="slab" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="slab" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="slab" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="slab" refType="h" fact="1"/><dgm:constr type="t" for="ch" forName="title" refType="h" fact="0.22"/><dgm:constr type="w" for="ch" forName="title" refType="w" fact="0.7816"/><dgm:constr type="h" for="ch" forName="title" refType="h" fact="0.72"/><dgm:constr type="ctrX" for="ch" forName="title" refType="w" fact="0.5"/><dgm:constr type="t" for="ch" forName="body" refType="h" fact="0.22"/><dgm:constr type="w" for="ch" forName="body" refType="w" fact="0.7816"/><dgm:constr type="h" for="ch" forName="body" refType="h" fact="0.72"/><dgm:constr type="ctrX" for="ch" forName="body" refType="w" fact="0.5"/></dgm:constrLst></dgm:else></dgm:choose></dgm:else>
+        </dgm:choose>
+        <dgm:ruleLst/>
+        <dgm:layoutNode name="slab" styleLbl="node1">
+          <dgm:alg type="sp"/>
+          <dgm:choose name="slabSlant"><dgm:if name="slabSteep" axis="par ch" ptType="doc node" func="cnt" op="lte" val="4"><dgm:shape type="trapezoid"><dgm:adjLst><dgm:adj idx="1" val="0.2"/></dgm:adjLst></dgm:shape></dgm:if><dgm:else name="slabGentle"><dgm:shape type="trapezoid"><dgm:adjLst><dgm:adj idx="1" val="0.14"/></dgm:adjLst></dgm:shape></dgm:else></dgm:choose>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+        <dgm:layoutNode name="title" styleLbl="node0">
+          <dgm:varLst>
+            <dgm:bulletEnabled val="1"/>
+          </dgm:varLst>
+          <dgm:choose name="titleAnchor">
+            <dgm:if name="onRule" axis="par ch ch" ptType="doc node node" func="cnt" op="gte" val="1"><dgm:alg type="tx"><dgm:param type="txAnchorVert" val="b"/><dgm:param type="parTxLTRAlign" val="ctr"/></dgm:alg></dgm:if>
+            <dgm:else name="centred"><dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/></dgm:alg></dgm:else>
+          </dgm:choose>
+          <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+          <dgm:presOf axis="self"/>
+          <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.15"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+          <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+        </dgm:layoutNode>
+        <dgm:choose name="ruled">
+          <dgm:if name="underTitle" axis="par ch ch" ptType="doc node node" func="cnt" op="gte" val="1">
+            <dgm:layoutNode name="rule" styleLbl="sibTrans2D1">
+              <dgm:alg type="sp"/>
+              <dgm:shape type="rect"><dgm:adjLst></dgm:adjLst></dgm:shape>
+              <dgm:presOf/>
+              <dgm:constrLst></dgm:constrLst>
+              <dgm:ruleLst/>
+            </dgm:layoutNode>
+          </dgm:if>
+          <dgm:else name="unruled"/>
+        </dgm:choose>
+        <dgm:layoutNode name="body" styleLbl="node0">
+          <dgm:varLst>
+            <dgm:bulletEnabled val="1"/>
+          </dgm:varLst>
+          <dgm:alg type="tx"><dgm:param type="stBulletLvl" val="2"/><dgm:param type="txAnchorVert" val="t"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="lnSpAfParP" val="25"/></dgm:alg>
+          <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+          <dgm:presOf axis="des" ptType="node"/>
+          <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.2"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+          <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+        </dgm:layoutNode>
+      </dgm:layoutNode>
+      <dgm:forEach name="between" axis="followSib" ptType="sibTrans" cnt="1">
+        <dgm:layoutNode name="gap">
+          <dgm:alg type="sp"/>
+          <dgm:shape><dgm:adjLst></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:forEach>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

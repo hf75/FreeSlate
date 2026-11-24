@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Arrow process: a wide light block arrow across the whole graphic, the points as boxes in a row on it, each box holding the point's text and its subpoints. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/arrowprocess">
+  <dgm:title val="Arrow process"/>
+  <dgm:desc val="Steps in a row on one wide arrow, each with its details in its box."/>
+  <dgm:catLst>
+    <dgm:cat type="process" pri="1400"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="arrowprocess">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="composite"/>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:constrLst><dgm:constr type="l" for="ch" forName="track" refType="w" fact="0"/><dgm:constr type="t" for="ch" forName="track" refType="h" fact="0"/><dgm:constr type="w" for="ch" forName="track" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="track" refType="h" fact="1"/><dgm:constr type="l" for="ch" forName="stages" refType="w" fact="0.022"/><dgm:constr type="t" for="ch" forName="stages" refType="h" fact="0.2"/><dgm:constr type="w" for="ch" forName="stages" refType="w" fact="0.82"/><dgm:constr type="h" for="ch" forName="stages" refType="h" fact="0.6"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+    <dgm:ruleLst/>
+    <dgm:layoutNode name="track" styleLbl="sibTrans2D1">
+      <dgm:alg type="sp"/>
+      <dgm:shape type="rightArrow"><dgm:adjLst><dgm:adj idx="1" val="0.76"/><dgm:adj idx="2" val="0.3"/></dgm:adjLst></dgm:shape>
+      <dgm:presOf/>
+      <dgm:constrLst></dgm:constrLst>
+      <dgm:ruleLst/>
+    </dgm:layoutNode>
+    <dgm:layoutNode name="stages">
+      <dgm:alg type="lin"/>
+      <dgm:shape><dgm:adjLst/></dgm:shape>
+      <dgm:presOf/>
+      <dgm:choose name="stagesCount">
+        <dgm:if name="stages1" axis="ch" ptType="node" func="cnt" op="equ" val="1"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="1"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0"/></dgm:constrLst></dgm:if>
+        <dgm:if name="stages2" axis="ch" ptType="node" func="cnt" op="equ" val="2"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.4825"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0.035"/></dgm:constrLst></dgm:if>
+        <dgm:if name="stages3" axis="ch" ptType="node" func="cnt" op="equ" val="3"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.31"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0.035"/></dgm:constrLst></dgm:if>
+        <dgm:if name="stages4" axis="ch" ptType="node" func="cnt" op="equ" val="4"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.2238"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0.035"/></dgm:constrLst></dgm:if>
+        <dgm:if name="stages5" axis="ch" ptType="node" func="cnt" op="equ" val="5"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.1792"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0.026"/></dgm:constrLst></dgm:if>
+        <dgm:if name="stages6" axis="ch" ptType="node" func="cnt" op="equ" val="6"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.145"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0.026"/></dgm:constrLst></dgm:if>
+        <dgm:if name="stages7" axis="ch" ptType="node" func="cnt" op="equ" val="7"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.1206"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0.026"/></dgm:constrLst></dgm:if>
+        <dgm:else name="stages8"><dgm:constrLst><dgm:constr type="w" for="ch" forName="stage" refType="w" fact="0.1023"/><dgm:constr type="h" for="ch" forName="stage" refType="h" fact="1"/><dgm:constr type="w" for="ch" forName="stageGap" refType="w" fact="0.026"/></dgm:constrLst></dgm:else>
+      </dgm:choose>
+      <dgm:ruleLst/>
+      <dgm:forEach name="stagesEach" axis="ch" ptType="node">
+        <dgm:layoutNode name="stage" styleLbl="node1">
+          <dgm:varLst>
+            <dgm:bulletEnabled val="1"/>
+          </dgm:varLst>
+          <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/></dgm:alg>
+          <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.12"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf axis="desOrSelf" ptType="node"/>
+          <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.35"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.35"/></dgm:constrLst>
+          <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+        </dgm:layoutNode>
+        <dgm:forEach name="stageGaps" axis="followSib" ptType="sibTrans" cnt="1">
+          <dgm:layoutNode name="stageGap">
+            <dgm:alg type="sp"/>
+            <dgm:shape><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:forEach>
+    </dgm:layoutNode>
+  </dgm:layoutNode>
+</dgm:layoutDef>

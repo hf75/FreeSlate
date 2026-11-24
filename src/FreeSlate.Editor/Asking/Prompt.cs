@@ -118,7 +118,16 @@ static class Prompt
           to five rings, the first the outer one), gears (one to three gears in mesh), opposing (two arrows pointing apart, for
           two sides), matrix (two to four quadrants), pyramid (levels, the first at the top), inverted (a pyramid on its point,
           the first level widest), org (an organization chart down from each top point, five levels at most), tree (the same from
-          the left). colors: blue, green, orange, violet, rose, teal, gray or colorful. Points of a few words each; width, height,
+          the left), horizontal (a hierarchy of three levels from the left, the first dark, the last light), hexagons (one to seven
+          hexagons in two staggered rows), trapezoids (side by side, each point's subpoints under its title), table (the first point
+          a header across the top, a column under it for each point after it, its subpoints listed in it), vchevrons (one to six
+          chevrons down the left, each point's subpoints in a box beside it), arrowprocess (one to seven boxes on a wide arrow),
+          upward (one to five dots rising along a curved arrow, each point's text beside its dot), continuouscycle (one to eight
+          boxes on a ring with one arrow), segments (one to six segments of a ring), pie (one to six slices of a circle),
+          linearvenn (one to six circles overlapping in a row), funnel (one to five circles dropping into a funnel, the last point
+          the result under it), converging and diverging (the first point in a circle in the middle, the next ones, up to six, in
+          boxes round it, arrows pointing in or out), plusminus (pros and cons: two points, a plus and a minus over the subpoints of
+          each). colors: blue, green, orange, violet, rose, teal, gray or colorful. Points of a few words each; width, height,
           align, float, caption, alt as a graphic's.
         - Formulas in LaTeX: $…$ among the text, $$…$$ on a line of its own (centred): fractions, roots, powers and indices, sums,
           integrals and limits, \left( \right), matrices (pmatrix, bmatrix, cases), \vec, \overline, Greek letters, \text{…}.

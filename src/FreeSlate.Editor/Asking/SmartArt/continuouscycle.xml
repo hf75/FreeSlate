@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Continuous cycle: a light circular arrow, clockwise, and the points as rounded boxes standing on it at equal angles, the first at the top; each point's text and subpoints in its box. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/continuouscycle">
+  <dgm:title val="Continuous cycle"/>
+  <dgm:desc val="Steps that go round and round, as boxes on a circular arrow."/>
+  <dgm:catLst>
+    <dgm:cat type="cycle" pri="1100"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="continuousCycle">
+    <dgm:varLst>
+      <dgm:chMax val="8"/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:choose name="boxCount">
+      <dgm:if name="boxes1" axis="ch" ptType="node" func="cnt" op="equ" val="1">
+        <dgm:alg type="composite"><dgm:param type="ar" val="0.9496"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring1" refType="h" fact="0.9496"/><dgm:constr type="h" for="ch" forName="ring1" refType="h" fact="0.9496"/><dgm:constr type="ctrX" for="ch" forName="ring1" refType="h" fact="0.4748"/><dgm:constr type="ctrY" for="ch" forName="ring1" refType="h" fact="0.5252"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.4622"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.2101"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.4748"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.105"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring1" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="16"/><dgm:adj idx="3" val="219.13"/><dgm:adj idx="4" val="283.348"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:if>
+      <dgm:if name="boxes2" axis="ch" ptType="node" func="cnt" op="equ" val="2">
+        <dgm:alg type="composite"><dgm:param type="ar" val="0.9388"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring2" refType="h" fact="0.9388"/><dgm:constr type="h" for="ch" forName="ring2" refType="h" fact="0.9388"/><dgm:constr type="ctrX" for="ch" forName="ring2" refType="h" fact="0.4694"/><dgm:constr type="ctrY" for="ch" forName="ring2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.4569"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.1692"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.4694"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.0846"/><dgm:constr type="w" for="ch" forName="step2" refType="h" fact="0.4569"/><dgm:constr type="h" for="ch" forName="step2" refType="h" fact="0.1692"/><dgm:constr type="ctrX" for="ch" forName="step2" refType="h" fact="0.4694"/><dgm:constr type="ctrY" for="ch" forName="step2" refType="h" fact="0.9154"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring2" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="16"/><dgm:adj idx="3" val="219.13"/><dgm:adj idx="4" val="283.348"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:if>
+      <dgm:if name="boxes3" axis="ch" ptType="node" func="cnt" op="equ" val="3">
+        <dgm:alg type="composite"><dgm:param type="ar" val="1.1899"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring3" refType="h" fact="0.9496"/><dgm:constr type="h" for="ch" forName="ring3" refType="h" fact="0.9496"/><dgm:constr type="ctrX" for="ch" forName="ring3" refType="h" fact="0.595"/><dgm:constr type="ctrY" for="ch" forName="ring3" refType="h" fact="0.5252"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.4622"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.2101"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.595"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.105"/><dgm:constr type="w" for="ch" forName="step2" refType="h" fact="0.4622"/><dgm:constr type="h" for="ch" forName="step2" refType="h" fact="0.2101"/><dgm:constr type="ctrX" for="ch" forName="step2" refType="h" fact="0.9588"/><dgm:constr type="ctrY" for="ch" forName="step2" refType="h" fact="0.7353"/><dgm:constr type="w" for="ch" forName="step3" refType="h" fact="0.4622"/><dgm:constr type="h" for="ch" forName="step3" refType="h" fact="0.2101"/><dgm:constr type="ctrX" for="ch" forName="step3" refType="h" fact="0.2311"/><dgm:constr type="ctrY" for="ch" forName="step3" refType="h" fact="0.7353"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring3" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="16"/><dgm:adj idx="3" val="219.13"/><dgm:adj idx="4" val="283.348"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:if>
+      <dgm:if name="boxes4" axis="ch" ptType="node" func="cnt" op="equ" val="4">
+        <dgm:alg type="composite"><dgm:param type="ar" val="1.2877"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring4" refType="h" fact="0.9388"/><dgm:constr type="h" for="ch" forName="ring4" refType="h" fact="0.9388"/><dgm:constr type="ctrX" for="ch" forName="ring4" refType="h" fact="0.6438"/><dgm:constr type="ctrY" for="ch" forName="ring4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.4569"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.1692"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.6438"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.0846"/><dgm:constr type="w" for="ch" forName="step2" refType="h" fact="0.4569"/><dgm:constr type="h" for="ch" forName="step2" refType="h" fact="0.1692"/><dgm:constr type="ctrX" for="ch" forName="step2" refType="h" fact="1.0592"/><dgm:constr type="ctrY" for="ch" forName="step2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="step3" refType="h" fact="0.4569"/><dgm:constr type="h" for="ch" forName="step3" refType="h" fact="0.1692"/><dgm:constr type="ctrX" for="ch" forName="step3" refType="h" fact="0.6438"/><dgm:constr type="ctrY" for="ch" forName="step3" refType="h" fact="0.9154"/><dgm:constr type="w" for="ch" forName="step4" refType="h" fact="0.4569"/><dgm:constr type="h" for="ch" forName="step4" refType="h" fact="0.1692"/><dgm:constr type="ctrX" for="ch" forName="step4" refType="h" fact="0.2285"/><dgm:constr type="ctrY" for="ch" forName="step4" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring4" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="16"/><dgm:adj idx="3" val="219.13"/><dgm:adj idx="4" val="283.348"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:if>
+      <dgm:if name="boxes5" axis="ch" ptType="node" func="cnt" op="equ" val="5">
+        <dgm:alg type="composite"><dgm:param type="ar" val="1.2653"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring5" refType="h" fact="0.9734"/><dgm:constr type="h" for="ch" forName="ring5" refType="h" fact="0.9734"/><dgm:constr type="ctrX" for="ch" forName="ring5" refType="h" fact="0.6326"/><dgm:constr type="ctrY" for="ch" forName="ring5" refType="h" fact="0.5133"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.446"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.1652"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.6326"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.0826"/><dgm:constr type="w" for="ch" forName="step2" refType="h" fact="0.446"/><dgm:constr type="h" for="ch" forName="step2" refType="h" fact="0.1652"/><dgm:constr type="ctrX" for="ch" forName="step2" refType="h" fact="1.0423"/><dgm:constr type="ctrY" for="ch" forName="step2" refType="h" fact="0.3802"/><dgm:constr type="w" for="ch" forName="step3" refType="h" fact="0.446"/><dgm:constr type="h" for="ch" forName="step3" refType="h" fact="0.1652"/><dgm:constr type="ctrX" for="ch" forName="step3" refType="h" fact="0.8858"/><dgm:constr type="ctrY" for="ch" forName="step3" refType="h" fact="0.8618"/><dgm:constr type="w" for="ch" forName="step4" refType="h" fact="0.446"/><dgm:constr type="h" for="ch" forName="step4" refType="h" fact="0.1652"/><dgm:constr type="ctrX" for="ch" forName="step4" refType="h" fact="0.3795"/><dgm:constr type="ctrY" for="ch" forName="step4" refType="h" fact="0.8618"/><dgm:constr type="w" for="ch" forName="step5" refType="h" fact="0.446"/><dgm:constr type="h" for="ch" forName="step5" refType="h" fact="0.1652"/><dgm:constr type="ctrX" for="ch" forName="step5" refType="h" fact="0.223"/><dgm:constr type="ctrY" for="ch" forName="step5" refType="h" fact="0.3802"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring5" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="16"/><dgm:adj idx="3" val="221.31"/><dgm:adj idx="4" val="282.476"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:if>
+      <dgm:if name="boxes6" axis="ch" ptType="node" func="cnt" op="equ" val="6">
+        <dgm:alg type="composite"><dgm:param type="ar" val="1.1915"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring6" refType="h" fact="0.9576"/><dgm:constr type="h" for="ch" forName="ring6" refType="h" fact="0.9576"/><dgm:constr type="ctrX" for="ch" forName="ring6" refType="h" fact="0.5958"/><dgm:constr type="ctrY" for="ch" forName="ring6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.4576"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.1525"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.5958"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.0763"/><dgm:constr type="w" for="ch" forName="step2" refType="h" fact="0.4576"/><dgm:constr type="h" for="ch" forName="step2" refType="h" fact="0.1525"/><dgm:constr type="ctrX" for="ch" forName="step2" refType="h" fact="0.9627"/><dgm:constr type="ctrY" for="ch" forName="step2" refType="h" fact="0.2881"/><dgm:constr type="w" for="ch" forName="step3" refType="h" fact="0.4576"/><dgm:constr type="h" for="ch" forName="step3" refType="h" fact="0.1525"/><dgm:constr type="ctrX" for="ch" forName="step3" refType="h" fact="0.9627"/><dgm:constr type="ctrY" for="ch" forName="step3" refType="h" fact="0.7119"/><dgm:constr type="w" for="ch" forName="step4" refType="h" fact="0.4576"/><dgm:constr type="h" for="ch" forName="step4" refType="h" fact="0.1525"/><dgm:constr type="ctrX" for="ch" forName="step4" refType="h" fact="0.5958"/><dgm:constr type="ctrY" for="ch" forName="step4" refType="h" fact="0.9237"/><dgm:constr type="w" for="ch" forName="step5" refType="h" fact="0.4576"/><dgm:constr type="h" for="ch" forName="step5" refType="h" fact="0.1525"/><dgm:constr type="ctrX" for="ch" forName="step5" refType="h" fact="0.2288"/><dgm:constr type="ctrY" for="ch" forName="step5" refType="h" fact="0.7119"/><dgm:constr type="w" for="ch" forName="step6" refType="h" fact="0.4576"/><dgm:constr type="h" for="ch" forName="step6" refType="h" fact="0.1525"/><dgm:constr type="ctrX" for="ch" forName="step6" refType="h" fact="0.2288"/><dgm:constr type="ctrY" for="ch" forName="step6" refType="h" fact="0.2881"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring6" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="8.676"/><dgm:adj idx="3" val="227.134"/><dgm:adj idx="4" val="283.076"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:if>
+      <dgm:if name="boxes7" axis="ch" ptType="node" func="cnt" op="equ" val="7">
+        <dgm:alg type="composite"><dgm:param type="ar" val="1.1228"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring7" refType="h" fact="0.9791"/><dgm:constr type="h" for="ch" forName="ring7" refType="h" fact="0.9791"/><dgm:constr type="ctrX" for="ch" forName="ring7" refType="h" fact="0.5614"/><dgm:constr type="ctrY" for="ch" forName="ring7" refType="h" fact="0.5105"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.2781"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.1545"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.5614"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.0772"/><dgm:constr type="w" for="ch" forName="step2" refType="h" fact="0.2781"/><dgm:constr type="h" for="ch" forName="step2" refType="h" fact="0.1545"/><dgm:constr type="ctrX" for="ch" forName="step2" refType="h" fact="0.9001"/><dgm:constr type="ctrY" for="ch" forName="step2" refType="h" fact="0.2404"/><dgm:constr type="w" for="ch" forName="step3" refType="h" fact="0.2781"/><dgm:constr type="h" for="ch" forName="step3" refType="h" fact="0.1545"/><dgm:constr type="ctrX" for="ch" forName="step3" refType="h" fact="0.9837"/><dgm:constr type="ctrY" for="ch" forName="step3" refType="h" fact="0.6069"/><dgm:constr type="w" for="ch" forName="step4" refType="h" fact="0.2781"/><dgm:constr type="h" for="ch" forName="step4" refType="h" fact="0.1545"/><dgm:constr type="ctrX" for="ch" forName="step4" refType="h" fact="0.7494"/><dgm:constr type="ctrY" for="ch" forName="step4" refType="h" fact="0.9008"/><dgm:constr type="w" for="ch" forName="step5" refType="h" fact="0.2781"/><dgm:constr type="h" for="ch" forName="step5" refType="h" fact="0.1545"/><dgm:constr type="ctrX" for="ch" forName="step5" refType="h" fact="0.3734"/><dgm:constr type="ctrY" for="ch" forName="step5" refType="h" fact="0.9008"/><dgm:constr type="w" for="ch" forName="step6" refType="h" fact="0.2781"/><dgm:constr type="h" for="ch" forName="step6" refType="h" fact="0.1545"/><dgm:constr type="ctrX" for="ch" forName="step6" refType="h" fact="0.139"/><dgm:constr type="ctrY" for="ch" forName="step6" refType="h" fact="0.6069"/><dgm:constr type="w" for="ch" forName="step7" refType="h" fact="0.2781"/><dgm:constr type="h" for="ch" forName="step7" refType="h" fact="0.1545"/><dgm:constr type="ctrX" for="ch" forName="step7" refType="h" fact="0.2227"/><dgm:constr type="ctrY" for="ch" forName="step7" refType="h" fact="0.2404"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring7" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="10.7871"/><dgm:adj idx="3" val="238.9929"/><dgm:adj idx="4" val="277.488"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:if>
+      <dgm:else name="boxes8">
+        <dgm:alg type="composite"><dgm:param type="ar" val="1.1089"/></dgm:alg>
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="ring8" refType="h" fact="0.9762"/><dgm:constr type="h" for="ch" forName="ring8" refType="h" fact="0.9762"/><dgm:constr type="ctrX" for="ch" forName="ring8" refType="h" fact="0.5544"/><dgm:constr type="ctrY" for="ch" forName="ring8" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="step1" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step1" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step1" refType="h" fact="0.5544"/><dgm:constr type="ctrY" for="ch" forName="step1" refType="h" fact="0.068"/><dgm:constr type="w" for="ch" forName="step2" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step2" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step2" refType="h" fact="0.8599"/><dgm:constr type="ctrY" for="ch" forName="step2" refType="h" fact="0.1946"/><dgm:constr type="w" for="ch" forName="step3" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step3" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step3" refType="h" fact="0.9864"/><dgm:constr type="ctrY" for="ch" forName="step3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="step4" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step4" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step4" refType="h" fact="0.8599"/><dgm:constr type="ctrY" for="ch" forName="step4" refType="h" fact="0.8054"/><dgm:constr type="w" for="ch" forName="step5" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step5" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step5" refType="h" fact="0.5544"/><dgm:constr type="ctrY" for="ch" forName="step5" refType="h" fact="0.932"/><dgm:constr type="w" for="ch" forName="step6" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step6" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step6" refType="h" fact="0.249"/><dgm:constr type="ctrY" for="ch" forName="step6" refType="h" fact="0.8054"/><dgm:constr type="w" for="ch" forName="step7" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step7" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step7" refType="h" fact="0.1225"/><dgm:constr type="ctrY" for="ch" forName="step7" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="step8" refType="h" fact="0.245"/><dgm:constr type="h" for="ch" forName="step8" refType="h" fact="0.1361"/><dgm:constr type="ctrX" for="ch" forName="step8" refType="h" fact="0.249"/><dgm:constr type="ctrY" for="ch" forName="step8" refType="h" fact="0.1946"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:layoutNode name="ring8" styleLbl="sibTrans2D1">
+          <dgm:alg type="sp"/>
+          <dgm:shape type="circularArrow"><dgm:adjLst><dgm:adj idx="1" val="0.0332"/><dgm:adj idx="2" val="8.202"/><dgm:adj idx="3" val="243.818"/><dgm:adj idx="4" val="276.592"/><dgm:adj idx="5" val="0.0575"/></dgm:adjLst></dgm:shape>
+          <dgm:presOf/>
+          <dgm:constrLst></dgm:constrLst>
+          <dgm:ruleLst/>
+        </dgm:layoutNode>
+      </dgm:else>
+    </dgm:choose>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:ruleLst/>
+    <dgm:forEach name="stepPoint1" axis="ch" ptType="node" st="1" cnt="1">
+      <dgm:layoutNode name="step1" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="stepPoint2" axis="ch" ptType="node" st="2" cnt="1">
+      <dgm:layoutNode name="step2" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="stepPoint3" axis="ch" ptType="node" st="3" cnt="1">
+      <dgm:layoutNode name="step3" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="stepPoint4" axis="ch" ptType="node" st="4" cnt="1">
+      <dgm:layoutNode name="step4" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="stepPoint5" axis="ch" ptType="node" st="5" cnt="1">
+      <dgm:layoutNode name="step5" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="stepPoint6" axis="ch" ptType="node" st="6" cnt="1">
+      <dgm:layoutNode name="step6" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="stepPoint7" axis="ch" ptType="node" st="7" cnt="1">
+      <dgm:layoutNode name="step7" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="stepPoint8" axis="ch" ptType="node" st="8" cnt="1">
+      <dgm:layoutNode name="step8" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.16"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.25"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

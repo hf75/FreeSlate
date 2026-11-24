@@ -23,7 +23,33 @@ static class SmartArts
 
     /// <summary>The layouts the notation names, each a definition of FreeSlate's own.</summary>
     public static readonly string[] Layouts = ["list", "columns", "blocks", "process", "steps", "chevrons", "bending", "stairs", "timeline", "cycle", "radial", "venn",
-        "equation", "target", "gears", "opposing", "matrix", "pyramid", "inverted", "org", "tree"];
+        "equation", "target", "gears", "opposing", "matrix", "pyramid", "inverted", "org", "tree", "hexagons", "trapezoids", "table", "vchevrons", "arrowprocess",
+        "upward", "continuouscycle", "segments", "pie", "linearvenn", "funnel", "converging", "diverging", "plusminus", "horizontal"];
+
+    /// <summary>The most points a layout shows (a definition draws no more), its first ones where it takes fewer.</summary>
+    static readonly Dictionary<string, (int Least, int Most, string Shows)> Counts = new()
+    {
+        ["venn"] = (1, 4, "a circle for each"),
+        ["matrix"] = (2, 4, "a quadrant for each"),
+        ["timeline"] = (1, 8, "a dot on the arrow for each"),
+        ["target"] = (1, 5, "a ring for each"),
+        ["gears"] = (1, 3, "a gear for each"),
+        ["opposing"] = (2, 2, "an arrow for each"),
+        ["hexagons"] = (1, 7, "a hexagon for each"),
+        ["trapezoids"] = (1, 6, "a trapezoid for each"),
+        ["table"] = (1, 7, "the first the header across the top, a column for each other"),
+        ["vchevrons"] = (1, 6, "a chevron for each"),
+        ["arrowprocess"] = (1, 7, "a box on the arrow for each"),
+        ["upward"] = (1, 5, "a dot on the rising arrow for each"),
+        ["continuouscycle"] = (1, 8, "a box on the ring for each"),
+        ["segments"] = (1, 6, "a segment of the ring for each"),
+        ["pie"] = (1, 6, "a slice for each"),
+        ["linearvenn"] = (1, 6, "a circle in the row for each"),
+        ["funnel"] = (1, 5, "a circle above the funnel for each, the last the result under it"),
+        ["converging"] = (1, 7, "the first in the middle, a box round it for each other"),
+        ["diverging"] = (1, 7, "the first in the middle, a box round it for each other"),
+        ["plusminus"] = (2, 2, "the pros and the cons"),
+    };
 
     /// <summary>The colours of one hue: its shapes, a radial's middle (darker), arrows and lines (light).</summary>
     static readonly Dictionary<string, (string Shape, string Middle, string Light)> Hues = new(StringComparer.OrdinalIgnoreCase)
@@ -67,7 +93,7 @@ static class SmartArts
             "mindmap" or "mind-map" or "horizontal-tree" => "tree",
             "vertical" or "vertical-process" or "down" => "steps",
             "quadrants" or "2x2" => "matrix",
-            "inverted-pyramid" or "funnel" => "inverted",
+            "inverted-pyramid" => "inverted",
             "sum" or "plus" => "equation",
             "table-list" or "horizontal-list" => "columns",
             "snake" or "bending-process" or "rows" => "bending",
@@ -76,6 +102,20 @@ static class SmartArts
             "rings" or "concentric" or "bullseye" or "nested" => "target",
             "gear" or "cogs" or "cogwheels" => "gears",
             "versus" or "vs" or "opposites" or "contrast" => "opposing",
+            "hexagon" or "honeycomb" => "hexagons",
+            "trapezoid" or "trapezoid-list" => "trapezoids",
+            "table-hierarchy" or "header-columns" => "table",
+            "vertical-chevrons" or "chevron-list" => "vchevrons",
+            "arrow-process" or "process-arrow" => "arrowprocess",
+            "upward-arrow" or "growth" => "upward",
+            "continuous-cycle" or "ring" => "continuouscycle",
+            "segmented" or "donut" or "doughnut" => "segments",
+            "pie-chart" or "slices" => "pie",
+            "linear-venn" or "chain" => "linearvenn",
+            "converge" or "converging-radial" or "inward" => "converging",
+            "diverge" or "diverging-radial" or "outward" => "diverging",
+            "pros-cons" or "pros-and-cons" or "plus-minus" or "pro-contra" => "plusminus",
+            "horizontal-hierarchy" or "horizontal-org" => "horizontal",
             var named => named,
         };
         if (!Layouts.Contains(layout))
@@ -95,20 +135,16 @@ static class SmartArts
             if (middle.Children.Count == 0)
                 return new("", [], [], Problem: "A radial smartart holds the middle as its first point and what stands round it as its subpoints (or as the points after it).");
         }
-        if (layout == "venn" && items.Count > 4)
-            return new("", [], [], Problem: "A venn smartart holds one to four points, a circle for each.");
-        if (layout == "matrix" && items.Count > 4)
-            return new("", [], [], Problem: "A matrix smartart holds two to four points, a quadrant for each.");
+        if (Counts.TryGetValue(layout, out var counts) && (items.Count > counts.Most || counts.Least == counts.Most && items.Count != counts.Least))
+        {
+            static string Number(int n) => n switch { 1 => "one", 2 => "two", 3 => "three", 4 => "four", 5 => "five", 6 => "six", 7 => "seven", 8 => "eight", _ => n.ToString(CultureInfo.InvariantCulture) };
+            var range = counts.Least == counts.Most ? Number(counts.Most) : $"{Number(counts.Least)} to {Number(counts.Most)}";
+            return new("", [], [], Problem: $"A{(layout[0] is 'a' or 'e' or 'i' or 'o' or 'u' ? "n" : "")} {layout} smartart holds {range} points, {counts.Shows}.");
+        }
         if (layout is "org" or "tree" && Depth(items) > 5)
             return new("", [], [], Problem: $"An {layout} smartart goes five levels deep at most.");
-        if (layout == "timeline" && items.Count > 8)
-            return new("", [], [], Problem: "A timeline smartart holds one to eight points, a dot on the arrow for each.");
-        if (layout == "target" && items.Count > 5)
-            return new("", [], [], Problem: "A target smartart holds one to five points, a ring for each.");
-        if (layout == "gears" && items.Count > 3)
-            return new("", [], [], Problem: "A gears smartart holds one to three points, a gear for each.");
-        if (layout == "opposing" && items.Count != 2)
-            return new("", [], [], Problem: "An opposing smartart holds two points, an arrow for each.");
+        if (layout == "horizontal" && Depth(items) > 3)
+            return new("", [], [], Problem: "A horizontal smartart goes three levels deep at most.");
         var width = Math.Clamp(Markup.Length(settings.GetValueOrDefault("width"), place.TextWidth) ?? place.TextWidth, 72, place.TextWidth);
         var height = Markup.Length(settings.GetValueOrDefault("height"), place.TextWidth) ?? Height(layout, items, width);
         var (cx, cy) = ((long)Math.Round(width * EmuPerPoint), (long)Math.Round(height * EmuPerPoint));
@@ -252,6 +288,48 @@ static class SmartArts
                 var box = width / (columns + (columns - 1) * 0.08);
                 return Clamp((rows * box * 0.62 + (rows - 1) * box * 0.08) * (deeper ? 1.15 : 1));
             }
+            // The layouts of fixed proportions (a funnel, a rising arrow, hubs whose boxes stand round the middle by their count).
+            case "funnel":
+                return Clamp(width / 1.6);
+            case "upward":
+                return Clamp(width / 1.85);
+            case "converging" or "diverging":
+                return Clamp(width / (n switch { 1 => 2.258, 2 => 2.95, 3 => 4.9, 4 => 1.7, 5 => 2.289, 6 => 1.945, _ => 1.455 }));
+            case "hexagons":
+                return Clamp(width * 0.5);
+            case "pie" or "segments":
+                return Clamp(width * (n <= 5 ? 0.5 : 0.56));
+            case "continuouscycle":
+                return Clamp(width * (n <= 5 ? 0.56 : 0.62));
+            case "linearvenn":
+                // Circles in a row, each over the next by 0.29 of its width: as high as one is wide.
+                return Clamp(width / (n - 0.29 * (n - 1)) * 1.02);
+            case "arrowprocess":
+            {
+                // The boxes 0.6 of the arrow's height, as high as their text needs, the arrow at least its proportions.
+                var lines = items.Max(i => i.Children.Sum(c => Lines(c, width * 0.8 / n)));
+                return Clamp(Math.Max(width * 0.28, (30 + 15 * lines) / 0.6));
+            }
+            case "trapezoids":
+            {
+                var lines = items.Max(i => i.Children.Sum(c => Lines(c, width / n)));
+                return Clamp(deeper ? Math.Max(width * 0.31, 70 + lines * 16) : width * 0.25);
+            }
+            case "table":
+            {
+                // The header across the top, the columns' headings under it, their cells as long as their subpoints.
+                var lines = items.Skip(1).Select(i => i.Children.Sum(c => Lines(c, width / Math.Max(1, n - 1)))).DefaultIfEmpty(0).Max();
+                return Clamp(n == 1 ? 60 : Math.Max(width * 0.34, 116 + lines * 16));
+            }
+            case "vchevrons":
+                // A chevron for each point down the left, each over the next by a little; the subpoints in a box beside it.
+                return Clamp(deeper ? n * width * 0.131 - (n - 1) * width * 0.025 : n * width * 0.078);
+            case "plusminus":
+                return Clamp(85 + items.Max(i => i.Children.Sum(c => Lines(c, width / 2 - 20))) * 24);
+            case "horizontal":
+                // A box's height for each in the fullest column: of three levels flat boxes, of two (wider) taller ones, so that the
+                // tree fills the width.
+                return Clamp(Math.Max(1, Breadth(items)) * width * (Depth(items) <= 2 ? 0.11 : 0.078) + 6);
             default:
             {
                 // A bar of 15-point text for each point, two lines of a little smaller text under it for each with subpoints.
@@ -328,12 +406,13 @@ static class SmartArts
 
     static string Category(string layout) => layout switch
     {
-        "process" or "chevrons" or "steps" or "bending" or "stairs" or "timeline" => "process",
-        "cycle" => "cycle",
-        "radial" or "venn" or "equation" or "target" or "gears" or "opposing" => "relationship",
+        "process" or "chevrons" or "steps" or "bending" or "stairs" or "timeline" or "arrowprocess" or "upward" or "vchevrons" => "process",
+        "cycle" or "continuouscycle" or "segments" => "cycle",
+        "radial" or "venn" or "equation" or "target" or "gears" or "opposing" or "converging" or "diverging" or "funnel" or "linearvenn" or "pie"
+            or "plusminus" => "relationship",
         "pyramid" or "inverted" => "pyramid",
         "matrix" => "matrix",
-        "org" or "tree" => "hierarchy",
+        "org" or "tree" or "horizontal" => "hierarchy",
         _ => "list",
     };
 
@@ -492,7 +571,12 @@ static class SmartArts
     static string Nearest(string id, XElement? definition)
     {
         var last = id[(id.LastIndexOf('/') + 1)..].ToLowerInvariant();
-        foreach (var (part, layout) in new[] { ("chevron", "chevrons"), ("timeline", "timeline"), ("dots", "timeline"), ("stepup", "stairs"), ("bprocess", "bending"),
+        // Word's own that FreeSlate's newer layouts are like first (Word's names: Trichter, Zusammenlaufendes Radial, Fortlaufender Kreis …).
+        foreach (var (part, layout) in new[] { ("funnel", "funnel"), ("hexagon", "hexagons"), ("plusandminus", "plusminus"), ("hlist6", "trapezoids"),
+                     ("hierarchy4", "table"), ("chevron2", "vchevrons"), ("hprocess3", "arrowprocess"), ("arrow2", "upward"), ("arrow5", "converging"),
+                     ("arrow1", "diverging"), ("radial4", "converging"), ("radial5", "diverging"), ("cycle3", "continuouscycle"), ("cycle8", "segments"),
+                     ("chart3", "pie"), ("venn3", "linearvenn"), ("horizontalorganizationchart", "horizontal"), ("horizontalmultilevelhierarchy", "horizontal"),
+                     ("chevron", "chevrons"), ("timeline", "timeline"), ("dots", "timeline"), ("stepup", "stairs"), ("bprocess", "bending"),
                      ("bending", "bending"), ("target", "target"), ("gear", "gears"), ("opposing", "opposing"), ("arrow4", "opposing"), ("arrow6", "opposing"),
                      ("cycle", "cycle"), ("radial", "radial"), ("venn", "venn"), ("pyramid3", "inverted"),
                      ("pyramid", "pyramid"), ("orgchart", "org"), ("hierarchy2", "tree"), ("hierarchy", "org"), ("equation", "equation"), ("matrix", "matrix"),

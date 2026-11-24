@@ -25,11 +25,11 @@
       <dgm:layoutNode name="ring1" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="label1" styleLbl="node1">
+      <dgm:layoutNode name="label1" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>
@@ -44,11 +44,11 @@
       <dgm:layoutNode name="ring2" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="label2" styleLbl="node1">
+      <dgm:layoutNode name="label2" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>
@@ -63,11 +63,11 @@
       <dgm:layoutNode name="ring3" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="label3" styleLbl="node1">
+      <dgm:layoutNode name="label3" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>
@@ -82,11 +82,11 @@
       <dgm:layoutNode name="ring4" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="label4" styleLbl="node1">
+      <dgm:layoutNode name="label4" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>
@@ -101,11 +101,11 @@
       <dgm:layoutNode name="ring5" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="label5" styleLbl="node1">
+      <dgm:layoutNode name="label5" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>

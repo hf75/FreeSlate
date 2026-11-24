@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Pie: a circle cut into equal slices, one for each point, the first from the top clockwise; each point's text in its slice. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/pie">
+  <dgm:title val="Pie"/>
+  <dgm:desc val="Parts of one whole, as the equal slices of a circle."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="1300"/>
+    <dgm:cat type="cycle" pri="1300"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="pie">
+    <dgm:varLst>
+      <dgm:chMax val="6"/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:alg type="composite"><dgm:param type="ar" val="1"/></dgm:alg>
+    <dgm:choose name="sliceCount">
+      <dgm:if name="slices1" axis="ch" ptType="node" func="cnt" op="equ" val="1">
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="slice1of1" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice1of1" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice1of1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice1of1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText1of1" refType="h" fact="0.6664"/><dgm:constr type="h" for="ch" forName="sliceText1of1" refType="h" fact="0.4214"/><dgm:constr type="ctrX" for="ch" forName="sliceText1of1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText1of1" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:forEach name="slicePoint1of1" axis="ch" ptType="node" st="1" cnt="1">
+          <dgm:layoutNode name="slice1of1" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText1of1" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:if>
+      <dgm:if name="slices2" axis="ch" ptType="node" func="cnt" op="equ" val="2">
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="slice1of2" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice1of2" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice1of2" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice1of2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText1of2" refType="h" fact="0.6276"/><dgm:constr type="h" for="ch" forName="sliceText1of2" refType="h" fact="0.3303"/><dgm:constr type="ctrX" for="ch" forName="sliceText1of2" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText1of2" refType="h" fact="0.3147"/><dgm:constr type="w" for="ch" forName="slice2of2" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice2of2" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice2of2" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice2of2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText2of2" refType="h" fact="0.6276"/><dgm:constr type="h" for="ch" forName="sliceText2of2" refType="h" fact="0.3303"/><dgm:constr type="ctrX" for="ch" forName="sliceText2of2" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText2of2" refType="h" fact="0.6853"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:forEach name="slicePoint1of2" axis="ch" ptType="node" st="1" cnt="1">
+          <dgm:layoutNode name="slice1of2" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="180"/><dgm:adj idx="2" val="0"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText1of2" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint2of2" axis="ch" ptType="node" st="2" cnt="1">
+          <dgm:layoutNode name="slice2of2" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="0"/><dgm:adj idx="2" val="180"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText2of2" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:if>
+      <dgm:if name="slices3" axis="ch" ptType="node" func="cnt" op="equ" val="3">
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="slice1of3" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice1of3" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice1of3" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice1of3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText1of3" refType="h" fact="0.488"/><dgm:constr type="h" for="ch" forName="sliceText1of3" refType="h" fact="0.238"/><dgm:constr type="ctrX" for="ch" forName="sliceText1of3" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText1of3" refType="h" fact="0.2175"/><dgm:constr type="w" for="ch" forName="slice2of3" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice2of3" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice2of3" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice2of3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText2of3" refType="h" fact="0.414"/><dgm:constr type="h" for="ch" forName="sliceText2of3" refType="h" fact="0.1656"/><dgm:constr type="ctrX" for="ch" forName="sliceText2of3" refType="h" fact="0.7266"/><dgm:constr type="ctrY" for="ch" forName="sliceText2of3" refType="h" fact="0.598"/><dgm:constr type="w" for="ch" forName="slice3of3" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice3of3" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice3of3" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice3of3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText3of3" refType="h" fact="0.414"/><dgm:constr type="h" for="ch" forName="sliceText3of3" refType="h" fact="0.1656"/><dgm:constr type="ctrX" for="ch" forName="sliceText3of3" refType="h" fact="0.2734"/><dgm:constr type="ctrY" for="ch" forName="sliceText3of3" refType="h" fact="0.598"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:forEach name="slicePoint1of3" axis="ch" ptType="node" st="1" cnt="1">
+          <dgm:layoutNode name="slice1of3" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="210"/><dgm:adj idx="2" val="330"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText1of3" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint2of3" axis="ch" ptType="node" st="2" cnt="1">
+          <dgm:layoutNode name="slice2of3" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="330"/><dgm:adj idx="2" val="90"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText2of3" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint3of3" axis="ch" ptType="node" st="3" cnt="1">
+          <dgm:layoutNode name="slice3of3" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="90"/><dgm:adj idx="2" val="210"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText3of3" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:if>
+      <dgm:if name="slices4" axis="ch" ptType="node" func="cnt" op="equ" val="4">
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="slice1of4" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice1of4" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice1of4" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice1of4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText1of4" refType="h" fact="0.452"/><dgm:constr type="h" for="ch" forName="sliceText1of4" refType="h" fact="0.1586"/><dgm:constr type="ctrX" for="ch" forName="sliceText1of4" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText1of4" refType="h" fact="0.167"/><dgm:constr type="w" for="ch" forName="slice2of4" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice2of4" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice2of4" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice2of4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText2of4" refType="h" fact="0.3596"/><dgm:constr type="h" for="ch" forName="sliceText2of4" refType="h" fact="0.153"/><dgm:constr type="ctrX" for="ch" forName="sliceText2of4" refType="h" fact="0.784"/><dgm:constr type="ctrY" for="ch" forName="sliceText2of4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="slice3of4" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice3of4" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice3of4" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice3of4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText3of4" refType="h" fact="0.452"/><dgm:constr type="h" for="ch" forName="sliceText3of4" refType="h" fact="0.1586"/><dgm:constr type="ctrX" for="ch" forName="sliceText3of4" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText3of4" refType="h" fact="0.833"/><dgm:constr type="w" for="ch" forName="slice4of4" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice4of4" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice4of4" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice4of4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText4of4" refType="h" fact="0.3596"/><dgm:constr type="h" for="ch" forName="sliceText4of4" refType="h" fact="0.153"/><dgm:constr type="ctrX" for="ch" forName="sliceText4of4" refType="h" fact="0.216"/><dgm:constr type="ctrY" for="ch" forName="sliceText4of4" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:forEach name="slicePoint1of4" axis="ch" ptType="node" st="1" cnt="1">
+          <dgm:layoutNode name="slice1of4" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="225"/><dgm:adj idx="2" val="315"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText1of4" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint2of4" axis="ch" ptType="node" st="2" cnt="1">
+          <dgm:layoutNode name="slice2of4" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="315"/><dgm:adj idx="2" val="45"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText2of4" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint3of4" axis="ch" ptType="node" st="3" cnt="1">
+          <dgm:layoutNode name="slice3of4" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="45"/><dgm:adj idx="2" val="135"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText3of4" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint4of4" axis="ch" ptType="node" st="4" cnt="1">
+          <dgm:layoutNode name="slice4of4" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="135"/><dgm:adj idx="2" val="225"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText4of4" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:if>
+      <dgm:if name="slices5" axis="ch" ptType="node" func="cnt" op="equ" val="5">
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="slice1of5" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice1of5" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice1of5" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice1of5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText1of5" refType="h" fact="0.3961"/><dgm:constr type="h" for="ch" forName="sliceText1of5" refType="h" fact="0.12"/><dgm:constr type="ctrX" for="ch" forName="sliceText1of5" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText1of5" refType="h" fact="0.134"/><dgm:constr type="w" for="ch" forName="slice2of5" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice2of5" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice2of5" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice2of5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText2of5" refType="h" fact="0.3466"/><dgm:constr type="h" for="ch" forName="sliceText2of5" refType="h" fact="0.1308"/><dgm:constr type="ctrX" for="ch" forName="sliceText2of5" refType="h" fact="0.7825"/><dgm:constr type="ctrY" for="ch" forName="sliceText2of5" refType="h" fact="0.4495"/><dgm:constr type="w" for="ch" forName="slice3of5" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice3of5" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice3of5" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice3of5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText3of5" refType="h" fact="0.3498"/><dgm:constr type="h" for="ch" forName="sliceText3of5" refType="h" fact="0.1488"/><dgm:constr type="ctrX" for="ch" forName="sliceText3of5" refType="h" fact="0.6952"/><dgm:constr type="ctrY" for="ch" forName="sliceText3of5" refType="h" fact="0.7159"/><dgm:constr type="w" for="ch" forName="slice4of5" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice4of5" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice4of5" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice4of5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText4of5" refType="h" fact="0.3498"/><dgm:constr type="h" for="ch" forName="sliceText4of5" refType="h" fact="0.1488"/><dgm:constr type="ctrX" for="ch" forName="sliceText4of5" refType="h" fact="0.3048"/><dgm:constr type="ctrY" for="ch" forName="sliceText4of5" refType="h" fact="0.7159"/><dgm:constr type="w" for="ch" forName="slice5of5" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice5of5" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice5of5" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice5of5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText5of5" refType="h" fact="0.3466"/><dgm:constr type="h" for="ch" forName="sliceText5of5" refType="h" fact="0.1308"/><dgm:constr type="ctrX" for="ch" forName="sliceText5of5" refType="h" fact="0.2175"/><dgm:constr type="ctrY" for="ch" forName="sliceText5of5" refType="h" fact="0.4495"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:forEach name="slicePoint1of5" axis="ch" ptType="node" st="1" cnt="1">
+          <dgm:layoutNode name="slice1of5" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="234"/><dgm:adj idx="2" val="306"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText1of5" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint2of5" axis="ch" ptType="node" st="2" cnt="1">
+          <dgm:layoutNode name="slice2of5" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="306"/><dgm:adj idx="2" val="18"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText2of5" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint3of5" axis="ch" ptType="node" st="3" cnt="1">
+          <dgm:layoutNode name="slice3of5" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="18"/><dgm:adj idx="2" val="90"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText3of5" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint4of5" axis="ch" ptType="node" st="4" cnt="1">
+          <dgm:layoutNode name="slice4of5" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="90"/><dgm:adj idx="2" val="162"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText4of5" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint5of5" axis="ch" ptType="node" st="5" cnt="1">
+          <dgm:layoutNode name="slice5of5" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="162"/><dgm:adj idx="2" val="234"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText5of5" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:if>
+      <dgm:else name="slices6">
+        <dgm:constrLst><dgm:constr type="w" for="ch" forName="slice1of6" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice1of6" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice1of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice1of6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText1of6" refType="h" fact="0.2976"/><dgm:constr type="h" for="ch" forName="sliceText1of6" refType="h" fact="0.1488"/><dgm:constr type="ctrX" for="ch" forName="sliceText1of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText1of6" refType="h" fact="0.1287"/><dgm:constr type="w" for="ch" forName="slice2of6" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice2of6" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice2of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice2of6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText2of6" refType="h" fact="0.312"/><dgm:constr type="h" for="ch" forName="sliceText2of6" refType="h" fact="0.156"/><dgm:constr type="ctrX" for="ch" forName="sliceText2of6" refType="h" fact="0.7802"/><dgm:constr type="ctrY" for="ch" forName="sliceText2of6" refType="h" fact="0.402"/><dgm:constr type="w" for="ch" forName="slice3of6" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice3of6" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice3of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice3of6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText3of6" refType="h" fact="0.312"/><dgm:constr type="h" for="ch" forName="sliceText3of6" refType="h" fact="0.156"/><dgm:constr type="ctrX" for="ch" forName="sliceText3of6" refType="h" fact="0.7802"/><dgm:constr type="ctrY" for="ch" forName="sliceText3of6" refType="h" fact="0.598"/><dgm:constr type="w" for="ch" forName="slice4of6" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice4of6" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice4of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice4of6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText4of6" refType="h" fact="0.2976"/><dgm:constr type="h" for="ch" forName="sliceText4of6" refType="h" fact="0.1488"/><dgm:constr type="ctrX" for="ch" forName="sliceText4of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="sliceText4of6" refType="h" fact="0.8713"/><dgm:constr type="w" for="ch" forName="slice5of6" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice5of6" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice5of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice5of6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText5of6" refType="h" fact="0.312"/><dgm:constr type="h" for="ch" forName="sliceText5of6" refType="h" fact="0.156"/><dgm:constr type="ctrX" for="ch" forName="sliceText5of6" refType="h" fact="0.2198"/><dgm:constr type="ctrY" for="ch" forName="sliceText5of6" refType="h" fact="0.598"/><dgm:constr type="w" for="ch" forName="slice6of6" refType="h" fact="0.98"/><dgm:constr type="h" for="ch" forName="slice6of6" refType="h" fact="0.98"/><dgm:constr type="ctrX" for="ch" forName="slice6of6" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="slice6of6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="sliceText6of6" refType="h" fact="0.312"/><dgm:constr type="h" for="ch" forName="sliceText6of6" refType="h" fact="0.156"/><dgm:constr type="ctrX" for="ch" forName="sliceText6of6" refType="h" fact="0.2198"/><dgm:constr type="ctrY" for="ch" forName="sliceText6of6" refType="h" fact="0.402"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst>
+        <dgm:forEach name="slicePoint1of6" axis="ch" ptType="node" st="1" cnt="1">
+          <dgm:layoutNode name="slice1of6" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="240"/><dgm:adj idx="2" val="300"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText1of6" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint2of6" axis="ch" ptType="node" st="2" cnt="1">
+          <dgm:layoutNode name="slice2of6" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="300"/><dgm:adj idx="2" val="0"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText2of6" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint3of6" axis="ch" ptType="node" st="3" cnt="1">
+          <dgm:layoutNode name="slice3of6" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="0"/><dgm:adj idx="2" val="60"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText3of6" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint4of6" axis="ch" ptType="node" st="4" cnt="1">
+          <dgm:layoutNode name="slice4of6" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="60"/><dgm:adj idx="2" val="120"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText4of6" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint5of6" axis="ch" ptType="node" st="5" cnt="1">
+          <dgm:layoutNode name="slice5of6" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="120"/><dgm:adj idx="2" val="180"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText5of6" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+        <dgm:forEach name="slicePoint6of6" axis="ch" ptType="node" st="6" cnt="1">
+          <dgm:layoutNode name="slice6of6" styleLbl="node1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="pie"><dgm:adjLst><dgm:adj idx="1" val="180"/><dgm:adj idx="2" val="240"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+          <dgm:layoutNode name="sliceText6of6" styleLbl="node1">
+            <dgm:varLst>
+              <dgm:bulletEnabled val="1"/>
+            </dgm:varLst>
+            <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+            <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+            <dgm:presOf axis="desOrSelf" ptType="node"/>
+            <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+            <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+          </dgm:layoutNode>
+        </dgm:forEach>
+      </dgm:else>
+    </dgm:choose>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:ruleLst/>
+  </dgm:layoutNode>
+</dgm:layoutDef>

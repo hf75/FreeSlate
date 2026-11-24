@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Linear venn: the points as see-through circles in a row, each overlapping the next, each point's text in the middle of its circle. FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/linearvenn">
+  <dgm:title val="Overlapping row"/>
+  <dgm:desc val="Steps or parts that overlap one another, see-through circles in a row."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="1100"/>
+    <dgm:cat type="process" pri="1300"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="linearVenn">
+    <dgm:varLst>
+      <dgm:chMax val="6"/>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:choose name="circleCount">
+      <dgm:if name="circles1" axis="ch" ptType="node" func="cnt" op="equ" val="1"><dgm:alg type="composite"><dgm:param type="ar" val="1"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText1" refType="h" fact="0.74"/><dgm:constr type="h" for="ch" forName="circleText1" refType="h" fact="0.62"/><dgm:constr type="ctrX" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="circles2" axis="ch" ptType="node" func="cnt" op="equ" val="2"><dgm:alg type="composite"><dgm:param type="ar" val="1.72"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText1" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText1" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circle2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText2" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText2" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circleText2" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="circles3" axis="ch" ptType="node" func="cnt" op="equ" val="3"><dgm:alg type="composite"><dgm:param type="ar" val="2.44"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText1" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText1" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circle2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText2" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText2" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circleText2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circle3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText3" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText3" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circleText3" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="circles4" axis="ch" ptType="node" func="cnt" op="equ" val="4"><dgm:alg type="composite"><dgm:param type="ar" val="3.16"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText1" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText1" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circle2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText2" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText2" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circleText2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circle3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText3" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText3" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circleText3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle4" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle4" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle4" refType="h" fact="2.66"/><dgm:constr type="ctrY" for="ch" forName="circle4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText4" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText4" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText4" refType="h" fact="2.66"/><dgm:constr type="ctrY" for="ch" forName="circleText4" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="circles5" axis="ch" ptType="node" func="cnt" op="equ" val="5"><dgm:alg type="composite"><dgm:param type="ar" val="3.88"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText1" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText1" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circle2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText2" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText2" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circleText2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circle3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText3" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText3" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circleText3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle4" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle4" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle4" refType="h" fact="2.66"/><dgm:constr type="ctrY" for="ch" forName="circle4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText4" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText4" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText4" refType="h" fact="2.66"/><dgm:constr type="ctrY" for="ch" forName="circleText4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle5" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle5" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle5" refType="h" fact="3.38"/><dgm:constr type="ctrY" for="ch" forName="circle5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText5" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText5" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText5" refType="h" fact="3.38"/><dgm:constr type="ctrY" for="ch" forName="circleText5" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:else name="circles6"><dgm:alg type="composite"><dgm:param type="ar" val="4.6"/></dgm:alg><dgm:constrLst><dgm:constr type="w" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle1" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circle1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText1" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText1" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="ctrY" for="ch" forName="circleText1" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle2" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circle2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText2" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText2" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText2" refType="h" fact="1.22"/><dgm:constr type="ctrY" for="ch" forName="circleText2" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle3" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circle3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText3" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText3" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText3" refType="h" fact="1.94"/><dgm:constr type="ctrY" for="ch" forName="circleText3" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle4" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle4" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle4" refType="h" fact="2.66"/><dgm:constr type="ctrY" for="ch" forName="circle4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText4" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText4" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText4" refType="h" fact="2.66"/><dgm:constr type="ctrY" for="ch" forName="circleText4" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle5" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle5" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle5" refType="h" fact="3.38"/><dgm:constr type="ctrY" for="ch" forName="circle5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText5" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText5" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText5" refType="h" fact="3.38"/><dgm:constr type="ctrY" for="ch" forName="circleText5" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circle6" refType="h" fact="1"/><dgm:constr type="h" for="ch" forName="circle6" refType="h" fact="1"/><dgm:constr type="ctrX" for="ch" forName="circle6" refType="h" fact="4.1"/><dgm:constr type="ctrY" for="ch" forName="circle6" refType="h" fact="0.5"/><dgm:constr type="w" for="ch" forName="circleText6" refType="h" fact="0.6624"/><dgm:constr type="h" for="ch" forName="circleText6" refType="h" fact="0.6"/><dgm:constr type="ctrX" for="ch" forName="circleText6" refType="h" fact="4.1"/><dgm:constr type="ctrY" for="ch" forName="circleText6" refType="h" fact="0.5"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:else>
+    </dgm:choose>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:ruleLst/>
+    <dgm:forEach name="circlePoint1" axis="ch" ptType="node" st="1" cnt="1">
+      <dgm:layoutNode name="circle1" styleLbl="vennNode1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="circlePoint2" axis="ch" ptType="node" st="2" cnt="1">
+      <dgm:layoutNode name="circle2" styleLbl="vennNode1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="circlePoint3" axis="ch" ptType="node" st="3" cnt="1">
+      <dgm:layoutNode name="circle3" styleLbl="vennNode1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="circlePoint4" axis="ch" ptType="node" st="4" cnt="1">
+      <dgm:layoutNode name="circle4" styleLbl="vennNode1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="circlePoint5" axis="ch" ptType="node" st="5" cnt="1">
+      <dgm:layoutNode name="circle5" styleLbl="vennNode1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="circlePoint6" axis="ch" ptType="node" st="6" cnt="1">
+      <dgm:layoutNode name="circle6" styleLbl="vennNode1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="textPoint1" axis="ch" ptType="node" st="1" cnt="1">
+      <dgm:layoutNode name="circleText1" styleLbl="revTx">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="textPoint2" axis="ch" ptType="node" st="2" cnt="1">
+      <dgm:layoutNode name="circleText2" styleLbl="revTx">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="textPoint3" axis="ch" ptType="node" st="3" cnt="1">
+      <dgm:layoutNode name="circleText3" styleLbl="revTx">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="textPoint4" axis="ch" ptType="node" st="4" cnt="1">
+      <dgm:layoutNode name="circleText4" styleLbl="revTx">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="textPoint5" axis="ch" ptType="node" st="5" cnt="1">
+      <dgm:layoutNode name="circleText5" styleLbl="revTx">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="textPoint6" axis="ch" ptType="node" st="6" cnt="1">
+      <dgm:layoutNode name="circleText6" styleLbl="revTx">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="shpTxLTRAlignCh" val="ctr"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

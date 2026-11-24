@@ -24,11 +24,11 @@
       <dgm:layoutNode name="gear1" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="gear9"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="gearText1" styleLbl="node1">
+      <dgm:layoutNode name="gearText1" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>
@@ -43,11 +43,11 @@
       <dgm:layoutNode name="gear2" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="gear6"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="gearText2" styleLbl="node1">
+      <dgm:layoutNode name="gearText2" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>
@@ -62,11 +62,11 @@
       <dgm:layoutNode name="gear3" styleLbl="node1">
         <dgm:alg type="sp"/>
         <dgm:shape type="gear6"><dgm:adjLst></dgm:adjLst></dgm:shape>
-        <dgm:presOf axis="self"/>
+        <dgm:presOf/>
         <dgm:constrLst></dgm:constrLst>
         <dgm:ruleLst/>
       </dgm:layoutNode>
-      <dgm:layoutNode name="gearText3" styleLbl="node1">
+      <dgm:layoutNode name="gearText3" styleLbl="node0">
         <dgm:varLst>
           <dgm:bulletEnabled val="1"/>
         </dgm:varLst>

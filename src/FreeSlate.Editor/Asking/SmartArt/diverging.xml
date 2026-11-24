@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Diverging: the first point in a circle in the middle, the others round it in boxes, each with a block arrow pointing out from the middle to it; a point's subpoints listed in its box (the first point's in the circle). FreeSlate's own definition (see SmartArts). -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" uniqueId="urn:freeslate.app/smartart/layout/diverging">
+  <dgm:title val="Diverging"/>
+  <dgm:desc val="One thing that leads out to several, arrows pointing out from the middle."/>
+  <dgm:catLst>
+    <dgm:cat type="relationship" pri="1210"/>
+    <dgm:cat type="cycle" pri="1210"/>
+  </dgm:catLst>
+  <dgm:layoutNode name="diverging">
+    <dgm:varLst>
+      <dgm:resizeHandles val="exact"/>
+    </dgm:varLst>
+    <dgm:choose name="divergingShape">
+      <dgm:if name="divergingRatio1" axis="ch" ptType="node" func="cnt" op="equ" val="1"><dgm:alg type="composite"><dgm:param type="ar" val="2.2581"/></dgm:alg></dgm:if>
+      <dgm:if name="divergingRatio2" axis="ch" ptType="node" func="cnt" op="equ" val="2"><dgm:alg type="composite"><dgm:param type="ar" val="2.95"/></dgm:alg></dgm:if>
+      <dgm:if name="divergingRatio3" axis="ch" ptType="node" func="cnt" op="equ" val="3"><dgm:alg type="composite"><dgm:param type="ar" val="4.9"/></dgm:alg></dgm:if>
+      <dgm:if name="divergingRatio4" axis="ch" ptType="node" func="cnt" op="equ" val="4"><dgm:alg type="composite"><dgm:param type="ar" val="1.6995"/></dgm:alg></dgm:if>
+      <dgm:if name="divergingRatio5" axis="ch" ptType="node" func="cnt" op="equ" val="5"><dgm:alg type="composite"><dgm:param type="ar" val="2.289"/></dgm:alg></dgm:if>
+      <dgm:if name="divergingRatio6" axis="ch" ptType="node" func="cnt" op="equ" val="6"><dgm:alg type="composite"><dgm:param type="ar" val="1.945"/></dgm:alg></dgm:if>
+      <dgm:else name="divergingRatio7"><dgm:alg type="composite"><dgm:param type="ar" val="1.4552"/></dgm:alg></dgm:else>
+    </dgm:choose>
+    <dgm:shape><dgm:adjLst/></dgm:shape>
+    <dgm:presOf/>
+    <dgm:choose name="divergingCount">
+      <dgm:if name="divergingCount1" axis="ch" ptType="node" func="cnt" op="equ" val="1"><dgm:constrLst><dgm:constr type="w" for="ch" forName="hub" refType="h" fact="0.86"/><dgm:constr type="h" for="ch" forName="hub" refType="h" fact="0.86"/><dgm:constr type="ctrX" for="ch" forName="hub" refType="h" fact="1.1279"/><dgm:constr type="ctrY" for="ch" forName="hub" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="hubText" refType="h" fact="0.688"/><dgm:constr type="h" for="ch" forName="hubText" refType="h" fact="0.4816"/><dgm:constr type="ctrX" for="ch" forName="hubText" refType="h" fact="1.1279"/><dgm:constr type="ctrY" for="ch" forName="hubText" refType="h" fact="0.4995"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="divergingCount2" axis="ch" ptType="node" func="cnt" op="equ" val="2"><dgm:constrLst><dgm:constr type="w" for="ch" forName="hub" refType="h" fact="0.999"/><dgm:constr type="h" for="ch" forName="hub" refType="h" fact="0.999"/><dgm:constr type="ctrX" for="ch" forName="hub" refType="h" fact="0.5005"/><dgm:constr type="ctrY" for="ch" forName="hub" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="hubText" refType="h" fact="0.7992"/><dgm:constr type="h" for="ch" forName="hubText" refType="h" fact="0.5594"/><dgm:constr type="ctrX" for="ch" forName="hubText" refType="h" fact="0.5005"/><dgm:constr type="ctrY" for="ch" forName="hubText" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="spoke2" refType="h" fact="1.2987"/><dgm:constr type="h" for="ch" forName="spoke2" refType="h" fact="0.8991"/><dgm:constr type="ctrX" for="ch" forName="spoke2" refType="h" fact="2.2969"/><dgm:constr type="ctrY" for="ch" forName="spoke2" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="arrow2of2" refType="h" fact="0.4895"/><dgm:constr type="h" for="ch" forName="arrow2of2" refType="h" fact="0.2997"/><dgm:constr type="ctrX" for="ch" forName="arrow2of2" refType="h" fact="1.3238"/><dgm:constr type="ctrY" for="ch" forName="arrow2of2" refType="h" fact="0.4995"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="divergingCount3" axis="ch" ptType="node" func="cnt" op="equ" val="3"><dgm:constrLst><dgm:constr type="w" for="ch" forName="hub" refType="h" fact="0.999"/><dgm:constr type="h" for="ch" forName="hub" refType="h" fact="0.999"/><dgm:constr type="ctrX" for="ch" forName="hub" refType="h" fact="2.4476"/><dgm:constr type="ctrY" for="ch" forName="hub" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="hubText" refType="h" fact="0.7992"/><dgm:constr type="h" for="ch" forName="hubText" refType="h" fact="0.5594"/><dgm:constr type="ctrX" for="ch" forName="hubText" refType="h" fact="2.4476"/><dgm:constr type="ctrY" for="ch" forName="hubText" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="spoke2" refType="h" fact="1.2987"/><dgm:constr type="h" for="ch" forName="spoke2" refType="h" fact="0.8991"/><dgm:constr type="ctrX" for="ch" forName="spoke2" refType="h" fact="0.6512"/><dgm:constr type="ctrY" for="ch" forName="spoke2" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="spoke3" refType="h" fact="1.2987"/><dgm:constr type="h" for="ch" forName="spoke3" refType="h" fact="0.8991"/><dgm:constr type="ctrX" for="ch" forName="spoke3" refType="h" fact="4.244"/><dgm:constr type="ctrY" for="ch" forName="spoke3" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="arrow2of3" refType="h" fact="0.4895"/><dgm:constr type="h" for="ch" forName="arrow2of3" refType="h" fact="0.2997"/><dgm:constr type="ctrX" for="ch" forName="arrow2of3" refType="h" fact="1.6242"/><dgm:constr type="ctrY" for="ch" forName="arrow2of3" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="arrow3of3" refType="h" fact="0.4895"/><dgm:constr type="h" for="ch" forName="arrow3of3" refType="h" fact="0.2997"/><dgm:constr type="ctrX" for="ch" forName="arrow3of3" refType="h" fact="3.2709"/><dgm:constr type="ctrY" for="ch" forName="arrow3of3" refType="h" fact="0.4995"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="divergingCount4" axis="ch" ptType="node" func="cnt" op="equ" val="4"><dgm:constrLst><dgm:constr type="w" for="ch" forName="hub" refType="h" fact="0.3549"/><dgm:constr type="h" for="ch" forName="hub" refType="h" fact="0.3549"/><dgm:constr type="ctrX" for="ch" forName="hub" refType="h" fact="0.8489"/><dgm:constr type="ctrY" for="ch" forName="hub" refType="h" fact="0.628"/><dgm:constr type="w" for="ch" forName="hubText" refType="h" fact="0.2839"/><dgm:constr type="h" for="ch" forName="hubText" refType="h" fact="0.1987"/><dgm:constr type="ctrX" for="ch" forName="hubText" refType="h" fact="0.8489"/><dgm:constr type="ctrY" for="ch" forName="hubText" refType="h" fact="0.628"/><dgm:constr type="w" for="ch" forName="spoke2" refType="h" fact="0.4684"/><dgm:constr type="h" for="ch" forName="spoke2" refType="h" fact="0.2271"/><dgm:constr type="ctrX" for="ch" forName="spoke2" refType="h" fact="0.8489"/><dgm:constr type="ctrY" for="ch" forName="spoke2" refType="h" fact="0.1139"/><dgm:constr type="w" for="ch" forName="spoke3" refType="h" fact="0.4684"/><dgm:constr type="h" for="ch" forName="spoke3" refType="h" fact="0.2271"/><dgm:constr type="ctrX" for="ch" forName="spoke3" refType="h" fact="1.463"/><dgm:constr type="ctrY" for="ch" forName="spoke3" refType="h" fact="0.8851"/><dgm:constr type="w" for="ch" forName="spoke4" refType="h" fact="0.4684"/><dgm:constr type="h" for="ch" forName="spoke4" refType="h" fact="0.2271"/><dgm:constr type="ctrX" for="ch" forName="spoke4" refType="h" fact="0.2348"/><dgm:constr type="ctrY" for="ch" forName="spoke4" refType="h" fact="0.8851"/><dgm:constr type="w" for="ch" forName="arrow2of4" refType="h" fact="0.1065"/><dgm:constr type="h" for="ch" forName="arrow2of4" refType="h" fact="0.1668"/><dgm:constr type="ctrX" for="ch" forName="arrow2of4" refType="h" fact="0.8489"/><dgm:constr type="ctrY" for="ch" forName="arrow2of4" refType="h" fact="0.3391"/><dgm:constr type="w" for="ch" forName="arrow3of4" refType="h" fact="0.2055"/><dgm:constr type="h" for="ch" forName="arrow3of4" refType="h" fact="0.167"/><dgm:constr type="ctrX" for="ch" forName="arrow3of4" refType="h" fact="1.1207"/><dgm:constr type="ctrY" for="ch" forName="arrow3of4" refType="h" fact="0.7418"/><dgm:constr type="w" for="ch" forName="arrow4of4" refType="h" fact="0.2055"/><dgm:constr type="h" for="ch" forName="arrow4of4" refType="h" fact="0.167"/><dgm:constr type="ctrX" for="ch" forName="arrow4of4" refType="h" fact="0.5771"/><dgm:constr type="ctrY" for="ch" forName="arrow4of4" refType="h" fact="0.7418"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="divergingCount5" axis="ch" ptType="node" func="cnt" op="equ" val="5"><dgm:constrLst><dgm:constr type="w" for="ch" forName="hub" refType="h" fact="0.478"/><dgm:constr type="h" for="ch" forName="hub" refType="h" fact="0.478"/><dgm:constr type="ctrX" for="ch" forName="hub" refType="h" fact="1.1434"/><dgm:constr type="ctrY" for="ch" forName="hub" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="hubText" refType="h" fact="0.3824"/><dgm:constr type="h" for="ch" forName="hubText" refType="h" fact="0.2677"/><dgm:constr type="ctrX" for="ch" forName="hubText" refType="h" fact="1.1434"/><dgm:constr type="ctrY" for="ch" forName="hubText" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="spoke2" refType="h" fact="0.6309"/><dgm:constr type="h" for="ch" forName="spoke2" refType="h" fact="0.3059"/><dgm:constr type="ctrX" for="ch" forName="spoke2" refType="h" fact="0.3163"/><dgm:constr type="ctrY" for="ch" forName="spoke2" refType="h" fact="0.1533"/><dgm:constr type="w" for="ch" forName="spoke3" refType="h" fact="0.6309"/><dgm:constr type="h" for="ch" forName="spoke3" refType="h" fact="0.3059"/><dgm:constr type="ctrX" for="ch" forName="spoke3" refType="h" fact="1.9705"/><dgm:constr type="ctrY" for="ch" forName="spoke3" refType="h" fact="0.1533"/><dgm:constr type="w" for="ch" forName="spoke4" refType="h" fact="0.6309"/><dgm:constr type="h" for="ch" forName="spoke4" refType="h" fact="0.3059"/><dgm:constr type="ctrX" for="ch" forName="spoke4" refType="h" fact="1.9705"/><dgm:constr type="ctrY" for="ch" forName="spoke4" refType="h" fact="0.8457"/><dgm:constr type="w" for="ch" forName="spoke5" refType="h" fact="0.6309"/><dgm:constr type="h" for="ch" forName="spoke5" refType="h" fact="0.3059"/><dgm:constr type="ctrX" for="ch" forName="spoke5" refType="h" fact="0.3163"/><dgm:constr type="ctrY" for="ch" forName="spoke5" refType="h" fact="0.8457"/><dgm:constr type="w" for="ch" forName="arrow2of5" refType="h" fact="0.2768"/><dgm:constr type="h" for="ch" forName="arrow2of5" refType="h" fact="0.225"/><dgm:constr type="ctrX" for="ch" forName="arrow2of5" refType="h" fact="0.7773"/><dgm:constr type="ctrY" for="ch" forName="arrow2of5" refType="h" fact="0.3463"/><dgm:constr type="w" for="ch" forName="arrow3of5" refType="h" fact="0.2768"/><dgm:constr type="h" for="ch" forName="arrow3of5" refType="h" fact="0.225"/><dgm:constr type="ctrX" for="ch" forName="arrow3of5" refType="h" fact="1.5095"/><dgm:constr type="ctrY" for="ch" forName="arrow3of5" refType="h" fact="0.3463"/><dgm:constr type="w" for="ch" forName="arrow4of5" refType="h" fact="0.2768"/><dgm:constr type="h" for="ch" forName="arrow4of5" refType="h" fact="0.225"/><dgm:constr type="ctrX" for="ch" forName="arrow4of5" refType="h" fact="1.5095"/><dgm:constr type="ctrY" for="ch" forName="arrow4of5" refType="h" fact="0.6527"/><dgm:constr type="w" for="ch" forName="arrow5of5" refType="h" fact="0.2768"/><dgm:constr type="h" for="ch" forName="arrow5of5" refType="h" fact="0.225"/><dgm:constr type="ctrX" for="ch" forName="arrow5of5" refType="h" fact="0.7773"/><dgm:constr type="ctrY" for="ch" forName="arrow5of5" refType="h" fact="0.6527"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:if name="divergingCount6" axis="ch" ptType="node" func="cnt" op="equ" val="6"><dgm:constrLst><dgm:constr type="w" for="ch" forName="hub" refType="h" fact="0.3794"/><dgm:constr type="h" for="ch" forName="hub" refType="h" fact="0.3794"/><dgm:constr type="ctrX" for="ch" forName="hub" refType="h" fact="0.9715"/><dgm:constr type="ctrY" for="ch" forName="hub" refType="h" fact="0.6713"/><dgm:constr type="w" for="ch" forName="hubText" refType="h" fact="0.3035"/><dgm:constr type="h" for="ch" forName="hubText" refType="h" fact="0.2125"/><dgm:constr type="ctrX" for="ch" forName="hubText" refType="h" fact="0.9715"/><dgm:constr type="ctrY" for="ch" forName="hubText" refType="h" fact="0.6713"/><dgm:constr type="w" for="ch" forName="spoke2" refType="h" fact="0.5008"/><dgm:constr type="h" for="ch" forName="spoke2" refType="h" fact="0.2428"/><dgm:constr type="ctrX" for="ch" forName="spoke2" refType="h" fact="0.9715"/><dgm:constr type="ctrY" for="ch" forName="spoke2" refType="h" fact="0.1218"/><dgm:constr type="w" for="ch" forName="spoke3" refType="h" fact="0.5008"/><dgm:constr type="h" for="ch" forName="spoke3" refType="h" fact="0.2428"/><dgm:constr type="ctrX" for="ch" forName="spoke3" refType="h" fact="1.6919"/><dgm:constr type="ctrY" for="ch" forName="spoke3" refType="h" fact="0.4655"/><dgm:constr type="w" for="ch" forName="spoke4" refType="h" fact="0.5008"/><dgm:constr type="h" for="ch" forName="spoke4" refType="h" fact="0.2428"/><dgm:constr type="ctrX" for="ch" forName="spoke4" refType="h" fact="1.6919"/><dgm:constr type="ctrY" for="ch" forName="spoke4" refType="h" fact="0.8772"/><dgm:constr type="w" for="ch" forName="spoke5" refType="h" fact="0.5008"/><dgm:constr type="h" for="ch" forName="spoke5" refType="h" fact="0.2428"/><dgm:constr type="ctrX" for="ch" forName="spoke5" refType="h" fact="0.2511"/><dgm:constr type="ctrY" for="ch" forName="spoke5" refType="h" fact="0.8772"/><dgm:constr type="w" for="ch" forName="spoke6" refType="h" fact="0.5008"/><dgm:constr type="h" for="ch" forName="spoke6" refType="h" fact="0.2428"/><dgm:constr type="ctrX" for="ch" forName="spoke6" refType="h" fact="0.2511"/><dgm:constr type="ctrY" for="ch" forName="spoke6" refType="h" fact="0.4655"/><dgm:constr type="w" for="ch" forName="arrow2of6" refType="h" fact="0.1138"/><dgm:constr type="h" for="ch" forName="arrow2of6" refType="h" fact="0.1783"/><dgm:constr type="ctrX" for="ch" forName="arrow2of6" refType="h" fact="0.9715"/><dgm:constr type="ctrY" for="ch" forName="arrow2of6" refType="h" fact="0.3625"/><dgm:constr type="w" for="ch" forName="arrow3of6" refType="h" fact="0.2612"/><dgm:constr type="h" for="ch" forName="arrow3of6" refType="h" fact="0.1752"/><dgm:constr type="ctrX" for="ch" forName="arrow3of6" refType="h" fact="1.2977"/><dgm:constr type="ctrY" for="ch" forName="arrow3of6" refType="h" fact="0.5781"/><dgm:constr type="w" for="ch" forName="arrow4of6" refType="h" fact="0.2612"/><dgm:constr type="h" for="ch" forName="arrow4of6" refType="h" fact="0.1752"/><dgm:constr type="ctrX" for="ch" forName="arrow4of6" refType="h" fact="1.2977"/><dgm:constr type="ctrY" for="ch" forName="arrow4of6" refType="h" fact="0.7646"/><dgm:constr type="w" for="ch" forName="arrow5of6" refType="h" fact="0.2612"/><dgm:constr type="h" for="ch" forName="arrow5of6" refType="h" fact="0.1752"/><dgm:constr type="ctrX" for="ch" forName="arrow5of6" refType="h" fact="0.6453"/><dgm:constr type="ctrY" for="ch" forName="arrow5of6" refType="h" fact="0.7646"/><dgm:constr type="w" for="ch" forName="arrow6of6" refType="h" fact="0.2612"/><dgm:constr type="h" for="ch" forName="arrow6of6" refType="h" fact="0.1752"/><dgm:constr type="ctrX" for="ch" forName="arrow6of6" refType="h" fact="0.6453"/><dgm:constr type="ctrY" for="ch" forName="arrow6of6" refType="h" fact="0.5781"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:if>
+      <dgm:else name="divergingCount7"><dgm:constrLst><dgm:constr type="w" for="ch" forName="hub" refType="h" fact="0.2822"/><dgm:constr type="h" for="ch" forName="hub" refType="h" fact="0.2822"/><dgm:constr type="ctrX" for="ch" forName="hub" refType="h" fact="0.7269"/><dgm:constr type="ctrY" for="ch" forName="hub" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="hubText" refType="h" fact="0.2258"/><dgm:constr type="h" for="ch" forName="hubText" refType="h" fact="0.158"/><dgm:constr type="ctrX" for="ch" forName="hubText" refType="h" fact="0.7269"/><dgm:constr type="ctrY" for="ch" forName="hubText" refType="h" fact="0.4995"/><dgm:constr type="w" for="ch" forName="spoke2" refType="h" fact="0.3725"/><dgm:constr type="h" for="ch" forName="spoke2" refType="h" fact="0.1806"/><dgm:constr type="ctrX" for="ch" forName="spoke2" refType="h" fact="0.7269"/><dgm:constr type="ctrY" for="ch" forName="spoke2" refType="h" fact="0.0907"/><dgm:constr type="w" for="ch" forName="spoke3" refType="h" fact="0.3725"/><dgm:constr type="h" for="ch" forName="spoke3" refType="h" fact="0.1806"/><dgm:constr type="ctrX" for="ch" forName="spoke3" refType="h" fact="1.2669"/><dgm:constr type="ctrY" for="ch" forName="spoke3" refType="h" fact="0.3139"/><dgm:constr type="w" for="ch" forName="spoke4" refType="h" fact="0.3725"/><dgm:constr type="h" for="ch" forName="spoke4" refType="h" fact="0.1806"/><dgm:constr type="ctrX" for="ch" forName="spoke4" refType="h" fact="1.2669"/><dgm:constr type="ctrY" for="ch" forName="spoke4" refType="h" fact="0.6851"/><dgm:constr type="w" for="ch" forName="spoke5" refType="h" fact="0.3725"/><dgm:constr type="h" for="ch" forName="spoke5" refType="h" fact="0.1806"/><dgm:constr type="ctrX" for="ch" forName="spoke5" refType="h" fact="0.7269"/><dgm:constr type="ctrY" for="ch" forName="spoke5" refType="h" fact="0.9083"/><dgm:constr type="w" for="ch" forName="spoke6" refType="h" fact="0.3725"/><dgm:constr type="h" for="ch" forName="spoke6" refType="h" fact="0.1806"/><dgm:constr type="ctrX" for="ch" forName="spoke6" refType="h" fact="0.1868"/><dgm:constr type="ctrY" for="ch" forName="spoke6" refType="h" fact="0.6851"/><dgm:constr type="w" for="ch" forName="spoke7" refType="h" fact="0.3725"/><dgm:constr type="h" for="ch" forName="spoke7" refType="h" fact="0.1806"/><dgm:constr type="ctrX" for="ch" forName="spoke7" refType="h" fact="0.1868"/><dgm:constr type="ctrY" for="ch" forName="spoke7" refType="h" fact="0.3139"/><dgm:constr type="w" for="ch" forName="arrow2of7" refType="h" fact="0.0847"/><dgm:constr type="h" for="ch" forName="arrow2of7" refType="h" fact="0.1326"/><dgm:constr type="ctrX" for="ch" forName="arrow2of7" refType="h" fact="0.7269"/><dgm:constr type="ctrY" for="ch" forName="arrow2of7" refType="h" fact="0.2697"/><dgm:constr type="w" for="ch" forName="arrow3of7" refType="h" fact="0.2057"/><dgm:constr type="h" for="ch" forName="arrow3of7" refType="h" fact="0.1413"/><dgm:constr type="ctrX" for="ch" forName="arrow3of7" refType="h" fact="0.9705"/><dgm:constr type="ctrY" for="ch" forName="arrow3of7" refType="h" fact="0.4158"/><dgm:constr type="w" for="ch" forName="arrow4of7" refType="h" fact="0.2057"/><dgm:constr type="h" for="ch" forName="arrow4of7" refType="h" fact="0.1413"/><dgm:constr type="ctrX" for="ch" forName="arrow4of7" refType="h" fact="0.9705"/><dgm:constr type="ctrY" for="ch" forName="arrow4of7" refType="h" fact="0.5832"/><dgm:constr type="w" for="ch" forName="arrow5of7" refType="h" fact="0.0847"/><dgm:constr type="h" for="ch" forName="arrow5of7" refType="h" fact="0.1326"/><dgm:constr type="ctrX" for="ch" forName="arrow5of7" refType="h" fact="0.7269"/><dgm:constr type="ctrY" for="ch" forName="arrow5of7" refType="h" fact="0.7293"/><dgm:constr type="w" for="ch" forName="arrow6of7" refType="h" fact="0.2057"/><dgm:constr type="h" for="ch" forName="arrow6of7" refType="h" fact="0.1413"/><dgm:constr type="ctrX" for="ch" forName="arrow6of7" refType="h" fact="0.4832"/><dgm:constr type="ctrY" for="ch" forName="arrow6of7" refType="h" fact="0.5832"/><dgm:constr type="w" for="ch" forName="arrow7of7" refType="h" fact="0.2057"/><dgm:constr type="h" for="ch" forName="arrow7of7" refType="h" fact="0.1413"/><dgm:constr type="ctrX" for="ch" forName="arrow7of7" refType="h" fact="0.4832"/><dgm:constr type="ctrY" for="ch" forName="arrow7of7" refType="h" fact="0.4158"/><dgm:constr type="primFontSz" for="des" ptType="node" op="equ" val="14"/></dgm:constrLst></dgm:else>
+    </dgm:choose>
+    <dgm:ruleLst/>
+    <dgm:forEach name="divergingMiddle" axis="ch" ptType="node" st="1" cnt="1">
+      <dgm:layoutNode name="hub" styleLbl="node0">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="ellipse"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="hubText" styleLbl="node0">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="parTxLTRAlign" val="ctr"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+        <dgm:shape type="rect" hideGeom="1"><dgm:adjLst></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.1"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.1"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="divergingRound2" axis="ch" ptType="node" st="2" cnt="1">
+      <dgm:choose name="divergingWay2">
+        <dgm:if name="divergingWay2of2" axis="par ch" ptType="doc node" func="cnt" op="equ" val="2">
+          <dgm:layoutNode name="arrow2of2" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay2of3" axis="par ch" ptType="doc node" func="cnt" op="equ" val="3">
+          <dgm:layoutNode name="arrow2of3" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="leftArrow"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay2of4" axis="par ch" ptType="doc node" func="cnt" op="equ" val="4">
+          <dgm:layoutNode name="arrow2of4" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="upArrow"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay2of5" axis="par ch" ptType="doc node" func="cnt" op="equ" val="5">
+          <dgm:layoutNode name="arrow2of5" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="202.7132"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay2of6" axis="par ch" ptType="doc node" func="cnt" op="equ" val="6">
+          <dgm:layoutNode name="arrow2of6" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="upArrow"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:else name="divergingWay2of7">
+          <dgm:layoutNode name="arrow2of7" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="upArrow"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:else>
+      </dgm:choose>
+      <dgm:layoutNode name="spoke2" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.14"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="divergingRound3" axis="ch" ptType="node" st="3" cnt="1">
+      <dgm:choose name="divergingWay3">
+        <dgm:if name="divergingWay3of3" axis="par ch" ptType="doc node" func="cnt" op="equ" val="3">
+          <dgm:layoutNode name="arrow3of3" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay3of4" axis="par ch" ptType="doc node" func="cnt" op="equ" val="4">
+          <dgm:layoutNode name="arrow3of4" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="22.7132"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay3of5" axis="par ch" ptType="doc node" func="cnt" op="equ" val="5">
+          <dgm:layoutNode name="arrow3of5" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="337.2868"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay3of6" axis="par ch" ptType="doc node" func="cnt" op="equ" val="6">
+          <dgm:layoutNode name="arrow3of6" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="344.0514"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:else name="divergingWay3of7">
+          <dgm:layoutNode name="arrow3of7" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="341.0356"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:else>
+      </dgm:choose>
+      <dgm:layoutNode name="spoke3" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.14"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="divergingRound4" axis="ch" ptType="node" st="4" cnt="1">
+      <dgm:choose name="divergingWay4">
+        <dgm:if name="divergingWay4of4" axis="par ch" ptType="doc node" func="cnt" op="equ" val="4">
+          <dgm:layoutNode name="arrow4of4" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="157.2868"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay4of5" axis="par ch" ptType="doc node" func="cnt" op="equ" val="5">
+          <dgm:layoutNode name="arrow4of5" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="22.7132"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay4of6" axis="par ch" ptType="doc node" func="cnt" op="equ" val="6">
+          <dgm:layoutNode name="arrow4of6" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="15.9486"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:else name="divergingWay4of7">
+          <dgm:layoutNode name="arrow4of7" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="18.9644"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:else>
+      </dgm:choose>
+      <dgm:layoutNode name="spoke4" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.14"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="divergingRound5" axis="ch" ptType="node" st="5" cnt="1">
+      <dgm:choose name="divergingWay5">
+        <dgm:if name="divergingWay5of5" axis="par ch" ptType="doc node" func="cnt" op="equ" val="5">
+          <dgm:layoutNode name="arrow5of5" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="157.2868"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:if name="divergingWay5of6" axis="par ch" ptType="doc node" func="cnt" op="equ" val="6">
+          <dgm:layoutNode name="arrow5of6" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="164.0514"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:else name="divergingWay5of7">
+          <dgm:layoutNode name="arrow5of7" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="downArrow"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:else>
+      </dgm:choose>
+      <dgm:layoutNode name="spoke5" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.14"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="divergingRound6" axis="ch" ptType="node" st="6" cnt="1">
+      <dgm:choose name="divergingWay6">
+        <dgm:if name="divergingWay6of6" axis="par ch" ptType="doc node" func="cnt" op="equ" val="6">
+          <dgm:layoutNode name="arrow6of6" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="195.9486"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:if>
+        <dgm:else name="divergingWay6of7">
+          <dgm:layoutNode name="arrow6of7" styleLbl="sibTrans2D1">
+            <dgm:alg type="sp"/>
+            <dgm:shape type="rightArrow" rot="161.0356"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+            <dgm:presOf/>
+            <dgm:constrLst></dgm:constrLst>
+            <dgm:ruleLst/>
+          </dgm:layoutNode>
+        </dgm:else>
+      </dgm:choose>
+      <dgm:layoutNode name="spoke6" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.14"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+    <dgm:forEach name="divergingRound7" axis="ch" ptType="node" st="7" cnt="1">
+      <dgm:layoutNode name="arrow7of7" styleLbl="sibTrans2D1">
+        <dgm:alg type="sp"/>
+        <dgm:shape type="rightArrow" rot="198.9644"><dgm:adjLst><dgm:adj idx="1" val="0.6"/><dgm:adj idx="2" val="0.5"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf/>
+        <dgm:constrLst></dgm:constrLst>
+        <dgm:ruleLst/>
+      </dgm:layoutNode>
+      <dgm:layoutNode name="spoke7" styleLbl="node1">
+        <dgm:varLst>
+          <dgm:bulletEnabled val="1"/>
+        </dgm:varLst>
+        <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="mid"/><dgm:param type="txAnchorVertCh" val="mid"/></dgm:alg>
+        <dgm:shape type="roundRect"><dgm:adjLst><dgm:adj idx="1" val="0.14"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.4"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.4"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="7" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>
