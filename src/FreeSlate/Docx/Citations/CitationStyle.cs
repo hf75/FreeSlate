@@ -231,10 +231,13 @@ public static class CitationMarkup
     }
 
     /// <summary>A citation as Word's Insert Citation writes it: the field in its content control, its result the citation's text.</summary>
-    public static string Citation(CitationRequest request, IReadOnlyList<Piece> text, int id) =>
+    public static string Citation(CitationRequest request, IReadOnlyList<Piece> text, int id) => Citation(request.Instruction(), text, id);
+
+    /// <summary>A citation of a CITATION field's instruction as given (see CitationRequest.Instruction), its result the text given.</summary>
+    public static string Citation(string instruction, IReadOnlyList<Piece> text, int id) =>
         $"<w:sdt><w:sdtPr><w:id w:val=\"{id}\"/><w:citation/></w:sdtPr><w:sdtContent>"
         + "<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r>"
-        + $"<w:r><w:instrText xml:space=\"preserve\">{Escaped(request.Instruction())}</w:instrText></w:r>"
+        + $"<w:r><w:instrText xml:space=\"preserve\">{Escaped(instruction)}</w:instrText></w:r>"
         + "<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>" + Runs(text) + "<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:sdtContent></w:sdt>";
 
     /// <summary>

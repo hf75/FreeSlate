@@ -382,12 +382,16 @@ static partial class TextEdits
     /// separator gets one before its end, and a run of the text in the format of its beginning. A field that does not end in its
     /// paragraph, or holds another in its result, stays as it is. Returns the stretch's new text.
     /// </summary>
-    public static string Results(Stretch stretch, IReadOnlyList<(Inline Field, string Text)> results)
+    public static string Results(Stretch stretch, IReadOnlyList<(Inline Field, string Text)> results) =>
+        Results(stretch, [.. results.Where(r => r.Field.Xml != null).Select(r => (r.Field.Xml!, r.Text))]);
+
+    /// <summary>The results saved of fields, each by its element as read (a simple field, a complex field's beginning), set to texts (see above).</summary>
+    public static string Results(Stretch stretch, IReadOnlyList<(XElement Field, string Text)> results)
     {
         var touched = new HashSet<XElement>();
         foreach (var (field, text) in results)
         {
-            if (field.Xml == null || stretch.Find(field.Xml) is not { } element)
+            if (stretch.Find(field) is not { } element)
                 continue;
             var w = element.Name.Namespace;
             var p = ParagraphOf(element);

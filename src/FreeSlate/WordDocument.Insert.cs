@@ -85,7 +85,7 @@ public sealed partial class WordDocument
     /// that would end the body, cell or text box is followed by an empty paragraph, as Word keeps one there. Returns the
     /// ids of the paragraphs they hold.
     /// </summary>
-    /// <exception cref="NotSupportedException">The markup holds other blocks than paragraphs and tables; nothing changes.</exception>
+    /// <exception cref="NotSupportedException">The markup holds other blocks than paragraphs, tables and content controls holding them; nothing changes.</exception>
     /// <exception cref="ArgumentException">The markup is not well-formed XML; nothing changes.</exception>
     public IReadOnlyList<int> InsertBlocks(int paragraph, string markup, bool before = false, IReadOnlyList<NewPart>? parts = null)
     {
@@ -93,14 +93,16 @@ public sealed partial class WordDocument
         var changes = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
         var source = PartOf(top);
         var elements = Elements(Added(markup, parts, changes, source), RootOf(source));
-        if (elements.Any(e => e.Name != Wml.W + "p" && e.Name != Wml.W + "tbl"))
-            throw new NotSupportedException("Blocks put in are paragraphs and tables.");
+        // A block-level content control (a bibliography, a building block) reads as the blocks it holds.
+        static int Blocks(XElement e) => e.Name == Wml.W + "sdt" ? e.Elements(Wml.W + "sdtContent").Sum(BlocksIn) : 1;
+        if (elements.Any(e => e.Name != Wml.W + "p" && e.Name != Wml.W + "tbl" && !(e.Name == Wml.W + "sdt" && Blocks(e) > 0)))
+            throw new NotSupportedException("Blocks put in are paragraphs, tables and content controls holding them.");
         if (source != context.MainPart && elements.Any(e => e.Descendants(Wml.W + "sectPr").Any()))
             throw new NotSupportedException("A note, header or footer holds no section break.");
-        if (!before && elements.Count > 0 && elements[^1].Name == Wml.W + "tbl" && ListOf(top, p) is var (list, index) && index == list.Count - 1)
+        if (!before && elements.Count > 0 && elements[^1].Name != Wml.W + "p" && ListOf(top, p) is var (list, index) && index == list.Count - 1)
             elements.Add(new XElement(Wml.W + "p"));
         Strictly(source, elements);
-        var count = elements.Count;
+        var count = elements.Sum(Blocks);
         Change(top, top, (stretch, tracking) => TextEdits.InsertBlocks(stretch, p, [.. elements.Select(e => new XElement(e))], before, tracking),
             () => Plain(top, p) is { } i
                 ? [.. blocks.Take(before ? i : i + 1), .. Enumerable.Range(0, count).Select(_ => (Block)new ModelReader.NewBlock()), .. blocks.Skip(before ? i : i + 1)]

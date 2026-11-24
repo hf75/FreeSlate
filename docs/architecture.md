@@ -125,6 +125,15 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   the basic ones from their geometry, the others as FreeSlate's own motifs in their spirit, `ArtMotifs` from
   Resources/artMotifs.json); `Layout/FieldEvaluator` computes the fields
   Word recomputes when it prints.
+- `Citations/` holds what citations and bibliographies need, which Word does not compute when it opens or prints a document (it
+  shows their saved results): `SourceList` reads and writes the sources Word keeps in a custom XML part (b:Sources, the style chosen),
+  `CitationRequest` a CITATION field's instruction (its sources, each with its switches, \m adding one), `CitationStyle` Word's twelve
+  styles (`Styles/`: APA, MLA, Chicago, IEEE, Harvard - Anglia, ISO 690 by first element and date and numerical, Turabian, GB7714,
+  GOST by name and by title, SIST02), each a citation's text and the bibliography's entries in English or German as Word's own style
+  sheets make them (measured with a probe of all of Word's kinds of source, Word's style sheets not copied), `CitationMarkup` the
+  markup Word's Insert Citation and Insert Bibliography write. `WordDocument.Sources`, `SetSources`, `RefreshCitations` (Word's
+  Update Citations and Bibliography for the citations; the model reads a citation as the text it shows, so they are found in the
+  paragraphs' XML) and `BibliographyMarkup`.
 - `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
   (`PageRenderer.Markup`, `Describe`); lines and glyphs stand on Word's 600 dpi device as it rounds onto it

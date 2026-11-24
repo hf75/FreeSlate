@@ -630,6 +630,35 @@ public sealed partial class WordDocument : IEditableDocument
 
     bool RefreshFieldsOnce()
     {
+        var fields = BodyFields(field => field.Type is "SEQ" or "REF" or "PAGEREF" or "NOTEREF");
+        if (fields.Count == 0)
+            return false;
+        // The pages whole for page references, else the fields read anew from the blocks as they are (see Paginator.Relayout).
+        if (fields.Any(f => f.Field.Type == "PAGEREF"))
+        {
+            while (LayingOut && LayOut(64))
+            {
+            }
+        }
+        else
+            Scenes();
+        if (layout?.Evaluator is not { } evaluator)
+            return false;
+        var stale = fields.Select(f => (f.Field, f.Top, Shown: evaluator.Value(f.Field, null)))
+            .Where(f => f.Shown is { } shown && !FieldEvaluator.IsError(shown) && shown != string.Concat(f.Field.Cached.OfType<TextInline>().Select(t => t.Text)))
+            .ToList();
+        if (stale.Count == 0)
+            return false;
+        Change(stale[0].Top, stale[^1].Top, (stretch, _) => TextEdits.Results(stretch, [.. stale.Select(f => ((Inline)f.Field, f.Shown!))]));
+        return true;
+    }
+
+    /// <summary>
+    /// The body's fields of a kind in order, each with the block of the body it stands in: in its paragraphs, tables' cells and text
+    /// boxes, within other fields' results too.
+    /// </summary>
+    List<(FieldInline Field, Block Top)> BodyFields(Func<FieldInline, bool> wanted)
+    {
         var fields = new List<(FieldInline Field, Block Top)>();
         void Inlines(IEnumerable<Inline> inlines, Block top)
         {
@@ -638,7 +667,7 @@ public sealed partial class WordDocument : IEditableDocument
                 switch (inline)
                 {
                     case FieldInline field:
-                        if (field.Type is "SEQ" or "REF" or "PAGEREF" or "NOTEREF")
+                        if (wanted(field))
                             fields.Add((field, top));
                         Inlines(field.Cached, top);
                         break;
@@ -670,27 +699,9 @@ public sealed partial class WordDocument : IEditableDocument
                 }
             }
         }
+        Read();
         Blocks(blocks, null);
-        if (fields.Count == 0)
-            return false;
-        // The pages whole for page references, else the fields read anew from the blocks as they are (see Paginator.Relayout).
-        if (fields.Any(f => f.Field.Type == "PAGEREF"))
-        {
-            while (LayingOut && LayOut(64))
-            {
-            }
-        }
-        else
-            Scenes();
-        if (layout?.Evaluator is not { } evaluator)
-            return false;
-        var stale = fields.Select(f => (f.Field, f.Top, Shown: evaluator.Value(f.Field, null)))
-            .Where(f => f.Shown is { } shown && !FieldEvaluator.IsError(shown) && shown != string.Concat(f.Field.Cached.OfType<TextInline>().Select(t => t.Text)))
-            .ToList();
-        if (stale.Count == 0)
-            return false;
-        Change(stale[0].Top, stale[^1].Top, (stretch, _) => TextEdits.Results(stretch, [.. stale.Select(f => ((Inline)f.Field, f.Shown!))]));
-        return true;
+        return fields;
     }
 
     /// <summary>The names of the bookmarks that begin in a paragraph (or right before it, between the paragraphs), in order.</summary>

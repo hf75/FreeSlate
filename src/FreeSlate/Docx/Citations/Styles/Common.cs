@@ -14,17 +14,3 @@ static class Common
     /// <summary>A person's first and middle names as written ("Anna B.").</summary>
     public static string Given(Person person) => string.Join(" ", new[] { person.First, person.Middle }.Where(n => !string.IsNullOrWhiteSpace(n)));
 }
-
-/// <summary>A plain stand-in for styles not yet made: "(Author, Year)" and "Author. Title. Year." entries.</summary>
-static class Simple
-{
-    static string Names(Source source) =>
-        source.Role("Author") is { } author ? author.Corporate ?? string.Join(", ", author.People.Select(p => p.Last)) : source["Title"] ?? source.Tag;
-
-    public static IReadOnlyList<Piece> Cite(CitationRequest request) =>
-        [new Piece("(" + string.Join("; ", request.Sources.Select(c => Names(c.Source) + (c.Source["Year"] is { } year ? ", " + year : ""))) + ")")];
-
-    public static BibliographyList Bibliography(CitationContext context) =>
-        new([.. context.Sources.Sources.Select(s => new BibliographyEntry([new Piece(Names(s) + ". "), new Piece((s["Title"] ?? "") + ".", Italic: true),
-            new Piece(s["Year"] is { } year ? " " + year + "." : "")]))], BibliographyLayout.Hanging);
-}
