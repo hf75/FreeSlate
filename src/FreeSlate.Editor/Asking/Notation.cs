@@ -95,6 +95,12 @@ public static partial class Notation
     /// <summary>A reference to an anchor: {ref name} shows its text (a caption's label and number, a heading's text), {page name} its page.</summary>
     public sealed record Reference(string Name, bool Page) : Piece;
 
+    /// <summary>
+    /// A drop cap, "{drop}" at the start of a paragraph: its first letter large, so many lines down (3 unless "{drop 4}"), in the text or
+    /// in the margin ("{drop margin}"), as Word's Insert > Drop Cap makes it (see WordDocument.DropCap).
+    /// </summary>
+    public sealed record DropMark(int Lines, bool Margin) : Piece;
+
     /// <summary>A formula among the text ($…$): its LaTeX (see Formulas).</summary>
     public sealed record Formula(string Latex) : Piece;
 
@@ -796,6 +802,13 @@ public static partial class Notation
                 k += field.Length;
                 continue;
             }
+            if (c == '{' && pieces.Count == 0 && buffer.Length == 0 && DropText().Match(text, k) is { Success: true } drop)
+            {
+                var lines = drop.Groups[1].Success ? int.Parse(drop.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 3;
+                pieces.Add(new DropMark(Math.Clamp(lines, 2, 10), drop.Groups[2].Success));
+                k += drop.Length;
+                continue;
+            }
             if (c == '{' && AnchorText().Match(text, k) is { Success: true } anchor)
             {
                 Flush();
@@ -856,6 +869,10 @@ public static partial class Notation
 
     [GeneratedRegex(@"\G\{(page|pages|date)\}", RegexOptions.IgnoreCase)]
     private static partial Regex FieldText();
+
+    /// <summary>A drop cap's mark at a paragraph's start: {drop}, {drop 4}, {drop margin}, {drop 2 margin}, the spaces after it left out.</summary>
+    [GeneratedRegex(@"\G\{drop(?:\s+(\d{1,2}))?(?:\s+(margin))?\}\s*", RegexOptions.IgnoreCase)]
+    private static partial Regex DropText();
 
     /// <summary>An anchor: {#name}, or {#} alone; a name of letters, digits and _ - . : (see Markup.BookmarkName).</summary>
     [GeneratedRegex(@"\G\{#\s*([\p{L}\p{N}_.:-]*)\s*\}")]

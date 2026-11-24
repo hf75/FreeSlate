@@ -139,6 +139,19 @@ static partial class Reading
                 paragraph = p;
                 continue;
             }
+            // A drop cap and the paragraph it begins as one line with the ids of both, "{drop}" before its text (see Notation.DropMark).
+            if (word != null && word.DropCapOf(p) is var (lines, margin) && word.After(p) is { } begun && word.TableOf(begun) == null
+                && word.DropCapOf(begun) == null && word.Text(p) is { Length: > 0 } letter)
+            {
+                var whole = Paragraph(document, begun, objects);
+                var own = Line(document, begun, objects);
+                var prefix = whole.EndsWith(own, StringComparison.Ordinal) ? whole[..^own.Length] : "";
+                var mark = "{drop" + (lines != 3 ? " " + lines.ToString(CultureInfo.InvariantCulture) : "") + (margin ? " margin" : "") + "} ";
+                text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append("–¶").Append(begun.ToString(CultureInfo.InvariantCulture)).Append(' ')
+                    .Append(prefix).Append(mark).Append(Line(document, p, objects)).Append(own).Append('\n');
+                paragraph = p = begun;
+                continue;
+            }
             // What the notation says otherwise than by a paragraph's text: a page break alone, a line across, a section's end (said by the
             // columns' marks and the tables' settings, else as WordprocessingML), formatting of its own (as WordprocessingML).
             if (word != null && Special(word, p) is var (shownAs, hidden))
@@ -222,6 +235,8 @@ static partial class Reading
         if (section.Border is { Kind: not "none" } border)
             said.Append(", border: ").Append(border.Kind).Append(border.Color is { } color ? " #" + color : "")
                 .Append(' ').Append(border.Width.ToString("0.##", CultureInfo.InvariantCulture)).Append("pt round the pages");
+        if (word.PageColor is { } pages)
+            said.Append(", page colour: #").Append(pages);
         return said.ToString();
     }
 

@@ -27,6 +27,8 @@ static class Prompt
         - Meanings of words (not formatting): **important**, *emphasized*, {Term|a term}, {Quotation|a quotation},
           {OpenQuestion|a question still open}. Never use backticks; "> " before a paragraph makes all of it a quotation.
         - A line ending in two spaces breaks the line within the paragraph; a blank line ends a paragraph.
+        - A drop cap: "{drop}" at the start of a paragraph makes its first letter large over its first three lines, as Word's Drop Cap
+          does ("{drop 2}" over two, "{drop margin}" in the margin); for a story's or a chapter's opening paragraph.
         - A link: [its text](https://address) (or [text](#anchor)). Fields Word computes: {page} the page's number, {pages} how many
           pages there are, {date} today's date.
         - Numbered captions and cross-references, as Word's Insert Caption and Cross-reference make them: in a caption, {#name} right
@@ -219,7 +221,8 @@ static class Prompt
             "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
             "size": { "type": "string", "enum": ["A4", "A5", "A3", "Letter", "Legal"] },
             "watermark": { "type": "string", "description": "A word or two pale and diagonal across every page behind the text, as Word's watermark (\"DRAFT\", \"CONFIDENTIAL\", \"SAMPLE\"); empty to take it away." },
-            "border": { "type": "string", "description": "A line round every page: single, double, thick, dotted, dashed, triple, wave, thin-thick or thick-thin, then a colour (#RRGGBB) and a width in points if wanted (\"double #2F6DB5 1.5\"); none to take it away." }
+            "border": { "type": "string", "description": "A line round every page: single, double, thick, dotted, dashed, triple, wave, thin-thick or thick-thin, then a colour (#RRGGBB) and a width in points if wanted (\"double #2F6DB5 1.5\"); none to take it away." },
+            "color": { "type": "string", "description": "The pages' colour behind everything (#RRGGBB, light ones keep the text readable: \"#FFF8E7\"); none to take it away." }
           }
         }
         """;
@@ -240,6 +243,6 @@ static class Prompt
         new("look", "Shows a page of the document as it is laid out now, exactly as Word prints it.", LookSchema),
         new("picture", "Changes an object of the document as the user's ring does: where it stands, its size, crop, colours, frame, turn, mirror, tilt, caption and description; or takes it away. Give only what changes.", PictureSchema),
         new("tone", "Gives the whole document another tone, the look its levels, meanings and tables take: plain, magazine or notebook.", ToneSchema),
-        new("page", "Sets up the document's pages: header and footer (with page numbers), margins, paper, orientation, a first page of its own, a watermark, a border round the pages. Give only what changes.", PageSchema),
+        new("page", "Sets up the document's pages: header and footer (with page numbers), margins, paper, orientation, a first page of its own, a watermark, a border round the pages, their colour. Give only what changes.", PageSchema),
     ];
 }

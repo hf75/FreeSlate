@@ -476,7 +476,9 @@ of figures, the same over the captions numbered with a label, TOC \c, in the sty
 cross-references as Word's Insert Caption and Cross-reference make them ("Figure {#sales}: …" in a caption: a SEQ field of the
 label in a bookmark of the name with the label; {#name} elsewhere a bookmark round its paragraph's text; {ref name} and {page name}
 REF and PAGEREF fields; the fields' results saved as the pages show them once the write is in, `WordDocument.RefreshFields`, as
-Word shows them saved till it prints), \pagebreak and --- for a
+Word shows them saved till it prints), drop caps ("{drop}" at a paragraph's start, "{drop 2 margin}": its first letter in a framed
+paragraph before it, `WordDocument.DropCap`, of the lines' height exactly and the size its capitals need to reach the last line's
+baseline, as Word computes them; read back as one line with both paragraphs' ids), \pagebreak and --- for a
 page break and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
 across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
@@ -487,7 +489,9 @@ paragraphs), look (a page as it is laid out, as a picture), picture (`Arranging`
 frame, turn, mirror, tilt, caption and description, by the session's own handlings as the ring's), tone (the document's tone,
 as its buttons give it) and page (the header and footer every page shows, their parts placed by positional tabs, margins,
 paper, orientation, a title page, a watermark as Word's dialog writes one, a VML WordArt in each header the pages show, found
-again by its name (`WordDocument.DrawingName`, `DrawingWords`), and a border round the pages, `SectionFormatting.Border`;
+again by its name (`WordDocument.DrawingName`, `DrawingWords`), a border round the pages, `SectionFormatting.Border`, and the
+pages' colour, `WordDocument.SetPageColor`: w:background before the body, which no stretch of the body holds, so the document is
+read again whole for it and for a version with another colour, as for its styles;
 read with the document as "Page:", and given again where a write takes a section's end away). A token written is its object: one in text a write takes away is kept from before and goes in
 again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
 elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits

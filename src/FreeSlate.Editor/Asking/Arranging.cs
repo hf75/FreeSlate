@@ -379,6 +379,17 @@ static class Arranging
             }
             if (input.GetValueOrDefault("watermark") is { } watermark)
                 Do("watermark", () => Watermark(word, first, watermark.Trim()));
+            // The pages' colour as Word's Page Color gives it (see WordDocument.SetPageColor); none takes it away.
+            if (input.GetValueOrDefault("color")?.Trim() is { } colored)
+            {
+                var hex = colored.TrimStart('#');
+                if (colored.Equals("none", StringComparison.OrdinalIgnoreCase) || colored.Length == 0)
+                    Do("color", () => word.SetPageColor(null));
+                else if (hex.Length == 6 && hex.All(Uri.IsHexDigit))
+                    Do("color", () => word.SetPageColor(hex));
+                else
+                    failed.Add($"color {colored} (#RRGGBB or none)");
+            }
         });
         var told = "Now: " + Reading.PageOf(word, objects);
         if (failed.Count > 0)

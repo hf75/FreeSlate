@@ -1755,7 +1755,10 @@ public sealed partial class WordDocument : IEditableDocument
         byte[]? BytesOf(ImmutableDictionary<string, byte[]?> parts, string part) => parts.TryGetValue(part, out var bytes) ? bytes : package.Original(part);
         var numbering = NumberingPart();
         var lists = numbering != null && Differs(numbering) && !Differs(StylesPart()) ? ListsOnly(BytesOf(partBytes, numbering), BytesOf(to.Parts, numbering)) : null;
-        var restyled = Differs(StylesPart()) || Differs(numbering) && lists == null;
+        // So is a version whose main part differs before the body (the pages' colour, see SetPageColor), which no stretch of it holds.
+        var restyled = Differs(StylesPart()) || Differs(numbering) && lists == null
+            || body != null && wholeText.Start(body) is var bodyStart and >= 0 && wholeText.TagEnd(bodyStart) is var bodyText
+                && Island.Differing(islands, to.Islands).Any(i => i.Start < bodyText);
         Restore(to.Parts);
         foreach (var list in lists ?? [])
             context.Numbering.Take(list);

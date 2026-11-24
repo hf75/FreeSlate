@@ -586,6 +586,19 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             if (block is Notation.Paragraph { Style: "ListNumber" or "ListNumber2" } point)
                 Lists.Settle(document, ids, point.Number ?? 1, ids.Count > 0 ? Lists.Continued(document, ids[0], point.Number) : null);
             notes.AddRange(made.Notes.Where(n => n.Paragraph < ids.Count).Select(n => (ids[n.Paragraph], n.Offset + (n.Paragraph == 0 ? shift : 0), n.Label)));
+            // A paragraph beginning "{drop}": its first letter a drop cap in a paragraph before it (see WordDocument.DropCap), the
+            // paragraph's notes' marks a letter on.
+            if (block is Notation.Paragraph { Pieces: [Notation.DropMark drop, ..] } && word != null && ids.Count > 0)
+            {
+                var letter = document.Text(ids[0]) is { Length: > 1 } begun && char.IsSurrogatePair(begun, 0) ? 2 : 1;
+                var cap = word.DropCap(ids[0], drop.Lines, drop.Margin);
+                written.Insert(written.IndexOf(ids[0]), cap);
+                for (var k = 0; k < notes.Count; k++)
+                {
+                    if (notes[k].Paragraph == ids[0])
+                        notes[k] = notes[k] with { Offset = Math.Max(0, notes[k].Offset - letter) };
+                }
+            }
             return ids.Count > 0 ? new TextPlace(ids[^1], document.Text(ids[^1]).Length) : null;
         });
     }

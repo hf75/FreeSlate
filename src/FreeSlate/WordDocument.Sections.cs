@@ -194,6 +194,66 @@ public sealed partial class WordDocument
         }
     }
 
+    /// <summary>
+    /// The pages' colour (Word's Design > Page Color, w:background before the body) as RRGGBB; null where the pages have none of their
+    /// own, or a fill other than a colour (a gradient, a picture), which the layout draws too.
+    /// </summary>
+    public string? PageColor
+    {
+        get
+        {
+            Read();
+            return context.Background?.Attribute(Wml.W + "color")?.Value is { Length: 6 } color && color != "auto"
+                && color.All(Uri.IsHexDigit) ? color.ToUpperInvariant() : null;
+        }
+    }
+
+    /// <summary>
+    /// Gives the pages a colour (RRGGBB) or takes theirs away (null), as Word's Page Color does: w:background right before the body (one
+    /// there replaced), and w:displayBackgroundShape in the settings, without which Word does not show it. A change of its own: the main
+    /// part's text before the body is no stretch of the body (see ReachOf), so the document is read again whole, as for its styles, and
+    /// so it is where a version has another colour (see Go).
+    /// </summary>
+    /// <exception cref="ArgumentException">The colour is no RRGGBB.</exception>
+    public void SetPageColor(string? color)
+    {
+        Read();
+        if (color != null && (color.Length != 6 || !color.All(Uri.IsHexDigit)))
+            throw new ArgumentException("A page colour is six hexadecimal digits (RRGGBB).", nameof(color));
+        color = color?.ToUpperInvariant();
+        if (body == null || context.Document.Root is not { } root || PageColor == color && (color != null || context.Background == null))
+            return;
+        var w = root.Name.Namespace;
+        var prefix = root.GetPrefixOfNamespace(w) is { Length: > 0 } p ? p + ":" : "";
+        var made = color == null ? "" : $"<{prefix}background {prefix}color=\"{color}\"/>";
+        var (start, end) = context.Background is { } background && wholeText.Start(background) is var at and >= 0
+            ? (at, wholeText.End(at)) : (wholeText.Start(body), wholeText.Start(body));
+        // Word shows the colour on its screen with w:displayBackgroundShape, which its Page Color sets (and leaves when taken away).
+        if (color != null && SettingsPart() is { } part && context.Load(part).Root is { } settings && settings.Element(settings.Name.Namespace + "displayBackgroundShape") == null)
+        {
+            var text = new PartText(package.ReadBytes(part));
+            var sw = settings.Name.Namespace;
+            var settingsPrefix = settings.GetPrefixOfNamespace(sw) is { Length: > 0 } sp ? sp + ":" : "";
+            var rank = Array.IndexOf(SettingsOrder, "displayBackgroundShape");
+            var flag = $"<{settingsPrefix}displayBackgroundShape/>";
+            var bytes = settings.Elements().FirstOrDefault(e => e.Name.Namespace != sw || Array.IndexOf(SettingsOrder, e.Name.LocalName) > rank) is { } after
+                ? text.Spliced([(text.Start(after), text.Start(after), flag)])
+                : text.Spliced([(text.Text.LastIndexOf('<'), text.Text.LastIndexOf('<'), flag)]);
+            Put(new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase) { [part] = bytes });
+        }
+        var (previous, was) = (wholeText, blocks);
+        var changed = islands.Insert(0, new Island(start, end, made));
+        package.Replace(context.MainPart, Spliced(whole, changed));
+        ReadWhole();
+        Rebase(previous, changed);
+        ModelReader.Keep(was, blocks);
+        Index();
+        versions.RemoveRange(version + 1, versions.Count - version - 1);
+        versions.Add(new Version(whole, islands, kept, partBytes));
+        version++;
+        fresh = [];
+    }
+
     /// <summary>The settings part, where the package has one.</summary>
     string? SettingsPart() =>
         package.FirstRelationship(context.MainPart, "settings") is { External: false } related && package.Exists(related.Target) ? related.Target : null;
