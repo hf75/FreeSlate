@@ -584,7 +584,13 @@ public sealed partial class WordDocument : IEditableDocument
         return id;
     }
 
-    public string? FieldText(int paragraph, int offset) => TextEdits.FieldAt(Find(paragraph).Paragraph, offset);
+    /// <summary>
+    /// The text a field shows where the character at a place of a paragraph's text is one, else null: what the layout computes where it
+    /// computes one (a sequence's number, a reference's text, a page number), as the page shows it; else the result saved.
+    /// </summary>
+    public string? FieldText(int paragraph, int offset) =>
+        TextEdits.FieldInlineAt(Find(paragraph).Paragraph, offset) is not { } field ? null
+            : layout?.Evaluator?.Value(field, null) ?? string.Concat(field.Cached.OfType<TextInline>().Select(t => t.Text));
 
     /// <summary>
     /// The instruction of the field whose character stands at a place of a paragraph's text (one Word computes as it lays the page out:
@@ -604,8 +610,177 @@ public sealed partial class WordDocument : IEditableDocument
         return null;
     }
 
+    /// <summary>
+    /// The saved results of the body's fields that Word shows as saved when it opens a document but computes as it prints, a sequence's
+    /// number, a reference's text, a page reference, a note's mark (SEQ, REF, PAGEREF, NOTEREF, see FieldEvaluator), set to what the
+    /// layout shows where they differ, Word's errors aside: Word then shows them as the pages do, as after F9. In its paragraphs, tables'
+    /// cells and text boxes, within other fields' results too (a table of contents' page numbers). The document is laid out first, whole
+    /// where it has page references; not at all where it has none of those fields. Again where that changed what fields read (a REF of a
+    /// text box's caption reads its number as saved, see FieldEvaluator), up to three times. One change for all, none where all are as
+    /// shown; returns whether one was made.
+    /// </summary>
+    public bool RefreshFields()
+    {
+        var made = 0;
+        while (made < 3 && RefreshFieldsOnce())
+            made++;
+        Combine(made);
+        return made > 0;
+    }
+
+    bool RefreshFieldsOnce()
+    {
+        var fields = new List<(FieldInline Field, Block Top)>();
+        void Inlines(IEnumerable<Inline> inlines, Block top)
+        {
+            foreach (var inline in inlines)
+            {
+                switch (inline)
+                {
+                    case FieldInline field:
+                        if (field.Type is "SEQ" or "REF" or "PAGEREF" or "NOTEREF")
+                            fields.Add((field, top));
+                        Inlines(field.Cached, top);
+                        break;
+                    case DrawingInline { Text: var text, ChildText: var children }:
+                        Boxes(text, children, top);
+                        break;
+                    case AnchorInline { Text: var text, ChildText: var children }:
+                        Boxes(text, children, top);
+                        break;
+                }
+            }
+        }
+        void Boxes(List<Block>? text, IReadOnlyList<(XElement Shape, List<Block> Text)>? children, Block top)
+        {
+            Blocks(text ?? [], top);
+            foreach (var (_, child) in children ?? [])
+                Blocks(child, top);
+        }
+        void Blocks(IEnumerable<Block> list, Block? top)
+        {
+            foreach (var block in list)
+            {
+                if (block is ParagraphBlock paragraph)
+                    Inlines(paragraph.Content, top ?? block);
+                else
+                {
+                    foreach (var inner in ModelReader.Inner(block))
+                        Blocks(inner, top ?? block);
+                }
+            }
+        }
+        Blocks(blocks, null);
+        if (fields.Count == 0)
+            return false;
+        // The pages whole for page references, else the fields read anew from the blocks as they are (see Paginator.Relayout).
+        if (fields.Any(f => f.Field.Type == "PAGEREF"))
+        {
+            while (LayingOut && LayOut(64))
+            {
+            }
+        }
+        else
+            Scenes();
+        if (layout?.Evaluator is not { } evaluator)
+            return false;
+        var stale = fields.Select(f => (f.Field, f.Top, Shown: evaluator.Value(f.Field, null)))
+            .Where(f => f.Shown is { } shown && !FieldEvaluator.IsError(shown) && shown != string.Concat(f.Field.Cached.OfType<TextInline>().Select(t => t.Text)))
+            .ToList();
+        if (stale.Count == 0)
+            return false;
+        Change(stale[0].Top, stale[^1].Top, (stretch, _) => TextEdits.Results(stretch, [.. stale.Select(f => ((Inline)f.Field, f.Shown!))]));
+        return true;
+    }
+
     /// <summary>The names of the bookmarks that begin in a paragraph (or right before it, between the paragraphs), in order.</summary>
     public IReadOnlyList<string> BookmarksOf(int paragraph) => [.. Find(paragraph).Paragraph.Content.OfType<BookmarkInline>().Select(b => b.Name)];
+
+    /// <summary>
+    /// The bookmarks that begin in a paragraph, in order: each one's name, the place of its text it begins at and the one it ends at,
+    /// null where it ends in another paragraph.
+    /// </summary>
+    public IReadOnlyList<(string Name, int Start, int? End)> BookmarkSpans(int paragraph)
+    {
+        var p = Find(paragraph).Paragraph;
+        var spans = new List<(string Name, int Start, int? End)>();
+        var open = new Dictionary<string, int>(StringComparer.Ordinal);
+        var at = p.TextOffset;
+        foreach (var inline in p.Content)
+        {
+            if (inline is BookmarkInline start)
+            {
+                if (start.Id != null)
+                    open[start.Id] = spans.Count;
+                spans.Add((start.Name, at, null));
+            }
+            else if (inline is BookmarkEndInline end && open.Remove(end.Id, out var index))
+                spans[index] = spans[index] with { End = at };
+            at += ParagraphText.Length(inline);
+        }
+        return spans;
+    }
+
+    /// <summary>
+    /// The names of the bookmarks the body's fields lead to or read (REF, PAGEREF, NOTEREF, a HYPERLINK's \l), in its paragraphs, tables'
+    /// cells and text boxes and within other fields' results; worked out once for each state of the document.
+    /// </summary>
+    public IReadOnlySet<string> ReferencedBookmarks()
+    {
+        if (referenced is var (at, known) && at == version && ReferenceEquals(versions[version], referencedVersion))
+            return known;
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        void Inlines(IEnumerable<Inline> inlines)
+        {
+            foreach (var inline in inlines)
+            {
+                switch (inline)
+                {
+                    case FieldInline field:
+                        var words = field.Instruction.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        if (field.Type is "REF" or "PAGEREF" or "NOTEREF" && words.Length > 1 && !words[1].StartsWith('\\'))
+                            names.Add(words[1].Trim('"'));
+                        else if (field.Type == "HYPERLINK" && Array.IndexOf(words, "\\l") is var l and >= 0 && l + 1 < words.Length)
+                            names.Add(words[l + 1].Trim('"'));
+                        Inlines(field.Cached);
+                        break;
+                    // A link's text in a w:hyperlink to a bookmark of the document (w:anchor).
+                    case TextInline { Xml.Parent.Parent: { Name.LocalName: "hyperlink" } link } when link.Attribute(Wml.W + "anchor") is { } anchor:
+                        names.Add(anchor.Value);
+                        break;
+                    case DrawingInline { Text: var text, ChildText: var children }:
+                        Blocks(text ?? []);
+                        foreach (var (_, child) in children ?? [])
+                            Blocks(child);
+                        break;
+                    case AnchorInline { Text: var text, ChildText: var children }:
+                        Blocks(text ?? []);
+                        foreach (var (_, child) in children ?? [])
+                            Blocks(child);
+                        break;
+                }
+            }
+        }
+        void Blocks(IEnumerable<Block> list)
+        {
+            foreach (var block in list)
+            {
+                if (block is ParagraphBlock paragraph)
+                    Inlines(paragraph.Content);
+                else
+                {
+                    foreach (var inner in ModelReader.Inner(block))
+                        Blocks(inner);
+                }
+            }
+        }
+        Blocks(blocks);
+        (referenced, referencedVersion) = ((version, names), versions[version]);
+        return names;
+    }
+
+    (int Version, HashSet<string> Names)? referenced;
+    Version? referencedVersion;
 
     /// <summary>
     /// The links of a paragraph's text (w:hyperlink, and HYPERLINK fields), in order: the stretch of the text each shows and where it leads

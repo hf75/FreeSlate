@@ -184,7 +184,7 @@ static class Arranging
             }
             if (Text("caption") is { } caption)
             {
-                var runs = Markup.RunsOf(Notation.Inline(caption.Trim(), null)).Runs;
+                var runs = Markup.RunsOf(Notation.Inline(caption.Trim(), null), caption: true).Runs;
                 if (caption.Trim().Length == 0)
                     Do("caption", () => editing.Caption == null || editing.RemoveCaption());
                 else
@@ -213,6 +213,22 @@ static class Arranging
                     editing.Format(new DrawingFormatting { Description = description.Trim(), Decorative = false });
                     return true;
                 });
+            // A caption written or taken away, or the picture with it: the captions' numbers and the references to them saved as the
+            // pages show them (see Writing.Refresh).
+            if (document is WordDocument captioned && succeeded > 0 && (Text("caption") != null || removed))
+            {
+                try
+                {
+                    editing.Handle(() =>
+                    {
+                        captioned.RefreshFields();
+                        return null;
+                    });
+                }
+                catch (Exception e) when (e is NotSupportedException or ArgumentException or InvalidOperationException)
+                {
+                }
+            }
             Select();
         });
         if (removed)

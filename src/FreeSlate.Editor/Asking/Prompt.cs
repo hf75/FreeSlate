@@ -27,8 +27,14 @@ static class Prompt
         - Meanings of words (not formatting): **important**, *emphasized*, {Term|a term}, {Quotation|a quotation},
           {OpenQuestion|a question still open}. Never use backticks; "> " before a paragraph makes all of it a quotation.
         - A line ending in two spaces breaks the line within the paragraph; a blank line ends a paragraph.
-        - A link: [its text](https://address) (or [text](#bookmark)). Fields Word computes: {page} the page's number, {pages} how many
+        - A link: [its text](https://address) (or [text](#anchor)). Fields Word computes: {page} the page's number, {pages} how many
           pages there are, {date} today's date.
+        - Numbered captions and cross-references, as Word's Insert Caption and Cross-reference make them: in a caption, {#name} right
+          after its label numbers it among the captions of that label ("Figure {#sales}: Sales by quarter", "Table {#costs}: …";
+          {#} where nothing refers to it); a caption line of its own is "{Caption} Table {#costs}: …" (above a table, as Word puts
+          it). Elsewhere {#name} at the end of a paragraph names it ("## Method {#method}"). {ref name} shows the anchor's label and
+          number ("Figure 2") or its paragraph's text, {page name} the page it is on: "as {ref sales} on page {page sales} shows".
+          Never write such numbers yourself: they follow when captions are added, moved or taken away.
         - Tables as GitHub writes them: | a | b | then |---|---| (":---:" centres a column, "---:" aligns it right), the first row is
           the head. A table you read starts with the ids of its first and last paragraph. Besides GitHub's:
           - A line right before the table gives its own settings: {table look=book head=none align=center float=right across=yes}.
@@ -53,10 +59,11 @@ static class Prompt
         - A table of contents: "{contents Title}" on a line of its own (its title in the document's language, or "{contents}" without
           one): the chapters and sections with their pages and links, as Word makes one, of the headings as they stand once the write
           is in. It reads back as that line with the ids of its first and last paragraph; after adding, renaming or moving headings,
-          write it again in its place to bring it up to date.
+          write it again in its place to bring it up to date. "{figures Figure}" makes a table of figures, of the captions numbered
+          with that label ("{figures Table}" of the tables'), its heading a line of yours before it.
         - Columns: "::: columns 2" on a line of its own, the text, then ":::" (add "line" for a line between them:
           "::: columns 2 line"). Text in columns you read stands between the same marks.
-        - A vector graphic: a fenced block ```svg width=8cm caption="Fig. 1: …" alt="what it shows" with a whole <svg> element
+        - A vector graphic: a fenced block ```svg width=8cm caption="Figure {#name}: …" alt="what it shows" with a whole <svg> element
           inside. Settings: width (cm, mm, pt, px or % of the text's width), align=left|center|right, float=left|right to stand beside
           the paragraph after it with the text flowing around it, caption, alt. Make the SVG self-contained: a viewBox and width and
           height, no external images or fonts, no <marker> (draw arrowheads as small paths), text in font-family="Inter, Arial,
@@ -194,7 +201,7 @@ static class Prompt
             "turn": { "type": "number", "description": "How far it is turned clockwise in degrees, from upright (0)." },
             "flip": { "type": "string", "enum": ["none", "across", "down", "both"], "description": "Mirrored left for right (across), top for bottom (down), both, or not." },
             "tilt": { "type": "string", "enum": ["none", "above", "rising", "right", "falling", "below", "lying", "left"], "description": "Tilted in space as seen from above, rising to the right, facing right, falling to the right, from below, lying, facing left; or flat (none)." },
-            "caption": { "type": "string", "description": "Its caption under it, in the notation's text (\"Fig. 1: …\"); empty to take it away." },
+            "caption": { "type": "string", "description": "Its caption under it, in the notation's text (\"Figure {#name}: …\" numbers it); empty to take it away." },
             "description": { "type": "string", "description": "What it shows, for those who cannot see it: one or two sentences." },
             "remove": { "type": "boolean", "description": "true takes it out of the document." }
           }

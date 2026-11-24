@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using FreeSlate.Skia;
@@ -13,7 +14,7 @@ namespace FreeSlate.Editor.Asking;
 /// brings, where the marks of footnotes stand, and what a section of columns needs besides (see Made). The styles are the tone's (see
 /// Writing.Tones): levels and meanings by their ids, tables in its table look.
 /// </summary>
-static class Markup
+static partial class Markup
 {
     /// <summary>
     /// The place the blocks go to: the width of the text there (points), the page setup of its section, a new table there of so many
@@ -147,24 +148,110 @@ static class Markup
                 markup.Append("<w:jc w:val=\"").Append(align == "justify" ? "both" : align).Append("\"/>");
             markup.Append("</w:pPr>");
         }
+        // A caption's anchors number it; another paragraph's are bookmarks round its text (see Notation.Anchor).
+        var anchors = new List<string>();
+        if (style == CaptionStyle)
+            pieces = Numbered(pieces);
+        else if (pieces.Any(p => p is Notation.Anchor))
+            (pieces, anchors) = Unanchored(pieces);
+        var ids = anchors.Select(_ => BookmarkId()).ToList();
+        for (var k = 0; k < anchors.Count; k++)
+            markup.Append("<w:bookmarkStart w:id=\"").Append(ids[k]).Append("\" w:name=\"").Append(Escape(anchors[k])).Append("\"/>");
         markup.Append(before);
         var notes = new List<(int, int, string)>();
         var offset = before != null ? 1 : 0;
         markup.Append(Runs(pieces, notes, 0, ref offset, kept));
+        foreach (var id in ids)
+            markup.Append("<w:bookmarkEnd w:id=\"").Append(id).Append("\"/>");
         return new(markup.Append("</w:p>").ToString(), [], notes);
     }
 
+    /// <summary>The style of captions, Word's (whose name is "caption"), which numbers their anchors (see Numbered).</summary>
+    public const string CaptionStyle = "Caption";
+
     /// <summary>
     /// The runs of a paragraph's pieces of text, to go in among other text, objects by their tokens as <paramref name="kept"/> gives them,
-    /// and where in them footnotes' marks stand (offset, label).
+    /// and where in them footnotes' marks stand (offset, label); a caption's anchors numbering it (see Numbered).
     /// </summary>
-    public static (string Runs, IReadOnlyList<(int Offset, string Label)> Notes) RunsOf(IReadOnlyList<Notation.Piece> pieces, Func<int, string?>? kept = null)
+    public static (string Runs, IReadOnlyList<(int Offset, string Label)> Notes) RunsOf(IReadOnlyList<Notation.Piece> pieces, Func<int, string?>? kept = null,
+        bool caption = false)
     {
         var notes = new List<(int, int, string)>();
         var offset = 0;
-        var runs = Runs(pieces, notes, 0, ref offset, kept);
+        var runs = Runs(caption ? Numbered(pieces) : pieces, notes, 0, ref offset, kept);
         return (runs, notes.Select(n => (n.Item2, n.Item3)).ToList());
     }
+
+    /// <summary>
+    /// A caption's label and number (see Numbered): the label's text as written, with its meaning, the label as the SEQ field names its
+    /// sequence, and the bookmark round both, none for {#}.
+    /// </summary>
+    sealed record CaptionNumber(string Lead, string? Style, string Label, string? Name) : Notation.Piece;
+
+    /// <summary>
+    /// A caption's pieces, each anchor in it its number (Word's SEQ field, in its own sequence for each label, as Word's Insert Caption
+    /// makes it): the word before it its label ("Figure {#sales}", "Abb. {#}"), a bookmark of the anchor's name round the two, which
+    /// {ref name} shows as Word's cross-reference to "label and number" does; "Figure" where no word stands before it.
+    /// </summary>
+    static IReadOnlyList<Notation.Piece> Numbered(IReadOnlyList<Notation.Piece> pieces)
+    {
+        if (!pieces.Any(p => p is Notation.Anchor))
+            return pieces;
+        var result = new List<Notation.Piece>();
+        foreach (var piece in pieces)
+        {
+            if (piece is not Notation.Anchor anchor)
+            {
+                result.Add(piece);
+                continue;
+            }
+            var name = anchor.Name.Length > 0 ? anchor.Name : null;
+            if (result.Count > 0 && result[^1] is Notation.Run run && LabelBefore().Match(run.Text) is { Success: true } label)
+            {
+                result.RemoveAt(result.Count - 1);
+                if (label.Groups[1].Length > 0)
+                    result.Add(run with { Text = label.Groups[1].Value });
+                result.Add(new CaptionNumber(run.Text[label.Groups[2].Index..], run.Style, label.Groups[2].Value, name));
+            }
+            else
+                result.Add(new CaptionNumber("", null, "Figure", name));
+        }
+        return result;
+    }
+
+    /// <summary>A caption's label at the end of the text before its anchor: a word (letters, digits, underscores), a full stop, spaces.</summary>
+    [GeneratedRegex(@"^(.*?)(\p{L}[\p{L}\p{N}_]{0,39})\.?\s*$", RegexOptions.Singleline)]
+    private static partial Regex LabelBefore();
+
+    /// <summary>A paragraph's pieces without its anchors, the spaces before one at its end left out, and the anchors' names as bookmarks'.</summary>
+    static (IReadOnlyList<Notation.Piece> Pieces, List<string> Names) Unanchored(IReadOnlyList<Notation.Piece> pieces)
+    {
+        var names = pieces.OfType<Notation.Anchor>().Where(a => a.Name.Length > 0).Select(a => BookmarkName(a.Name)).Distinct(StringComparer.Ordinal).ToList();
+        var rest = pieces.Where(p => p is not Notation.Anchor).ToList();
+        if (pieces[^1] is Notation.Anchor && rest.Count > 0 && rest[^1] is Notation.Run last)
+        {
+            var trimmed = last.Text.TrimEnd(' ', '\t');
+            rest.RemoveAt(rest.Count - 1);
+            if (trimmed.Length > 0)
+                rest.Add(last with { Text = trimmed });
+        }
+        return (rest, names);
+    }
+
+    /// <summary>
+    /// An anchor's name as a bookmark's, as Word allows them: letters, digits and underscores, a letter first, 40 at most; other
+    /// characters as underscores, an "x" before a first digit.
+    /// </summary>
+    public static string BookmarkName(string name)
+    {
+        var clean = new string([.. name.Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_')]);
+        if (clean.Length == 0 || !(char.IsLetter(clean[0]) || clean[0] == '_'))
+            clean = "x" + clean;
+        return clean.Length > 40 ? clean[..40] : clean;
+    }
+
+    /// <summary>A new bookmark's id, as Contents gives them: a number too great to meet one of the document's.</summary>
+    static string BookmarkId() => Random.Shared.Next(100_000_000, 999_999_999).ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
     /// The runs of pieces of text, counting the characters they make from an offset, the footnotes' marks noted where they stand, objects
@@ -217,6 +304,26 @@ static class Markup
                     // A field Word computes as it lays the page out (one character of the text), its result as saved till then.
                     markup.Append("<w:fldSimple w:instr=\"").Append(field.Name switch { "pages" => " NUMPAGES ", "date" => " DATE ", _ => " PAGE " })
                         .Append("\"><w:r><w:t>").Append(field.Name == "date" ? DateTime.Today.ToString("d", CultureInfo.CurrentCulture) : "1").Append("</w:t></w:r></w:fldSimple>");
+                    offset++;
+                    break;
+                case CaptionNumber number:
+                {
+                    // Its result 1 till the write's end, which saves what the page shows (see WordDocument.RefreshFields).
+                    var id = number.Name != null ? BookmarkId() : null;
+                    if (id != null)
+                        markup.Append("<w:bookmarkStart w:id=\"").Append(id).Append("\" w:name=\"").Append(Escape(BookmarkName(number.Name!))).Append("\"/>");
+                    if (number.Lead.Length > 0)
+                        markup.Append(Runs([new Notation.Run(number.Lead, number.Style)], notes, paragraph, ref offset, kept));
+                    markup.Append("<w:fldSimple w:instr=\" SEQ ").Append(Escape(number.Label)).Append(" \\* ARABIC \"><w:r><w:t>1</w:t></w:r></w:fldSimple>");
+                    offset++;
+                    if (id != null)
+                        markup.Append("<w:bookmarkEnd w:id=\"").Append(id).Append("\"/>");
+                    break;
+                }
+                case Notation.Reference reference:
+                    // Word's cross-reference (\h: a link to it), its result the anchor's name till the write's end (see above).
+                    markup.Append("<w:fldSimple w:instr=\"").Append(reference.Page ? " PAGEREF " : " REF ").Append(Escape(BookmarkName(reference.Name)))
+                        .Append(" \\h \"><w:r><w:t>").Append(reference.Page ? "1" : Escape(reference.Name)).Append("</w:t></w:r></w:fldSimple>");
                     offset++;
                     break;
             }

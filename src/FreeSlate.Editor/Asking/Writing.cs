@@ -150,8 +150,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         stories = null;
     }
 
-    /// <summary>The tables of contents written: the paragraph each line put in, made a table once the write is in (see End), and its title.</summary>
-    readonly List<(int Placeholder, string? Title)> contentsTables = [];
+    /// <summary>The tables of contents written: the paragraph each line put in, made a table once the write is in (see End), its title, a table of figures' label.</summary>
+    readonly List<(int Placeholder, string? Title, string? Label)> contentsTables = [];
 
     /// <summary>Takes back what the write did so far (input that could not be read): its steps are the session's last.</summary>
     void TakeBackAll()
@@ -528,7 +528,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 Step(() =>
                 {
                     var made = document.InsertBlocks(at, "<w:p/>", before: true)[0];
-                    contentsTables.Add((made, contents.Title));
+                    contentsTables.Add((made, contents.Title, contents.Label));
                     written.Add(made);
                     return new TextPlace(made, 0);
                 });
@@ -721,14 +721,14 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 return null;
             }, quiet: true);
         }
-        // The tables of contents made last, of the headings as they all stand now.
-        foreach (var (place, named) in contentsTables)
+        // The tables of contents and of figures made last, of the headings and captions as they all stand now.
+        foreach (var (place, named, label) in contentsTables)
         {
             if (word == null || !document.Contains(place))
                 continue;
             Step(() =>
             {
-                var ids = Contents.Make(word, place, named);
+                var ids = Contents.Make(word, place, named, label);
                 var at = written.IndexOf(place);
                 if (at >= 0)
                 {
@@ -738,7 +738,36 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 return ids.Count > 0 ? new TextPlace(ids[^1], document.Text(ids[^1]).Length) : null;
             }, quiet: true);
         }
+        Refresh(word, Step, problems, written);
         Frame();
+    }
+
+    /// <summary>
+    /// The fields Word shows as saved till it prints, captions' numbers, references and page references, saved as the pages show them (see
+    /// WordDocument.RefreshFields), so that Word shows what the editor does; a reference among the paragraphs written that finds no anchor
+    /// told as a problem.
+    /// </summary>
+    public static void Refresh(WordDocument? word, Func<Func<TextPlace?>, bool, bool> step, List<string> problems, IEnumerable<int> written)
+    {
+        if (word == null)
+            return;
+        step(() =>
+        {
+            word.RefreshFields();
+            return null;
+        }, true);
+        foreach (var paragraph in written.Where(word.Contains))
+        {
+            var text = word.Text(paragraph);
+            for (var offset = 0; offset < text.Length; offset++)
+            {
+                if (text[offset] == '￼' && word.FieldInstruction(paragraph, offset) is { } instruction
+                    && instruction.Split(' ', StringSplitOptions.RemoveEmptyEntries) is [var type, var name, ..]
+                    && type.ToUpperInvariant() is "REF" or "PAGEREF" && word.FieldText(paragraph, offset) is { } shown
+                    && FreeSlate.Docx.Layout.FieldEvaluator.IsError(shown))
+                    problems.Add($"{{{(type.Equals("REF", StringComparison.OrdinalIgnoreCase) ? "ref" : "page")} {name}}} in ¶{paragraph.ToString(CultureInfo.InvariantCulture)} finds no anchor {{#{name}}}: give the caption's number or the paragraph it means that anchor.");
+            }
+        }
     }
 
     /// <summary>What was written selected, so that the ring frames it (the session hides the selection while Claude writes, see Talk).</summary>

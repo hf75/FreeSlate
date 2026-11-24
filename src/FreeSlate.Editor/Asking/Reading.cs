@@ -130,10 +130,10 @@ static partial class Reading
             }
             tableShown = null;
             // A table of contents as one line, with the ids of its first and last paragraph (see Contents).
-            if (word != null && Contents.At(word, p) is var (last, title))
+            if (word != null && Contents.At(word, p) is var (last, title, label))
             {
                 text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append("–¶").Append(last.ToString(CultureInfo.InvariantCulture))
-                    .Append(" {contents").Append(title is { } named ? " " + named : "").Append("}\n");
+                    .Append(label is { } figures ? " {figures " + figures : " {contents" + (title is { } named ? " " + named : "")).Append("}\n");
                 while (document.Next(p) is { } next && p != last)
                     p = next;
                 paragraph = p;
@@ -423,8 +423,74 @@ static partial class Reading
     public static string CellText(IEditableDocument document, TableCell cell, Objects objects) =>
         string.Join("<br>", cell.Paragraphs.Select(p => Line(document, p, objects).Replace("|", "\\|", StringComparison.Ordinal)));
 
-    /// <summary>A paragraph's text in the notation: its meanings marked, its objects' tokens and notes' marks, its tabs and breaks named.</summary>
-    public static string Line(IEditableDocument document, int paragraph, Objects objects) => Line(document, paragraph, 0, document.Text(paragraph).Length, objects);
+    /// <summary>
+    /// A paragraph's text in the notation: its meanings marked, its objects' tokens and notes' marks, its tabs and breaks named; its
+    /// anchors at its end (see Anchors).
+    /// </summary>
+    public static string Line(IEditableDocument document, int paragraph, Objects objects) =>
+        Line(document, paragraph, 0, document.Text(paragraph).Length, objects) + (document is WordDocument word ? Anchors(word, paragraph) : "");
+
+    /// <summary>
+    /// The anchors a paragraph's line ends with, " {#name}" each: the bookmarks that begin in it, but those round a caption's number (which
+    /// reads as its anchor, see Numbering), a table of contents' (_Toc…, see Contents) and Word's others whose names begin with "_" where
+    /// no field of the document leads to them or reads them.
+    /// </summary>
+    static string Anchors(WordDocument word, int paragraph)
+    {
+        var spans = word.BookmarkSpans(paragraph);
+        if (spans.Count == 0)
+            return "";
+        var anchors = new StringBuilder();
+        foreach (var (name, _, end) in spans)
+        {
+            if (name.StartsWith("_Toc", StringComparison.Ordinal) || end is { } after && after > 0 && word.FieldInstruction(paragraph, after - 1) is { } instruction
+                && Numbering(word, paragraph, word.Text(paragraph), after - 1, instruction) != null)
+                continue;
+            if (name.StartsWith('_') && !word.ReferencedBookmarks().Contains(name))
+                continue;
+            anchors.Append(" {#").Append(name).Append('}');
+        }
+        return anchors.ToString();
+    }
+
+    /// <summary>
+    /// A caption's number as the notation writes it (see Notation.Anchor): a SEQ field of a label alone (in arabic numbers) right after
+    /// that label ("Figure 1"), {#name} where a bookmark holds the two from the label's beginning, {#} where none does; null for another
+    /// field or a sequence otherwise numbered (its token).
+    /// </summary>
+    static string? Numbering(WordDocument word, int paragraph, string text, int offset, string instruction)
+    {
+        var words = instruction.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length < 2 || !words[0].Equals("SEQ", StringComparison.OrdinalIgnoreCase))
+            return null;
+        for (var k = 2; k < words.Length; k += 2)
+        {
+            if (words[k] != "\\*" || k + 1 >= words.Length || !(words[k + 1].Equals("ARABIC", StringComparison.OrdinalIgnoreCase)
+                || words[k + 1].Equals("MERGEFORMAT", StringComparison.OrdinalIgnoreCase)))
+                return null;
+        }
+        if (LabelBefore().Match(text[..offset]) is not { Success: true } label || !label.Groups[1].Value.Equals(words[1], StringComparison.OrdinalIgnoreCase))
+            return null;
+        var named = word.BookmarkSpans(paragraph).FirstOrDefault(s => s.Start <= label.Index && s.End == offset + 1);
+        return named.Name is { } name ? "{#" + name + "}" : "{#}";
+    }
+
+    [GeneratedRegex(@"(\p{L}[\p{L}\p{N}_]{0,39})\.?\s*$")]
+    private static partial Regex LabelBefore();
+
+    /// <summary>A reference the notation writes (see Notation.Reference): REF of a bookmark as {ref name}, PAGEREF as {page name}; null for others.</summary>
+    static string? Referring(string instruction)
+    {
+        var words = instruction.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length < 2 || words[1].StartsWith('\\') || words.Skip(2).Any(w => w is not ("\\h" or "\\*") && !w.Equals("MERGEFORMAT", StringComparison.OrdinalIgnoreCase)))
+            return null;
+        return words[0].ToUpperInvariant() switch
+        {
+            "REF" => "{ref " + words[1] + "}",
+            "PAGEREF" => "{page " + words[1] + "}",
+            _ => null,
+        };
+    }
 
     /// <summary>A stretch of a paragraph's text in the notation (see Line).</summary>
     public static string Line(IEditableDocument document, int paragraph, int from, int to, Objects objects, bool inLink = false)
@@ -481,8 +547,13 @@ static partial class Reading
         switch (c)
         {
             case '￼':
-                if (word?.FieldInstruction(paragraph, offset) is { } instruction && FieldName(instruction) is { } name)
-                    return "{" + name + "}";
+                if (word?.FieldInstruction(paragraph, offset) is { } instruction)
+                {
+                    if (FieldName(instruction) is { } name)
+                        return "{" + name + "}";
+                    if ((Referring(instruction) ?? Numbering(word, paragraph, text, offset, instruction)) is { } written)
+                        return written;
+                }
                 if (objects.Formula(paragraph, offset) is var (latex, _))
                     return "$" + latex + "$";
                 return objects.Token(paragraph, offset);

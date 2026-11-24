@@ -47,8 +47,11 @@ public static partial class Notation
 
     public sealed record PageBreak : Block;
 
-    /// <summary>A table of contents ("{contents Title}" on a line of its own; see Contents), with its title, or none.</summary>
-    public sealed record ContentsTable(string? Title) : Block;
+    /// <summary>
+    /// A table of contents ("{contents Title}" on a line of its own; see Contents), with its title, or none; a table of figures ("{figures
+    /// Figure}") lists the captions of a label instead, its label given (Word's Insert Table of Figures).
+    /// </summary>
+    public sealed record ContentsTable(string? Title, string? Label = null) : Block;
 
     /// <summary>A line across the text (Markdown's thematic break).</summary>
     public sealed record Rule : Block;
@@ -82,6 +85,16 @@ public static partial class Notation
     /// <summary>A field the notation names: {page} the page's number, {pages} the pages' count, {date} today's date.</summary>
     public sealed record FieldMark(string Name) : Piece;
 
+    /// <summary>
+    /// An anchor, {#name}: in a caption right after its label ("Figure {#sales}") the caption's number, counted with the document's other
+    /// captions of that label, the label and number its text to refer to; elsewhere its paragraph's text (a heading's). An empty name
+    /// ({#}) numbers a caption no reference needs.
+    /// </summary>
+    public sealed record Anchor(string Name) : Piece;
+
+    /// <summary>A reference to an anchor: {ref name} shows its text (a caption's label and number, a heading's text), {page name} its page.</summary>
+    public sealed record Reference(string Name, bool Page) : Piece;
+
     /// <summary>A formula among the text ($…$): its LaTeX (see Formulas).</summary>
     public sealed record Formula(string Latex) : Piece;
 
@@ -99,8 +112,8 @@ public static partial class Notation
 
     enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, Formula, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled, Contents }
 
-    /// <summary>A table of contents: "{contents}" (or "{toc}") on a line of its own, its title after the word.</summary>
-    [GeneratedRegex(@"^\{\s*(?:contents|toc)(?:\s+([^{}]*?))?\s*\}$", RegexOptions.IgnoreCase)]
+    /// <summary>A table of contents: "{contents}" (or "{toc}") on a line of its own, its title after the word; "{figures Label}" a table of figures.</summary>
+    [GeneratedRegex(@"^\{\s*(contents|toc|figures)(?:\s+([^{}]*?))?\s*\}$", RegexOptions.IgnoreCase)]
     private static partial Regex ContentsLine();
 
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
@@ -393,8 +406,12 @@ public static partial class Notation
                 }
                 case Kind.Contents:
                 {
-                    if (!open)
-                        blocks.Add(new ContentsTable(ContentsLine().Match(lines[i].Trim()).Groups[1].Value is { Length: > 0 } title ? title : null));
+                    if (!open && ContentsLine().Match(lines[i].Trim()) is { } contents)
+                    {
+                        var words = contents.Groups[2].Value is { Length: > 0 } given ? given : null;
+                        blocks.Add(contents.Groups[1].Value.Equals("figures", StringComparison.OrdinalIgnoreCase)
+                            ? new ContentsTable(null, words ?? "Figure") : new ContentsTable(words));
+                    }
                     i++;
                     continue;
                 }
@@ -779,6 +796,20 @@ public static partial class Notation
                 k += field.Length;
                 continue;
             }
+            if (c == '{' && AnchorText().Match(text, k) is { Success: true } anchor)
+            {
+                Flush();
+                pieces.Add(new Anchor(anchor.Groups[1].Value));
+                k += anchor.Length;
+                continue;
+            }
+            if (c == '{' && ReferenceText().Match(text, k) is { Success: true } reference)
+            {
+                Flush();
+                pieces.Add(new Reference(reference.Groups[2].Value, reference.Groups[1].Value.Equals("page", StringComparison.OrdinalIgnoreCase)));
+                k += reference.Length;
+                continue;
+            }
             if (c == '`' && CodeText().Match(text, k) is { Success: true } code)
             {
                 Flush();
@@ -825,6 +856,14 @@ public static partial class Notation
 
     [GeneratedRegex(@"\G\{(page|pages|date)\}", RegexOptions.IgnoreCase)]
     private static partial Regex FieldText();
+
+    /// <summary>An anchor: {#name}, or {#} alone; a name of letters, digits and _ - . : (see Markup.BookmarkName).</summary>
+    [GeneratedRegex(@"\G\{#\s*([\p{L}\p{N}_.:-]*)\s*\}")]
+    private static partial Regex AnchorText();
+
+    /// <summary>A reference to an anchor: {ref name} or {page name}.</summary>
+    [GeneratedRegex(@"\G\{(ref|page)\s+#?([\p{L}\p{N}_.:-]+)\s*\}", RegexOptions.IgnoreCase)]
+    private static partial Regex ReferenceText();
 
     /// <summary>A formula among the text: $…$, its content neither beginning nor ending with a space, no digit right after it (so that prices stay text).</summary>
     [GeneratedRegex(@"\G\$(?!\s)((?:\\.|[^$\\\n])+?)(?<!\s)\$(?!\d)")]

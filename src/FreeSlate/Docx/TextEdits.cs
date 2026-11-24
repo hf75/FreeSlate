@@ -183,14 +183,14 @@ static partial class TextEdits
         return false;
     }
 
-    /// <summary>The text saved as the result of a field that shows as the character at a place of a paragraph's text (a field the layout computes, see FieldInline), null where none does.</summary>
-    public static string? FieldAt(ParagraphBlock paragraph, int offset)
+    /// <summary>The field that shows as the character at a place of a paragraph's text (a field the layout computes, see FieldInline), null where none does.</summary>
+    public static FieldInline? FieldInlineAt(ParagraphBlock paragraph, int offset)
     {
         var at = paragraph.TextOffset;
         foreach (var inline in paragraph.Content)
         {
             if (at == offset && ParagraphText.Length(inline) > 0)
-                return inline is FieldInline field ? string.Concat(field.Cached.OfType<TextInline>().Select(t => t.Text)) : null;
+                return inline as FieldInline;
             at += ParagraphText.Length(inline);
         }
         return null;
@@ -374,6 +374,91 @@ static partial class TextEdits
             }
         }
         return marks;
+    }
+
+    /// <summary>
+    /// The results saved of fields set to texts (see WordDocument.RefreshFields): of a simple field its runs, of a complex field the
+    /// runs between its separator and its end; the first keeps its format and takes the text, the others go. A complex field without a
+    /// separator gets one before its end, and a run of the text in the format of its beginning. A field that does not end in its
+    /// paragraph, or holds another in its result, stays as it is. Returns the stretch's new text.
+    /// </summary>
+    public static string Results(Stretch stretch, IReadOnlyList<(Inline Field, string Text)> results)
+    {
+        var touched = new HashSet<XElement>();
+        foreach (var (field, text) in results)
+        {
+            if (field.Xml == null || stretch.Find(field.Xml) is not { } element)
+                continue;
+            var w = element.Name.Namespace;
+            var p = ParagraphOf(element);
+            XElement Run(XElement? like) => new(w + "r", like?.Element(w + "rPr") is { } format ? new XElement(format) : null,
+                new XElement(w + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), text));
+            if (element.Name.LocalName == "fldSimple")
+            {
+                var runs = element.Elements(w + "r").ToList();
+                if (runs.Count == 0)
+                    element.Add(Run(null));
+                else
+                {
+                    runs[0].Elements().Where(e => e.Name != w + "rPr").Remove();
+                    runs[0].Add(new XElement(w + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), text));
+                    foreach (var other in runs.Skip(1))
+                        other.Remove();
+                }
+                touched.Add(p);
+                continue;
+            }
+            if (FieldRuns(element, p) is not { Count: > 0 } all)
+                continue;
+            // The runs of its result: after its own separator (at depth 1), before its end.
+            var (depth, separator, end, result, nested) = (0, (XElement?)null, (XElement?)null, new List<XElement>(), false);
+            foreach (var run in all)
+            {
+                var marks = run.Elements(w + "fldChar").ToList();
+                if (marks.Count == 0)
+                {
+                    if (separator != null && depth == 1)
+                        result.Add(run);
+                    continue;
+                }
+                foreach (var mark in marks)
+                {
+                    switch ((string?)mark.Attribute(w + "fldCharType"))
+                    {
+                        case "begin":
+                            depth++;
+                            nested |= separator != null;
+                            break;
+                        case "separate" when depth == 1:
+                            separator = run;
+                            break;
+                        case "end":
+                            if (--depth == 0)
+                                end = run;
+                            break;
+                    }
+                }
+            }
+            if (nested || end == null)
+                continue;
+            if (separator == null)
+            {
+                end.AddBeforeSelf(new XElement(w + "r", all[0].Element(w + "rPr") is { } format ? new XElement(format) : null,
+                    new XElement(w + "fldChar", new XAttribute(w + "fldCharType", "separate"))));
+                end.AddBeforeSelf(Run(all[0]));
+            }
+            else if (result.Count == 0)
+                separator.AddAfterSelf(Run(separator));
+            else
+            {
+                result[0].Elements().Where(e => e.Name != w + "rPr").Remove();
+                result[0].Add(new XElement(w + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), text));
+                foreach (var other in result.Skip(1))
+                    other.Remove();
+            }
+            touched.Add(p);
+        }
+        return stretch.Written(Outermost(touched).Select(p => (p, (IEnumerable<XElement>)[p])));
     }
 
     /// <summary>
