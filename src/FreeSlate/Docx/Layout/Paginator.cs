@@ -6596,8 +6596,11 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
             return;
         }
         var bottom = flow.Max(f => page.Lines[f.Index].Top + page.Lines[f.Index].Line.Height);
-        // The last column holding lines: the one whose room a line begins in, or nearest to it (a line hanging out of it).
-        int ColumnAt(double x) => Enumerable.Range(0, section.Columns).MinBy(c => Column(c) is var (left, width) ? Math.Max(0, Math.Max(left - x, x - left - width)) : 0);
+        // The last column holding lines: the one whose room a line begins in, or nearest to it (a line hanging out of it); one beginning
+        // where the column before ends begins in the next, columns without space between them meeting there (docx/external/libreoffice/
+        // extras-ooxmlimport/tdf103931: three columns with no space between, Word's PDF has both lines).
+        int ColumnAt(double x) => Enumerable.Range(0, section.Columns).MinBy(c => Column(c) is var (left, width)
+            ? (x >= left - 0.01 && x < left + width - 0.01 ? 0 : 1, Math.Max(0, Math.Max(left - x, x - left - width))) : (1, 0.0));
         var used = flow.Max(f => ColumnAt(page.Lines[f.Index].Left));
         for (var c = 0; c + 1 < section.Columns && c < used; c++)
         {
