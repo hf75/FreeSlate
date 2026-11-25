@@ -229,6 +229,8 @@ static partial class Reading
         }
         if (word != null && Commenting.Read(word, objects) is { Length: > 0 } comments)
             text.Append("\nComments:\n").Append(comments);
+        if (word != null && Reviewing.Read(word) is { Length: > 0 } changes)
+            text.Append("\nChanges:\n").Append(changes);
         if (word != null && Citing.Block(word) is { } sources)
             text.Append("\nSources:\n").Append(sources).Append('\n');
         if (objects.Notes.Any())
@@ -303,7 +305,10 @@ static partial class Reading
             said.Append(", words hyphenated");
         if (word.PageColor is { } pages)
             said.Append(", page colour: #").Append(pages);
-        return said.Append(PageMore(word, objects, first, section)).ToString();
+        said.Append(PageMore(word, objects, first, section));
+        if (word.TrackRevisions)
+            said.Append(", Track Changes on");
+        return said.ToString();
     }
 
     /// <summary>A paragraph of a header or footer in the notation (see Line), a watermark it holds left out (see Arranging.Watermark).</summary>
@@ -486,9 +491,11 @@ static partial class Reading
     /// anchors at its end (see Anchors).
     /// </summary>
     public static string Line(IEditableDocument document, int paragraph, Objects objects, bool plain = false) =>
-        Line(document, paragraph, 0, document.Text(paragraph).Length, objects, plain: plain)
-        + (document is WordDocument word ? Anchors(word, paragraph) + string.Concat(word.IndexEntriesOf(paragraph).Select(e => " {index " + e.Replace(":", ": ", StringComparison.Ordinal) + "}"))
-            + string.Concat(word.AuthoritiesOf(paragraph).Select(Authorities.Text)) : "");
+        document is WordDocument word
+            ? Reviewing.WithMark(word, paragraph, Line(document, paragraph, 0, document.Text(paragraph).Length, objects, plain: plain))
+              + Anchors(word, paragraph) + string.Concat(word.IndexEntriesOf(paragraph).Select(e => " {index " + e.Replace(":", ": ", StringComparison.Ordinal) + "}"))
+              + string.Concat(word.AuthoritiesOf(paragraph).Select(Authorities.Text))
+            : Line(document, paragraph, 0, document.Text(paragraph).Length, objects, plain: plain);
 
     /// <summary>
     /// The anchors a paragraph's line ends with, " {#name}" each: the bookmarks that begin in it, but those round a caption's number (which
@@ -567,10 +574,14 @@ static partial class Reading
         var citations = word != null ? word.CitationsOf(paragraph).Where(c => c.Start >= from && c.End <= to && c.End > c.Start).ToList() : [];
         // Its runs' own looks (see Looks).
         var looks = word != null && !plain ? Looks(word, paragraph) : [];
+        // Its tracked changes as the notation writes them (see Reviewing.Marker), a link and a citation one piece of them.
+        var marker = word != null && !inLink && Reviewing.Spans(word, paragraph) is { Count: > 0 } spans
+            ? new Reviewing.Marker([.. spans.Where(s => !s.Mark && (s.Deleted != null ? s.Offset >= from && s.Offset <= to : s.Offset < to && s.Offset + s.Length > from))]) : null;
         var line = new StringBuilder();
         var k = from;
         while (k < to)
         {
+            marker?.At(k, line);
             if (citations.FirstOrDefault(c => c.Start == k) is { End: > 0 } citation && Citing.ItemsOf(citation.Instruction) is { } cited)
             {
                 line.Append(Notation.CiteText(cited));
@@ -587,9 +598,11 @@ static partial class Reading
             var end = styled.Length > 0 ? Math.Min(to, styled.Offset + styled.Length) : Math.Min(to, styles.Where(s => s.Offset > k).Select(s => s.Offset).DefaultIfEmpty(to).Min());
             end = Math.Min(end, links.Where(l => l.Start > k).Select(l => l.Start).DefaultIfEmpty(end).Min());
             end = Math.Min(end, citations.Where(c => c.Start > k).Select(c => c.Start).DefaultIfEmpty(end).Min());
-            // A stretch ends where its runs' look does too.
+            // A stretch ends where its runs' look does too, and where a tracked change begins or ends.
             var looked = looks.FirstOrDefault(l => l.Offset <= k && k < l.Offset + l.Length);
             end = Math.Min(end, looked.Length > 0 ? looked.Offset + looked.Length : looks.Where(l => l.Offset > k).Select(l => l.Offset).DefaultIfEmpty(end).Min());
+            if (marker != null)
+                end = marker.Next(k, end);
             // Runs of a look the notation does not say as their WordprocessingML.
             if (looked is { Length: > 0, Other: true } && word != null && Raw(word, paragraph, k, end) is { } raw)
             {
@@ -603,6 +616,7 @@ static partial class Reading
             line.Append(Wrapped(styled.Length > 0 ? styled.Style : null, looked.Length > 0 ? looked.Look : null, part.ToString()));
             k = Math.Max(end, k + 1);
         }
+        marker?.End(to, to == text.Length, line);
         return line.ToString();
     }
 
@@ -642,7 +656,7 @@ static partial class Reading
                 return "<w:r><w:br w:type=\"page\"/></w:r>";
             case '\u000E':
                 return "<w:r><w:br w:type=\"column\"/></w:r>";
-            case '*' or '_' or '{' or '}' or '[' or ']' or '|' or '`' or '\\' or '<' or '$' or '~' or '^':
+            case '*' or '_' or '{' or '}' or '[' or ']' or '|' or '`' or '\\' or '<' or '$' or '~' or '^' or '¶':
                 return "\\" + c;
             case '=' when offset + 1 < text.Length && text[offset + 1] == '=':
                 return "\\=";

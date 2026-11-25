@@ -91,12 +91,15 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     {
         string? place = null, content = null;
         int? paragraph = null, through = null;
+        bool? track = null;
         try
         {
             using var input = JsonDocument.Parse(json);
             var root = input.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
                 return ("The input of write is a JSON object.", true);
+            if (root.TryGetProperty("track", out var tracked) && tracked.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                track = tracked.GetBoolean();
             if (root.TryGetProperty("place", out var p) && p.ValueKind == JsonValueKind.String)
                 place = p.GetString();
             if (root.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String)
@@ -129,7 +132,51 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             return (refused, true);
         Update(content, final: true);
         End();
-        return (Told(), false);
+        // As tracked changes where asked, or where the document's Track Changes is on and it was not asked otherwise (see Reviewing).
+        var marked = word != null && (track ?? word.TrackRevisions) && Track();
+        return (Told() + (marked ? " Marked as Claude's tracked changes." : ""), false);
+    }
+
+    /// <summary>The body as it read before the write (see WordDocument.BodyMarkup), which a tracked write's changes are marked against.</summary>
+    IReadOnlyList<string>? was;
+
+    /// <summary>
+    /// The write's changes marked as Claude's tracked changes against the body as it read before (WordDocument.MarkChanges), a step of its
+    /// own; what was written then the paragraphs that changed. Whether anything was marked.
+    /// </summary>
+    bool Track()
+    {
+        if (word == null || was == null)
+            return false;
+        IReadOnlyList<int> marked = [];
+        var before = word.Revisions().Select(r => r.Id).ToHashSet();
+        var done = Step(() =>
+        {
+            // By Claude, now.
+            var (author, at) = (word.Author, word.ChangedAt);
+            (word.Author, word.ChangedAt) = (Reviewing.Author, null);
+            try
+            {
+                marked = word.MarkChanges(was);
+            }
+            finally
+            {
+                (word.Author, word.ChangedAt) = (author, at);
+            }
+            return null;
+        });
+        // What was written: the paragraphs from the first that Claude's new changes stand in to the last (the blocks marked hold one on
+        // either side).
+        var places = word.Revisions().Where(r => !before.Contains(r.Id)).SelectMany(r => new[] { r.Start.Paragraph, r.End.Paragraph }).ToHashSet();
+        var changed = marked.Where(places.Contains).ToList();
+        if (!done || changed.Count == 0)
+            return false;
+        var (from, to) = (marked.ToList().IndexOf(changed[0]), marked.ToList().IndexOf(changed[^1]));
+        written.Clear();
+        written.AddRange(marked.Skip(from).Take(to - from + 1));
+        (amongWritten, amongLength) = (null, 0);
+        Frame();
+        return true;
     }
 
     /// <summary>The write as before it began, its place not read yet.</summary>
@@ -184,6 +231,12 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     {
         begun = true;
         objects.Written();
+        // The document's changes known by their ids for writing them back, and the body as it reads, for marking a tracked write's changes.
+        if (word != null)
+        {
+            Reviewing.Remember(word);
+            was = word.BodyMarkup();
+        }
         if (place != "focus" && (paragraph is not { } id || !document.Contains(id)))
         {
             refused = $"There is no paragraph {(paragraph is { } given ? "¶" + given.ToString(CultureInfo.InvariantCulture) : "given")} to write {place}.";

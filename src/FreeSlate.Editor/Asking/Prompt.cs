@@ -196,6 +196,12 @@ static class Prompt
           document as "Page from ¶12: …", which the page tool sets up alone ("paragraph": 12): one page across among upright ones, its
           own margins, columns, header and footer. "\columnbreak" alone on a line goes on in the next column; columns of widths of their
           own: "::: columns 2 widths=2:1 space=1cm".
+        - Tracked changes (Word's Track Changes) read as CriticMarkup, each with its change's id after its closing marks:
+          {++inserted++12}, {--deleted--13}, {==formatted==14}. "¶" in one is a paragraph's mark: {++A new paragraph.¶++15} at a line's
+          end an inserted paragraph, {--¶--16} a deleted mark that joined two paragraphs, {==¶==17} at a line's end its paragraph
+          formatted otherwise. "Changes:" after the document lists each with its kind, author and time, what a formatting change did, a
+          move's other half, a deleted row's cells. Write them back as you read them, with their ids, where they are to stay; the review
+          tool accepts or rejects them. {++text++} and {--text--} without an id are new changes of yours.
         - Anything else Word can hold (a field, a shape, a content control): WordprocessingML, as a block (w:p, w:tbl) on lines of its
           own or among the text (w:r). The usual prefixes need no declarations. A paragraph you read as WordprocessingML (<w:p>…) has
           formatting the notation does not say: write it back as WordprocessingML where it is to keep it.
@@ -219,6 +225,10 @@ static class Prompt
           where the wish asks for one. Headers, footers, page numbers, margins, paper, orientation, watermarks and page borders
           are the page tool's ("Page:" after the document says how they are), for one section alone too ("Page from ¶12:").
         - Write a whole new document in a few writes of a few pages each, in order, so that the user sees it grow.
+        - Where the wish asks for suggestions, for a correction to review or to mark your changes ("track changes", "Änderungen
+          nachverfolgen"), write with track=true the text as it is to read: the editor marks what changed, word by word, as Claude's
+          tracked changes for the user to accept or reject. In a document whose Track Changes is on ("Page:" says so) every write is
+          tracked unless track=false.
         - After writing WordArt, columns, graphics, tables or page breaks, look at the pages they are on and fix what does not sit
           well (text cut off, a graphic too large, a heading alone at the bottom of a page, an empty page). Plain text needs no look.
 
@@ -247,6 +257,10 @@ static class Prompt
             "through": {
               "type": "integer",
               "description": "For replace: the id of the last paragraph replaced (by default the paragraph itself)."
+            },
+            "track": {
+              "type": "boolean",
+              "description": "true: what the write changes is marked as Claude's tracked changes (Word's Track Changes), word by word, for the user to accept or reject: for suggestions and corrections to review. Where the document's Track Changes is on, true unless given false."
             },
             "content": {
               "type": "string",
@@ -344,6 +358,18 @@ static class Prompt
         }
         """;
 
+    const string ReviewSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "action": { "type": "string", "enum": ["accept", "reject"], "description": "accept: the changes become the text as it reads; reject: the text goes back to how it was before them." },
+            "changes": { "type": "array", "items": { "type": "integer" }, "description": "The changes' ids ([change 12]: 12); left out, all of them, in the whole document (its headers, footers, notes and comments too)." },
+            "author": { "type": "string", "description": "Only this author's changes, as \"Changes:\" names the authors." },
+            "track": { "type": "string", "enum": ["on", "off"], "description": "Word's Track Changes for the document: on, Word marks every edit as a tracked change (and your writes are tracked); off." }
+          }
+        }
+        """;
+
     public static readonly IReadOnlyList<ClaudeTool> Tools =
     [
         new("write", "Writes into the document: at the focus, after or before a paragraph, or in place of paragraphs. The content streams into the document as you write it. Give place and paragraph before content.", WriteSchema, Streams: true),
@@ -352,5 +378,6 @@ static class Prompt
         new("tone", "Gives the whole document another tone, the look its levels, meanings and tables take: plain, magazine or notebook.", ToneSchema),
         new("comment", "Comments on the document as Word's reviewing does, without changing its text: a comment on a paragraph or on words in it (feedback, a question, a suggestion), an answer to a comment, a comment marked done or taken away. The document's comments read after it, each with its id.", CommentSchema),
         new("page", "Sets up the document's pages, or one section's (paragraph): header and footer (with page numbers; the first page's and even pages' own), margins, paper, orientation, columns, a first page of its own, a watermark, a border round the pages, their colour, mirrored margins and a gutter, the notes' numbering. Give only what changes.", PageSchema),
+        new("review", "Reviews the document's tracked changes as Word's Review tab does: accepts or rejects all of them, an author's or those with the ids given (a move with its other half); or turns Word's Track Changes on or off. Tells the changes as they then are.", ReviewSchema),
     ];
 }

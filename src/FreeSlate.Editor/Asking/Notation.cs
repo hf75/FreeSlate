@@ -223,6 +223,17 @@ public static partial class Notation
     /// <summary>A formula among the text ($…$): its LaTeX (see Formulas).</summary>
     public sealed record Formula(string Latex) : Piece;
 
+    /// <summary>
+    /// A tracked change as CriticMarkup writes one (see Reviewing): "{++inserted++}" ('+'), "{--deleted--}" ('-'), "{==formatted==}"
+    /// ('='), the id of the document's change it is after its closing mark ("++12}"), none for a new one; its pieces, and its text as
+    /// written (marks unescaped), where "¶" is a paragraph's mark.
+    /// </summary>
+    public sealed record Change(char Kind, IReadOnlyList<Piece> Pieces, int? Id, string Text) : Piece;
+
+    /// <summary>A tracked change among the text: its marks doubled, its text, its closing marks with the change's id where it has one.</summary>
+    [GeneratedRegex(@"\G\{(\+\+|--|==)(.*?)\1(\d{0,9})\}", RegexOptions.Singleline)]
+    private static partial Regex ChangeText();
+
     /// <summary>The text block being written as far as it reads: its style, and its text without the notation's marks.</summary>
     public sealed record Tail(string? Style, string Text);
 
@@ -928,9 +939,19 @@ public static partial class Notation
 
     static string Shorten(string text) => text.Length <= 80 ? text : text[..80] + "…";
 
-    /// <summary>A text without the notation's marks, as it shows while it is being written.</summary>
+    /// <summary>A text without the notation's marks, as it shows while it is being written (a tracked deletion's text left out).</summary>
     static string Plain(string text) =>
-        PlainMarks().Replace(PlainLinks().Replace(text.Replace("<br>", " ", StringComparison.OrdinalIgnoreCase), "$1"), "").Replace("\\", "", StringComparison.Ordinal);
+        PlainMarks().Replace(PlainLinks().Replace(PlainChanges().Replace(text.Replace("<br>", " ", StringComparison.OrdinalIgnoreCase), ""), "$1"), "").Replace("\\", "", StringComparison.Ordinal);
+
+    /// <summary>A tracked change's marks, and a deletion with its text (see Change).</summary>
+    [GeneratedRegex(@"\{--.*?(?:--\d{0,9}\}|$)|\{\+\+|\+\+\d{0,9}\}|\{==|==\d{0,9}\}|¶(?=\+\+|==)", RegexOptions.Singleline)]
+    private static partial Regex PlainChanges();
+
+    /// <summary>A text written with the notation's escapes as it reads: each escaped mark itself.</summary>
+    static string Unescaped(string text) => EscapedMark().Replace(text, "$1");
+
+    [GeneratedRegex(@"\\([\\*_{}\[\]|<>`#^$.\-+)¶])")]
+    private static partial Regex EscapedMark();
 
     [GeneratedRegex(@"\[([^\]]*)\]\([^)\s]*\)?")]
     private static partial Regex PlainLinks();
@@ -980,7 +1001,7 @@ public static partial class Notation
         {
             var c = text[k];
             var rest = text.AsSpan(k);
-            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^$.-+)~=".Contains(text[k + 1]))
+            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^$.-+)~=¶".Contains(text[k + 1]))
             {
                 buffer.Append(text[k + 1]);
                 k += 2;
@@ -1053,6 +1074,16 @@ public static partial class Notation
                     k++;
                     continue;
                 }
+            }
+            if (c == '{' && k + 2 < text.Length && text[k + 1] is '+' or '-' or '=' && text[k + 2] == text[k + 1] && ChangeText().Match(text, k) is { Success: true } change)
+            {
+                Flush();
+                var inner = change.Groups[2].Value;
+                pieces.Add(new Change(change.Groups[1].Value[0], Inline(inner, style),
+                    int.TryParse(change.Groups[3].Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var changeId) ? changeId : null,
+                    Unescaped(inner)));
+                k += change.Length;
+                continue;
             }
             if (c == '{' && StyledText().Match(text, k) is { Success: true } styled)
             {

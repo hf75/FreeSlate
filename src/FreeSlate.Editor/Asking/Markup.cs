@@ -73,8 +73,10 @@ static partial class Markup
     /// <summary>A block made at a place (see Made).</summary>
     public static Made Of(Notation.Block block, Place place) => block switch
     {
-        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null, kept: place.Kept, keptAlign: place.KeptAlign, look: paragraph.Look),
-        Notation.Table table => Table(table, place),
+        // Paragraphs' marks a tracked change holds made their paragraphs' (see Reviewing.Marks).
+        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null, kept: place.Kept, keptAlign: place.KeptAlign, look: paragraph.Look) is var made
+            && Reviewing.HasMarks(made.Blocks) ? made with { Blocks = Reviewing.Marks(made.Blocks) } : made,
+        Notation.Table table => Table(table, place) is var made && Reviewing.HasMarks(made.Blocks) ? made with { Blocks = Reviewing.Marks(made.Blocks) } : made,
         Notation.Fenced { Kind: "svg" } svg => Svg(svg, place),
         Notation.Fenced { Kind: "wordart" } art => WordArt(art, place),
         Notation.Fenced { Kind: "box" } box => Box(box, place),
@@ -220,7 +222,7 @@ static partial class Markup
     {
         var notes = new List<(int, int, string)>();
         var offset = 0;
-        var runs = Runs(caption ? Numbered(pieces) : pieces, notes, 0, ref offset, kept);
+        var runs = Reviewing.Unmarked(Runs(caption ? Numbered(pieces) : pieces, notes, 0, ref offset, kept));
         return (runs, notes.Select(n => (n.Item2, n.Item3)).ToList());
     }
 
@@ -385,6 +387,16 @@ static partial class Markup
                         [new FreeSlate.Docx.Citations.Piece("(" + string.Join("; ", cite.Items.Select(i => i.Tag)) + ")")], Random.Shared.Next(1, int.MaxValue)));
                     offset++;
                     break;
+                case Notation.Change change:
+                {
+                    // A tracked change (see Reviewing.Changed): a deletion's text takes no place in the text as it reads.
+                    var at = offset;
+                    var inner = Runs(change.Pieces, notes, paragraph, ref at, kept);
+                    if (change.Kind != '-')
+                        offset = at;
+                    markup.Append(Reviewing.Changed(change, inner));
+                    break;
+                }
                 case Notation.Reference reference:
                     // Word's cross-reference (\h: a link to it), its result the anchor's name till the write's end (see above).
                     markup.Append(Field((reference.Page ? " PAGEREF " : " REF ") + BookmarkName(reference.Name) + " \\h ", reference.Page ? "1" : reference.Name, reference.Look));

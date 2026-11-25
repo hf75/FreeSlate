@@ -306,6 +306,17 @@ over each grid column at its top and bottom, as the layout resolves the cells' a
 - `PresentationDocument` makes its changes in the XML of the slides (`Pptx/SlideEdits` for text, `Pptx/SlideShapes` for
   shapes, `Pptx/SlideList` for the list of slides and the parts around it), reads the slide again and draws it anew;
   text that shrinks to fit its shape, and shapes that grow to their text, are fitted anew as PowerPoint fits them.
+- Tracked changes as Word's Review tab has them (`WordDocument.Revisions.cs`, measured in Word by COM on probes of every kind):
+  `Revisions` lists the body's as Word's Revisions do (neighbouring elements of a kind and an author one revision whatever their
+  times, a paragraph's mark a character of it, an inserted or deleted row its cells, a table's formatting changes one for each author,
+  ordered by where they begin), `RevisionsOf` gives them as they stand in a paragraph's text as it reads accepted, `RevisionMarkup`
+  their XML; `AcceptRevisions` and `RejectRevisions` settle all of them in every story, an author's or those named by their ids (a
+  move with its other half) in the XML they stand in (`Docx/TextEdits.Review.cs`: a mark inserted and rejected or deleted and
+  accepted joins its paragraph with the next, which keeps its properties; formatting rejected takes back what it kept); each one
+  change to undo. `TrackRevisions` is Word's Track Changes (w:trackRevisions). `MarkChanges` marks what changed since the body read as
+  `BodyMarkup` gave it as the author's tracked changes, as Word's Compare marks a revised document (`Docx/TextEdits.Compare.cs`:
+  paragraphs paired by their words, the words that differ deleted and inserted, formatting with the look it had, paragraphs and rows
+  that came or went inserted or deleted, the changes the blocks held kept).
 - `Editing/EditSession` is an editor's work without its surface, over either kind of document: the cursor and the
   selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, markup, blocks and notes put in, each
   handling one step to undo, whose changes the document keeps as one version (typing on adds to it); what else a
@@ -534,8 +545,11 @@ email="…": VML with Word's o:signatureline and a picture of the line, `Signatu
 wps:txbx id and wps:linkedTxbx, in the body or in a group, `Groups`), a cover page ("{cover style=band title=… …}": a building block of
 Word's gallery Cover Pages at the document's start, in place of the cover it has, in one of FreeSlate's own designs, band, bar, frame
 or plain, in the tone's colours, its fields content controls named as Word's are; read back as one line, `Covers`; a write from its
-first paragraph on takes it away whole first), \pagebreak and --- for a
-page break and a line, and WordprocessingML for anything else: a paragraph with
+first paragraph on takes it away whole first), tracked changes as CriticMarkup writes them with their changes' ids after the closing
+marks ("{++inserted++12}", "{--deleted--13}", "{==formatted==14}", "¶" in one a paragraph's mark; listed after the document as
+"Changes:"), written back as read keeping each its author, time and kind, a deletion its XML, a formatting change its looks
+(`Reviewing`, known by their ids as a write begins), one without an id a new change of Claude's, \pagebreak and --- for a page break
+and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
 across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
 pictures, graphics, WordArt, charts, SmartArt, text boxes, frames, fields, equations) stand in its text as tokens ("[picture 3]"),
@@ -559,7 +573,10 @@ headers and footers, margins mirrored and a gutter, `Arranging.Sections`; read w
 "Page:", and given again where a
 write takes a section's end away) and comment (`Commenting`: a comment on a paragraph or on words in it, an answer, one marked
 done or taken away, by "Claude", through the engine's `AddComment`, `Reply`, `Resolve` and `DeleteComment`; the comments read
-after the document as "Comments:", answers under the comments they answer). A token written is its object: one in text a write takes away is kept from before and goes in
+after the document as "Comments:", answers under the comments they answer) and review (`Reviewing`: tracked changes accepted or rejected,
+all, an author's or by their ids, through the engine's `AcceptRevisions` and `RejectRevisions`, and Word's Track Changes turned on or off,
+read on the "Page:" line). A write with track (or in a document whose Track Changes is on) is marked as Claude's tracked changes against the
+body as it read before it (`WordDocument.MarkChanges`), word by word, as Word's Compare marks a revision. A token written is its object: one in text a write takes away is kept from before and goes in
 again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
 elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits
 after the place and is written again in place where the write gives a table like it (`Writing.Tables`): rows and columns added
