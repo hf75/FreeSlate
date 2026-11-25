@@ -185,9 +185,9 @@ public sealed partial class WordDocument
     }
 
     /// <summary>
-    /// The XML of a revision's elements as the document holds them (each written as copying writes markup, with the prefixes of the
-    /// main part): its insertions and deletions with what they hold, the w:rPrChange, w:pPrChange of a formatting change, a paragraph's
-    /// w:pPr for a deleted mark (the properties of the paragraph it joins); with a move's range marks. Null where there is none so.
+    /// The XML of a revision's elements as the document holds them (each with the namespaces it names declared): its insertions and
+    /// deletions with what they hold; for a paragraph's mark inserted or deleted the paragraph's w:pPr, for a formatting change the w:rPr
+    /// or w:pPr that holds it (the look now, with the look it had in the change); with a move's range marks. Null where there is none so.
     /// </summary>
     public IReadOnlyList<string>? RevisionMarkup(int id)
     {
@@ -197,9 +197,9 @@ public sealed partial class WordDocument
         var written = new List<string>();
         foreach (var element in revision.Elements)
         {
-            // A mark's change stands for its paragraph's properties.
             var shown = element.Parent is { Name.LocalName: "rPr" } run && run.Parent is { Name.LocalName: "pPr" } properties && element.Name.LocalName is "ins" or "del" or "moveFrom" or "moveTo"
-                ? properties : element;
+                ? properties
+                : element.Name.LocalName is "rPrChange" or "pPrChange" && element.Parent is { } holder ? holder : element;
             written.Add(shown.ToString(SaveOptions.DisableFormatting));
         }
         if (revision.Move is { } name && moves.TryGetValue(name, out var marks))
@@ -622,7 +622,6 @@ public sealed partial class WordDocument
                 var covered = entries.Skip(r.First).Take(r.Last - r.First + 1);
                 r.Text = r.Kind switch
                 {
-                    RevisionKind.SectionFormatting => "",
                     RevisionKind.Insertion or RevisionKind.MovedTo => string.Concat(covered.Where(e => e.Insertion != null && r.Elements.Contains(e.Insertion)).Select(e => e.Text)),
                     RevisionKind.Deletion or RevisionKind.MovedFrom => string.Concat(covered.Where(e => e.Deletion != null && r.Elements.Contains(e.Deletion)).Select(e => e.Text)),
                     RevisionKind.Formatting => string.Concat(covered.Where(e => e.Formatting != null && r.Elements.Contains(e.Formatting)).Select(e => e.Text)),
