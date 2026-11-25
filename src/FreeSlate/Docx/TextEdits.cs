@@ -2118,12 +2118,13 @@ static partial class TextEdits
     /// changes of properties and the marks of revisions dropped; ranges (bookmarks, comments', permissions, moves), proofing
     /// marks and the runs of comments' and notes' references taken away, as are its ids (w14:paraId, w14:textId), its
     /// section and what holds nothing any more (a hyperlink, smart tag or custom markup left empty); content controls give
-    /// their content alone.
+    /// their content alone. Inner elements first: an insertion unwrapped gives its content as copies (LINQ to XML clones
+    /// nodes that have a parent), so that a deletion or a reference's run within it is to be gone before.
     /// </summary>
     static void Accepted(XElement paragraph)
     {
         var w = paragraph.Name.Namespace;
-        foreach (var e in paragraph.Descendants().ToList())
+        foreach (var e in paragraph.Descendants().Reverse().ToList())
         {
             if (e.Parent == null && e != paragraph)
                 continue;
@@ -2203,9 +2204,10 @@ static partial class TextEdits
     /// first part are joined, which takes the first part's mark, deleted where it runs into the second's other parts
     /// (measured in Word 365 by COM: Backspace before such a paragraph keeps its first part's deleted mark); an empty
     /// first goes away with all its parts. Returns the stretch's new text and whether the first paragraph stays.
+    /// <paramref name="keepChange"/>: a tracked change of the first's formatting stays as it is (a join a program makes, not Word's).
     /// </summary>
     public static (string Text, bool First) Join(Stretch stretch, ParagraphBlock paragraph, ParagraphBlock next, Tracking? tracking = null,
-        bool backward = false)
+        bool backward = false, bool keepChange = false)
     {
         var (mine, others) = (Parts(stretch, paragraph), Parts(stretch, next));
         var (p, q) = (mine[^1], others[0]);
@@ -2281,6 +2283,8 @@ static partial class TextEdits
         }
         if (tracking != null && (ownChange ?? q.Element(w + "pPr")?.Element(w + "pPrChange")) is { } kept)
             taken.Add(new XElement(kept));
+        else if (keepChange && ownChange != null)
+            taken.Add(new XElement(ownChange));
         if (taken.Count > 0)
         {
             if (properties == null)

@@ -558,7 +558,14 @@ public sealed partial class WordDocument : IEditableDocument
     /// No paragraph follows it there, or the two cannot be joined so, or the joined paragraph would not read as the two
     /// one after the other; nothing changes.
     /// </exception>
-    public int Join(int paragraph, bool backward = false)
+    public int Join(int paragraph, bool backward = false) => Join(paragraph, backward, keepChange: false);
+
+    /// <summary>
+    /// Joins a paragraph with the paragraph after it as <see cref="Join(int, bool)"/> does; <paramref name="keepChange"/>, a tracked change
+    /// of the first's formatting stays as it is (a join a program makes, as a write takes away a placeholder after the paragraphs it wrote,
+    /// not one Word's Delete makes, which takes the change as accepted).
+    /// </summary>
+    public int Join(int paragraph, bool backward, bool keepChange)
     {
         var (p, top) = Find(paragraph);
         var (list, index) = ListOf(top, p) ?? throw new ArgumentException($"The document's body has no paragraph {paragraph}.", nameof(paragraph));
@@ -569,7 +576,7 @@ public sealed partial class WordDocument : IEditableDocument
         var where = Change(top, ReferenceEquals(list, blocks) ? next : top, (stretch, tracking) =>
         {
             start = stretch.Find(First(p)) is { } element ? stretch.Text.Start(element) - stretch.Head : -1;
-            var (text, stays) = TextEdits.Join(stretch, p, next, tracking, backward);
+            var (text, stays) = TextEdits.Join(stretch, p, next, tracking, backward, keepChange);
             first = stays;
             return text;
         }, () => Plain(top, p) is { } i && next.Parts == null ? [.. blocks.Take(first ? i + 1 : i), .. blocks.Skip(first ? i + 2 : i + 1)] : null);
