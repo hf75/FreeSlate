@@ -16,7 +16,7 @@ namespace FreeSlate.Editor.Asking;
 sealed partial class Objects(IEditableDocument document)
 {
     /// <summary>The kinds a token names (see Kind), as the notation reads them back.</summary>
-    public const string Kinds = "picture|graphic|wordart|frame|chart|smartart|text box|group|shape|drawing|field|equation|check box|object";
+    public const string Kinds = "picture|graphic|wordart|frame|chart|smartart|text box|group|shape|drawing|field|equation|check box|signature line|object";
 
     /// <summary>An object: its number, its kind, its key (null where it cannot be copied, and so not kept), its markup kept, where it stood last.</summary>
     sealed class Entry(int id, string kind, string? key)
@@ -291,8 +291,16 @@ sealed partial class Objects(IEditableDocument document)
             return "frame";
         if (Has("svgBlip"))
             return "graphic";
+        // A signature line (VML's o:signatureline) and a group (whose shapes may hold text, see Groups) before what they hold.
+        if (Has("signatureline"))
+            return "signature line";
+        if (Has("wgp"))
+            return "group";
         // A text box is a rectangle with text; another preset with text inside is a shape (see Markup.Shape).
         var preset = (string?)element.Descendants().FirstOrDefault(e => e.Name.LocalName == "prstGeom")?.Attribute("prst");
+        // A box of a chain of linked boxes (its story named, or going on with one) keeps its height (see Groups).
+        if (preset is null or "rect" or "roundRect" && (Has("linkedTxbx") || element.Descendants().Any(e => e.Name.LocalName == "txbx" && e.Attribute("id") != null)))
+            return "text box";
         if (Has("txbxContent"))
             return Has("prstTxWarp") || Has("textFill") || Has("textOutline") ? "wordart" : Has("pic") ? "picture"
                 : preset is null or "rect" or "roundRect" && Has("spAutoFit") ? "text box" : "shape";
@@ -398,6 +406,12 @@ sealed partial class Objects(IEditableDocument document)
             case "text box" when element != null && word != null:
                 line.Append('\n').Append(Box(word, paragraph, offset, element));
                 break;
+            case "group" when element != null && word != null:
+                line.Append('\n').Append(Groups.Block(word, paragraph, offset, element, this));
+                break;
+            case "signature line" when element != null:
+                line.Append('\n').Append(Signatures.Block(element, document.DrawingOf(paragraph, offset)));
+                break;
             case "shape" when element != null && word != null && element.Descendants().Any(e => e.Name.LocalName == "prstGeom"):
                 line.Append('\n').Append(ShapeBlock(word, paragraph, offset, element));
                 break;
@@ -462,6 +476,8 @@ sealed partial class Objects(IEditableDocument document)
             if (Place(drawing) is "left" or "right")
                 settings.Add("float=" + Place(drawing));
         }
+        // A box of a chain of linked boxes: its height, which it keeps, and whether its text goes on in the next (see Groups).
+        settings.AddRange(Groups.BoxSettings(word, paragraph, offset));
         var lines = word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Paragraph(document, p, this));
         return "```box " + string.Join(" ", settings) + "\n" + string.Join("\n\n", lines) + "\n```";
     }

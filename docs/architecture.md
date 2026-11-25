@@ -134,6 +134,11 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   markup Word's Insert Citation and Insert Bibliography write. `WordDocument.Sources`, `SetSources`, `RefreshCitations` (Word's
   Update Citations and Bibliography for the citations; the model reads a citation as the text it shows, so they are found in the
   paragraphs' XML) and `BibliographyMarkup`.
+- Fields without a result and building blocks the model reads through: `WordDocument.AuthoritiesOf` reads the TA fields of a paragraph
+  (Word's Mark Citation, left out of the model as XE fields are), `FieldsBegunIn` the instructions of the fields that begin in one;
+  `GroupTexts` the paragraphs of a group's shapes, `TextBoxLink` and `NewStoryId` the chains of linked text boxes (wps:txbx id,
+  wps:linkedTxbx id and seq); `GalleryBlock` and `RemoveGalleryBlock` a building block of a gallery as it stands in the body (Word's
+  cover pages: a block content control of the gallery Cover Pages, its fields content controls named by their aliases).
 - `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
   (`PageRenderer.Markup`, `Describe`); lines and glyphs stand on Word's 600 dpi device as it rounds onto it
@@ -498,7 +503,17 @@ label in a bookmark of the name with the label; {#name} elsewhere a bookmark rou
 REF and PAGEREF fields; the fields' results saved as the pages show them once the write is in, `WordDocument.RefreshFields`, as
 Word shows them saved till it prints), drop caps ("{drop}" at a paragraph's start, "{drop 2 margin}": its first letter in a framed
 paragraph before it, `WordDocument.DropCap`, of the lines' height exactly and the size its capitals need to reach the last line's
-baseline, as Word computes them; read back as one line with both paragraphs' ids), \pagebreak and --- for a
+baseline, as Word computes them; read back as one line with both paragraphs' ids), a table of authorities as Word's Mark Citation and
+Insert Table of Authorities make one ("{authority Cases: long citation | short}" a TA field, "{authority short}" a later mention, read
+back at the end of the paragraph; "{authorities}" a TOA field for each category with authorities, TOA \h \c "1" \p, the fields back to
+back, headings in the style toa heading, entries in table of authorities with a tab and dots to the pages, "passim" from five on, as
+Word's own update of them by COM gives them; read back as one line, `Authorities`), a signature line (```signature signer="…" title="…"
+email="…": VML with Word's o:signatureline and a picture of the line, `Signatures`), groups of shapes (````group holding ```shape and
+```box blocks at their places: wpg:wgp, its shapes in its own space, read back as the block) and boxes whose text flows on (link=next:
+wps:txbx id and wps:linkedTxbx, in the body or in a group, `Groups`), a cover page ("{cover style=band title=… …}": a building block of
+Word's gallery Cover Pages at the document's start, in place of the cover it has, in one of FreeSlate's own designs, band, bar, frame
+or plain, in the tone's colours, its fields content controls named as Word's are; read back as one line, `Covers`; a write from its
+first paragraph on takes it away whole first), \pagebreak and --- for a
 page break and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
 across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
@@ -509,7 +524,9 @@ paragraphs), look (a page as it is laid out, as a picture), picture (`Arranging`
 frame, turn, mirror, tilt, caption and description, by the session's own handlings as the ring's), tone (the document's tone,
 as its buttons give it) and page (the header and footer every page shows, their parts placed by positional tabs, margins,
 paper, orientation, a title page, a watermark as Word's dialog writes one, a VML WordArt in each header the pages show, found
-again by its name (`WordDocument.DrawingName`, `DrawingWords`), a border round the pages, `SectionFormatting.Border`, and the
+again by its name (`WordDocument.DrawingName`, `DrawingWords`), or a picture of the document by its token, a VML picture named
+WordPictureWatermark washed out (gain and blacklevel as Word's Washout) and scaled to the margins as Word's Auto does (`Watermarks`),
+a border round the pages, `SectionFormatting.Border`, and the
 pages' colour, `WordDocument.SetPageColor`: w:background before the body, which no stretch of the body holds, so the document is
 read again whole for it and for a version with another colour, as for its styles; Word's art borders by their names, drawn as
 tiles of FreeSlate's own motifs in their spirit (`ArtMotifs`, Resources/artMotifs.json: upright pictures or bands turning with the

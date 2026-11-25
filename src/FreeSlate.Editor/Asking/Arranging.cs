@@ -414,8 +414,9 @@ static class Arranging
                     continue;
                 Do(name, () => Story(word, first, footer, text));
             }
+            // Words as Word's text watermark, or a picture of the document by its token (see Watermarks).
             if (input.GetValueOrDefault("watermark") is { } watermark)
-                Do("watermark", () => Watermark(word, first, watermark.Trim()));
+                Do("watermark", () => Watermarks.Set(word, first, objects, watermark.Trim()));
             // Words hyphenated at the ends of lines, as Word's automatic hyphenation (a setting of the document's).
             if (input.GetValueOrDefault("hyphenation")?.Trim().ToLowerInvariant() is { } hyphenation)
             {
@@ -505,7 +506,8 @@ static class Arranging
         var text = word.Text(paragraph);
         for (var k = 0; k < text.Length; k++)
         {
-            if (text[k] == '￼' && word.DrawingName(paragraph, k)?.StartsWith(WatermarkName, StringComparison.Ordinal) == true)
+            if (text[k] == '￼' && word.DrawingName(paragraph, k) is { } name
+                && (name.StartsWith(WatermarkName, StringComparison.Ordinal) || name.StartsWith(Watermarks.PictureName, StringComparison.Ordinal)))
                 return k;
         }
         return null;

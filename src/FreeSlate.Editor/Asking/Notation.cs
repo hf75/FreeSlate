@@ -58,10 +58,19 @@ public static partial class Notation
 
         /// <summary>Whether it is a bibliography ("{bibliography}" on a line of its own; see Citing) of the document's sources.</summary>
         public bool Bibliography { get; init; }
+
+        /// <summary>
+        /// Whether it is a table of authorities ("{authorities}" on a line of its own; see Authorities): the categories it names ("Cases,
+        /// Statutes"), empty for all; null for another table.
+        /// </summary>
+        public string? Authorities { get; init; }
     }
 
     /// <summary>A line across the text (Markdown's thematic break).</summary>
     public sealed record Rule : Block;
+
+    /// <summary>A cover page ("{cover style=band title=… }" on a line of its own; see Covers): its design and fields.</summary>
+    public sealed record Cover(IReadOnlyDictionary<string, string> Settings) : Block;
 
     /// <summary>Blocks of WordprocessingML as they are given (w:p, w:tbl, w:sdt).</summary>
     public sealed record Raw(string Markup) : Block;
@@ -110,6 +119,12 @@ public static partial class Notation
 
     /// <summary>A mark for the index, "{index term}" ("{index main: sub}" a subentry): Word's XE field, showing nothing (see Index).</summary>
     public sealed record IndexMark(string Term) : Piece;
+
+    /// <summary>
+    /// A citation marked for a table of authorities, "{authority Cases: long citation | short}" ("{authority short}" a later mention): Word's
+    /// TA field, showing nothing (see Authorities).
+    /// </summary>
+    public sealed record Authority(string Short, string? Long, int? Category) : Piece;
 
     /// <summary>
     /// A citation, "[@smith20]" as Pandoc writes one ("[see @smith20, p. 33; -@lee18]"): Word's CITATION field of the sources it names
@@ -210,6 +225,14 @@ public static partial class Notation
     /// <summary>A bibliography: "{bibliography}" on a line of its own (see Citing).</summary>
     [GeneratedRegex(@"^\{\s*bibliography\s*\}$", RegexOptions.IgnoreCase)]
     private static partial Regex BibliographyLine();
+
+    /// <summary>A table of authorities: "{authorities}" on a line of its own, the categories it lists after the word (see Authorities).</summary>
+    [GeneratedRegex(@"^\{\s*authorities(?:\s+([^{}]*?))?\s*\}$", RegexOptions.IgnoreCase)]
+    private static partial Regex AuthoritiesLine();
+
+    /// <summary>A cover page: "{cover style=… title="…" …}" on a line of its own (see Covers).</summary>
+    [GeneratedRegex(@"^\{\s*cover(?:\s+([^{}]*?))?\s*\}$", RegexOptions.IgnoreCase)]
+    private static partial Regex CoverLine();
 
     [GeneratedRegex(@"^(#{1,6})\s+(.*?)\s*#*\s*$")]
     private static partial Regex HeadingLine();
@@ -387,10 +410,24 @@ public static partial class Notation
                     var marks = fence.Length - fence.TrimStart('`').Length;
                     var info = fence[marks..].Trim();
                     var close = -1;
+                    // A group's shapes are fenced blocks within it: a fence that opens one (``` and its kind) is closed by the next bare
+                    // fence, so that the group closes at the bare fence after them, whether its own fence is longer or not.
+                    var grouped = info.StartsWith("group", StringComparison.OrdinalIgnoreCase);
+                    var nested = 0;
                     for (var k = i + 1; k < count && close < 0; k++)
                     {
-                        if (!Open(k) && lines[k].Trim().StartsWith(new string('`', marks), StringComparison.Ordinal) && lines[k].Trim().Trim('`').Length == 0)
-                            close = k;
+                        if (Open(k))
+                            continue;
+                        var fenced = lines[k].Trim();
+                        if (grouped && fenced.StartsWith("```", StringComparison.Ordinal) && fenced.Trim('`').Length > 0)
+                            nested++;
+                        else if (fenced.StartsWith(new string('`', grouped && nested > 0 ? 3 : marks), StringComparison.Ordinal) && fenced.Trim('`').Length == 0)
+                        {
+                            if (grouped && nested > 0)
+                                nested--;
+                            else
+                                close = k;
+                        }
                     }
                     if (close < 0 && !final)
                     {
@@ -405,7 +442,7 @@ public static partial class Notation
                         settings[setting.Groups[1].Value] = setting.Groups[2].Value.Trim('"', '\'');
                     if (close < 0)
                         problems.Add($"The ```{kindName} block was not closed; it was read to the end.");
-                    if (kindName is "svg" or "wordart" or "box" or "chart" or "smartart" or "shape" or "bibtex" or "bib")
+                    if (kindName is "svg" or "wordart" or "box" or "chart" or "smartart" or "shape" or "bibtex" or "bib" or "group" or "signature")
                         blocks.Add(new Fenced(kindName, settings, body));
                     else if (kindName is "xml" or "ooxml" or "wordml")
                         blocks.Add(new Raw(body));
@@ -505,6 +542,10 @@ public static partial class Notation
                         blocks.Add(new ContentsTable(null) { Index = true });
                     else if (!open && BibliographyLine().IsMatch(lines[i].Trim()))
                         blocks.Add(new ContentsTable(null) { Bibliography = true });
+                    else if (!open && CoverLine().Match(lines[i].Trim()) is { Success: true } cover)
+                        blocks.Add(new Cover(SettingsOf(cover.Groups[1].Value)));
+                    else if (!open && AuthoritiesLine().Match(lines[i].Trim()) is { Success: true } authorities)
+                        blocks.Add(new ContentsTable(null) { Authorities = authorities.Groups[1].Value.Trim() });
                     else if (!open && ContentsLine().Match(lines[i].Trim()) is { } contents)
                     {
                         var words = contents.Groups[2].Value is { Length: > 0 } given ? given : null;
@@ -626,7 +667,8 @@ public static partial class Notation
             return ColumnsLine().IsMatch(trimmed) ? Kind.ColumnsOpen : open ? Kind.Unsure : Kind.Text;
         if (trimmed == "\\pagebreak")
             return Kind.PageBreak;
-        if (ContentsLine().IsMatch(trimmed) || IndexLine().IsMatch(trimmed) || BibliographyLine().IsMatch(trimmed))
+        if (ContentsLine().IsMatch(trimmed) || IndexLine().IsMatch(trimmed) || BibliographyLine().IsMatch(trimmed) || AuthoritiesLine().IsMatch(trimmed)
+            || CoverLine().IsMatch(trimmed))
             return open ? Kind.Unsure : Kind.Contents;
         if (trimmed.Length >= 3 && (trimmed.All(c => c == '-') || trimmed.All(c => c == '*') || trimmed.All(c => c == '_')))
             return open ? Kind.Unsure : Kind.Rule;
@@ -916,6 +958,13 @@ public static partial class Notation
                 k += indexed.Length;
                 continue;
             }
+            if (c == '{' && AuthorityText().Match(text, k) is { Success: true } marked && Authorities.Parse(marked.Groups[1].Value) is var (shortText, longText, category))
+            {
+                Flush();
+                pieces.Add(new Authority(shortText, longText, category));
+                k += marked.Length;
+                continue;
+            }
             if (c == '{' && AnchorText().Match(text, k) is { Success: true } anchor)
             {
                 Flush();
@@ -984,6 +1033,10 @@ public static partial class Notation
     /// <summary>A mark for the index: {index term}, the term what follows the word ("main: sub" a subentry).</summary>
     [GeneratedRegex(@"\G\{index\s+([^{}]+?)\s*\}", RegexOptions.IgnoreCase)]
     private static partial Regex IndexText();
+
+    /// <summary>A citation marked for a table of authorities: {authority Cases: long | short}, {authority short} (see Authorities.Parse).</summary>
+    [GeneratedRegex(@"\G\{authority\s+([^{}]+?)\s*\}", RegexOptions.IgnoreCase)]
+    private static partial Regex AuthorityText();
 
     /// <summary>An anchor: {#name}, or {#} alone; a name of letters, digits and _ - . : (see Markup.BookmarkName).</summary>
     [GeneratedRegex(@"\G\{#\s*([\p{L}\p{N}_.:-]*)\s*\}")]

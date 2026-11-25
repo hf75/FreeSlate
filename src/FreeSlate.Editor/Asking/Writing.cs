@@ -147,12 +147,13 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         parking.Clear();
         tableNotes.Clear();
         contentsTables.Clear();
+        chain = null;
         citing = false;
         stories = null;
     }
 
     /// <summary>The tables of contents written: the paragraph each line put in, made a table once the write is in (see End), its title, a table of figures' label.</summary>
-    readonly List<(int Placeholder, string? Title, string? Label, bool Index, bool Bibliography)> contentsTables = [];
+    readonly List<(int Placeholder, string? Title, string? Label, bool Index, bool Bibliography, string? Authorities)> contentsTables = [];
 
     /// <summary>Whether the write gives sources or citations (a ```bibtex block, "[@key]"): its citations and bibliographies set anew at its end.</summary>
     bool citing;
@@ -189,7 +190,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             Markup.CitationLanguage = word.LanguageOf(language);
         // After or before a paragraph of a table of contents: after or before the whole table, as for a table's (see Contents).
         var table = place is "after" or "before" && word != null
-            ? Contents.Around(word, paragraph!.Value) ?? Index.Around(word, paragraph!.Value) ?? Citing.Around(word, paragraph!.Value) : null;
+            ? Contents.Around(word, paragraph!.Value) ?? Index.Around(word, paragraph!.Value) ?? Citing.Around(word, paragraph!.Value)
+              ?? Authorities.Around(word, paragraph!.Value) : null;
         switch (place)
         {
             case "after":
@@ -255,6 +257,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     /// <summary>An empty paragraph made after one: after its table where it ends one, else right after it (in its cell, where it stands in one).</summary>
     int After(int paragraph)
     {
+        // After (or before) a cover's paragraph: after the whole cover, which stands first (see Covers).
+        if (word != null && Covers.Around(word, paragraph) is var (_, coverLast) && document.After(coverLast) is { } uncovered)
+            return document.InsertBlocks(uncovered, "<w:p/>", before: true)[0];
         // After a bibliography's paragraph: after the whole content control, before the paragraph that follows it (see Citing).
         if (word != null && Citing.Around(word, paragraph) is var (_, last) && document.After(last) is { } following)
             return document.InsertBlocks(following, "<w:p/>", before: true)[0];
@@ -270,6 +275,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     /// <summary>An empty paragraph made before one: before its table where it begins one (after the paragraph before the table), else right before it.</summary>
     int Before(int paragraph)
     {
+        if (word != null && Covers.Around(word, paragraph) is var (_, coverLast) && document.After(coverLast) is { } uncovered)
+            return document.InsertBlocks(uncovered, "<w:p/>", before: true)[0];
         // Before a bibliography's paragraph: before the whole content control, after the paragraph before it (see Citing).
         if (word != null && Citing.Around(word, paragraph) is var (first, _) && document.Before(first) is { } preceding)
             return document.InsertBlocks(preceding, "<w:p/>")[0];
@@ -294,6 +301,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             refused = $"There is no paragraph ¶{last.ToString(CultureInfo.InvariantCulture)} to replace through.";
             return false;
         }
+        // From a cover's first paragraph on: the cover taken away whole first (see Covers).
+        if (Uncovered(ref first, last) is { } done)
+            return done;
         objects.Keep(first, last);
         if (word != null && EndsSection(first, last))
             stories = Arranging.Stories(word, objects);
@@ -381,13 +391,19 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         {
             var block = parsed.Blocks[done];
             // A drawing to float beside the text waits for the paragraph after it, and goes into it.
-            if (block is Notation.Fenced { Kind: "svg" or "wordart" or "box" or "chart" or "smartart" or "shape" } fenced && fenced.Settings.GetValueOrDefault("float")?.ToLowerInvariant() is "left" or "right")
+            if (block is Notation.Fenced { Kind: "svg" or "wordart" or "box" or "chart" or "smartart" or "shape" or "group" } fenced && fenced.Settings.GetValueOrDefault("float")?.ToLowerInvariant() is "left" or "right")
             {
                 if (done + 1 >= parsed.Blocks.Count && !final)
                     break;
                 if (done + 1 < parsed.Blocks.Count && parsed.Blocks[done + 1] is Notation.Paragraph next)
                 {
-                    floating = Markup.Of(block, PlaceAt());
+                    floating = Made(block);
+                    // One that cannot be made is told, and the paragraph goes in without it.
+                    if (floating.Problem != null)
+                    {
+                        problems.Add(floating.Problem);
+                        floating = null;
+                    }
                     done++;
                     Put(next);
                     done++;
@@ -493,6 +509,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         {
             Lines = (Tones.Of(document) ?? Tones.All[0]).LineColors(),
             KeptAlign = objects.AlignOf,
+            NewStory = word.NewStoryId,
         };
     }
 
@@ -552,19 +569,23 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                     return null;
                 });
                 return;
+            case Notation.Cover cover when word != null:
+                // At the document's start, wherever it is written (see Covers).
+                PutCover(word, cover);
+                return;
             case Notation.ContentsTable contents when word != null:
                 // A paragraph in its place, made the table once the write is in, when the headings written after it stand too.
                 Step(() =>
                 {
                     var made = document.InsertBlocks(at, "<w:p/>", before: true)[0];
-                    contentsTables.Add((made, contents.Title, contents.Label, contents.Index, contents.Bibliography));
+                    contentsTables.Add((made, contents.Title, contents.Label, contents.Index, contents.Bibliography, contents.Authorities));
                     citing |= contents.Bibliography;
                     written.Add(made);
                     return new TextPlace(made, 0);
                 });
                 return;
         }
-        var made = Markup.Of(block, PlaceAt());
+        var made = Made(block);
         if (made.Problem != null)
         {
             problems.Add(made.Problem);
@@ -774,13 +795,15 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         // The tables of contents and of figures made last, of the headings and captions as they all stand now; the bibliographies of the
         // sources as the citations now name them.
         var bibliographies = new HashSet<int>();
-        foreach (var (place, named, label, index, bibliography) in contentsTables)
+        foreach (var (place, named, label, index, bibliography, authorities) in contentsTables)
         {
             if (word == null || !document.Contains(place))
                 continue;
+            var categories = authorities != null ? Authorities.Asked(authorities, problems) : null;
             Step(() =>
             {
-                var ids = bibliography ? Citing.Make(word, place) : index ? Index.Make(word, place) : Contents.Make(word, place, named, label);
+                var ids = bibliography ? Citing.Make(word, place) : index ? Index.Make(word, place)
+                    : authorities != null ? Authorities.Make(word, place, categories) : Contents.Make(word, place, named, label);
                 if (bibliography)
                     bibliographies.UnionWith(ids);
                 var at = written.IndexOf(place);
@@ -794,6 +817,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         }
         if (joinLater is { } later && document.Contains(later))
             JoinPlace(later);
+        ClearCoverPlace();
         if (citing && word != null)
             Cite(word, bibliographies);
         Refresh(word, Step, problems, written);

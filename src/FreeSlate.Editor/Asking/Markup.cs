@@ -28,6 +28,9 @@ static partial class Markup
 
         /// <summary>The tone's colours for light lines and for rules (hex), which boxes' lines take (see Tone.LineColors).</summary>
         public (string Light, string Dark) Lines { get; init; } = ("D6D3CD", "3F3C37");
+
+        /// <summary>A number for a new story of linked text boxes, none of the document's (see Groups, WordDocument.NewStoryId).</summary>
+        public Func<int>? NewStory { get; init; }
     }
 
     /// <summary>
@@ -78,6 +81,8 @@ static partial class Markup
         Notation.Fenced { Kind: "shape" } shape => Shape(shape, place),
         Notation.Fenced { Kind: "chart" } chart => Charts.Of(chart, place),
         Notation.Fenced { Kind: "smartart" } diagram => SmartArts.Of(diagram, place),
+        Notation.Fenced { Kind: "group" } group => Groups.Of(group, place),
+        Notation.Fenced { Kind: "signature" } line => Signatures.Of(line, place),
         // Sections of columns are the writing's to make, which knows where they begin (see Writing.Put, SectionEnd).
         Notation.Columns or Notation.ColumnsEnd => new("", [], []),
         Notation.PageBreak => new("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>", [], []),
@@ -181,9 +186,9 @@ static partial class Markup
     static IReadOnlyList<Notation.Piece> TrailingMarksTrimmed(IReadOnlyList<Notation.Piece> pieces)
     {
         var k = pieces.Count;
-        while (k > 0 && (pieces[k - 1] is Notation.Anchor or Notation.IndexMark || pieces[k - 1] is Notation.Run { Text: var blank } && string.IsNullOrWhiteSpace(blank)))
+        while (k > 0 && (pieces[k - 1] is Notation.Anchor or Notation.IndexMark or Notation.Authority || pieces[k - 1] is Notation.Run { Text: var blank } && string.IsNullOrWhiteSpace(blank)))
             k--;
-        if (k == pieces.Count || !pieces.Skip(k).Any(p => p is Notation.Anchor or Notation.IndexMark))
+        if (k == pieces.Count || !pieces.Skip(k).Any(p => p is Notation.Anchor or Notation.IndexMark or Notation.Authority))
             return pieces;
         var result = pieces.Take(k).ToList();
         if (result.Count > 0 && result[^1] is Notation.Run last)
@@ -358,6 +363,12 @@ static partial class Markup
                     markup.Append("<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> XE \"")
                         .Append(Escape(mark.Term.Replace("\"", "", StringComparison.Ordinal).Replace(": ", ":", StringComparison.Ordinal)))
                         .Append("\" </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>");
+                    break;
+                case Notation.Authority authority:
+                    // Word's Mark Citation: a TA field of the citation, which shows nothing (no character of the text).
+                    markup.Append("<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\">")
+                        .Append(Escape(Authorities.Instruction(authority.Short, authority.Long, authority.Category)))
+                        .Append("</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>");
                     break;
                 case Notation.CiteMark cite:
                     // Word's Insert Citation: the CITATION field in its content control, its text the tags till the write's end, when the

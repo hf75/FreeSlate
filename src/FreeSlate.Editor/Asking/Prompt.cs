@@ -143,16 +143,42 @@ static class Prompt
           align, float, caption, alt as a graphic's.
         - Formulas in LaTeX: $…$ among the text, $$…$$ on a line of its own (centred): fractions, roots, powers and indices, sums,
           integrals and limits, \left( \right), matrices (pmatrix, bmatrix, cases), \vec, \overline, Greek letters, \text{…}.
+        - A table of authorities, as Word's Mark Citation and Insert Table of Authorities make one (legal writing): right after a
+          citation "{authority Cases: Brown v. Board of Education, 347 U.S. 483 (1954) | Brown}" marks it: its category (Cases,
+          Statutes, Other Authorities, Rules, Treatises, Regulations, Constitutional Provisions), its long citation as the table lists
+          it, after "|" its short citation (left out where it is the long one), by which "{authority Brown}" marks a later mention.
+          Marks show nothing and read back at the end of their paragraph. "{authorities}" on a line of its own makes the table of every
+          category that has authorities, "{authorities Cases}" (or "Cases, Statutes") of those, once the write is in: a heading for each
+          category, the authorities in alphabetical order with the pages they are cited on ("passim" from five pages on); a heading of
+          yours before it. It reads back as that line with its first and last paragraph's ids; write it again in its place to bring it
+          up to date.
+        - A signature line, as Word's Insert > Signature Line makes one: a fenced block ```signature signer="Dr. Anna Weber"
+          title="Head of Office" email="a.weber@example.org" with the instructions to the signer inside (or none). Settings: date=no
+          (no date shown when it is signed), comments=yes (the signer may add a comment), width (192 by 96 points by default, its
+          height half its width), align.
+        - Shapes grouped, as Word's Group makes them: a fenced block ````group (four backticks) holding ```shape and ```box blocks,
+          each with its place in the group, x= and y= from the group's top left, and its width= and height=; the group as large as its
+          shapes reach (width= or height= on the group scales it), in a line of its own or float=left|right beside the paragraph after
+          it. For a diagram of a few shapes and arrows whose parts belong together.
+        - Text boxes whose text flows from one into the next, as Word's Create Link makes them: link=next on a ```box sends the text
+          that does not fit it on into the next ```box written (in the same write or group, other blocks between them or not), which
+          holds no text of its own, and so on; each keeps its height= (five centimetres where none is given). For a newsletter's
+          columns or a story going on beside a picture.
+        - A cover page, as Word's Insert > Cover Page makes one: "{cover style=band title="…" subtitle="…" author="…"
+          date="2026-11-25" abstract="…"}" on a line of its own makes it at the document's start, in place of the cover it has; leave
+          out the fields you do not want. style: band (a broad band of the tone's colour across the top, the title on it), bar (a bar
+          down the left side, the title beside it), frame (a double frame round the page, all centred) or plain (a large title at the
+          top, the author at the bottom). It reads back as that line with its paragraphs' ids; write it again to change it.
         - Anything else Word can hold (a field, a shape, a content control): WordprocessingML, as a block (w:p, w:tbl) on lines of its
           own or among the text (w:r). The usual prefixes need no declarations. A paragraph you read as WordprocessingML (<w:p>…) has
           formatting the notation does not say: write it back as WordprocessingML where it is to keep it.
         - Objects stand in the text as tokens: [picture 3], [graphic 4] (a vector graphic), [wordart 5], [smartart 6], [text box 7],
-          [field 8], [equation 9] … "Objects:" after the document says where and how each stands, and gives a graphic's SVG and the
-          block of WordArt, a chart or a SmartArt.
+          [field 8], [equation 9], [group 10], [signature line 11] … "Objects:" after the document says where and how each stands, and
+          gives a graphic's SVG and the block of WordArt, a chart, a SmartArt, a box, a group or a signature line.
           A token is the object itself: write it where the object is to stand. Writing in place of text that holds one, write its
           token again (where it is to stay, also among words), or the object goes with the text; written elsewhere, the object moves
-          there. Never make up a token. To change a graphic, WordArt, a chart or a SmartArt, write its block anew in place of its
-          token.
+          there. Never make up a token. To change a graphic, WordArt, a chart, a SmartArt, a group or a signature line, write its
+          block anew in place of its token.
 
         # How to write
         - Write what things are, not how they look: levels and meanings, never fonts, sizes or colours for the text; the tone of the
@@ -243,7 +269,7 @@ static class Prompt
             "margins": { "type": "string", "description": "The margins: one length for all (2cm), two for top and bottom and for the sides (2cm 2.5cm), or four (top right bottom left)." },
             "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
             "size": { "type": "string", "enum": ["A4", "A5", "A3", "Letter", "Legal"] },
-            "watermark": { "type": "string", "description": "A word or two pale and diagonal across every page behind the text, as Word's watermark (\"DRAFT\", \"CONFIDENTIAL\", \"SAMPLE\"); empty to take it away." },
+            "watermark": { "type": "string", "description": "A word or two pale and diagonal across every page behind the text, as Word's watermark (\"DRAFT\", \"CONFIDENTIAL\", \"SAMPLE\"); or a picture of the document behind the text of every page, washed out, by its token (\"[picture 3]\", \"[picture 3] 50%\" at half its size, \"[picture 3] vivid\" not washed out); empty to take it away." },
             "border": { "type": "string", "description": "A line round every page: single, double, thick, dotted, dashed, triple, wave, thin-thick or thick-thin, then a colour (#RRGGBB) and a width in points if wanted (\"double #2F6DB5 1.5\"); or one of Word's art borders by its name, a row of little pictures or a patterned band, 1 to 31 points wide (\"apples 20\", \"celticKnotwork #2F6DB5 16\": apples, balloons3Colors, balloonsHotAir, birdsFlight, cakeSlice, celticKnotwork, chainLink, checkered, christmasTree, confetti, flowersDaisies, flowersRoses, hearts, holly, iceCreamCones, musicNotes, palmsColor, pencils, snowflakes, stars, sun, trees, triangles, vine, weavingBraid, zigZag and Word's others); none to take it away." },
             "page_numbers": { "type": "string", "description": "The page numbers' format, 1, i, I, a or A, and where they start: \"i\" for a preface in small roman numbers, \"1 from 1\" to count from 1 again." },
             "line_numbers": { "type": "string", "description": "Numbers beside the lines in the margin, as for a poem, a contract or a text to discuss: \"every 1\" or \"every 5\", restarting on each page unless \"each section\" or \"continuous\" follows; none to take them away." },

@@ -119,6 +119,16 @@ static partial class Reading
                     columns = section;
                 }
             }
+            // A cover of FreeSlate's designs as one line, with the ids of its first and last paragraph (see Covers).
+            if (word != null && Covers.At(word, p) is var (coverFirst, coverLast, coverLine) && coverFirst == p)
+            {
+                text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append(coverLast != p ? "–¶" + coverLast.ToString(CultureInfo.InvariantCulture) : "")
+                    .Append(' ').Append(coverLine).Append('\n');
+                while (document.Next(p) is { } next && p != coverLast)
+                    p = next;
+                paragraph = p;
+                continue;
+            }
             // A bibliography as one line, with the ids of its first and last paragraph (see Citing), its table (IEEE's) within it.
             if (word != null && Citing.Around(word, p) is var (bibliographyFirst, bibliographyLast) && bibliographyFirst == p)
             {
@@ -139,6 +149,15 @@ static partial class Reading
                 continue;
             }
             tableShown = null;
+            // A table of authorities as one line, with the ids of its first and last paragraph (see Authorities).
+            if (word != null && Authorities.At(word, p) is var (authoritiesEnd, authoritiesLine))
+            {
+                text.Append('¶').Append(p.ToString(CultureInfo.InvariantCulture)).Append("–¶").Append(authoritiesEnd.ToString(CultureInfo.InvariantCulture)).Append(' ').Append(authoritiesLine).Append('\n');
+                while (document.Next(p) is { } next && p != authoritiesEnd)
+                    p = next;
+                paragraph = p;
+                continue;
+            }
             // An index as one line, with the ids of its first and last paragraph (see Index).
             if (word != null && Index.At(word, p) is { } indexEnd)
             {
@@ -253,7 +272,7 @@ static partial class Reading
             if (string.Concat(lines).Trim().Length > 0)
                 said.Append(", ").Append(name).Append(": \"").Append(string.Join(" / ", lines)).Append('"');
             if (!footer && story is { } header && Arranging.WatermarkText(word, header) is { } watermark)
-                said.Append(", watermark: \"").Append(watermark).Append('"');
+                said.Append(", watermark: ").Append(Watermarks.Said(word, header, watermark));
         }
         if (section.Border is { Kind: not "none" } border)
             said.Append(", border: ").Append(border.Kind).Append(border.Color is { } color ? " #" + color : "")
@@ -481,7 +500,8 @@ static partial class Reading
     /// </summary>
     public static string Line(IEditableDocument document, int paragraph, Objects objects) =>
         Line(document, paragraph, 0, document.Text(paragraph).Length, objects)
-        + (document is WordDocument word ? Anchors(word, paragraph) + string.Concat(word.IndexEntriesOf(paragraph).Select(e => " {index " + e.Replace(":", ": ", StringComparison.Ordinal) + "}")) : "");
+        + (document is WordDocument word ? Anchors(word, paragraph) + string.Concat(word.IndexEntriesOf(paragraph).Select(e => " {index " + e.Replace(":", ": ", StringComparison.Ordinal) + "}"))
+            + string.Concat(word.AuthoritiesOf(paragraph).Select(Authorities.Text)) : "");
 
     /// <summary>
     /// The anchors a paragraph's line ends with, " {#name}" each: the bookmarks that begin in it, but those round a caption's number (which
