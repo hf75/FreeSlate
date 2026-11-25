@@ -56,7 +56,7 @@ static partial class Reviewing
     /// <summary>
     /// The document's changes as Claude reads them after the document (one line each, "Changes:"): "[change 12] inserted by Anna, 2026-11-20
     /// 10:00, ¶4–¶5", what a formatting change did, a move's other half, what the text does not show (a row deleted, a table's or section's
-    /// formatting); empty where it has none. Then whether Word's Track Changes is on.
+    /// formatting); then how many changes headers, footers, notes and comments hold; empty where there are none.
     /// </summary>
     public static string Read(WordDocument word)
     {
@@ -72,7 +72,8 @@ static partial class Reviewing
         var text = new StringBuilder();
         foreach (var r in revisions)
         {
-            var rows = r.Text.Contains('\a');
+            // A row's text ends with its last cell's mark and its own end.
+            var rows = r.Text.Contains("\r\a\r\a", StringComparison.Ordinal);
             text.Append("[change ").Append(r.Id.ToString(CultureInfo.InvariantCulture)).Append("] ").Append(r.Kind switch
             {
                 RevisionKind.Insertion => rows ? "rows inserted" : "inserted",
