@@ -18,6 +18,9 @@ namespace FreeSlate.Editor.Asking;
 /// </summary>
 static class Charts
 {
+    /// <summary>The font of the charts' text: the document's where they are written (see Markup.BodyFont).</summary>
+    static string Font => Markup.BodyFont;
+
     const double EmuPerPoint = 12700;
     const string C = "http://schemas.openxmlformats.org/drawingml/2006/chart";
     const string Cx = "http://schemas.microsoft.com/office/drawing/2014/chartex";
@@ -512,7 +515,7 @@ static class Charts
             + $"<c:date1904 val=\"0\"/><c:lang val=\"{language}\"/><c:roundedCorners val=\"0\"/>"
             + $"<c:chart>{titled}{view3D}<c:plotArea><c:layout/>{groups}{axes}{table}</c:plotArea>{legendMarkup}<c:plotVisOnly val=\"1\"/><c:dispBlanksAs val=\"gap\"/></c:chart>"
             + "<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>"
-            + $"<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz=\"900\"><a:solidFill><a:srgbClr val=\"404040\"/></a:solidFill><a:latin typeface=\"Inter\"/></a:defRPr></a:pPr><a:endParaRPr lang=\"{language}\"/></a:p></c:txPr>"
+            + $"<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz=\"900\"><a:solidFill><a:srgbClr val=\"404040\"/></a:solidFill><a:latin typeface=\"{Font}\"/></a:defRPr></a:pPr><a:endParaRPr lang=\"{language}\"/></a:p></c:txPr>"
             + "<c:externalData r:id=\"{workbook}\"><c:autoUpdate val=\"0\"/></c:externalData>"
             + "</c:chartSpace>", null);
     }
@@ -702,7 +705,7 @@ static class Charts
             + "<cx:chartData><cx:externalData r:id=\"{workbook}\" cx:autoUpdate=\"0\"/>" + data + "</cx:chartData>"
             + $"<cx:chart>{title}<cx:plotArea><cx:plotAreaRegion>{series}</cx:plotAreaRegion>{axes}</cx:plotArea>"
             + (legend != null ? $"<cx:legend pos=\"{legend}\" align=\"ctr\" overlay=\"0\"/>" : "") + "</cx:chart>"
-            + "<cx:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz=\"900\"><a:solidFill><a:srgbClr val=\"404040\"/></a:solidFill><a:latin typeface=\"Inter\"/></a:defRPr></a:pPr><a:endParaRPr lang=\"en-US\"/></a:p></cx:txPr>"
+            + "<cx:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz=\"900\"><a:solidFill><a:srgbClr val=\"404040\"/></a:solidFill><a:latin typeface=\"" + Font + "\"/></a:defRPr></a:pPr><a:endParaRPr lang=\"en-US\"/></a:p></cx:txPr>"
             + "</cx:chartSpace>", null);
     }
 

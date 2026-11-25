@@ -131,9 +131,12 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         if (refused != null)
             return (refused, true);
         Update(content, final: true);
-        End();
         // As tracked changes where asked, or where the document's Track Changes is on and it was not asked otherwise (see Reviewing).
-        var marked = word != null && (track ?? word.TrackRevisions) && Track();
+        tracking = word != null && (track ?? word.TrackRevisions);
+        End();
+        var marked = tracking && Track();
+        if (tracking)
+            Updated();
         return (Told() + (marked ? " Marked as Claude's tracked changes." : ""), false);
     }
 
@@ -246,6 +249,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         if (word != null && (paragraph ?? focus.First) is var language && document.Contains(language))
         {
             Markup.CitationLanguage = word.LanguageOf(language);
+            // SmartArt and charts in the text's font (see Markup.BodyFont).
+            Markup.BodyFont = word.FontOf(language);
             // Content controls take the text's language and the document's placeholder style too (see Forms).
             Forms.Begin(word, language);
         }
@@ -898,11 +903,28 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         ClearCoverPlace();
         if (citing && word != null)
             Cite(word, bibliographies);
-        // The placeholders of content controls in the glossary, a form letter for merge fields, the facts' fields as Word updates them.
+        // A tracked write updates the fields after its changes are marked (see Updated).
+        if (!tracking)
+            Updated();
+        Frame();
+    }
+
+    /// <summary>
+    /// Whether the write is marked as tracked changes (see Track), as its input asks or the document's Track Changes has it; set as it ends.
+    /// </summary>
+    bool tracking;
+
+    /// <summary>
+    /// The fields Word updates, updated after a write: the placeholders of content controls in the glossary, a form letter for merge fields,
+    /// the facts' fields as Word updates them (see Forms.End), the fields of pages and references (see Refresh). A tracked write's after
+    /// its changes are marked, so that what they compute (a table of contents' page numbers, the count of words) is no change of
+    /// Claude's, as Word marks none where it updates a field's result.
+    /// </summary>
+    void Updated()
+    {
         if (word != null)
             Forms.End(word, Step);
         Refresh(word, Step, problems, written);
-        Frame();
     }
 
     /// <summary>

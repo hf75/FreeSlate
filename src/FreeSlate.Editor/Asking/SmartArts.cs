@@ -69,8 +69,8 @@ static class SmartArts
     /// <summary>The text on light ground (see-through circles, text under a list's bars).</summary>
     const string Ink = "1F2933";
 
-    /// <summary>The font of the diagrams' text, as the charts have it.</summary>
-    const string Font = "Inter";
+    /// <summary>The font of the diagrams' text: the document's where it is written, as Word's take the theme's body font (see Markup.BodyFont).</summary>
+    static string Font => Markup.BodyFont;
 
     /// <summary>A point and its subpoints, its text in the notation's pieces.</summary>
     sealed record Item(IReadOnlyList<Notation.Piece> Pieces, List<Item> Children)

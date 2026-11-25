@@ -214,6 +214,12 @@ static partial class Markup
     public static int CitationLanguage { get; set; } = 1033;
 
     /// <summary>
+    /// The font of the text a write's SmartArt and charts hold: the document's where it is written (see WordDocument.FontOf), as Word's
+    /// take the theme's body font, so that they are set as the text around them; set as a write begins.
+    /// </summary>
+    public static string BodyFont { get; set; } = "Inter";
+
+    /// <summary>
     /// The runs of a paragraph's pieces of text, to go in among other text, objects by their tokens as <paramref name="kept"/> gives them,
     /// and where in them footnotes' marks stand (offset, label); a caption's anchors numbering it (see Numbered).
     /// </summary>
@@ -381,12 +387,16 @@ static partial class Markup
                         .Append("</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>");
                     break;
                 case Notation.CiteMark cite:
+                {
                     // Word's Insert Citation: the CITATION field in its content control, its text the tags till the write's end, when the
-                    // document's citation style formats them (see Citing).
+                    // document's citation style formats them (see Citing). Its text is the paragraph's (the field is no object of the
+                    // text, as a page's number is), so that notes after it go in where they are written.
+                    var shown = "(" + string.Join("; ", cite.Items.Select(i => i.Tag)) + ")";
                     markup.Append(FreeSlate.Docx.Citations.CitationMarkup.Citation(Citing.Instruction(cite.Items, CitationLanguage),
-                        [new FreeSlate.Docx.Citations.Piece("(" + string.Join("; ", cite.Items.Select(i => i.Tag)) + ")")], Random.Shared.Next(1, int.MaxValue)));
-                    offset++;
+                        [new FreeSlate.Docx.Citations.Piece(shown)], Random.Shared.Next(1, int.MaxValue)));
+                    offset += shown.Length;
                     break;
+                }
                 case Forms.Form form:
                     // A content control, form field, merge field or fact's field as Word makes it (see Forms).
                     markup.Append(Forms.Markup(form));
