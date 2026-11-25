@@ -150,6 +150,10 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         chain = null;
         citing = false;
         stories = null;
+        keptSections.Clear();
+        keptColumns.Clear();
+        columnBlocks.Clear();
+        (columnsWritten, lastParagraph, lastBreak, lastColumns) = (0, null, false, null);
     }
 
     /// <summary>The tables of contents written: the paragraph each line put in, made a table once the write is in (see End), its title, a table of figures' label.</summary>
@@ -307,6 +311,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         objects.Keep(first, last);
         if (word != null && EndsSection(first, last))
             stories = Arranging.Stories(word, objects);
+        KeepSections(first, last);
         var tables = TablesIn(first, last);
         // The first paragraph of the text that is in none of those tables: what stands together once they are kept aside.
         int? plain = null;
@@ -534,20 +539,31 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     {
         if (anchor is not { } at)
             return;
+        var (paragraphBefore, breakBefore, columnsBefore) = (lastParagraph, lastBreak, lastColumns);
+        (lastParagraph, lastBreak, lastColumns) = (null, false, null);
         switch (block)
         {
+            case Notation.SectionBreak sectionBreak when word != null:
+                Break(sectionBreak, at, paragraphBefore, columnsBefore);
+                lastBreak = true;
+                return;
             case Notation.Columns open when word != null:
             {
                 // The section before ends here as it was set up, the columns' section after it, the text after them going on on the
-                // page; what is in columns goes in before the end of their section.
+                // page; what is in columns goes in before the end of their section. Right after a section break the columns' section
+                // begins there, as the break says (see ColumnsEnds).
                 var section = PlaceAt().Section;
-                var markup = Markup.SectionEnd(section, null) + Markup.SectionEnd(section, (open.Count, open.Line));
+                var markup = ColumnsEnds(section, open, breakBefore);
                 Step(() =>
                 {
                     var made = document.InsertBlocks(at, markup, before: true);
+                    if (breakBefore)
+                        word.Format(made[^1], new SectionFormatting { Start = section.Start ?? "nextPage" });
                     word.Format(at, new SectionFormatting { Start = "continuous" });
+                    Columned(made[^1], open, section);
                     sectionEnds.UnionWith(made);
                     columns.Push(at);
+                    columnBlocks[made[^1]] = (open, section);
                     anchor = made[^1];
                     return new TextPlace(at, 0);
                 });
@@ -555,7 +571,10 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
             }
             case Notation.ColumnsEnd:
                 if (columns.Count > 0)
+                {
+                    lastColumns = anchor;
                     anchor = columns.Pop();
+                }
                 return;
             case Notation.Table kept when word != null && keptTables.Count > 0:
                 Rework(Kept(kept), kept);
@@ -632,6 +651,8 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
                 return new TextPlace(cells.Cells[^1].Last, document.Text(cells.Cells[^1].Last).Length);
             }
             written.AddRange(ids);
+            if (block is Notation.Paragraph && ids.Count > 0)
+                lastParagraph = ids[^1];
             // A numbered point in the list of the points before it, or beginning one: at its number, or going on in the list before
             // whose last point shows the number before it (see Lists).
             if (block is Notation.Paragraph { Style: "ListNumber" or "ListNumber2" } point)

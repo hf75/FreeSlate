@@ -73,7 +73,7 @@ static partial class Markup
     /// <summary>A block made at a place (see Made).</summary>
     public static Made Of(Notation.Block block, Place place) => block switch
     {
-        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null, kept: place.Kept, keptAlign: place.KeptAlign),
+        Notation.Paragraph paragraph => Paragraph(paragraph.Style, paragraph.Pieces, null, kept: place.Kept, keptAlign: place.KeptAlign, look: paragraph.Look),
         Notation.Table table => Table(table, place),
         Notation.Fenced { Kind: "svg" } svg => Svg(svg, place),
         Notation.Fenced { Kind: "wordart" } art => WordArt(art, place),
@@ -83,9 +83,10 @@ static partial class Markup
         Notation.Fenced { Kind: "smartart" } diagram => SmartArts.Of(diagram, place),
         Notation.Fenced { Kind: "group" } group => Groups.Of(group, place),
         Notation.Fenced { Kind: "signature" } line => Signatures.Of(line, place),
-        // Sections of columns are the writing's to make, which knows where they begin (see Writing.Put, SectionEnd).
-        Notation.Columns or Notation.ColumnsEnd => new("", [], []),
+        // Sections of columns and section breaks are the writing's to make, which knows where they begin (see Writing.Put, SectionEnd).
+        Notation.Columns or Notation.ColumnsEnd or Notation.SectionBreak => new("", [], []),
         Notation.PageBreak => new("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>", [], []),
+        Notation.ColumnBreak => new("<w:p><w:r><w:br w:type=\"column\"/></w:r></w:p>", [], []),
         Notation.Rule => new("<w:p><w:pPr><w:pBdr><w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"auto\"/></w:pBdr></w:pPr></w:p>", [], []),
         Notation.Raw raw => Checked(raw.Markup) is { } problem ? new("", [], [], Problem: problem) : new(raw.Markup, [], []),
         Notation.MathBlock math => new(Formulas.Display(math.Latex), [], []),
@@ -142,21 +143,24 @@ static partial class Markup
         return markup.Append("</w:sectPr></w:pPr></w:p>").ToString();
     }
 
-    /// <summary>A paragraph of a style, its pieces as runs; with an alignment where one is given (a cell's column, a picture's line).</summary>
+    /// <summary>
+    /// A paragraph of a style, its pieces as runs; with an alignment where one is given (a cell's column, a picture's line), and its own
+    /// formatting where it has some (see ParagraphLook), whose alignment comes first.
+    /// </summary>
     static Made Paragraph(string? style, IReadOnlyList<Notation.Piece> pieces, string? align, string? before = null, Func<int, string?>? kept = null,
-        Func<int, string?>? keptAlign = null)
+        Func<int, string?>? keptAlign = null, ParagraphLook? look = null)
     {
         // An object alone in its paragraph stands as it stood alone before, else in a line of its own as the notation's drawings do: centred.
-        if (style == null && align == null && before == null && pieces is [Notation.Kept alone])
+        if (style == null && align == null && look?.Align == null && before == null && pieces is [Notation.Kept alone])
             align = keptAlign?.Invoke(alone.Id) is { } was ? (was == "left" ? null : was) : "center";
         var markup = new StringBuilder("<w:p>");
-        if (style != null || align != null)
+        var properties = ParagraphLook.Xml(look, align);
+        if (style != null || properties.Length > 0)
         {
             markup.Append("<w:pPr>");
             if (style != null)
                 markup.Append("<w:pStyle w:val=\"").Append(Escape(style)).Append("\"/>");
-            if (align != null)
-                markup.Append("<w:jc w:val=\"").Append(align == "justify" ? "both" : align).Append("\"/>");
+            markup.Append(properties);
             markup.Append("</w:pPr>");
         }
         // Marks at its end (anchors, index marks, as a paragraph reads back) without the spaces before them.
@@ -303,16 +307,20 @@ static partial class Markup
             switch (piece)
             {
                 case Notation.Run run:
+                {
+                    // Its meaning's style, then its own look as Word writes it (see RunLook).
+                    var properties = (run.Style != null ? $"<w:rStyle w:val=\"{Escape(run.Style)}\"/>" : "") + run.Look?.Xml();
                     foreach (var (text, tab) in Tabbed(Clean(run.Text)))
                     {
                         markup.Append("<w:r>");
-                        if (run.Style != null)
-                            markup.Append("<w:rPr><w:rStyle w:val=\"").Append(Escape(run.Style)).Append("\"/></w:rPr>");
+                        if (properties.Length > 0)
+                            markup.Append("<w:rPr>").Append(properties).Append("</w:rPr>");
                         markup.Append(tab ? "<w:tab/>" : $"<w:t xml:space=\"preserve\">{Escape(text)}</w:t>");
                         markup.Append("</w:r>");
                         offset += tab ? 1 : text.Length;
                     }
                     break;
+                }
                 case Notation.Break:
                     markup.Append("<w:r><w:br/></w:r>");
                     offset++;
@@ -340,8 +348,8 @@ static partial class Markup
                     break;
                 case Notation.FieldMark field:
                     // A field Word computes as it lays the page out (one character of the text), its result as saved till then.
-                    markup.Append("<w:fldSimple w:instr=\"").Append(field.Name switch { "pages" => " NUMPAGES ", "date" => " DATE ", _ => " PAGE " })
-                        .Append("\"><w:r><w:t>").Append(field.Name == "date" ? DateTime.Today.ToString("d", CultureInfo.CurrentCulture) : "1").Append("</w:t></w:r></w:fldSimple>");
+                    markup.Append(Field(field.Name switch { "pages" => " NUMPAGES ", "date" => " DATE ", _ => " PAGE " },
+                        field.Name == "date" ? DateTime.Today.ToString("d", CultureInfo.CurrentCulture) : "1", field.Look));
                     offset++;
                     break;
                 case CaptionNumber number:
@@ -379,13 +387,26 @@ static partial class Markup
                     break;
                 case Notation.Reference reference:
                     // Word's cross-reference (\h: a link to it), its result the anchor's name till the write's end (see above).
-                    markup.Append("<w:fldSimple w:instr=\"").Append(reference.Page ? " PAGEREF " : " REF ").Append(Escape(BookmarkName(reference.Name)))
-                        .Append(" \\h \"><w:r><w:t>").Append(reference.Page ? "1" : Escape(reference.Name)).Append("</w:t></w:r></w:fldSimple>");
+                    markup.Append(Field((reference.Page ? " PAGEREF " : " REF ") + BookmarkName(reference.Name) + " \\h ", reference.Page ? "1" : reference.Name, reference.Look));
                     offset++;
                     break;
             }
         }
         return markup.ToString();
+    }
+
+    /// <summary>
+    /// A field of an instruction with its result as saved: Word's simple field, or with a look of its own (see RunLook) the field of runs
+    /// Word writes, each run of it in that look, as Word formats a field's result as its first run (a simple field's result shows in the
+    /// paragraph's look, measured in Word 365: a PAGE field's result in a red run of a w:fldSimple prints black).
+    /// </summary>
+    static string Field(string instruction, string result, RunLook? look)
+    {
+        if (look?.Xml() is not { Length: > 0 } properties)
+            return $"<w:fldSimple w:instr=\"{Escape(instruction)}\"><w:r><w:t>{Escape(result)}</w:t></w:r></w:fldSimple>";
+        var run = "<w:r><w:rPr>" + properties + "</w:rPr>";
+        return run + "<w:fldChar w:fldCharType=\"begin\"/></w:r>" + run + $"<w:instrText xml:space=\"preserve\">{Escape(instruction)}</w:instrText></w:r>"
+            + run + "<w:fldChar w:fldCharType=\"separate\"/></w:r>" + run + $"<w:t>{Escape(result)}</w:t></w:r>" + run + "<w:fldChar w:fldCharType=\"end\"/></w:r>";
     }
 
     /// <summary>A HYPERLINK field's instruction for an address, or for "#" and a bookmark's name; quotes left out.</summary>
@@ -631,7 +652,7 @@ static partial class Markup
                 return new("", [], [], Problem: "A box holds paragraphs, points and their meanings, no tables, graphics or columns.");
             // Notes do not go in text boxes (Word keeps none there): their marks are left out.
             var pieces = paragraph.Pieces.Where(p => p is not Notation.NoteMark).ToList();
-            paragraphs.Append(Paragraph(paragraph.Style, pieces, null, kept: place.Kept).Blocks);
+            paragraphs.Append(Paragraph(paragraph.Style, pieces, null, kept: place.Kept, look: paragraph.Look).Blocks);
             var characters = pieces.OfType<Notation.Run>().Sum(r => r.Text.Length) + 1;
             lines += (int)Math.Ceiling(characters * 5.4 / Math.Max(60, width - 20)) + (paragraph.Style is "Heading1" or "Heading2" or "Title" ? 1 : 0);
         }
@@ -707,7 +728,7 @@ static partial class Markup
             if (piece is not Notation.Paragraph paragraph)
                 return new("", [], [], Problem: "A shape holds paragraphs, points and their meanings, no tables, graphics or columns.");
             var pieces = paragraph.Pieces.Where(p => p is not Notation.NoteMark).ToList();
-            paragraphs.Append(Paragraph(paragraph.Style, pieces, growing ? null : "center", kept: place.Kept).Blocks);
+            paragraphs.Append(Paragraph(paragraph.Style, pieces, growing ? null : "center", kept: place.Kept, look: paragraph.Look).Blocks);
         }
         if (isLine && paragraphs.Length > 0)
             return new("", [], [], Problem: "A line holds no text: write the text beside it, or take a shape that holds it (a callout).");
@@ -769,7 +790,7 @@ static partial class Markup
         double.TryParse(text?.Trim().TrimEnd('°'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     /// <summary>The relative luminance of a colour (hex RRGGBB), 0 black to 1 white.</summary>
-    static double Luminance(string hex)
+    public static double Luminance(string hex)
     {
         static double Channel(int value) => value / 255.0 is var c && c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
         var rgb = Convert.ToInt32(hex, 16);

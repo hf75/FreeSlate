@@ -169,6 +169,32 @@ static class Prompt
           out the fields you do not want. style: band (a broad band of the tone's colour across the top, the title on it), bar (a bar
           down the left side, the title beside it), frame (a double frame round the page, all centred) or plain (a large title at the
           top, the author at the bottom). It reads back as that line with its paragraphs' ids; write it again to change it.
+        - Direct formatting, where the wish asks for a look the meanings do not give (a word in red, a form's small print, a letter's
+          layout): ==marked== (highlighted in yellow), ~~struck through~~, H~2~O and x^2^ (subscript and superscript, without spaces in
+          them), and {words|text} for the rest, the words those of Word's Font dialog: bold, italic, underline (or underline=double,
+          thick, dotted, dash, wave, words, with a colour: underline=wave,#C00000), strike=double, caps, smallcaps, super, sub,
+          font=Georgia (font="Times New Roman" with spaces), size=14 (points), color=#C00000 (or red, darkred, orange, yellow, green,
+          blue, darkblue, purple, gray), highlight=yellow (or green, cyan, magenta, blue, red, darkBlue, darkGreen, darkRed, darkYellow,
+          lightGray …), shade=#D9D9D9 (behind the letters), spacing=1.5 (points between the letters, below 0 closer), raise=3 (points
+          up, below 0 down), scale=150 (percent wide), kern=12, hidden, lang=en-US (the language its spelling is checked in), proof=no
+          (not checked at all): "{font=Georgia size=14 color=#C00000|text}". A style's id first gives a meaning a look besides: {Term
+          color=#C00000|…}; "=no" takes away what a style gives (bold=no). They read back as you write them.
+        - A paragraph's own formatting: its settings right before its text, after its level's mark: "{align=right} Berlin, 25 November
+          2026", "## {align=center before=24pt} …", "- {after=0} …". align (left, center, right, justify); indents left, right,
+          first and hanging (1cm); before and after (the space above and below it: 12pt, or auto); lines (1, 1.15, 1.5, 2: multiples of
+          single lines; exactly:14pt, atleast:14pt); keepnext, keeplines (on the same page as the next paragraph, all its lines
+          together); pagebreak (on a new page); level=1 to 9 (its outline level, as a heading's in the navigation); border (box, top,
+          bottom, left, right, between, joined by +, then its kind, width and colour after colons where it is no single line of half a
+          point: "box", "bottom:double:1.5pt:#2F6DB5", "top+bottom:thick"); fill (#F2F2F2 or a fill's name, behind it); tabs (its tab
+          stops: "tabs=8cm:right,12.5cm:decimal:dot", left where no kind is given, center, right, decimal, bar; leaders dot, hyphen,
+          underscore). A letter as DIN 5008 sets it out: the return address small and underlined over the address lines, the date
+          {align=right} (or after a tab stop), space before the subject as the norm measures it, set with before=… and tabs.
+        - Sections, as Word's Layout > Breaks makes them: "\sectionbreak next" on a line of its own ends a section, the next beginning
+          on a new page ("\sectionbreak continuous" on the same page, "\sectionbreak even" or "\sectionbreak odd" on the next even or
+          odd one); right after a paragraph it ends the section with that paragraph. Each section after the first reads after the
+          document as "Page from ¶12: …", which the page tool sets up alone ("paragraph": 12): one page across among upright ones, its
+          own margins, columns, header and footer. "\columnbreak" alone on a line goes on in the next column; columns of widths of their
+          own: "::: columns 2 widths=2:1 space=1cm".
         - Anything else Word can hold (a field, a shape, a content control): WordprocessingML, as a block (w:p, w:tbl) on lines of its
           own or among the text (w:r). The usual prefixes need no declarations. A paragraph you read as WordprocessingML (<w:p>…) has
           formatting the notation does not say: write it back as WordprocessingML where it is to keep it.
@@ -181,15 +207,16 @@ static class Prompt
           block anew in place of its token.
 
         # How to write
-        - Write what things are, not how they look: levels and meanings, never fonts, sizes or colours for the text; the tone of the
-          document decides the look. WordArt and graphics have their own colours.
+        - Write what things are first: levels and meanings, whose look the tone of the document gives. Where the wish asks for a look
+          (a font, a size, a colour, a highlight, an alignment, indents, spacing, a letter's or a form's layout), give it as direct
+          formatting, there and only there. WordArt and graphics have their own colours.
         - Write in the language of the document, or of the wish where the document is empty.
         - Leave everything the wish does not concern as it is, word for word, its objects and notes too. To change a long stretch,
           replace it in sensible pieces.
         - Change how a picture or another object stands or looks with the picture tool (where it stands, size, crop, colours, frame,
           turn, mirror, tilt, caption, description), not by writing it anew. Give the document another look with the tone tool, only
           where the wish asks for one. Headers, footers, page numbers, margins, paper, orientation, watermarks and page borders
-          are the page tool's ("Page:" after the document says how they are).
+          are the page tool's ("Page:" after the document says how they are), for one section alone too ("Page from ¶12:").
         - Write a whole new document in a few writes of a few pages each, in order, so that the user sees it grow.
         - After writing WordArt, columns, graphics, tables or page breaks, look at the pages they are on and fix what does not sit
           well (text cut off, a graphic too large, a heading alone at the bottom of a page, an empty page). Plain text needs no look.
@@ -268,13 +295,26 @@ static class Prompt
             "first_page": { "type": "string", "enum": ["own", "same"], "description": "own: the first page without header and footer (a title page); same: as the other pages." },
             "margins": { "type": "string", "description": "The margins: one length for all (2cm), two for top and bottom and for the sides (2cm 2.5cm), or four (top right bottom left)." },
             "orientation": { "type": "string", "enum": ["portrait", "landscape"] },
-            "size": { "type": "string", "enum": ["A4", "A5", "A3", "Letter", "Legal"] },
+            "size": { "type": "string", "description": "A4, A5, A3, Letter, Legal, or any paper as width x height (\"21cm x 14.8cm\")." },
             "watermark": { "type": "string", "description": "A word or two pale and diagonal across every page behind the text, as Word's watermark (\"DRAFT\", \"CONFIDENTIAL\", \"SAMPLE\"); or a picture of the document behind the text of every page, washed out, by its token (\"[picture 3]\", \"[picture 3] 50%\" at half its size, \"[picture 3] vivid\" not washed out); empty to take it away." },
             "border": { "type": "string", "description": "A line round every page: single, double, thick, dotted, dashed, triple, wave, thin-thick or thick-thin, then a colour (#RRGGBB) and a width in points if wanted (\"double #2F6DB5 1.5\"); or one of Word's art borders by its name, a row of little pictures or a patterned band, 1 to 31 points wide (\"apples 20\", \"celticKnotwork #2F6DB5 16\": apples, balloons3Colors, balloonsHotAir, birdsFlight, cakeSlice, celticKnotwork, chainLink, checkered, christmasTree, confetti, flowersDaisies, flowersRoses, hearts, holly, iceCreamCones, musicNotes, palmsColor, pencils, snowflakes, stars, sun, trees, triangles, vine, weavingBraid, zigZag and Word's others); none to take it away." },
             "page_numbers": { "type": "string", "description": "The page numbers' format, 1, i, I, a or A, and where they start: \"i\" for a preface in small roman numbers, \"1 from 1\" to count from 1 again." },
             "line_numbers": { "type": "string", "description": "Numbers beside the lines in the margin, as for a poem, a contract or a text to discuss: \"every 1\" or \"every 5\", restarting on each page unless \"each section\" or \"continuous\" follows; none to take them away." },
             "hyphenation": { "type": "string", "enum": ["on", "off"], "description": "Words hyphenated at the ends of lines, as Word's automatic hyphenation (narrow columns, justified text)." },
-            "color": { "type": "string", "description": "The pages' colour behind everything (#RRGGBB, light ones keep the text readable: \"#FFF8E7\"); none to take it away." }
+            "color": { "type": "string", "description": "The pages' colour behind everything (#RRGGBB, light ones keep the text readable: \"#FFF8E7\"); none to take it away." },
+            "paragraph": { "type": "integer", "description": "Set up only the section this paragraph stands in (\"Page from ¶12:\" names the sections after the first): its margins, paper, orientation, columns, border, page numbers, notes, how it begins, and a header and footer of its own. Left out: every section as the first." },
+            "start": { "type": "string", "enum": ["next", "continuous", "even", "odd"], "description": "How the section begins: on a new page, on the same page, on the next even or odd page (the break before it)." },
+            "columns": { "type": "string", "description": "The section's columns: \"2\", \"3 line\" (a line between them), \"2 widths=2:1 space=1cm\" (of widths of their own), \"1\" for none." },
+            "link": { "type": "string", "enum": ["header", "footer", "both"], "description": "With paragraph: the section shows the header, the footer or both of the section before again (Word's Link to Previous), its own taken away." },
+            "first_header": { "type": "string", "description": "The first page's own header, as header (the first page then has its own)." },
+            "first_footer": { "type": "string", "description": "The first page's own footer." },
+            "even_pages": { "type": "string", "enum": ["own", "same"], "description": "own: even pages have a header and footer of their own (even_header, even_footer), as for printing on both sides; same: as the others." },
+            "even_header": { "type": "string", "description": "The even pages' own header, as header (a page number at the outside: \"{page}\\t\\t\" on even pages, \"\\t\\t{page}\" in header)." },
+            "even_footer": { "type": "string", "description": "The even pages' own footer." },
+            "mirror": { "type": "string", "enum": ["on", "off"], "description": "Margins mirrored on facing pages: the left margin inside, the right one outside (for printing on both sides and binding)." },
+            "gutter": { "type": "string", "description": "Room for binding added to the inside margin (1cm)." },
+            "footnotes": { "type": "string", "description": "The footnotes' numbers: 1, a, A, i, I or * (*, †, ‡ …), then \"from 3\" to start there and \"each page\" or \"each section\" to start again (\"a each page\")." },
+            "endnotes": { "type": "string", "description": "The endnotes' numbers, as footnotes (i by default)." }
           }
         }
         """;
@@ -310,6 +350,6 @@ static class Prompt
         new("picture", "Changes an object of the document as the user's ring does: where it stands, its size, crop, colours, frame, turn, mirror, tilt, caption and description; or takes it away. Give only what changes.", PictureSchema),
         new("tone", "Gives the whole document another tone, the look its levels, meanings and tables take: plain, magazine or notebook.", ToneSchema),
         new("comment", "Comments on the document as Word's reviewing does, without changing its text: a comment on a paragraph or on words in it (feedback, a question, a suggestion), an answer to a comment, a comment marked done or taken away. The document's comments read after it, each with its id.", CommentSchema),
-        new("page", "Sets up the document's pages: header and footer (with page numbers), margins, paper, orientation, a first page of its own, a watermark, a border round the pages, their colour. Give only what changes.", PageSchema),
+        new("page", "Sets up the document's pages, or one section's (paragraph): header and footer (with page numbers; the first page's and even pages' own), margins, paper, orientation, columns, a first page of its own, a watermark, a border round the pages, their colour, mirrored margins and a gutter, the notes' numbering. Give only what changes.", PageSchema),
     ];
 }

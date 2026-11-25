@@ -280,6 +280,16 @@ over each grid column at its top and bottom, as the layout resolves the cells' a
   paragraph right after a table as rows at its end (Word joins tables that meet), elsewhere as a table of their own, and text of
   a spreadsheet's rows pasted in a table goes into its cells. A picture put in in a cell is no wider than the cell's text; in lines exactly so
   high (the notebook's) its paragraph's lines become at least so high (`WordDocument.OpenLines`), as Word cuts it at their height.
+- Sections are broken as Word's Layout > Breaks breaks them (`WordDocument.Breaks.cs`, `BreakSection`, measured in Word by COM):
+  at a paragraph's start in an empty paragraph whose w:sectPr is a copy of the section's, the references of its headers and
+  footers with it, after a paragraph's text with that paragraph (`TextEdits.EndSection`); the part after the break keeps the rest,
+  linked to the part before for its headers and footers, beginning as the break's kind says (w:type). Word gives the part after a
+  break the section's first page of its own and its first page's number again; only the part before keeps them here, as for a
+  table's pages across. A section's properties as written (`SectionMarkup`) end a section again where a change took them away.
+  Page setup gives a section columns of widths of their own (`SectionFormatting.ColumnWidths`, w:col with equalWidth 0) and its
+  notes' numbering (`Footnotes`, `Endnotes`: w:footnotePr's numFmt, numStart, numRestart, as Word's Footnote dialog writes them for
+  a section); the document mirrors its margins on facing pages (`MirrorMargins`, w:mirrorMargins in the settings). A paragraph's
+  runs' own properties are read as written (`RunProperties`: each stretch's w:rPr), for the editor to say them.
 - `WordDocument` keeps other versions of a section's text and notes for planning it (`WordDocument.Versions.cs`,
   `Docx/SectionPlan`) in the paragraph that begins the section, in an alternative of markup compatibility only the engine
   can choose: `mc:AlternateContent` with `mc:Choice Requires="fs"` (namespace `urn:freeslate:plan`) and an empty
@@ -492,7 +502,18 @@ the headings of levels 1 to 3 in the styles toc 1 to 3, made once the write is i
 heading and its page a PAGEREF field, read back as one line with its first and last paragraph, `Contents`; "{figures Figure}" a table
 of figures, the same over the captions numbered with a label, TOC \c, in the style table of figures; "{index}" an index, Word's
 INDEX field over the terms "{index term}" marks among the text as XE fields, which the model leaves out and `WordDocument.IndexEntriesOf`
-reads from a paragraph's XML, a heading for each first letter and the pages as they show their numbers, `Index`), citations and
+reads from a paragraph's XML, a heading for each first letter and the pages as they show their numbers, `Index`), direct formatting
+where the wish asks for a look (`RunLook`: ==marked==, ~~struck~~, H~2~O and x^2^ as Pandoc writes them, else the words of Word's
+Font dialog before the text, "{font=Georgia size=14 color=#C00000|text}", a character style's id first for a meaning with a look
+besides; written as Word writes them, measured by COM, and read back from the runs' w:rPr, `WordDocument.RunProperties`, those
+with properties the notation does not say, Word's text effects, as their WordprocessingML; `ParagraphLook`: a paragraph's own
+alignment, indents, spacing, line spacing, keeping, page break before, outline level, lines round it, shading and tab stops as
+"{align=right after=12pt}" before its text, so that a letter as DIN 5008 sets it out can be written), section breaks as Word's
+Layout > Breaks makes them ("\sectionbreak continuous" on a line of its own, after a paragraph ending the section with it, a
+break taken away by a write giving its section's properties to the one written in its place, `Writing.Sections`; read back as
+that line after the paragraph that ends the section, but where the columns' marks or a table's pages across say it, each section
+after a break told as "Page from ¶12:", `Reading.Sections`), "\columnbreak", columns of widths of their own ("::: columns 2
+widths=2:1 space=1cm"), citations and
 bibliographies as Word's References tab makes them (a ```bibtex block's entries the document's sources in Word's kinds, its style=…
 Word's citation style; "[@key]", "[see @key, p. 33; -@other]" Pandoc's citations as CITATION fields in w:citation controls;
 "{bibliography}" Word's bibliography building block of all the sources; the citations' and bibliographies' text set as the style
@@ -531,7 +552,10 @@ pages' colour, `WordDocument.SetPageColor`: w:background before the body, which 
 read again whole for it and for a version with another colour, as for its styles; Word's art borders by their names, drawn as
 tiles of FreeSlate's own motifs in their spirit (`ArtMotifs`, Resources/artMotifs.json: upright pictures or bands turning with the
 side, tiled as Word tiles its pictures); line numbers (`SectionFormatting.LineNumbers`, w:lnNumType) and automatic hyphenation
-(`WordDocument.AutoHyphenation`, w:autoHyphenation in the settings), the page numbers' format and start; read with the document as
+(`WordDocument.AutoHyphenation`, w:autoHyphenation in the settings), the page numbers' format and start; for one section alone
+(a paragraph of it: across among upright pages, its own margins, columns, a header and footer of its own or those of the section
+before, how it begins, a border round its pages, its notes' numbering), papers of any size, the first page's and even pages' own
+headers and footers, margins mirrored and a gutter, `Arranging.Sections`; read with the document as
 "Page:", and given again where a
 write takes a section's end away) and comment (`Commenting`: a comment on a paragraph or on words in it, an answer, one marked
 done or taken away, by "Claude", through the engine's `AddComment`, `Reply`, `Resolve` and `DeleteComment`; the comments read

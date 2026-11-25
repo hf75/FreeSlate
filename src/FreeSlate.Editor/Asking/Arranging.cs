@@ -11,7 +11,7 @@ namespace FreeSlate.Editor.Asking;
 /// with a picture (where it stands, its size, its crop, colours, frame, turn, mirror, tilt, caption and description, or takes it away),
 /// each change a handling of the session's as the ring's are; the tone tool gives the document a tone as its buttons do.
 /// </summary>
-static class Arranging
+static partial class Arranging
 {
     /// <summary>The ring's crops (see EditorView's Cropped): proportions of width to height, the whole picture, a circle, a rectangle.</summary>
     static readonly Dictionary<string, double> Proportions = new(StringComparer.OrdinalIgnoreCase)
@@ -269,6 +269,20 @@ static class Arranging
         }
         var failed = new List<string>();
         var format = new SectionFormatting();
+        // A section set up alone: the one a paragraph of the body stands in (see Sections).
+        var alone = SectionParagraph(json);
+        if (alone is { } given)
+        {
+            try
+            {
+                word.SectionOf(given);
+            }
+            catch (Exception e) when (e is NotSupportedException or ArgumentException)
+            {
+                return ($"¶{given.ToString(CultureInfo.InvariantCulture)} is no paragraph of the document's body to set up its section.", true);
+            }
+        }
+        var target = alone ?? first;
         if (input.GetValueOrDefault("margins") is { } margins)
         {
             var lengths = margins.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries).Select(m => Markup.Length(m, 0)).ToList();
@@ -289,9 +303,12 @@ static class Arranging
         {
             if (Papers.TryGetValue(size.Trim(), out var paper))
                 format = format with { PageWidth = paper.Width, PageHeight = paper.Height };
+            else if (Paper(size) is var (ownWidth, ownHeight))
+                format = format with { PageWidth = ownWidth, PageHeight = ownHeight, Orientation = ownWidth > ownHeight ? "landscape" : "portrait" };
             else
-                failed.Add($"size {size} (A3, A4, A5, Letter or Legal)");
+                failed.Add($"size {size} (A3, A4, A5, Letter, Legal, or width x height: 21cm x 14.8cm)");
         }
+        format = More(input, format, failed);
         if (input.GetValueOrDefault("border") is { } borderText)
         {
             if (Border(borderText) is { } border)
@@ -348,7 +365,7 @@ static class Arranging
         if (format.PageWidth is { } across && format.PageHeight is { } down)
         {
             var lying = format.Orientation == "landscape"
-                || format.Orientation == null && word.SectionOf(first) is { PageWidth: { } w, PageHeight: { } h } && w > h;
+                || format.Orientation == null && word.SectionOf(target) is { PageWidth: { } w, PageHeight: { } h } && w > h;
             format = format with
             {
                 PageWidth = lying ? Math.Max(across, down) : Math.Min(across, down),
@@ -375,7 +392,9 @@ static class Arranging
                     failed.Add($"{what} ({e.Message})");
                 }
             }
-            if (format != new SectionFormatting())
+            if (format != new SectionFormatting() && alone is { } section)
+                Do("page setup", () => word.Format(section, Widened(format, word.SectionOf(section))));
+            else if (format != new SectionFormatting())
             {
                 // Every section set up as the first one is: one of its paragraphs each.
                 var upright = word.SectionOf(first) is { PageWidth: { } w0, PageHeight: { } h0 } ? w0 <= h0 : true;
@@ -397,23 +416,29 @@ static class Arranging
                     {
                         if (word.SectionOf(paragraph) is { PageWidth: { } w, PageHeight: { } h } && (w <= h) != upright)
                             continue;
-                        word.Format(paragraph, format);
+                        word.Format(paragraph, Widened(format, word.SectionOf(paragraph)));
                     }
                 });
             }
             if (input.GetValueOrDefault("first_page")?.Trim().ToLowerInvariant() is { } titled)
             {
                 if (titled is "own" or "same")
-                    Do("first page", () => word.Format(first, new SectionFormatting { TitlePage = titled == "own" }));
+                    Do("first page", () => word.Format(target, new SectionFormatting { TitlePage = titled == "own" }));
                 else
                     failed.Add($"first_page {titled} (own or same)");
             }
+            // A section set up alone gets a header and footer of its own (Word's Link to Previous off), else the first section's are set.
             foreach (var (name, footer) in new[] { ("header", false), ("footer", true) })
             {
                 if (input.GetValueOrDefault(name) is not { } text)
                     continue;
-                Do(name, () => Story(word, first, footer, text));
+                Do(name, () =>
+                {
+                    Own(word, target, alone != null, "default", footer);
+                    Story(word, target, footer, text);
+                });
             }
+            Headers(word, target, alone != null, input, (what, change) => Do(what, change), failed);
             // Words as Word's text watermark, or a picture of the document by its token (see Watermarks).
             if (input.GetValueOrDefault("watermark") is { } watermark)
                 Do("watermark", () => Watermarks.Set(word, first, objects, watermark.Trim()));
@@ -437,7 +462,7 @@ static class Arranging
                     failed.Add($"color {colored} (#RRGGBB or none)");
             }
         });
-        var told = "Now: " + Reading.PageOf(word, objects);
+        var told = "Now: " + Reading.PageOf(word, objects) + (Reading.SectionsOf(word, objects) is { Length: > 0 } sections ? "\n" + sections.TrimEnd('\n') : "");
         if (failed.Count > 0)
             told += " Not done: " + string.Join("; ", failed) + ".";
         return (told, done.Count == 0 && failed.Count > 0);
@@ -447,9 +472,9 @@ static class Arranging
     /// The header (or the footer) every page shows given a text in the notation: one paragraph of its own, the parts between tabs placed by
     /// positional tabs (the next in the middle, the last at the right, wherever the margins are), {page} and its kin as fields.
     /// </summary>
-    public static void Story(WordDocument word, int first, bool footer, string text)
+    public static void Story(WordDocument word, int first, bool footer, string text, string kind = "default")
     {
-        var story = word.Header(first, "default", footer);
+        var story = word.Header(first, kind, footer);
         // A watermark the header holds stays (see Watermark).
         var watermark = footer ? null : WatermarkText(word, story);
         while (word.After(story) is { } next)

@@ -534,11 +534,24 @@ sealed partial class Objects(IEditableDocument document)
         var (flipH, flipV) = ((string?)xfrm?.Attribute("flipH") is "1" or "true", (string?)xfrm?.Attribute("flipV") is "1" or "true");
         if (flipH || flipV)
             settings.Add("flip=" + (flipH && flipV ? "both" : flipH ? "across" : "down"));
+        // Its text centred as a shape's is written but where it grows with it as a box (see Markup.Shape), that alignment unsaid; white on a
+        // strong fill, as a shape's text is written there, that colour unsaid.
+        var centred = !(preset is "rect" or "roundRect" && element.Descendants().Any(e => e.Name.LocalName == "spAutoFit"));
+        var white = (string?)fill?.Attribute("val") is { Length: 6 } filled && filled.All(Uri.IsHexDigit) && Asking.Markup.Luminance(filled) < 0.45;
         var lines = element.Descendants().Any(e => e.Name.LocalName == "txbxContent")
-            ? word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Paragraph(document, p, this)).ToList()
+            ? word.TextBoxParagraphs(paragraph, offset).Select(p => Reading.Paragraph(document, p, this, centred ? "center" : null))
+                .Select(l => white ? WhiteUnsaid().Replace(WhiteAlone().Replace(l, "$1"), "") : l).ToList()
             : [];
         return "```shape " + string.Join(" ", settings) + "\n" + string.Concat(lines.Select(l => l + "\n\n")).TrimEnd('\n') + (lines.Count > 0 ? "\n" : "") + "```";
     }
+
+    /// <summary>Text of a look of white alone, "{color=#FFFFFF|text}" (see RunLook): its text.</summary>
+    [GeneratedRegex(@"\{color=#FFFFFF\|((?:[^{}\\]|\\.|\{(?:[^{}\\]|\\.)*\})*)\}")]
+    private static partial Regex WhiteAlone();
+
+    /// <summary>White among a look's other words (" color=#FFFFFF" before the text).</summary>
+    [GeneratedRegex(@" color=#FFFFFF(?=[ |])|(?<=\{)color=#FFFFFF (?=[^{}|]*\|)")]
+    private static partial Regex WhiteUnsaid();
 
     /// <summary>Where a drawing stands, as the picture tool names it: inline, left, right, own, behind, front (floating otherwise).</summary>
     static string Place(DrawingFormatting drawing) => drawing.Wrap switch

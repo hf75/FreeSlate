@@ -7,7 +7,9 @@ namespace FreeSlate.Editor.Asking;
 /// The notation Claude reads a document in and writes into it (see Prompt): Markdown for the text, its headings and points the
 /// editor's levels (see Writing.Levels) and its marks the meanings (see Writing.Meanings), {Style|text} for any meaning and {Style} before a
 /// paragraph for any level; GitHub's tables; fenced blocks of a vector picture (svg) and of WordArt (wordart); "::: columns 2" to ":::"
-/// for text in columns; \pagebreak; footnotes as [^1] with "[^1]: text"; and WordprocessingML where nothing else says it (w:p, w:tbl
+/// for text in columns; \pagebreak, \columnbreak, \sectionbreak; footnotes as [^1] with "[^1]: text"; direct formatting as ==marked==,
+/// ~~struck~~, H~2~O, x^2^, {font=Georgia|text} (see RunLook) and "{align=right}" before a paragraph's text (see ParagraphLook); and
+/// WordprocessingML where nothing else says it (w:p, w:tbl
 /// as blocks; w:r, m:oMath and the like among the text). Read here into blocks as far as a text says them: one streaming in gives the
 /// blocks it has finished, and the text block it is writing as it reads so far (see Parse).
 /// </summary>
@@ -20,7 +22,19 @@ public static partial class Notation
     {
         /// <summary>A numbered point's number as written ("3." gives 3), which a list beginning with it starts at (see Writing.Lists).</summary>
         public int? Number { get; init; }
+
+        /// <summary>Its own formatting, from "{align=right after=12pt}" at its text's start (see ParagraphLook); null for none.</summary>
+        public ParagraphLook? Look { get; init; }
     }
+
+    /// <summary>
+    /// A section break, "\sectionbreak" on a line of its own (Word's Layout > Breaks): the section ends there, the next one beginning as its
+    /// kind says (nextPage, continuous, evenPage, oddPage; see Writing.Break, WordDocument.BreakSection).
+    /// </summary>
+    public sealed record SectionBreak(string Kind) : Block;
+
+    /// <summary>A column break, "\columnbreak" on a line of its own: what follows begins in the next column.</summary>
+    public sealed record ColumnBreak : Block;
 
     /// <summary>
     /// A table: its rows of cells, each the pieces of its text; the alignment of each column (left, center, right or null). And as the
@@ -40,7 +54,12 @@ public static partial class Notation
     public sealed record Fenced(string Kind, IReadOnlyDictionary<string, string> Settings, string Body) : Block;
 
     /// <summary>Text in columns begins: so many, a line between them or not.</summary>
-    public sealed record Columns(int Count, bool Line) : Block;
+    public sealed record Columns(int Count, bool Line) : Block
+    {
+        /// <summary>The columns' widths as shares of each other ("widths=2:1"), null for columns of even width; and the space between them (points), null for the section's.</summary>
+        public IReadOnlyList<double>? Widths { get; init; }
+        public double? Space { get; init; }
+    }
 
     /// <summary>Text in columns ends: what follows runs as it ran before them.</summary>
     public sealed record ColumnsEnd : Block;
@@ -78,7 +97,11 @@ public static partial class Notation
     /// <summary>A formula in a paragraph of its own, centred ($$…$$): its LaTeX (see Formulas).</summary>
     public sealed record MathBlock(string Latex) : Block;
 
-    public abstract record Piece;
+    public abstract record Piece
+    {
+        /// <summary>The direct formatting it has besides its meaning (==marked==, {font=Georgia|…}, see RunLook); null for none.</summary>
+        public RunLook? Look { get; init; }
+    }
 
     /// <summary>Text with a meaning (a character style) or none.</summary>
     public sealed record Run(string Text, string? Style) : Piece;
@@ -212,7 +235,32 @@ public static partial class Notation
     /// <summary>The styles of the headings # to ###: the title, a chapter, a section (deeper ones are sections too).</summary>
     static readonly string[] Headings = ["Title", "Heading1", "Heading2"];
 
-    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, Formula, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled, Contents }
+    enum Kind { Blank, Unsure, Text, Heading, Item, Quote, Table, TableSettings, Fence, Formula, ColumnsOpen, ColumnsClose, PageBreak, Rule, Raw, Note, Styled, Contents, Breaks }
+
+    /// <summary>A section break ("\sectionbreak", "\sectionbreak continuous") or a column break ("\columnbreak") on a line of its own.</summary>
+    [GeneratedRegex(@"^\\(sectionbreak|columnbreak)(?:\s+([a-z]+))?$", RegexOptions.IgnoreCase)]
+    private static partial Regex BreakLine();
+
+    /// <summary>A section break's kind as WordprocessingML names it (w:type) by the word after "\sectionbreak"; nextPage where none is given, null for a word it does not know.</summary>
+    public static string? SectionKind(string? word) => word?.ToLowerInvariant() switch
+    {
+        null or "" or "next" or "nextpage" or "page" => "nextPage",
+        "continuous" => "continuous",
+        "even" or "evenpage" => "evenPage",
+        "odd" or "oddpage" => "oddPage",
+        "column" or "nextcolumn" => "nextColumn",
+        _ => null,
+    };
+
+    /// <summary>The word "\sectionbreak" takes for a section break's kind (see SectionKind).</summary>
+    public static string SectionWord(string? kind) => kind switch
+    {
+        "continuous" => "continuous",
+        "evenPage" => "even",
+        "oddPage" => "odd",
+        "nextColumn" => "column",
+        _ => "next",
+    };
 
     /// <summary>A table of contents: "{contents}" (or "{toc}") on a line of its own, its title after the word; "{figures Label}" a table of figures.</summary>
     [GeneratedRegex(@"^\{\s*(contents|toc|figures)(?:\s+([^{}]*?))?\s*\}$", RegexOptions.IgnoreCase)]
@@ -336,7 +384,7 @@ public static partial class Notation
                         i++;
                         continue;
                     }
-                    blocks.Add(new Paragraph(style, Inline(match.Groups[2].Value, null)));
+                    blocks.Add(Paragraphed(style, match.Groups[2].Value));
                     i++;
                     continue;
                 }
@@ -361,7 +409,7 @@ public static partial class Notation
                         i = count;
                         continue;
                     }
-                    blocks.Add(new Paragraph(style, Inline(point, null)) { Number = number });
+                    blocks.Add(Paragraphed(style, point) with { Number = number });
                     i = k;
                     continue;
                 }
@@ -379,7 +427,7 @@ public static partial class Notation
                         i = count;
                         continue;
                     }
-                    blocks.Add(new Paragraph(null, Inline(body.ToString(), "Quotation")));
+                    blocks.Add(Paragraphed(null, body.ToString(), "Quotation"));
                     i = k;
                     continue;
                 }
@@ -509,7 +557,20 @@ public static partial class Notation
                         blocks.Add(new ColumnsEnd());
                         columnsOpen--;
                     }
-                    blocks.Add(new Columns(columns, rest.Contains("line", StringComparison.Ordinal) || rest.Contains("rule", StringComparison.Ordinal) || rest.Contains("sep", StringComparison.Ordinal)));
+                    // Columns of widths of their own ("widths=2:1", as many shares as columns) and the space between them ("space=1cm").
+                    var given = SettingsOf(rest);
+                    var widths = given.GetValueOrDefault("widths")?.Split(':', ',', '/').Select(w => double.TryParse(w.Trim(), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var share) && share > 0 ? share : 0).ToList();
+                    if (widths != null && (widths.Count != columns || widths.Any(w => w <= 0)))
+                    {
+                        problems.Add($"widths={given["widths"]} gives no share for each of the {columns} columns (widths=2:1 for two, the first twice as wide).");
+                        widths = null;
+                    }
+                    blocks.Add(new Columns(columns, Regex.IsMatch(rest, @"(^|\s)(lines?|rule|sep)(\s|$)"))
+                    {
+                        Widths = widths is { Count: > 1 } shares && shares.Distinct().Count() > 1 ? shares : null,
+                        Space = Lengths.Points(given.GetValueOrDefault("space")),
+                    });
                     columnsOpen++;
                     i++;
                     continue;
@@ -533,6 +594,18 @@ public static partial class Notation
                 {
                     if (!open)
                         blocks.Add(kind == Kind.PageBreak ? new PageBreak() : new Rule());
+                    i++;
+                    continue;
+                }
+                case Kind.Breaks:
+                {
+                    var match = BreakLine().Match(line.Trim());
+                    if (match.Groups[1].Value.Equals("columnbreak", StringComparison.OrdinalIgnoreCase))
+                        blocks.Add(new ColumnBreak());
+                    else if (SectionKind(match.Groups[2].Success ? match.Groups[2].Value : null) is { } sectionKind)
+                        blocks.Add(new SectionBreak(sectionKind));
+                    else
+                        problems.Add($"\\sectionbreak {match.Groups[2].Value} is no section break: \\sectionbreak, \\sectionbreak continuous, \\sectionbreak even or \\sectionbreak odd.");
                     i++;
                     continue;
                 }
@@ -616,7 +689,7 @@ public static partial class Notation
                         i = count;
                         continue;
                     }
-                    blocks.Add(new Paragraph(style, Inline(Joined(parts), null)));
+                    blocks.Add(Paragraphed(style, Joined(parts)));
                     i = k;
                     continue;
                 }
@@ -629,6 +702,13 @@ public static partial class Notation
                 blocks.Add(new ColumnsEnd());
         }
         return new Parsed(blocks, tail, notes, problems);
+    }
+
+    /// <summary>A paragraph of a style, its own settings ("{align=right after=12pt}", see ParagraphLook) taken from its text's start, the rest its pieces.</summary>
+    static Paragraph Paragraphed(string? style, string text, string? runStyle = null)
+    {
+        var (look, rest) = ParagraphLook.Take(text);
+        return new Paragraph(style, Inline(rest, runStyle)) { Look = look };
     }
 
     /// <summary>
@@ -667,6 +747,8 @@ public static partial class Notation
             return ColumnsLine().IsMatch(trimmed) ? Kind.ColumnsOpen : open ? Kind.Unsure : Kind.Text;
         if (trimmed == "\\pagebreak")
             return Kind.PageBreak;
+        if (BreakLine().IsMatch(trimmed) || open && trimmed.StartsWith("\\", StringComparison.Ordinal) && !trimmed.Contains(' ', StringComparison.Ordinal) && trimmed.Length < 16)
+            return open ? Kind.Unsure : Kind.Breaks;
         if (ContentsLine().IsMatch(trimmed) || IndexLine().IsMatch(trimmed) || BibliographyLine().IsMatch(trimmed) || AuthoritiesLine().IsMatch(trimmed)
             || CoverLine().IsMatch(trimmed))
             return open ? Kind.Unsure : Kind.Contents;
@@ -835,35 +917,96 @@ public static partial class Notation
     [GeneratedRegex(@"\[([^\]]*)\]\([^)\s]*\)?")]
     private static partial Regex PlainLinks();
 
-    [GeneratedRegex(@"\{[A-Za-z][A-Za-z0-9]*\||\[\^[^\]]*\]?|\[(?:" + Objects.Kinds + @")\s+\d[^\]]*\]?|[*_`}]|<[^>]*>?", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^\{[^{}|\n]*\}\s*|\{[^{}|\n]*\||\[\^[^\]]*\]?|\[(?:" + Objects.Kinds + @")\s+\d[^\]]*\]?|==|[*_`}~^]|<[^>]*>?", RegexOptions.IgnoreCase)]
     private static partial Regex PlainMarks();
 
     /// <summary>
     /// The pieces of a paragraph's text: **important**, *emphasized* (or _so_), {Style|text}, `a term`, [^note] marks, line breaks
-    /// (&lt;br&gt;, a line feed in a table's cell), [text](address) as its text, WordprocessingML (w:r, m:oMath …) as it is; a backslash
-    /// takes the next mark as text. Text without a mark of its own takes <paramref name="style"/>.
+    /// (&lt;br&gt;, a line feed in a table's cell), [text](address) as its text, WordprocessingML (w:r, m:oMath …) as it is; direct
+    /// formatting as ==marked==, ~~struck~~, H~2~O, x^2^ and {font=Georgia size=14|text} (see RunLook); a backslash takes the next mark
+    /// as text. Text without a mark of its own takes <paramref name="style"/> and <paramref name="look"/>.
     /// </summary>
-    public static IReadOnlyList<Piece> Inline(string text, string? style)
+    public static IReadOnlyList<Piece> Inline(string text, string? style, RunLook? look = null)
     {
         var pieces = new List<Piece>();
         var buffer = new StringBuilder();
         var (important, emphasized) = (false, false);
+        var (marked, struck, sub, sup) = (false, false, false, false);
+        string? Styled() => important ? "Important" : emphasized ? "Emphasized" : style;
+        // The look of text here: the one given, and the compact marks open.
+        RunLook? Looked()
+        {
+            var now = (look ?? RunLook.None).Over(marked ? RunLook.Marked : null).Over(struck ? RunLook.Struck : null)
+                .Over(sub ? RunLook.Subscript : null).Over(sup ? RunLook.Superscript : null);
+            return now.Empty ? null : now;
+        }
         void Flush()
         {
             if (buffer.Length == 0)
                 return;
-            pieces.Add(new Run(buffer.ToString(), important ? "Important" : emphasized ? "Emphasized" : style));
+            pieces.Add(new Run(buffer.ToString(), Styled()) { Look = Looked() });
             buffer.Clear();
+        }
+        // Where a mark of two characters closes after one that opens at k: later, after text that does not end with a space; -1 for nowhere.
+        int Closing(string mark, int from)
+        {
+            for (var at = text.IndexOf(mark, from, StringComparison.Ordinal); at >= 0; at = text.IndexOf(mark, at + 1, StringComparison.Ordinal))
+            {
+                if (at > from && !char.IsWhiteSpace(text[at - 1]) && text[at - 1] != '\\')
+                    return at;
+            }
+            return -1;
         }
         var k = 0;
         while (k < text.Length)
         {
             var c = text[k];
             var rest = text.AsSpan(k);
-            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^$.-+)".Contains(text[k + 1]))
+            if (c == '\\' && k + 1 < text.Length && "\\*_{}[]|<>`#^$.-+)~=".Contains(text[k + 1]))
             {
                 buffer.Append(text[k + 1]);
                 k += 2;
+                continue;
+            }
+            // ==marked== and ~~struck~~: opening before text that does not begin with a space where they close later, closing after text
+            // that does not end with one.
+            if (rest.StartsWith("==") || rest.StartsWith("~~"))
+            {
+                var on = c == '=' ? marked : struck;
+                if (on ? k > 0 && !char.IsWhiteSpace(text[k - 1]) : k + 2 < text.Length && !char.IsWhiteSpace(text[k + 2]) && Closing(rest[..2].ToString(), k + 2) > 0)
+                {
+                    Flush();
+                    if (c == '=')
+                        marked = !marked;
+                    else
+                        struck = !struck;
+                    k += 2;
+                    continue;
+                }
+            }
+            // H~2~O and x^2^: a subscript or superscript of text without spaces, as Pandoc writes them.
+            if (c is '~' or '^' && !rest.StartsWith("~~"))
+            {
+                var on = c == '~' ? sub : sup;
+                var close = on ? k : text.IndexOf(c, k + 1);
+                if (on || close > k + 1 && !text.AsSpan(k + 1, close - k - 1).ContainsAny(" \t\n") && text[close - 1] != '\\')
+                {
+                    Flush();
+                    if (c == '~')
+                        sub = !sub;
+                    else
+                        sup = !sup;
+                    k++;
+                    continue;
+                }
+            }
+            // Text of a look of its own: {font=Georgia size=14|text}, {Term color=#C00000|text}.
+            if (c == '{' && LookedText().Match(text, k) is { Success: true } looked && RunLook.Parse(looked.Groups[1].Value) is var (lookStyle, given))
+            {
+                Flush();
+                foreach (var piece in Inline(looked.Groups[2].Value, lookStyle ?? Styled(), (Looked() ?? RunLook.None).Over(given)))
+                    pieces.Add(piece);
+                k += looked.Length;
                 continue;
             }
             if (c == '\n')
@@ -896,7 +1039,7 @@ public static partial class Notation
             if (c == '{' && StyledText().Match(text, k) is { Success: true } styled)
             {
                 Flush();
-                foreach (var piece in Inline(styled.Groups[2].Value, styled.Groups[1].Value))
+                foreach (var piece in Inline(styled.Groups[2].Value, styled.Groups[1].Value, Looked()))
                     pieces.Add(piece);
                 k += styled.Length;
                 continue;
@@ -926,7 +1069,7 @@ public static partial class Notation
             if (c == '[' && LinkText().Match(text, k) is { Success: true } link)
             {
                 Flush();
-                pieces.Add(new Link(Inline(link.Groups[1].Value, "Hyperlink"), link.Groups[2].Value));
+                pieces.Add(new Link(Inline(link.Groups[1].Value, "Hyperlink", Looked()), link.Groups[2].Value));
                 k += link.Length;
                 continue;
             }
@@ -940,7 +1083,7 @@ public static partial class Notation
             if (c == '{' && FieldText().Match(text, k) is { Success: true } field)
             {
                 Flush();
-                pieces.Add(new FieldMark(field.Groups[1].Value.ToLowerInvariant()));
+                pieces.Add(new FieldMark(field.Groups[1].Value.ToLowerInvariant()) { Look = Looked() });
                 k += field.Length;
                 continue;
             }
@@ -958,11 +1101,11 @@ public static partial class Notation
                 k += indexed.Length;
                 continue;
             }
-            if (c == '{' && AuthorityText().Match(text, k) is { Success: true } marked && Authorities.Parse(marked.Groups[1].Value) is var (shortText, longText, category))
+            if (c == '{' && AuthorityText().Match(text, k) is { Success: true } authority && Authorities.Parse(authority.Groups[1].Value) is var (shortText, longText, category))
             {
                 Flush();
                 pieces.Add(new Authority(shortText, longText, category));
-                k += marked.Length;
+                k += authority.Length;
                 continue;
             }
             if (c == '{' && AnchorText().Match(text, k) is { Success: true } anchor)
@@ -975,14 +1118,14 @@ public static partial class Notation
             if (c == '{' && ReferenceText().Match(text, k) is { Success: true } reference)
             {
                 Flush();
-                pieces.Add(new Reference(reference.Groups[2].Value, reference.Groups[1].Value.Equals("page", StringComparison.OrdinalIgnoreCase)));
+                pieces.Add(new Reference(reference.Groups[2].Value, reference.Groups[1].Value.Equals("page", StringComparison.OrdinalIgnoreCase)) { Look = Looked() });
                 k += reference.Length;
                 continue;
             }
             if (c == '`' && CodeText().Match(text, k) is { Success: true } code)
             {
                 Flush();
-                pieces.Add(new Run(code.Groups[1].Value, "Term"));
+                pieces.Add(new Run(code.Groups[1].Value, "Term") { Look = Looked() });
                 k += code.Length;
                 continue;
             }
@@ -1009,6 +1152,10 @@ public static partial class Notation
 
     [GeneratedRegex(@"\G\{([A-Za-z][A-Za-z0-9]*)\|((?:[^{}\\]|\\.)*)\}")]
     private static partial Regex StyledText();
+
+    /// <summary>Text of a look of its own: {words|text}, the words settings (see RunLook.Parse), the text holding marks of one level of braces ({page}).</summary>
+    [GeneratedRegex(@"\G\{([^{}|\n]+)\|((?:[^{}\\]|\\.|\{(?:[^{}\\]|\\.)*\})*)\}")]
+    private static partial Regex LookedText();
 
     [GeneratedRegex(@"\G\[\^([^\]\s]+)\]")]
     private static partial Regex NoteMarkText();
