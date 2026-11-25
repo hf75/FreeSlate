@@ -103,7 +103,8 @@ static partial class Watermarks
         for (int? paragraph = story; paragraph is { } at; paragraph = word.After(at))
         {
             if (Arranging.WatermarkAt(word, at) is { } offset && word.DrawingName(at, offset)?.StartsWith(PictureName, StringComparison.Ordinal) == true)
-                return word.DrawingOf(at, offset)?.Recolor == "washout" ? "a picture, washed out" : "a picture";
+                // Washed out as VML's gain and black level read (a luminance a point off Word's own washout in DrawingML), or vivid.
+                return word.DrawingOf(at, offset)?.Recolor is "washout" or "other" ? "a picture, washed out" : "a picture";
         }
         return "\"" + words + "\"";
     }

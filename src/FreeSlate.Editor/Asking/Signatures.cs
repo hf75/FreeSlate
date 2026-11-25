@@ -8,9 +8,11 @@ namespace FreeSlate.Editor.Asking;
 /// <summary>
 /// A signature line as Word's Insert > Signature Line makes one: a fenced block ```signature signer="…" title="…" email="…" with the
 /// instructions to the signer inside, made a VML picture in the line with Word's o:signatureline (its suggested signer, the signer's title
-/// and e-mail, the instructions, whether the signer may add comments and whether the date shows when it is signed), 192 by 96 points
-/// unless its width says otherwise (its height half its width), and a picture of the line as Word stores one for programs that do not draw
-/// it themselves (Word draws it itself whatever the picture, see Docx.Vml.SignatureLine). Read back as the block.
+/// and e-mail, the instructions, whether the signer may add comments and whether the date shows when it is signed), 191.85 by 96.15
+/// points as Word makes one unless its width says otherwise (its height in that proportion), its description Word's for a line not signed
+/// yet, and a picture of the line as Word stores one for programs that do not draw it themselves (Word draws it itself whatever the picture,
+/// see Docx.Vml.SignatureLine). Measured in Word 365 by COM (Signatures.AddSignatureLine, its setup dialog closed by a key: a v:shape
+/// _x0000_i1025 of shape type 75, its picture an EMF, o:signatureline with v:ext, id, provid and issignatureline). Read back as the block.
 /// </summary>
 static class Signatures
 {
@@ -26,8 +28,9 @@ static class Signatures
         var instructions = string.Join(" ", block.Body.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
         if (instructions.Length == 0)
             instructions = settings.GetValueOrDefault("instructions") ?? "";
-        var width = Math.Clamp(Markup.Length(settings.GetValueOrDefault("width"), place.TextWidth) ?? 192, 72, place.TextWidth);
-        var height = width / 2;
+        // Word's own size, 191.85 by 96.15 points.
+        var width = Math.Clamp(Markup.Length(settings.GetValueOrDefault("width"), place.TextWidth) ?? 191.85, 72, place.TextWidth);
+        var height = width * 96.15 / 191.85;
         static bool Flag(string? value, bool fallback) => value?.Trim().ToLowerInvariant() switch
         {
             "yes" or "true" or "on" => true,
@@ -53,7 +56,7 @@ static class Signatures
             + "<v:f eqn=\"prod @6 1 2\"/><v:f eqn=\"prod @7 21600 pixelWidth\"/><v:f eqn=\"sum @8 21600 0\"/><v:f eqn=\"prod @7 21600 pixelHeight\"/>"
             + "<v:f eqn=\"sum @10 21600 0\"/></v:formulas><v:path o:extrusionok=\"f\" gradientshapeok=\"t\" o:connecttype=\"rect\"/>"
             + "<o:lock v:ext=\"edit\" aspectratio=\"t\"/></v:shapetype>"
-            + $"<v:shape id=\"_x0000_i{Random.Shared.Next(1025, 9999).ToString(CultureInfo.InvariantCulture)}\" type=\"#_x0000_t75\" alt=\"Microsoft Office Signature Line...\" style=\"width:{Pt(width)}pt;height:{Pt(height)}pt\">"
+            + $"<v:shape id=\"_x0000_i{Random.Shared.Next(1025, 9999).ToString(CultureInfo.InvariantCulture)}\" type=\"#_x0000_t75\" alt=\"{((Markup.CitationLanguage & 0x3FF) == 0x07 ? "Signaturzeile, nicht signiert" : "Signature line, not signed")}\" style=\"width:{Pt(width)}pt;height:{Pt(height)}pt\">"
             + "<v:imagedata r:id=\"{signature}\" o:title=\"\"/>"
             + "<o:lock v:ext=\"edit\" ungrouping=\"t\" rotation=\"t\" cropping=\"t\" verticies=\"t\" text=\"t\" grouping=\"t\"/>"
             + line + "</v:shape></w:pict></w:r>";
@@ -107,7 +110,7 @@ static class Signatures
             settings.Add("date=no");
         if (Value("allowcomments") is "t" or "true")
             settings.Add("comments=yes");
-        if (drawing?.Width is { } width && Math.Abs(width - 192) > 0.5)
+        if (drawing?.Width is { } width && Math.Abs(width - 191.85) > 0.5)
             settings.Add("width=" + (width / 72 * 2.54).ToString("0.#", CultureInfo.InvariantCulture) + "cm");
         return "```signature " + string.Join(" ", settings) + "\n" + (Value("signinginstructions") is { Length: > 0 } instructions ? instructions + "\n" : "") + "```";
     }

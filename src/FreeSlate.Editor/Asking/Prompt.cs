@@ -154,8 +154,8 @@ static class Prompt
           up to date.
         - A signature line, as Word's Insert > Signature Line makes one: a fenced block ```signature signer="Dr. Anna Weber"
           title="Head of Office" email="a.weber@example.org" with the instructions to the signer inside (or none). Settings: date=no
-          (no date shown when it is signed), comments=yes (the signer may add a comment), width (192 by 96 points by default, its
-          height half its width), align.
+          (no date shown when it is signed), comments=yes (the signer may add a comment), width (6.8cm by default, its height
+          half its width), align.
         - Shapes grouped, as Word's Group makes them: a fenced block ````group (four backticks) holding ```shape and ```box blocks,
           each with its place in the group, x= and y= from the group's top left, and its width= and height=; the group as large as its
           shapes reach (width= or height= on the group scales it), in a line of its own or float=left|right beside the paragraph after
