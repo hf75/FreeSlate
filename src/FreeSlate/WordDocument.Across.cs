@@ -148,9 +148,10 @@ public sealed partial class WordDocument
     /// <summary>
     /// A paragraph that ends a part of a section split in parts (see the class), with a copy of its page setup: of all it has where the
     /// part is the first (<paramref name="own"/>), else without what it has of its own, the part beginning on a new page and going on
-    /// with the headers, footers and numbers of those before it. 1 pt high, no space round it.
+    /// with the headers, footers and numbers of those before it. 1 pt high, no space round it; or, not <paramref name="small"/>, an empty
+    /// paragraph as Word makes one for a section break put in at a paragraph's start (see BreakSection).
     /// </summary>
-    static string Ending(XElement properties, bool own)
+    static string Ending(XElement properties, bool own, bool small = true)
     {
         var w = properties.Name.Namespace;
         var copy = new XElement(properties);
@@ -165,10 +166,12 @@ public sealed partial class WordDocument
                     numbers.Remove();
             }
         }
-        var paragraph = new XElement(w + "p", new XElement(w + "pPr",
-            new XElement(w + "spacing", new XAttribute(w + "before", 0), new XAttribute(w + "after", 0), new XAttribute(w + "line", 20), new XAttribute(w + "lineRule", "exact")),
-            new XElement(w + "rPr", new XElement(w + "sz", new XAttribute(w + "val", 2)), new XElement(w + "szCs", new XAttribute(w + "val", 2))),
-            copy));
+        var paragraph = small
+            ? new XElement(w + "p", new XElement(w + "pPr",
+                new XElement(w + "spacing", new XAttribute(w + "before", 0), new XAttribute(w + "after", 0), new XAttribute(w + "line", 20), new XAttribute(w + "lineRule", "exact")),
+                new XElement(w + "rPr", new XElement(w + "sz", new XAttribute(w + "val", 2)), new XElement(w + "szCs", new XAttribute(w + "val", 2))),
+                copy))
+            : new XElement(w + "p", new XElement(w + "pPr", copy));
         // Written with the document's own prefixes (w:, r: …), which InsertBlocks declares round it: declared on the paragraph to write
         // them, then left out.
         var declared = (properties.Document?.Root?.Attributes() ?? []).Where(a => a.IsNamespaceDeclaration).ToList();

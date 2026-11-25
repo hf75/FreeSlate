@@ -27,7 +27,19 @@ public sealed partial class WordDocument
             LineNumbers = s.Element?.Element(Wml.W + "lnNumType") is { } numbering && int.TryParse(numbering.Attr("countBy"), out var countBy) && countBy > 0
                 ? new LineNumbering(countBy, numbering.Attr("restart") ?? "newPage") : new LineNumbering(0),
             Border = BorderOf(s.Element?.Element(Wml.W + "pgBorders")),
+            ColumnWidths = s.ColumnWidths is { Count: > 1 } widths ? [.. widths.Select(c => c.Width)] : [],
+            Footnotes = NotesOf(s.Element, "footnotePr", "decimal"),
+            Endnotes = NotesOf(s.Element, "endnotePr", "lowerRoman"),
         };
+    }
+
+    /// <summary>How a section's notes are numbered: as its own w:footnotePr (w:endnotePr) says, else the settings', else the kind's own (see NoteNumbering).</summary>
+    NoteNumbering NotesOf(XElement? section, string name, string plain)
+    {
+        var (own, settings) = (section?.Element(Wml.W + name), context.Settings.Child(name));
+        string? Value(string child) => own?.Element(Wml.W + child)?.Attr("val") ?? settings.Child(child).Val();
+        return new NoteNumbering(Value("numFmt") ?? plain, Value("numRestart") ?? "continuous",
+            int.TryParse(Value("numStart"), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var start) ? start : 1);
     }
 
     /// <summary>A section's page border as its top line gives it (see PageBorder), "none" where it has none.</summary>
@@ -264,14 +276,14 @@ public sealed partial class WordDocument
 
     /// <summary>
     /// The settings the layout reads (DocumentContext.Settings, loaded with the document) given what the settings part says
-    /// now of those the document changes (EvenAndOddHeaders, AutoHyphenation), after a change or going to another version (see
+    /// now of those the document changes (EvenAndOddHeaders, AutoHyphenation, MirrorMargins), after a change or going to another version (see
     /// Go): the pages laid out anew, by a layout of their own (its paragraphs' lines kept are the old settings').
     /// </summary>
     void SettingsChanged()
     {
         if (SettingsPart() is not { } part || context.Settings is not { } settings)
             return;
-        foreach (var name in new[] { "evenAndOddHeaders", "autoHyphenation" })
+        foreach (var name in new[] { "evenAndOddHeaders", "autoHyphenation", "mirrorMargins", "gutterAtTop" })
         {
             settings.Elements(Wml.W + name).Remove();
             if (context.Load(part).Root?.Element(Wml.W + name) is { } now)

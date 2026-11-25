@@ -118,6 +118,20 @@ public sealed record SectionFormatting
     /// <summary>Whether a line stands between the columns (w:cols w:sep), as Word's Columns dialog's Line between draws it.</summary>
     public bool? ColumnLine { get; init; }
 
+    /// <summary>
+    /// Columns of widths of their own, as Word's Columns dialog writes them without Equal column width (w:cols w:equalWidth 0, a w:col
+    /// each with its width and the space after it, ColumnSpace; measured in Word 365 by COM, TextColumns with EvenlySpaced off): each
+    /// column's width in points, as many as Columns; empty for columns of even width again.
+    /// </summary>
+    public IReadOnlyList<double>? ColumnWidths { get; init; }
+
+    /// <summary>
+    /// How the section's footnotes and endnotes are numbered (w:footnotePr, w:endnotePr in its w:sectPr, as Word's Footnote and Endnote
+    /// dialog writes them for a section; measured in Word 365 by COM: numFmt lowerLetter and numRestart eachPage for a, b, c on each page).
+    /// </summary>
+    public NoteNumbering? Footnotes { get; init; }
+    public NoteNumbering? Endnotes { get; init; }
+
     /// <summary>Where the section begins (w:type): nextPage, continuous, evenPage, oddPage or nextColumn.</summary>
     public string? Start { get; init; }
 
@@ -149,6 +163,13 @@ public sealed record SectionFormatting
 
 /// <summary>Line numbers (see SectionFormatting.LineNumbers): every <paramref name="CountBy"/>th line numbered, 0 for none, restarting so.</summary>
 public sealed record LineNumbering(int CountBy, string Restart = "newPage");
+
+/// <summary>
+/// How notes are numbered (see SectionFormatting.Footnotes): the numbers' format (w:numFmt: decimal, lowerLetter, upperLetter, lowerRoman,
+/// upperRoman, chicago for *, †, ‡, § …), where they start (w:numStart) and where they start again (w:numRestart: continuous, eachSect,
+/// eachPage for footnotes).
+/// </summary>
+public sealed record NoteNumbering(string Format = "decimal", string Restart = "continuous", int Start = 1);
 
 /// <summary>
 /// A page border (see SectionFormatting.Border): its kind as w:val names it (single, double, thick, dotted, dashed, dotDash, triple,

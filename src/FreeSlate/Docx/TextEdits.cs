@@ -2436,7 +2436,7 @@ static partial class TextEdits
                     margins.SetAttributeValue(w + name, Twips(points));
             }
         }
-        if (format.Columns != null || format.ColumnSpace != null || format.ColumnLine != null)
+        if (format.Columns != null || format.ColumnSpace != null || format.ColumnLine != null || format.ColumnWidths != null)
         {
             var columns = Set("cols");
             if (format.Columns is { } count)
@@ -2449,6 +2449,36 @@ static partial class TextEdits
                 columns.SetAttributeValue(w + "space", Twips(space));
             if (format.ColumnLine is { } line)
                 columns.SetAttributeValue(w + "sep", line ? "1" : null);
+            // Widths of their own as Word's Columns dialog writes them: equalWidth 0, a w:col each with its width and the space after it.
+            if (format.ColumnWidths is { } widths)
+            {
+                columns.Attribute(w + "equalWidth")?.Remove();
+                columns.Elements(w + "col").Remove();
+                if (widths.Count > 1)
+                {
+                    var after = (string?)columns.Attribute(w + "space") ?? "720";
+                    columns.SetAttributeValue(w + "num", widths.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    columns.SetAttributeValue(w + "equalWidth", "0");
+                    columns.Add(widths.Select(width => new XElement(w + "col", new XAttribute(w + "w", Twips(width)), new XAttribute(w + "space", after))));
+                }
+            }
+        }
+        // Notes numbered as Word's Footnote and Endnote dialog writes it for a section: the format, the start and the restart where they are
+        // not the kind's own (decimal footnotes, lower roman endnotes, from 1, on through the document), the notes' place kept.
+        foreach (var (name, numbering, plain) in new[] { ("footnotePr", format.Footnotes, "decimal"), ("endnotePr", format.Endnotes, "lowerRoman") })
+        {
+            if (numbering == null)
+                continue;
+            var notes = Set(name);
+            notes.Elements().Where(e => e.Name.LocalName is "numFmt" or "numStart" or "numRestart").Remove();
+            if (numbering.Format != plain)
+                notes.Add(new XElement(w + "numFmt", new XAttribute(w + "val", numbering.Format)));
+            if (numbering.Start != 1)
+                notes.Add(new XElement(w + "numStart", new XAttribute(w + "val", numbering.Start.ToString(System.Globalization.CultureInfo.InvariantCulture))));
+            if (numbering.Restart != "continuous")
+                notes.Add(new XElement(w + "numRestart", new XAttribute(w + "val", numbering.Restart)));
+            if (!notes.HasElements && !notes.HasAttributes)
+                notes.Remove();
         }
         if (format.Start is { } start)
         {
