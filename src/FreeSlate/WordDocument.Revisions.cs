@@ -703,6 +703,11 @@ public sealed partial class WordDocument
             var (style, was) = (now.Element(W + "pStyle")?.Attr("val"), before?.Element(W + "pStyle")?.Attr("val"));
             if (style != was)
                 said = (said.Length > 0 ? said + ", " : "") + "Style: " + (style ?? "Normal");
+            // Its list: another, or none.
+            static string? Numbered(XElement? properties) => properties?.Element(W + "numPr") is { } numbering
+                ? numbering.Element(W + "numId")?.Attr("val") + "/" + numbering.Element(W + "ilvl")?.Attr("val") : null;
+            if (Numbered(now) != Numbered(before))
+                said = (said.Length > 0 ? said + ", " : "") + (Numbered(now) == null ? "No numbering" : "Numbering");
             return said;
         }
 
