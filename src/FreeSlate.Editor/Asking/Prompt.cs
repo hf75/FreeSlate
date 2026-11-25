@@ -202,6 +202,19 @@ static class Prompt
           formatted otherwise. "Changes:" after the document lists each with its kind, author and time, what a formatting change did, a
           move's other half, a deleted row's cells. Write them back as you read them, with their ids, where they are to stay; the review
           tool accepts or rejects them. {++text++} and {--text--} without an id are new changes of yours.
+        - Forms to fill in (a worksheet, a sign-up sheet, a questionnaire) as Word's Developer tab makes them, among the text: "{checkbox}"
+          a box to tick ("{checkbox checked}" ticked), "{text Your name}" a field for text showing a hint till it is filled in ("{text}"
+          Word's own hint, "{text Your name = Ann Smith}" filled in), "{richtext Your answer}" alike for text with meanings,
+          "{choice Yes|No|Maybe}" a drop-down list ("{choice Yes|No|Maybe = No}" chosen), "{combo Red|Green}" a list that takes other
+          text too, "{date dd.MM.yyyy}" a date to pick, shown in that format ("{date d MMMM yyyy en-GB}" in a language of its own;
+          "= 2026-12-24" a date chosen). \} \| \= are a brace, a bar and an equals sign within them. Word's older form fields read as
+          {formtext} ("= text"), {formcheckbox}, {formdropdown A|B}; they can be filled in only where the page tool's protection is
+          forms. Write the controls above for new forms.
+        - Mail merge: "{merge FirstName}" a field of a data source's column, showing «FirstName» till Word merges the data; writing one
+          makes the document a form letter (see the mailings tool). Fields of the document's properties and facts, as Word's Insert >
+          Field: {title}, {subject}, {author}, {keywords}, {comments}, {category}, {company}, {manager} (set them with the properties
+          tool first), {filename}, {words}, {characters} (the text's), {created}, {saved}, {printed}, {time}, {section},
+          {sectionpages}.
         - Anything else Word can hold (a field, a shape, a content control): WordprocessingML, as a block (w:p, w:tbl) on lines of its
           own or among the text (w:r). The usual prefixes need no declarations. A paragraph you read as WordprocessingML (<w:p>…) has
           formatting the notation does not say: write it back as WordprocessingML where it is to keep it.
@@ -317,6 +330,7 @@ static class Prompt
             "line_numbers": { "type": "string", "description": "Numbers beside the lines in the margin, as for a poem, a contract or a text to discuss: \"every 1\" or \"every 5\", restarting on each page unless \"each section\" or \"continuous\" follows; none to take them away." },
             "hyphenation": { "type": "string", "enum": ["on", "off"], "description": "Words hyphenated at the ends of lines, as Word's automatic hyphenation (narrow columns, justified text)." },
             "color": { "type": "string", "description": "The pages' colour behind everything (#RRGGBB, light ones keep the text readable: \"#FFF8E7\"); none to take it away." },
+            "protection": { "type": "string", "enum": ["forms", "comments", "changes", "readonly", "none"], "description": "How the document may be edited in Word (Restrict Editing, without a password): forms (only its forms filled in, for a worksheet or a form), comments, changes (only as tracked changes), readonly, or none." },
             "paragraph": { "type": "integer", "description": "Set up only the section this paragraph stands in (\"Page from ¶12:\" names the sections after the first): its margins, paper, orientation, columns, border, page numbers, notes, how it begins, and a header and footer of its own. Left out: every section as the first." },
             "start": { "type": "string", "enum": ["next", "continuous", "even", "odd"], "description": "How the section begins: on a new page, on the same page, on the next even or odd page (the break before it)." },
             "columns": { "type": "string", "description": "The section's columns: \"2\", \"3 line\" (a line between them), \"2 widths=2:1 space=1cm\" (of widths of their own), \"1\" for none." },
@@ -358,6 +372,37 @@ static class Prompt
         }
         """;
 
+    const string PropertiesSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string", "description": "The document's title, as {title} shows it." },
+            "subject": { "type": "string", "description": "What it is about." },
+            "keywords": { "type": "string", "description": "Keywords, separated by commas." },
+            "comments": { "type": "string", "description": "A short description of it (Word's Comments)." },
+            "category": { "type": "string", "description": "Its kind (worksheet, letter, report …)." },
+            "status": { "type": "string", "description": "Where it stands: Draft, Final …" },
+            "author": { "type": "string", "description": "Its author, only as the wish names them; never guessed." },
+            "company": { "type": "string", "description": "The company or school it is from." },
+            "manager": { "type": "string", "description": "Who it is for or under." }
+          }
+        }
+        """;
+
+    const string MailingsSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "merge": { "type": "string", "enum": ["letters", "none"], "description": "letters: the document a form letter for a mail merge (Word's Start Mail Merge > Letters), its {merge …} fields filled from a data source the user picks in Word; none: an ordinary document again." },
+            "envelope_to": { "type": "string", "description": "The addressee's lines, one per line (\\n between them), on an envelope printed before the letter (Word's Envelopes > Add to Document); empty to take the envelope away." },
+            "envelope_from": { "type": "string", "description": "The sender's lines at the envelope's top left, one per line." },
+            "envelope_size": { "type": "string", "enum": ["DL", "C4", "C5", "C6"], "description": "The envelope's size (DL, 220 × 110 mm, by default)." },
+            "labels": { "type": "array", "items": { "type": "string" }, "description": "Labels to print, each one's lines with \\n between them; one label alone fills the whole sheet. The document becomes the sheet of labels (Word's Labels > New Document): what it holds is replaced." },
+            "labels_product": { "type": "string", "description": "The sheet: Avery Zweckform 3474 (70 × 37 mm, 3 × 8, the default), 3475 or 3490 (70 × 36), 3422 (70 × 35), 3425 (105 × 57, 2 × 5), 3651 (52.5 × 29.7, 4 × 10); Avery L7160 or J8160 (63.5 × 38.1, 3 × 7), L7161 (63.5 × 46.6, 3 × 6), L7162 (99.1 × 33.9, 2 × 8), L7163 (99.1 × 38.1, 2 × 7), L7165 (99.1 × 67.7, 2 × 4)." }
+          }
+        }
+        """;
+
     const string ReviewSchema = """
         {
           "type": "object",
@@ -379,5 +424,7 @@ static class Prompt
         new("comment", "Comments on the document as Word's reviewing does, without changing its text: a comment on a paragraph or on words in it (feedback, a question, a suggestion), an answer to a comment, a comment marked done or taken away. The document's comments read after it, each with its id.", CommentSchema),
         new("page", "Sets up the document's pages, or one section's (paragraph): header and footer (with page numbers; the first page's and even pages' own), margins, paper, orientation, columns, a first page of its own, a watermark, a border round the pages, their colour, mirrored margins and a gutter, the notes' numbering. Give only what changes.", PageSchema),
         new("review", "Reviews the document's tracked changes as Word's Review tab does: accepts or rejects all of them, an author's or those with the ids given (a move with its other half); or turns Word's Track Changes on or off. Tells the changes as they then are.", ReviewSchema),
+        new("properties", "Sets the document's properties as Word's File > Info shows them (\"Properties:\" after the document): title, subject, keywords, comments, category, status, company, manager, author. Never a person's name the user did not give. Give only what changes; an empty text takes one away.", PropertiesSchema),
+        new("mailings", "Sets the document up for Word's Mailings (\"Mailings:\" after the document): a form letter for a mail merge, an envelope printed before the letter, or a sheet of labels (the document becomes the sheet). Give only what changes.", MailingsSchema),
     ];
 }

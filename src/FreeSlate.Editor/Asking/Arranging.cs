@@ -252,7 +252,8 @@ static partial class Arranging
     /// </summary>
     public static (string Text, bool Error) Page(EditSession editing, DocumentView sheets, Objects objects, string json)
     {
-        if (editing.Document is not WordDocument word || word.Beginning is not { } first)
+        // The letter's pages, after an envelope before it (see Mailings).
+        if (editing.Document is not WordDocument word || word.AfterEnvelope is not { } first)
             return ("This document has no pages to set up.", true);
         Dictionary<string, string> input;
         try
@@ -427,6 +428,9 @@ static partial class Arranging
                 else
                     failed.Add($"first_page {titled} (own or same)");
             }
+            // The facts' fields of a header or footer ({title} …) showing the document's properties (see Forms).
+            if (input.ContainsKey("header") || input.ContainsKey("footer"))
+                Forms.Begin(word, first);
             // A section set up alone gets a header and footer of its own (Word's Link to Previous off), else the first section's are set.
             foreach (var (name, footer) in new[] { ("header", false), ("footer", true) })
             {
@@ -449,6 +453,14 @@ static partial class Arranging
                     Do("hyphenation", () => word.AutoHyphenation = hyphenation is "true" or "yes" or "on" or "automatic");
                 else
                     failed.Add($"hyphenation {hyphenation} (on or off)");
+            }
+            // Word's Restrict Editing without a password (see WordDocument.Protection): forms, comments, changes, readonly, none.
+            if (input.GetValueOrDefault("protection")?.Trim().ToLowerInvariant() is { } protection)
+            {
+                if (Mailings.Protections.TryGetValue(protection, out var restricted))
+                    Do("protection", () => word.Protection = restricted);
+                else
+                    failed.Add($"protection {protection} (forms, comments, changes, readonly or none)");
             }
             // The pages' colour as Word's Page Color gives it (see WordDocument.SetPageColor); none takes it away.
             if (input.GetValueOrDefault("color")?.Trim() is { } colored)
@@ -625,7 +637,7 @@ static partial class Arranging
     /// </summary>
     public static (string Header, string Footer, bool Title, string? Watermark)? Stories(WordDocument word, Objects objects)
     {
-        if (word.Beginning is not { } first)
+        if (word.AfterEnvelope is not { } first)
             return null;
         string Of(bool footer)
         {

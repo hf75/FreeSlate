@@ -105,11 +105,15 @@ static partial class Reading
         var word = document as WordDocument;
         var columns = 1;
         int? tableShown = null;
+        // An envelope before the letter and a sheet of labels read as the "Mailings:" line says them, not as paragraphs (see Mailings).
+        var mailed = word != null ? Mailings.Hidden(word) : [];
         copiedLast = null;
         for (var paragraph = document.Beginning; paragraph is { } p; paragraph = document.Next(p))
         {
+            if (mailed.Contains(p))
+                continue;
             // A section that ended with the paragraph before: its break on a line of its own (see BreakLine), between the columns' marks.
-            var boundary = word != null && document.Previous(p) is { } before ? BreakLine(word, before) : null;
+            var boundary = word != null && document.Previous(p) is { } before && !mailed.Contains(before) ? BreakLine(word, before) : null;
             // Text in columns as the notation writes it.
             if (word != null && word.TableOf(p) == null)
             {
@@ -221,6 +225,10 @@ static partial class Reading
         copiedLast = null;
         if (word != null && PageOf(word, objects) is { Length: > 0 } page)
             text.Append("\nPage: ").Append(page).Append('\n').Append(SectionsOf(word, objects));
+        if (word != null && Mailings.PropertiesOf(word) is { Length: > 0 } properties)
+            text.Append("\nProperties: ").Append(properties).Append('\n');
+        if (word != null && Mailings.MailingsOf(word) is { Length: > 0 } mailings)
+            text.Append("\nMailings: ").Append(mailings).Append('\n');
         if (objects.Known.Any())
         {
             text.Append("\nObjects:\n");
@@ -248,7 +256,8 @@ static partial class Reading
     /// </summary>
     public static string PageOf(WordDocument word, Objects objects)
     {
-        if (word.Beginning is not { } first)
+        // The letter's pages, after an envelope before it (see Mailings).
+        if (word.AfterEnvelope is not { } first)
             return "";
         SectionFormatting section;
         try
@@ -308,6 +317,9 @@ static partial class Reading
         said.Append(PageMore(word, objects, first, section));
         if (word.TrackRevisions)
             said.Append(", Track Changes on");
+        // Word's Restrict Editing (see Mailings.Protections).
+        if (word.Protection is { } protection)
+            said.Append(", editing restricted to ").Append(Mailings.ProtectionSaid(protection)).Append(" (protection: ").Append(Mailings.ProtectionName(protection)).Append(')');
         return said.ToString();
     }
 
@@ -508,8 +520,12 @@ static partial class Reading
         if (spans.Count == 0)
             return "";
         var anchors = new StringBuilder();
+        // A legacy form field's bookmark of its name, which comes with the field (see Forms).
+        var fields = word.FormFieldsOf(paragraph).Select(f => f.Name).ToHashSet(StringComparer.Ordinal);
         foreach (var (name, _, end) in spans)
         {
+            if (fields.Contains(name))
+                continue;
             if (name.StartsWith("_Toc", StringComparison.Ordinal) || end is { } after && after > 0 && word.FieldInstruction(paragraph, after - 1) is { } instruction
                 && Numbering(word, paragraph, word.Text(paragraph), after - 1, instruction) != null)
                 continue;
@@ -572,6 +588,8 @@ static partial class Reading
         var links = word != null && !inLink ? word.LinksOf(paragraph).Where(l => l.Start >= from && l.End <= to && l.End > l.Start).ToList() : [];
         // Its citations as the notation writes them, "[@key, p. 33]" for the text they show (see Citing).
         var citations = word != null ? word.CitationsOf(paragraph).Where(c => c.Start >= from && c.End <= to && c.End > c.Start).ToList() : [];
+        // Its content controls, form fields, merge fields and facts' fields as the notation writes them, "{checkbox}" (see Forms).
+        var forms = word != null ? Forms.Stretches(word, paragraph, objects).Where(f => f.Start >= from && f.End <= to && f.End > f.Start).ToList() : [];
         // Its runs' own looks (see Looks).
         var looks = word != null && !plain ? Looks(word, paragraph) : [];
         // Its tracked changes as the notation writes them (see Reviewing.Marker), a link and a citation one piece of them.
@@ -588,6 +606,12 @@ static partial class Reading
                 k = citation.End;
                 continue;
             }
+            if (forms.FirstOrDefault(f => f.Start == k) is { End: > 0 } form)
+            {
+                line.Append(form.Said);
+                k = form.End;
+                continue;
+            }
             if (links.FirstOrDefault(l => l.Start == k) is { End: > 0 } link)
             {
                 line.Append('[').Append(Line(document, paragraph, link.Start, link.End, objects, inLink: true)).Append("](").Append(link.Target).Append(')');
@@ -598,6 +622,7 @@ static partial class Reading
             var end = styled.Length > 0 ? Math.Min(to, styled.Offset + styled.Length) : Math.Min(to, styles.Where(s => s.Offset > k).Select(s => s.Offset).DefaultIfEmpty(to).Min());
             end = Math.Min(end, links.Where(l => l.Start > k).Select(l => l.Start).DefaultIfEmpty(end).Min());
             end = Math.Min(end, citations.Where(c => c.Start > k).Select(c => c.Start).DefaultIfEmpty(end).Min());
+            end = Math.Min(end, forms.Where(f => f.Start > k).Select(f => f.Start).DefaultIfEmpty(end).Min());
             // A stretch ends where its runs' look does too, and where a tracked change begins or ends.
             var looked = looks.FirstOrDefault(l => l.Offset <= k && k < l.Offset + l.Length);
             end = Math.Min(end, looked.Length > 0 ? looked.Offset + looked.Length : looks.Where(l => l.Offset > k).Select(l => l.Offset).DefaultIfEmpty(end).Min());

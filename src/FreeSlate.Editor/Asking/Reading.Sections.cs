@@ -79,7 +79,7 @@ static partial class Reading
     {
         var said = new StringBuilder();
         int? before = null;
-        for (int? paragraph = word.Beginning; paragraph is { } p; paragraph = word.Next(p))
+        for (int? paragraph = word.AfterEnvelope; paragraph is { } p; paragraph = word.Next(p))
         {
             if (word.TableOf(p) == null)
                 before ??= p;

@@ -387,6 +387,11 @@ static partial class Markup
                         [new FreeSlate.Docx.Citations.Piece("(" + string.Join("; ", cite.Items.Select(i => i.Tag)) + ")")], Random.Shared.Next(1, int.MaxValue)));
                     offset++;
                     break;
+                case Forms.Form form:
+                    // A content control, form field, merge field or fact's field as Word makes it (see Forms).
+                    markup.Append(Forms.Markup(form));
+                    offset += Forms.Characters(form);
+                    break;
                 case Notation.Change change:
                 {
                     // A tracked change (see Reviewing.Changed): a deletion's text takes no place in the text as it reads.

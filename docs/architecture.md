@@ -139,6 +139,19 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   `GroupTexts` the paragraphs of a group's shapes, `TextBoxLink` and `NewStoryId` the chains of linked text boxes (wps:txbx id,
   wps:linkedTxbx id and seq); `GalleryBlock` and `RemoveGalleryBlock` a building block of a gallery as it stands in the body (Word's
   cover pages: a block content control of the gallery Cover Pages, its fields content controls named by their aliases).
+- Forms, properties and mailings as Word's Developer, File and Mailings tabs keep them (`WordDocument.Forms.cs`, `.Properties.cs`,
+  `.Mailings.cs`, measured with Word by COM): a paragraph's content controls (`ControlsOf`: check boxes, plain and rich text,
+  drop-down lists, combo boxes, date pickers, which the model reads as the text they show; their placeholders' texts from the
+  glossary), legacy form fields (`FormFieldsOf`) and fields (`FieldsOf`); the placeholders' building blocks made in the glossary
+  document (`SettlePlaceholders`: one for each control, as every control showing a shared one shows the first one's content, which
+  the model cannot change where it stands); Restrict Editing (`Protection`, w:documentProtection without a password); the core and
+  extended properties (`Properties`, `SetProperties`: parts made where there are none, never an author not given) and the saved
+  results of the fields that show them and the document's facts as Word's update shows them (`RefreshPropertyFields`: TITLE …,
+  NUMWORDS and NUMCHARS as Word's statistics count, CREATEDATE, MERGEFIELD's «Name», and those the layout computes as the pages show
+  them); a form letter (`FormLetter`, w:mailMerge without a data source), an envelope before the letter (`SetEnvelope`,
+  `EnvelopeOf`, `AfterEnvelope`: a section of its own in DL, C4, C5 or C6, the addresses framed where Envelope.Insert puts them) and a
+  sheet of labels (`SetLabels`, `LabelsOf`, `LabelSheets`: twelve of Word's products as MailingLabel.CreateNewDocument lays them
+  out, a document of its own).
 - `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
   (`PageRenderer.Markup`, `Describe`); lines and glyphs stand on Word's 600 dpi device as it rounds onto it
@@ -548,7 +561,13 @@ or plain, in the tone's colours, its fields content controls named as Word's are
 first paragraph on takes it away whole first), tracked changes as CriticMarkup writes them with their changes' ids after the closing
 marks ("{++inserted++12}", "{--deleted--13}", "{==formatted==14}", "¶" in one a paragraph's mark; listed after the document as
 "Changes:"), written back as read keeping each its author, time and kind, a deletion its XML, a formatting change its looks
-(`Reviewing`, known by their ids as a write begins), one without an id a new change of Claude's, \pagebreak and --- for a page break
+(`Reviewing`, known by their ids as a write begins), one without an id a new change of Claude's, forms as Word's Developer tab makes them among
+the text (`Forms`: "{checkbox}", "{text Your name}", "{richtext …}", "{choice Yes|No}", "{combo …}", "{date dd.MM.yyyy}", "= …" what
+one holds; content controls whose placeholders become building blocks of the glossary once the write is in, one each; Word's legacy
+"{formtext}", "{formcheckbox}", "{formdropdown A|B}" with their form data and bookmarks), mail merge fields ("{merge FirstName}",
+showing «FirstName», the document a form letter once one is written) and the fields of the document's properties and facts
+("{title}", "{words}", "{created}", "{sectionpages}" …, their results as Word's update shows them once the write is in), read back as
+written, \pagebreak and --- for a page break
 and a line, and WordprocessingML for anything else: a paragraph with
 formatting the notation does not say reads as its WordprocessingML, a section's end as the columns' marks and the tables' pages
 across say it, so that what Claude reads and writes back stays as it was. The document's objects (its
@@ -569,13 +588,17 @@ side, tiled as Word tiles its pictures); line numbers (`SectionFormatting.LineNu
 (`WordDocument.AutoHyphenation`, w:autoHyphenation in the settings), the page numbers' format and start; for one section alone
 (a paragraph of it: across among upright pages, its own margins, columns, a header and footer of its own or those of the section
 before, how it begins, a border round its pages, its notes' numbering), papers of any size, the first page's and even pages' own
-headers and footers, margins mirrored and a gutter, `Arranging.Sections`; read with the document as
+headers and footers, margins mirrored and a gutter, `Arranging.Sections`; how others may edit it (`WordDocument.Protection`, Restrict Editing to forms, comments, tracked changes or
+reading); read with the document as
 "Page:", and given again where a
 write takes a section's end away) and comment (`Commenting`: a comment on a paragraph or on words in it, an answer, one marked
 done or taken away, by "Claude", through the engine's `AddComment`, `Reply`, `Resolve` and `DeleteComment`; the comments read
-after the document as "Comments:", answers under the comments they answer) and review (`Reviewing`: tracked changes accepted or rejected,
+after the document as "Comments:", answers under the comments they answer), review (`Reviewing`: tracked changes accepted or rejected,
 all, an author's or by their ids, through the engine's `AcceptRevisions` and `RejectRevisions`, and Word's Track Changes turned on or off,
-read on the "Page:" line). A write with track (or in a document whose Track Changes is on) is marked as Claude's tracked changes against the
+read on the "Page:" line), properties (`Mailings.Properties`: File > Info's title, subject, keywords
+and the others, never a name the wish does not give, read after the document as "Properties:") and mailings (`Mailings.Mailing`: a
+form letter, an envelope before the letter, the document made a sheet of labels, read as "Mailings:", the envelope's and the
+sheet's paragraphs not as the document's text; the page tool and "Page:" are the letter's). A write with track (or in a document whose Track Changes is on) is marked as Claude's tracked changes against the
 body as it read before it (`WordDocument.MarkChanges`), word by word, as Word's Compare marks a revision. A token written is its object: one in text a write takes away is kept from before and goes in
 again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
 elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits

@@ -1075,6 +1075,14 @@ public static partial class Notation
                     continue;
                 }
             }
+            // Forms, merge fields and the facts' fields ({checkbox}, {text …}, {merge Name}, {title} …, see Forms).
+            if (c == '{' && Forms.Piece(text, k) is var (form, length))
+            {
+                Flush();
+                pieces.Add(form);
+                k += length;
+                continue;
+            }
             if (c == '{' && k + 2 < text.Length && text[k + 1] is '+' or '-' or '=' && text[k + 2] == text[k + 1] && ChangeText().Match(text, k) is { Success: true } change)
             {
                 Flush();

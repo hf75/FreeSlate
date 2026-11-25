@@ -138,6 +138,9 @@ public sealed class Talk : GestureRing.IAsked
                         case ToolBegan { Name: "picture" or "tone" or "page" or "comment" or "review" }:
                             Say("AskWriting");
                             break;
+                        case ToolBegan { Name: "properties" or "mailings" }:
+                            Say("AskWriting");
+                            break;
                         case ToolBegan { Name: "look" }:
                             Say("AskLooking");
                             break;
@@ -264,6 +267,16 @@ public sealed class Talk : GestureRing.IAsked
             case "comment":
             {
                 var (told, error) = Commenting.Comment(editing, sheets, objects!, called.Json);
+                return new ToolResultPart(called.Id, told, [], error);
+            }
+            case "properties":
+            {
+                var (told, error) = Mailings.Properties(editing, sheets, called.Json);
+                return new ToolResultPart(called.Id, told, [], error);
+            }
+            case "mailings":
+            {
+                var (told, error) = Mailings.Mailing(editing, sheets, called.Json);
                 return new ToolResultPart(called.Id, told, [], error);
             }
             case "review":

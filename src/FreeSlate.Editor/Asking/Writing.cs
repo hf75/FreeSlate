@@ -244,7 +244,11 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         }
         // Citations name the language of the text where they are written (see Citing).
         if (word != null && (paragraph ?? focus.First) is var language && document.Contains(language))
+        {
             Markup.CitationLanguage = word.LanguageOf(language);
+            // Content controls take the text's language and the document's placeholder style too (see Forms).
+            Forms.Begin(word, language);
+        }
         // After or before a paragraph of a table of contents: after or before the whole table, as for a table's (see Contents).
         var table = place is "after" or "before" && word != null
             ? Contents.Around(word, paragraph!.Value) ?? Index.Around(word, paragraph!.Value) ?? Citing.Around(word, paragraph!.Value)
@@ -823,7 +827,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         }
         objects.Written();
         // The header, footer and title page that went with a section's end taken away, given again.
-        if (stories is var (header, footer, title, watermark) && word?.Beginning is { } beginning
+        if (stories is var (header, footer, title, watermark) && word?.AfterEnvelope is { } beginning
             && Arranging.Stories(word, objects) is var (header2, footer2, title2, watermark2))
         {
             if (header.Length > 0 && header2.Length == 0)
@@ -894,6 +898,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         ClearCoverPlace();
         if (citing && word != null)
             Cite(word, bibliographies);
+        // The placeholders of content controls in the glossary, a form letter for merge fields, the facts' fields as Word updates them.
+        if (word != null)
+            Forms.End(word, Step);
         Refresh(word, Step, problems, written);
         Frame();
     }
