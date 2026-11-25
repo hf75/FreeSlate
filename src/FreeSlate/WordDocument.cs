@@ -1829,11 +1829,20 @@ public sealed partial class WordDocument : IEditableDocument
         byte[]? BytesOf(ImmutableDictionary<string, byte[]?> parts, string part) => parts.TryGetValue(part, out var bytes) ? bytes : package.Original(part);
         var numbering = NumberingPart();
         var lists = numbering != null && Differs(numbering) && !Differs(StylesPart()) ? ListsOnly(BytesOf(partBytes, numbering), BytesOf(to.Parts, numbering)) : null;
-        // So is a version whose main part differs before the body (the pages' colour, see SetPageColor), which no stretch of it holds.
+        // So is a version whose main part differs before the body (the pages' colour, see SetPageColor), which no stretch of it holds;
+        // and one whose data a content control of the body is bound to differs (see WordDocument.Bound), whose headers and footers bound
+        // to it are read anew too.
+        var data = partBytes.Keys.Concat(to.Parts.Keys).Distinct(StringComparer.OrdinalIgnoreCase).Where(DataStore).Any(Differs);
         var restyled = Differs(StylesPart()) || Differs(numbering) && lists == null
             || body != null && wholeText.Start(body) is var bodyStart and >= 0 && wholeText.TagEnd(bodyStart) is var bodyText
-                && Island.Differing(islands, to.Islands).Any(i => i.Start < bodyText);
+                && Island.Differing(islands, to.Islands).Any(i => i.Start < bodyText)
+            || data && BodyBound();
         Restore(to.Parts);
+        if (data)
+        {
+            reader.DataChanged();
+            stories = [.. stories.Union(BoundStories(), StringComparer.OrdinalIgnoreCase)];
+        }
         foreach (var list in lists ?? [])
             context.Numbering.Take(list);
         if (restyled)
@@ -1844,6 +1853,8 @@ public sealed partial class WordDocument : IEditableDocument
             Rebase(previous, to.Islands);
             ModelReader.Keep(to.Blocks, blocks);
             Index();
+            if (data && BoundStories() is { Count: > 0 } bound)
+                Restory(bound);
             versions[target] = new Version(whole, islands, kept, partBytes);
             version = target;
             return;

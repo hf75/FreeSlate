@@ -605,6 +605,9 @@ public sealed partial class ModelReader(DocumentContext context)
     DataBinding? binding;
     DataBinding Binding => binding ??= new DataBinding(context);
 
+    /// <summary>The data bound controls show taken anew where they are read next (a custom XML item or the properties changed).</summary>
+    public void DataChanged() => binding = null;
+
     /// <summary>The section (its w:sectPr and its index) of every element of the body, and of the one being read.</summary>
     readonly Dictionary<XElement, (XElement? Properties, int Index)> sectionOf = [];
     (XElement? Properties, int Index) currentSection;

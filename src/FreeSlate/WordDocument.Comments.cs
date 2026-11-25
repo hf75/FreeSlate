@@ -551,11 +551,30 @@ public sealed partial class WordDocument
         return values;
     }
 
-    /// <summary>A change that gives other parts than the main part new bytes and nothing else, a version of its own (see Put).</summary>
+    /// <summary>
+    /// A change that gives other parts than the main part new bytes and nothing else, a version of its own (see Put); where they hold data
+    /// content controls are bound to, what shows it read anew (see WordDocument.Bound).
+    /// </summary>
     void ChangeParts(IReadOnlyDictionary<string, byte[]?> changes)
     {
         Read();
+        var data = changes.Keys.Any(DataStore);
+        var (was, previous, changed) = (blocks, wholeText, islands);
+        var body = data && BodyBound();
         Put(changes);
+        if (data)
+            reader.DataChanged();
+        // The body read whole with its edits, as DefineStyles reads it.
+        if (body)
+        {
+            package.Replace(context.MainPart, Spliced(whole, changed));
+            ReadWhole();
+            Rebase(previous, changed);
+            ModelReader.Keep(was, blocks);
+            Index();
+        }
+        if (data && BoundStories() is { Count: > 0 } bound)
+            Restory(bound);
         versions.RemoveRange(version + 1, versions.Count - version - 1);
         versions.Add(new Version(whole, islands, kept, partBytes));
         version++;
