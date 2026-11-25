@@ -431,9 +431,10 @@ public static class Vml
     /// <summary>
     /// A signature line (o:signatureline, catalog: vml.ole): Word draws it itself, whatever picture it stores, scaled
     /// from 256 × 128 pixels: on white an X in 32 px Arial 10 px in, its baseline at 68, a line 2 px thick at 75
-    /// across, the suggested signer, the signer's title and e-mail in 11 px Segoe UI 10 px in, their baselines 91, 107
-    /// and 123 (measured with docx/local/ole-probe, ole-sigsizes: 192 × 96, 288 × 144 and 120 × 60 pt, with and
-    /// without the title and the signer); a group of its rectangles and text boxes, null for other shapes.
+    /// across, the suggested signer and the signer's title in 11 px Segoe UI 10 px in, their baselines 91 and 107
+    /// (measured with docx/local/ole-probe, ole-sigsizes: 192 × 96, 288 × 144 and 120 × 60 pt, with and without the
+    /// title and the signer); the signer's e-mail it does not show (Word 365's PDF of a line of all three, which the
+    /// editor's ```signature block writes); a group of its rectangles and text boxes, null for other shapes.
     /// </summary>
     static XElement? SignatureLine(XElement shape, double width, double height)
     {
@@ -479,7 +480,7 @@ public static class Vml
                 new XElement(Ns.A + "chExt", new XAttribute("cx", Emu(width)), new XAttribute("cy", Emu(height))))),
             Rect(0, 0, width, height, "FFFFFF"), Rect(0, 75 * sy, width, 2 * sy, "000000"), Text("X", "Arial", 32 * sy, 10 * sx, 68 * sy));
         var baseline = 91.0;
-        foreach (var name in new[] { "suggestedsigner", "suggestedsigner2", "suggestedsigneremail" })
+        foreach (var name in new[] { "suggestedsigner", "suggestedsigner2" })
         {
             if (((string?)line.Attribute(O + name) ?? (string?)line.Attribute(name)) is { Length: > 0 } value)
                 group.Add(Text(value, "Segoe UI", 11 * sy, 10 * sx, baseline * sy));
