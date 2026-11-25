@@ -586,7 +586,6 @@ static partial class TextEdits
         XElement? run = null;
         string? runLook = null;
         XElement? text = null;
-        XElement Container() => open.Count > 0 ? open[^1].Written : null!;
         void Put(XElement element)
         {
             if (open.Count > 0)
