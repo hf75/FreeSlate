@@ -323,7 +323,7 @@ public sealed class RunStyles(DocumentContext context)
     /// whose minor complex script font is Tahoma prints right-to-left text in Times New Roman, with w:themeFontLang
     /// ar-SA in the Arabic script's Arial, Hebrew too).
     /// </summary>
-    string Family(RunFormat format, WordSlot slot)
+    public string Family(RunFormat format, WordSlot slot)
     {
         var (name, theme) = slot switch
         {
