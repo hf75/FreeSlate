@@ -382,7 +382,10 @@ public sealed partial record RunLook
         {
             if (!e.Name.NamespaceName.EndsWith("/wordprocessingml/2006/main", StringComparison.Ordinal) && e.Name.NamespaceName != "http://purl.oclc.org/ooxml/wordprocessingml/main")
             {
-                other = true;
+                // The font's OpenType features (ligatures, the digits' forms and spacing, alternates) go without saying: Word gives them
+                // text pasted from elsewhere, and they would make whole paragraphs read as WordprocessingML; its text effects are said so.
+                other |= !(e.Name.NamespaceName == "http://schemas.microsoft.com/office/word/2010/wordml"
+                    && e.Name.LocalName is "ligatures" or "numForm" or "numSpacing" or "cntxtAlts" or "stylisticSets");
                 continue;
             }
             string? Val(string name = "val") => (string?)e.Attributes().FirstOrDefault(a => a.Name.LocalName == name);

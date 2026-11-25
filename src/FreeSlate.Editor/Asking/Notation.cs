@@ -311,8 +311,8 @@ public static partial class Notation
     [GeneratedRegex(@"^\s*\{table(?:\s+([^}]*))?\}\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex TableSettingsLine();
 
-    /// <summary>A cell's settings at its start: "{fill=yellow valign=middle}".</summary>
-    [GeneratedRegex(@"^\{\s*(\w+\s*=[^}]*)\}\s*")]
+    /// <summary>A cell's settings at its start: "{fill=yellow valign=middle}" (not text of a look of its own, "{color=red|text}").</summary>
+    [GeneratedRegex(@"^\{\s*(\w+\s*=[^}|]*)\}\s*")]
     private static partial Regex CellSettings();
 
     /// <summary>Settings as key=value pairs, a value quoted where it holds spaces.</summary>
@@ -793,6 +793,8 @@ public static partial class Notation
                 row = row[..^1];
             var cells = new List<string>();
             var cell = new StringBuilder();
+            // A bar within braces that close is the notation's ({color=red|text}), not a cell's end.
+            var braces = 0;
             for (var k = 0; k < row.Length; k++)
             {
                 if (row[k] == '\\' && k + 1 < row.Length && row[k + 1] == '|')
@@ -800,7 +802,23 @@ public static partial class Notation
                     cell.Append('|');
                     k++;
                 }
-                else if (row[k] == '|')
+                else if (row[k] == '\\' && k + 1 < row.Length && row[k + 1] is '{' or '}')
+                {
+                    // An escaped brace is text, as Inline reads it.
+                    cell.Append(row[k]).Append(row[k + 1]);
+                    k++;
+                }
+                else if (row[k] == '{' && row.IndexOf('}', k + 1) > k)
+                {
+                    braces++;
+                    cell.Append('{');
+                }
+                else if (row[k] == '}' && braces > 0)
+                {
+                    braces--;
+                    cell.Append('}');
+                }
+                else if (row[k] == '|' && braces == 0)
                 {
                     cells.Add(cell.ToString().Trim());
                     cell.Clear();

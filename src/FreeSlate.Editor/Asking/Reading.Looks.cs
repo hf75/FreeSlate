@@ -66,8 +66,9 @@ static partial class Reading
     /// </summary>
     static string Wrapped(string? style, RunLook? look, string shown)
     {
+        // Spaces and tabs mean nothing, but a look shows on them (a form's underlined tab to write on).
         if (shown.Trim().Length == 0)
-            return shown;
+            return look == null || shown.Length == 0 ? shown : "{" + look.Words() + "|" + shown + "}";
         var meaning = style is { Length: > 0 } and not "Hyperlink" ? style : null;
         string Meant(string inner) => meaning switch
         {

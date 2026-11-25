@@ -187,8 +187,9 @@ static class Prompt
           bottom, left, right, between, joined by +, then its kind, width and colour after colons where it is no single line of half a
           point: "box", "bottom:double:1.5pt:#2F6DB5", "top+bottom:thick"); fill (#F2F2F2 or a fill's name, behind it); tabs (its tab
           stops: "tabs=8cm:right,12.5cm:decimal:dot", left where no kind is given, center, right, decimal, bar; leaders dot, hyphen,
-          underscore). A letter as DIN 5008 sets it out: the return address small and underlined over the address lines, the date
-          {align=right} (or after a tab stop), space before the subject as the norm measures it, set with before=… and tabs.
+          underscore). A letter as DIN 5008 sets it out: the page tool's margins (4.5cm 2cm 2cm 2.5cm), the return address small
+          over the address ({size=8 underline|…}), the address lines in exactly 12pt lines, the information block beside them at a
+          tab stop (tabs=12.5cm), the date {align=right}, the subject with space before it (before=24pt).
         - Sections, as Word's Layout > Breaks makes them: "\sectionbreak next" on a line of its own ends a section, the next beginning
           on a new page ("\sectionbreak continuous" on the same page, "\sectionbreak even" or "\sectionbreak odd" on the next even or
           odd one); right after a paragraph it ends the section with that paragraph. Each section after the first reads after the
