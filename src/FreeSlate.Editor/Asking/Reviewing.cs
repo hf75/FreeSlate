@@ -194,6 +194,12 @@ static partial class Reviewing
                 At(to, line);
         }
 
+        /// <summary>
+        /// Whether a formatting change is open at the place last marked (see At): its marks are "==", so that text in it highlighted in
+        /// yellow is said in words ({highlight=yellow|…}), not as ==marked== ("{=====x====14}" would read otherwise than written).
+        /// </summary>
+        public bool Formatting => open.Exists(s => s.Kind == RevisionKind.Formatting);
+
         static string Opening(RevisionSpan span) => span.Kind == RevisionKind.Formatting ? "{==" : "{++";
 
         static string Closing(RevisionSpan span) => (span.Kind == RevisionKind.Formatting ? "==" : "++") + span.Revision.ToString(CultureInfo.InvariantCulture) + "}";

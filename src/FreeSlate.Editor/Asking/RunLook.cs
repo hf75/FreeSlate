@@ -356,12 +356,15 @@ public sealed partial record RunLook
 
     static string Escape(string text) => SecurityElement.Escape(text) ?? "";
 
-    /// <summary>The run properties that go without saying: a character style's (said otherwise), the complex scripts' twins, the grid, hidden in a web view, a field's own vanishing, an old animation, Office Math's.</summary>
-    static readonly HashSet<string> Unsaid = ["rStyle", "bCs", "iCs", "szCs", "snapToGrid", "webHidden", "specVanish", "effect", "oMath"];
+    /// <summary>
+    /// The run properties that go without saying: a character style's (said otherwise), the complex scripts' twins, the grid, hidden in a web
+    /// view, a field's own vanishing, an old animation, Office Math's, a formatting change tracked (said as one, "{==…==14}", see Reviewing).
+    /// </summary>
+    static readonly HashSet<string> Unsaid = ["rStyle", "bCs", "iCs", "szCs", "snapToGrid", "webHidden", "specVanish", "effect", "oMath", "rPrChange"];
 
     /// <summary>
     /// The look a run's properties as written give (its w:rPr, see WordDocument.RunProperties), and whether they hold what the notation
-    /// does not say (Word's text effects, a border, East Asian layout, right to left, a formatting change tracked …).
+    /// does not say (Word's text effects, a border, East Asian layout, right to left …).
     /// </summary>
     public static (RunLook Look, bool Other) Of(string properties)
     {

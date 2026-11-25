@@ -63,8 +63,9 @@ static partial class Reading
     /// A stretch of text as the notation writes it with its meaning (a character style, see Line) and its look: **…**, *…*, {Style|…} as
     /// before; a look of the compact marks' alone within them, where the text takes them (beginning and ending with no space, a script's
     /// with none); else its words before it, "{color=#C00000|…}" within a meaning's stars, "{Term color=#C00000|…}" for another style.
+    /// Not ==marked== where <paramref name="marked"/> is false (within a tracked formatting change, whose marks are "==" too).
     /// </summary>
-    static string Wrapped(string? style, RunLook? look, string shown)
+    static string Wrapped(string? style, RunLook? look, string shown, bool marked = true)
     {
         // Spaces and tabs mean nothing, but a look shows on them (a form's underlined tab to write on).
         if (shown.Trim().Length == 0)
@@ -79,7 +80,7 @@ static partial class Reading
         };
         if (look == null)
             return Meant(shown);
-        if (Compact(look, shown) is { } compact)
+        if (Compact(look, shown, marked) is { } compact)
             return Meant(compact);
         return meaning is null or "Important" or "Emphasized"
             ? Meant("{" + look.Words() + "|" + shown + "}")
@@ -87,7 +88,7 @@ static partial class Reading
     }
 
     /// <summary>A stretch of text in the compact marks of its look, where its look is theirs alone and its text takes them; else null.</summary>
-    static string? Compact(RunLook look, string shown)
+    static string? Compact(RunLook look, string shown, bool marked = true)
     {
         var (open, close) = ("", "");
         var rest = look;
@@ -96,7 +97,7 @@ static partial class Reading
             open += mark;
             close = mark + close;
         }
-        if (rest.Highlight == "yellow")
+        if (rest.Highlight == "yellow" && marked)
         {
             Mark("==");
             rest = rest with { Highlight = null };

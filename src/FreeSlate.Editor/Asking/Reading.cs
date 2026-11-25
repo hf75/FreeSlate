@@ -613,7 +613,7 @@ static partial class Reading
             var part = new StringBuilder();
             for (var c = k; c < end; c++)
                 part.Append(Character(word, paragraph, text, c, objects));
-            line.Append(Wrapped(styled.Length > 0 ? styled.Style : null, looked.Length > 0 ? looked.Look : null, part.ToString()));
+            line.Append(Wrapped(styled.Length > 0 ? styled.Style : null, looked.Length > 0 ? looked.Look : null, part.ToString(), marked: marker?.Formatting != true));
             k = Math.Max(end, k + 1);
         }
         marker?.End(to, to == text.Length, line);

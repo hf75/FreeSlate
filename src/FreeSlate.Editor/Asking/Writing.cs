@@ -919,8 +919,9 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
     }
 
     /// <summary>
-    /// The place's empty paragraph, the last of its body, joined with the paragraph written before it. Two empty paragraphs joined go by
-    /// either's id (see WordDocument.Join): the written one's in the list by the joined one's.
+    /// The place's empty paragraph, the last of its body, joined with the paragraph written before it, a tracked change of the written one's
+    /// formatting kept (written back as read, see Reviewing). Two empty paragraphs joined go by either's id (see WordDocument.Join): the
+    /// written one's in the list by the joined one's.
     /// </summary>
     void JoinPlace(int made)
     {
@@ -928,7 +929,7 @@ sealed partial class Writing(EditSession editing, DocumentView sheets, Focus foc
         if (at >= 0)
             Step(() =>
             {
-                var joined = document.Join(written[at], backward: true);
+                var joined = word != null ? word.Join(written[at], backward: true, keepChange: true) : document.Join(written[at], backward: true);
                 written[at] = joined;
                 return new TextPlace(joined, document.Text(joined).Length);
             }, quiet: true);
