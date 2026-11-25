@@ -83,6 +83,9 @@ public sealed partial class WordDocument
         /// <summary>Whether it is a paragraph's mark (Own: the last part's, the paragraph's as the text reads), or the end of a table's row (Row).</summary>
         public bool Mark, Own, Row;
 
+        /// <summary>Whether it stands in a paragraph of the text as it reads (not in a deleted row's, whose place is the next one's).</summary>
+        public bool Placed;
+
         /// <summary>The revisions it is in, by their places in the list (-1 for none).</summary>
         public int InsertionOf = -1, DeletionOf = -1, FormattingOf = -1, ParagraphOf = -1;
 
@@ -125,19 +128,25 @@ public sealed partial class WordDocument
         var spans = new List<RevisionSpan>();
         void Add(RevisionSpan span)
         {
-            // Pieces of one change meeting are one.
-            if (spans.Count > 0 && spans[^1] is var last && last.Revision == span.Revision && last.Mark == span.Mark)
+            // Pieces of one change meeting are one; an insertion goes on over a deletion within it (another author's of what it inserted).
+            for (var k = spans.Count - 1; k >= 0; k--)
             {
-                if (span.Deleted != null && last.Deleted != null && last.Offset == span.Offset)
+                var last = spans[k];
+                if (last.Revision == span.Revision && last.Mark == span.Mark)
                 {
-                    spans[^1] = last with { Deleted = last.Deleted + span.Deleted };
-                    return;
+                    if (span.Deleted != null && last.Deleted != null && last.Offset == span.Offset)
+                    {
+                        spans[k] = last with { Deleted = last.Deleted + span.Deleted };
+                        return;
+                    }
+                    if (span.Deleted == null && last.Deleted == null && last.Offset + last.Length == span.Offset)
+                    {
+                        spans[k] = last with { Length = last.Length + span.Length };
+                        return;
+                    }
                 }
-                if (span.Deleted == null && last.Deleted == null && last.Offset + last.Length == span.Offset)
-                {
-                    spans[^1] = last with { Length = last.Length + span.Length };
-                    return;
-                }
+                if (!(span.Deleted == null && last.Deleted != null && last.Offset == span.Offset))
+                    break;
             }
             spans.Add(span);
         }
@@ -166,7 +175,8 @@ public sealed partial class WordDocument
                     Add(new RevisionSpan(revisions[entry.ParagraphOf].Id, RevisionKind.ParagraphFormatting, entry.Offset, 0, Mark: true));
                 continue;
             }
-            if (entry.Row)
+            // A deleted row's text stands in no paragraph of the text as it reads (Revisions lists it).
+            if (entry.Row || !entry.Placed)
                 continue;
             if (entry.DeletionOf >= 0 && entry.Length == 0)
             {
@@ -194,7 +204,11 @@ public sealed partial class WordDocument
         var (_, revisions, moves) = Reviewed();
         if (revisions.FirstOrDefault(r => r.Id == id) is not { } revision)
             return null;
+        // A move's range round what it moved: its start first, its end last.
+        var marks = revision.Move is { } name && moves.TryGetValue(name, out var found)
+            ? found.Where(m => m.Name.LocalName.StartsWith(revision.Kind == RevisionKind.MovedFrom ? "moveFrom" : "moveTo", StringComparison.Ordinal)).ToList() : [];
         var written = new List<string>();
+        written.AddRange(marks.Where(m => m.Name.LocalName.EndsWith("Start", StringComparison.Ordinal)).Select(m => m.ToString(SaveOptions.DisableFormatting)));
         foreach (var element in revision.Elements)
         {
             var shown = element.Parent is { Name.LocalName: "rPr" } run && run.Parent is { Name.LocalName: "pPr" } properties && element.Name.LocalName is "ins" or "del" or "moveFrom" or "moveTo"
@@ -202,8 +216,7 @@ public sealed partial class WordDocument
                 : element.Name.LocalName is "rPrChange" or "pPrChange" && element.Parent is { } holder ? holder : element;
             written.Add(shown.ToString(SaveOptions.DisableFormatting));
         }
-        if (revision.Move is { } name && moves.TryGetValue(name, out var marks))
-            written.AddRange(marks.Select(m => m.ToString(SaveOptions.DisableFormatting)));
+        written.AddRange(marks.Where(m => m.Name.LocalName.EndsWith("End", StringComparison.Ordinal)).Select(m => m.ToString(SaveOptions.DisableFormatting)));
         return written;
     }
 
@@ -307,6 +320,7 @@ public sealed partial class WordDocument
             var entry = new Entry
             {
                 Text = "\r" + (LastInCell(p) ? "\a" : ""), Paragraph = model?.Id, Offset = at, Mark = true, Own = model != null && ReferenceEquals(model.Element, p),
+                Placed = model != null,
                 Insertion = mark?.Elements().LastOrDefault(e => e.Name.Namespace == W && Inserting(e)),
                 Deletion = mark?.Elements().LastOrDefault(e => e.Name.Namespace == W && Deleting(e)),
                 Formatting = mark?.Element(W + "rPrChange"), ParagraphChange = properties?.Element(W + "pPrChange"), ParagraphStart = start,
@@ -369,7 +383,7 @@ public sealed partial class WordDocument
                 var del = properties?.Elements().FirstOrDefault(e => e.Name == W + "del" || e.Name == W + "moveFrom") ?? deletion;
                 var text = string.Concat(r.Elements(M + "t").Select(t => t.Value));
                 if (text.Length > 0)
-                    entries.Add(new Entry { Text = text, Paragraph = current?.Id, Offset = at, Insertion = ins, Deletion = del });
+                    entries.Add(new Entry { Text = text, Paragraph = current?.Id, Offset = at, Insertion = ins, Deletion = del, Placed = current != null });
             }
         }
 
@@ -395,10 +409,11 @@ public sealed partial class WordDocument
                 };
                 if (text == null)
                     continue;
-                var entry = new Entry { Text = text, Paragraph = current?.Id, Offset = at, Insertion = insertion, Deletion = deletion, Formatting = formatting };
+                var entry = new Entry { Text = text, Paragraph = current?.Id, Offset = at, Insertion = insertion, Deletion = deletion, Formatting = formatting, Placed = current != null };
                 if (deletion == null && offsets.TryGetValue(c, out var mapped))
                 {
-                    (entry.Offset, entry.Length, entry.Text) = mapped;
+                    // (A field's characters are none of Word's text: its result is, which the text reads as one.)
+                    (entry.Offset, entry.Length, entry.Text) = text.Length == 0 ? (mapped.Start, mapped.Length, "") : mapped;
                     at = mapped.Start + mapped.Length;
                 }
                 entries.Add(entry);
@@ -442,8 +457,12 @@ public sealed partial class WordDocument
             }
             Changed(table.Element(W + "tblPr"), "tblPrChange");
             Changed(table.Element(W + "tblGrid"), "tblGridChange");
+            // The table's formatting reaches to the end of the last row that holds a change of its own, else over the whole table
+            // (measured: docx/generated/revisions, a row added after three formatted ones is not in it).
+            var lastChanged = -1;
             foreach (var row in Rows(table))
             {
+                var had = changes.Count;
                 var properties = row.Element(W + "trPr");
                 Changed(properties, "trPrChange");
                 Changed(row.Element(W + "tblPrEx"), "tblPrExChange");
@@ -457,9 +476,11 @@ public sealed partial class WordDocument
                     Text = "\r\a", Paragraph = current?.Id, Offset = at, Mark = true, Row = true,
                     Insertion = properties?.Element(W + "ins"), Deletion = properties?.Element(W + "del"),
                 });
+                if (changes.Count > had)
+                    lastChanged = entries.Count - 1;
             }
             if (changes.Count > 0 && entries.Count > first)
-                tables.Add((table, first, entries.Count - 1, changes));
+                tables.Add((table, first, lastChanged >= 0 ? lastChanged : entries.Count - 1, changes));
         }
 
         /// <summary>A table's rows, those in content controls and custom XML around rows too.</summary>
@@ -518,9 +539,20 @@ public sealed partial class WordDocument
             {
                 if (moves.TryGetValue(open[k].Name, out var marks))
                     marks.Add(e);
+                closed.Add((from, open[k].Name));
                 open.RemoveAt(k);
             }
         }
+
+        /// <summary>The moves' ranges begun and ended, by side (from) and name: a move is one where both its ranges are whole.</summary>
+        readonly HashSet<(bool From, string Name)> closed = [];
+
+        /// <summary>
+        /// Whether a change is a move's half (w:moveFrom, w:moveTo in a range whose other half's range is whole too); Word takes one
+        /// without them as an insertion or deletion (measured: a moved paragraph whose ranges' ends between paragraphs were left out lists
+        /// as inserted and deleted).
+        /// </summary>
+        bool Moved(XElement change) => moveNames.TryGetValue(change, out var name) && closed.Contains((true, name)) && closed.Contains((false, name));
 
         /// <summary>A move's change known by the name of the range open around it.</summary>
         void Named(XElement? change)
@@ -576,8 +608,8 @@ public sealed partial class WordDocument
                     member(entry, revisions.Count - 1);
                 }
             }
-            Track(e => e.Insertion, e => e.Name.LocalName == "moveTo" ? RevisionKind.MovedTo : RevisionKind.Insertion, (e, k) => e.InsertionOf = k, 3);
-            Track(e => e.Deletion, e => e.Name.LocalName == "moveFrom" ? RevisionKind.MovedFrom : RevisionKind.Deletion, (e, k) => e.DeletionOf = k, 3);
+            Track(e => e.Insertion, e => e.Name.LocalName == "moveTo" && Moved(e) ? RevisionKind.MovedTo : RevisionKind.Insertion, (e, k) => e.InsertionOf = k, 3);
+            Track(e => e.Deletion, e => e.Name.LocalName == "moveFrom" && Moved(e) ? RevisionKind.MovedFrom : RevisionKind.Deletion, (e, k) => e.DeletionOf = k, 3);
             Track(e => e.Formatting, _ => RevisionKind.Formatting, (e, k) => e.FormattingOf = k, 4);
             // Paragraphs' formatting changes, by their marks: those of one author one after the other.
             Revised? paragraphs = null;
@@ -603,7 +635,9 @@ public sealed partial class WordDocument
             }
             foreach (var (_, first, last, changes) in tables)
             {
-                foreach (var group in changes.GroupBy(c => c.Attr("author") ?? ""))
+                // A change without an author (a grid's change Word writes so) goes with the table's first author's.
+                var firstAuthor = changes.Select(c => c.Attr("author")).FirstOrDefault(a => !string.IsNullOrEmpty(a)) ?? "";
+                foreach (var group in changes.GroupBy(c => c.Attr("author") is { Length: > 0 } author ? author : firstAuthor))
                 {
                     var table = new Revised(RevisionKind.TableFormatting, group.Key, Date(group.First())) { First = first, Last = last };
                     table.Elements.AddRange(group);
@@ -859,6 +893,22 @@ public sealed partial class WordDocument
                 return k;
         }
         return blocks.Count - 1;
+    }
+
+    /// <summary>
+    /// How many tracked changes the other stories hold (headers, footers, notes, comments: the elements of their changes), which Revisions
+    /// does not list (Word's Revisions of the document are the body's) and accepting or rejecting all settles too.
+    /// </summary>
+    public int RevisionsElsewhere()
+    {
+        Read();
+        var count = 0;
+        foreach (var part in StoryParts())
+        {
+            if (XDocument.Parse(new PartText(package.ReadBytes(part)).Text).Root is { } root)
+                count += TextEdits.Changes(root, null).Count(e => !e.Name.LocalName.EndsWith("RangeStart", StringComparison.Ordinal) && !e.Name.LocalName.EndsWith("RangeEnd", StringComparison.Ordinal));
+        }
+        return count;
     }
 
     /// <summary>The parts of the stories besides the body: headers, footers, footnotes, endnotes, comments.</summary>
