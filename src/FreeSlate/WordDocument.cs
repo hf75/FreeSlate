@@ -1388,7 +1388,7 @@ public sealed partial class WordDocument : IEditableDocument
             storiesChanged.Clear();
             paginator = new Paginator(context, layout, reader) { EndnoteContinuation = continuation, KeepCheckpoints = true };
             pages = paginator.Paginate(blocks, reader.LastSection(), footnotes, endnotes, separator, PagesAtOnce);
-            renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
+            renderer = NewRenderer(layout, reader, blocks);
             scenes = null;
         }
         else
@@ -2355,7 +2355,7 @@ public sealed partial class WordDocument : IEditableDocument
         own.ReadBody(int.MaxValue);
         layout = new ParagraphLayout(context, new RunStyles(context)) { Evaluator = new FieldEvaluator(context, first) { OfFirstBlocks = true } };
         paginator = new Paginator(context, layout, own);
-        renderer = new PageRenderer(context, new Drawings(context, culture), new TableLayout(context, layout));
+        renderer = NewRenderer(layout, own, first);
         Draw(paginator.Paginate(first, own.ReadingSection(), pages: PagesAtOnce));
         return scenes!;
     }
