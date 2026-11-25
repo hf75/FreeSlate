@@ -232,17 +232,25 @@ static partial class TextEdits
         return tokens;
     }
 
-    /// <summary>A block's markup as compared: its XML without the ids of editing sessions and paragraphs, which say nothing of its content.</summary>
+    /// <summary>
+    /// A block's markup as compared: its XML without the ids of editing sessions and paragraphs, those of content controls (w:sdtPr's
+    /// w:id, new each time a citation or bibliography is made anew with the same text) and those of notes' references (a note written
+    /// again where it stood is a new note of the same place), which say nothing of its content; a simple field without its result,
+    /// which the field computes (a cross-reference written again is the same, whatever it showed before it was updated).
+    /// </summary>
     static string Key(XElement block)
     {
         var copy = new XElement(block);
+        copy.DescendantsAndSelf().Where(e => e.Name.LocalName == "id" && e.Parent?.Name.LocalName == "sdtPr").Remove();
+        foreach (var field in copy.DescendantsAndSelf().Where(e => e.Name.LocalName == "fldSimple").ToList())
+            field.RemoveNodes();
         foreach (var e in copy.DescendantsAndSelf())
         {
             foreach (var attribute in e.Attributes().ToList())
             {
                 var name = attribute.Name.LocalName;
                 if (name.StartsWith("rsid", StringComparison.Ordinal) || name is "paraId" or "textId" || attribute.IsNamespaceDeclaration
-                    || name == "id" && e.Name.LocalName is "docPr" or "cNvPr")
+                    || name == "id" && e.Name.LocalName is "docPr" or "cNvPr" or "footnoteReference" or "endnoteReference")
                     attribute.Remove();
             }
         }
@@ -495,6 +503,22 @@ static partial class TextEdits
                 emitted.Add((atom, after.Changes));
                 (i, j) = (x + 1, y + 1);
             }
+        }
+        // A note's reference the new blocks lack is not kept as deleted: the note went with it (the document's notes are those its
+        // references name), and Word takes a document whose reference names no note, or whose note is referred to by a deletion and an
+        // insertion both, as damaged. One that moved (the text around it rewritten) stands where it is now, unmarked.
+        static string? Note(Atom atom) => atom.Content.Name.LocalName is "footnoteReference" or "endnoteReference"
+            ? atom.Content.Name.LocalName + ":" + (string?)atom.Content.Attributes().FirstOrDefault(x => x.Name.LocalName == "id") : null;
+        var oldNotes = a.Select(Note).OfType<string>().ToHashSet();
+        for (var k = emitted.Count - 1; k >= 0; k--)
+        {
+            var (atom, changes) = emitted[k];
+            if (Note(atom) is not { } note)
+                continue;
+            if (changes.Any(c => ReferenceEquals(c, Deletion)))
+                emitted.RemoveAt(k);
+            else if (oldNotes.Contains(note) && changes.Any(c => ReferenceEquals(c, Insertion)))
+                emitted[k] = (atom, atom.Changes);
         }
         var merged = new XElement(now.Name, now.Attributes());
         if (now.Element(w + "pPr") is { } properties0)
