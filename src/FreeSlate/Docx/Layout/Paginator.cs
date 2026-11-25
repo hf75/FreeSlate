@@ -6582,13 +6582,24 @@ public sealed class Paginator(DocumentContext context, ParagraphLayout layout, M
     /// <summary>
     /// The lines between the columns of the current section on this page (w:cols/@sep): in the middle of each space
     /// between columns, from the columns' top to the bottom of the longest column (measured with page-setup, page 5).
+    /// Only beside a column that text goes on in: none after the last column holding lines (Word 365's PDF of two columns
+    /// with a line whose text all stands in the first: no line). The columns' lines are done with either way, so that a
+    /// section with lines between its columns beginning on a new page draws none along the text of the section before
+    /// on the page before (Word 365's PDF of a section of one column followed by one of two with a line, on the next
+    /// page: none on the first page; scratchpad gaps/C).
     /// </summary>
     void CloseColumns()
     {
         if (page == null || flow.Count == 0 || !section.ColumnSeparator || section.Columns < 2)
+        {
+            flow.Clear();
             return;
+        }
         var bottom = flow.Max(f => page.Lines[f.Index].Top + page.Lines[f.Index].Line.Height);
-        for (var c = 0; c + 1 < section.Columns; c++)
+        // The last column holding lines: the one whose room a line begins in, or nearest to it (a line hanging out of it).
+        int ColumnAt(double x) => Enumerable.Range(0, section.Columns).MinBy(c => Column(c) is var (left, width) ? Math.Max(0, Math.Max(left - x, x - left - width)) : 0);
+        var used = flow.Max(f => ColumnAt(page.Lines[f.Index].Left));
+        for (var c = 0; c + 1 < section.Columns && c < used; c++)
         {
             var (left, width) = Column(c);
             var next = Column(c + 1).Left;
