@@ -101,6 +101,9 @@ static partial class Reviewing
                 text.Append(": \"").Append(Shown(r.Text)).Append('"');
             text.Append('\n');
         }
+        if (word.RevisionsElsewhere() is > 0 and var elsewhere)
+            text.Append("Headers, footers, notes or comments hold ").Append(elsewhere.ToString(CultureInfo.InvariantCulture))
+                .Append(elsewhere == 1 ? " more change" : " more changes").Append(" (accepting or rejecting all of them settles those too).\n");
         return text.ToString();
     }
 
@@ -284,7 +287,8 @@ static partial class Reviewing
             if (element.Name == Fs + "mark")
             {
                 Close();
-                var mark = new XElement(Fs + "mark", new XAttribute("kind", change.Kind), attributes.Select(a => new XAttribute(a)));
+                var mark = new XElement(Fs + "mark", new XAttribute("kind", change.Kind), new XAttribute("change", kind == "rPrChange" ? "pPrChange" : kind),
+                    attributes.Select(a => new XAttribute(a)));
                 if (!first)
                     mark.SetAttributeValue(W + "id", NewId().ToString(CultureInfo.InvariantCulture));
                 first = false;
@@ -375,6 +379,8 @@ static partial class Reviewing
             }
             return string.Concat(elements.Select(Serialized));
         }
+        // A field of its own element (a link's, a page number's) as the runs of a field, as Word marks one inserted or deleted.
+        elements = [.. elements.SelectMany(e => e.Name == W + "fldSimple" ? Complex(e) : [e])];
         var deleting = kind is "del" or "moveFrom";
         if (deleting)
         {
@@ -399,7 +405,8 @@ static partial class Reviewing
         }
         foreach (var element in elements)
         {
-            if (element.Name.LocalName is "r" or "sdt" or "smartTag" or "customXml")
+            // Runs and what an insertion holds besides: another author's deletion within it stays within it.
+            if (element.Name.LocalName is "r" or "sdt" or "smartTag" or "customXml" || !deleting && element.Name.LocalName is "del" or "moveFrom")
             {
                 runs.Add(element);
                 continue;
@@ -416,6 +423,19 @@ static partial class Reviewing
         }
         Flush();
         return output.ToString();
+    }
+
+    /// <summary>A simple field (w:fldSimple) as the runs of a complex one: its beginning, its instruction, its result's runs, its end, in its result's look.</summary>
+    static IEnumerable<XElement> Complex(XElement field)
+    {
+        var look = field.Descendants(W + "rPr").FirstOrDefault();
+        XElement Run(params object[] content) => new(W + "r", look != null ? new XElement(look) : null, content);
+        yield return Run(new XElement(W + "fldChar", new XAttribute(W + "fldCharType", "begin")));
+        yield return Run(new XElement(W + "instrText", new XAttribute(XNamespace.Xml + "space", "preserve"), (string?)field.Attribute(W + "instr") ?? ""));
+        yield return Run(new XElement(W + "fldChar", new XAttribute(W + "fldCharType", "separate")));
+        foreach (var result in field.Elements())
+            yield return new XElement(result);
+        yield return Run(new XElement(W + "fldChar", new XAttribute(W + "fldCharType", "end")));
     }
 
     /// <summary>The usual prefixes of markup given (see Markup.Namespaces) and the marks' own, which elements are parsed and written within.</summary>
