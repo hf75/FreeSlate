@@ -557,7 +557,9 @@ email="…": VML with Word's o:signatureline and a picture of the line, `Signatu
 ```box blocks at their places: wpg:wgp, its shapes in its own space, read back as the block) and boxes whose text flows on (link=next:
 wps:txbx id and wps:linkedTxbx, in the body or in a group, `Groups`), a cover page ("{cover style=band title=… …}": a building block of
 Word's gallery Cover Pages at the document's start, in place of the cover it has, in one of FreeSlate's own designs, band, bar, frame
-or plain, in the tone's colours, its fields content controls named as Word's are; read back as one line, `Covers`; a write from its
+or plain, in the tone's colours, its fields content controls named and bound to the document's properties as Word's are, which take
+their values: title, subject and author, the cover page properties' date and abstract, `WordDocument.SetCoverPageProperties`; read back
+as one line, `Covers`; a write from its
 first paragraph on takes it away whole first), tracked changes as CriticMarkup writes them with their changes' ids after the closing
 marks ("{++inserted++12}", "{--deleted--13}", "{==formatted==14}", "¶" in one a paragraph's mark; listed after the document as
 "Changes:"), written back as read keeping each its author, time and kind, a deletion its XML, a formatting change its looks

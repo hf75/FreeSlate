@@ -10,7 +10,9 @@ namespace FreeSlate.Editor.Asking;
 /// date="2026-11-25" abstract="…"}" on a line of its own makes one at the document's start, in place of the cover it has: a building block
 /// of Word's gallery Cover Pages (a block content control, w:docPartObj with w:docPartGallery Cover Pages and w:docPartUnique, as Word's
 /// designs stand), its paragraph holding shapes in the tone's colours behind the text and text boxes placed on the page, each field a
-/// content control named as Word names its covers' (Title, Subtitle, Author, Date, Abstract), and a page break after them. The
+/// content control named as Word names its covers' (Title, Subtitle, Author, Date, Abstract) and bound to the document's properties as
+/// Word binds them (the title, subject and author, the cover page properties' date and abstract), which take its values, and a page
+/// break after them. The
 /// designs are FreeSlate's own: band (a broad band of the tone's colour across the top, the title on it), bar (a bar down the left side,
 /// the title beside it), frame (a double frame round the page, everything centred, a small diamond under the title), plain (a short bar
 /// over a large title at the top, a hairline over the author at the bottom). Read back as that line, with the ids of the cover's first
@@ -75,6 +77,15 @@ static class Covers
             problems.Add("The cover goes before the document's first paragraph; the document begins with a table, so it was not made.");
             return [];
         }
+        // Its fields bound to the document's properties (see Field), which take their values, as typing into a cover's field in Word sets
+        // them: the title, subject and author; the cover page properties' date and abstract.
+        string? Given(string key) => settings.GetValueOrDefault(key) is { Length: > 0 } value ? value.Trim() : null;
+        var properties = new DocumentProperties { Title = Given("title"), Subject = Given("subtitle"), Author = Given("author") };
+        if (properties.Title != null || properties.Subject != null || properties.Author != null)
+            word.SetProperties(properties);
+        var published = Given("date") is { } given ? Date(given) : null;
+        if (published != null || Given("abstract") != null)
+            word.SetCoverPageProperties(published, Given("abstract"));
         var section = word.SectionOf(beginning);
         var markup = Markup(style, settings, section, Colors(word), word.LanguageOf(beginning));
         return word.InsertBlocks(beginning, markup, before: true);
@@ -103,9 +114,23 @@ static class Covers
         + $"<wp:extent cx=\"{E(width)}\" cy=\"{E(height)}\"/><wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/><wp:wrapNone/><wp:docPr id=\"1\" name=\"{name}\"/><wp:cNvGraphicFramePr/>"
         + $"<a:graphic><a:graphicData uri=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\">{shape}</a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>";
 
+    /// <summary>A date as a cover's field gives it (2026-11-25); null where it is none.</summary>
+    static DateTime? Date(string value) =>
+        DateTime.TryParseExact(value.Trim(), ["yyyy-MM-dd", "yyyy-M-d"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null;
+
+    /// <summary>A content control's binding to a core property of the document (dc:title …), as Word writes it.</summary>
+    static string CoreBinding(string name) =>
+        "<w:dataBinding w:prefixMappings=\"xmlns:ns0='http://purl.org/dc/elements/1.1/' xmlns:ns1='http://schemas.openxmlformats.org/package/2006/metadata/core-properties' \""
+        + $" w:xpath=\"/ns1:coreProperties[1]/ns0:{name}[1]\" w:storeItemID=\"{{6C3C8BC8-F283-45AE-878A-BAB7291924A1}}\"/>";
+
+    /// <summary>A content control's binding to one of the cover page properties (PublishDate, Abstract), as Word writes it.</summary>
+    static string CoverBinding(string name) =>
+        $"<w:dataBinding w:prefixMappings=\"xmlns:ns0='{WordDocument.CoverPageNamespace}' \" w:xpath=\"/ns0:CoverPageProperties[1]/ns0:{name}[1]\" w:storeItemID=\"{WordDocument.CoverPageItemId}\"/>";
+
     /// <summary>
-    /// A text box placed on the page holding a field of the cover in a content control named as Word names it, its text in a size and
-    /// colour of the design's, bold or not, aligned as given, at the box's top or bottom; nothing where the field is not given.
+    /// A text box placed on the page holding a field of the cover in a content control named as Word names it, bound to the document's
+    /// property Word binds it to (see Make), its text in a size and colour of the design's, bold or not, aligned as given, at the box's top
+    /// or bottom; nothing where the field is not given.
     /// </summary>
     static string Field(IReadOnlyDictionary<string, string> settings, string key, double x, double y, double width, double height, double size,
         string color, bool bold, string align = "left", string anchor = "t", string? style = null, int lcid = 1033)
@@ -117,20 +142,31 @@ static class Covers
         var properties = (bold ? "<w:b/><w:bCs/>" : "") + $"<w:color w:val=\"{color}\"/><w:sz w:val=\"{half}\"/><w:szCs w:val=\"{half}\"/>";
         var kind = "<w:text/>";
         var shown = value;
+        // Bound to the document's properties as Word binds its covers' fields (see Make; measured in Word 365 by COM, a cover of its gallery:
+        // Title, Subtitle and Author to the core properties' title, subject and creator, Date to the cover page properties' PublishDate).
+        var binding = key switch
+        {
+            "title" => CoreBinding("title"),
+            "subtitle" => CoreBinding("subject"),
+            "author" => CoreBinding("creator"),
+            "abstract" => CoverBinding("Abstract"),
+            _ => "",
+        };
         if (key == "abstract")
             kind = "<w:text w:multiLine=\"1\"/>";
-        if (key == "date" && DateTime.TryParseExact(value.Trim(), ["yyyy-MM-dd", "yyyy-M-d"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        if (key == "date" && Date(value) is { } date)
         {
             var german = (lcid & 0x3FF) == 0x07;
             var (format, culture) = german ? ("d. MMMM yyyy", "de-DE") : ("MMMM d, yyyy", "en-US");
             kind = $"<w:date w:fullDate=\"{date:yyyy-MM-dd}T00:00:00Z\"><w:dateFormat w:val=\"{format}\"/><w:lid w:val=\"{culture}\"/><w:storeMappedDataAs w:val=\"dateTime\"/><w:calendar w:val=\"gregorian\"/></w:date>";
             shown = date.ToString(format, CultureInfo.GetCultureInfo(culture));
+            binding = CoverBinding("PublishDate");
         }
         var id = Random.Shared.Next(100_000_000, 999_999_999).ToString(CultureInfo.InvariantCulture);
         var runs = string.Join("<w:r><w:rPr>" + properties + "</w:rPr><w:br/></w:r>", shown.Split('\n').Select(line =>
             $"<w:r><w:rPr>{properties}</w:rPr><w:t xml:space=\"preserve\">{Escaped(line.Trim())}</w:t></w:r>"));
         var paragraph = $"<w:p><w:pPr>{(style != null ? $"<w:pStyle w:val=\"{style}\"/>" : "")}<w:spacing w:before=\"0\" w:after=\"0\"/><w:jc w:val=\"{align}\"/><w:rPr>{properties}</w:rPr></w:pPr>"
-            + $"<w:sdt><w:sdtPr><w:rPr>{properties}</w:rPr><w:alias w:val=\"{alias}\"/><w:tag w:val=\"{alias}\"/><w:id w:val=\"{id}\"/>{kind}</w:sdtPr><w:sdtContent>{runs}</w:sdtContent></w:sdt></w:p>";
+            + $"<w:sdt><w:sdtPr><w:rPr>{properties}</w:rPr><w:alias w:val=\"{alias}\"/><w:tag w:val=\"{alias}\"/><w:id w:val=\"{id}\"/>{binding}{kind}</w:sdtPr><w:sdtContent>{runs}</w:sdtContent></w:sdt></w:p>";
         return Anchored(x, y, width, height, behind: false, "Cover " + alias,
             "<wps:wsp><wps:cNvSpPr txBox=\"1\"/><wps:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/>" + $"<a:ext cx=\"{E(width)}\" cy=\"{E(height)}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>"
             + $"<wps:txbx><w:txbxContent>{paragraph}</w:txbxContent></wps:txbx>"

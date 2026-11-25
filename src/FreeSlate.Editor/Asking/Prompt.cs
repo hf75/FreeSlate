@@ -168,7 +168,8 @@ static class Prompt
           date="2026-11-25" abstract="…"}" on a line of its own makes it at the document's start, in place of the cover it has; leave
           out the fields you do not want. style: band (a broad band of the tone's colour across the top, the title on it), bar (a bar
           down the left side, the title beside it), frame (a double frame round the page, all centred) or plain (a large title at the
-          top, the author at the bottom). It reads back as that line with its paragraphs' ids; write it again to change it.
+          top, the author at the bottom). Its title, subtitle and author are the document's title, subject and author, as in Word (the
+          properties tool changes them on the cover too). It reads back as that line with its paragraphs' ids; write it again to change it.
         - Direct formatting, where the wish asks for a look the meanings do not give (a word in red, a form's small print, a letter's
           layout): ==marked== (highlighted in yellow), ~~struck through~~, H~2~O and x^2^ (subscript and superscript, without spaces in
           them), and {words|text} for the rest, the words those of Word's Font dialog: bold, italic, underline (or underline=double,
