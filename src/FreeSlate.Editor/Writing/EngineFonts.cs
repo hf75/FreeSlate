@@ -23,7 +23,8 @@ public static class EngineFonts
 
     static readonly (string Name, bool Bold, bool Italic)[] Styles = [("Regular", false, false), ("Bold", true, false), ("Italic", false, true), ("BoldItalic", true, true)];
 
-    public static FontLocator Locator { get; } = FontLocator.Default.With(
+    /// <summary>The editor's own faces: Inter's and the shelf's.</summary>
+    static readonly FontFace[] Own =
     [
         Face("Inter", false, "Inter-Regular.ttf"),
         Face("Inter", true, "Inter-Bold.ttf"),
@@ -34,7 +35,19 @@ public static class EngineFonts
             from style in Styles
             let file = FileOf(family, style.Name)
             select new FontFace(family, style.Bold, style.Italic, "fonts/" + file, System: false) { Embedded = new Lazy<byte[]?>(() => Bytes(file)) }),
-    ]);
+    ];
+
+    public static FontLocator Locator { get; } = FontLocator.Default.With(Own);
+
+    /// <summary>
+    /// The faces of the editor's own fonts a document sets text in and the machine does not have, with their files, to embed in it (see
+    /// WordDocument.EmbedFonts), so that Word shows it in them too; those whose files are not at hand left out.
+    /// </summary>
+    public static IReadOnlyList<EmbeddedFace> Embeddable(IEnumerable<string> families)
+    {
+        var wanted = families.Where(family => !FontLocator.Default.IsInstalled(family)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return [.. Own.Where(face => wanted.Contains(face.Family)).Select(face => face.Embedded?.Value is { Length: > 0 } data ? new EmbeddedFace(face.Family, face.Bold, face.Italic, data) : null).OfType<EmbeddedFace>()];
+    }
 
     /// <summary>
     /// How a page fetches a font file of the shelf by its path under Fonts ("Gelasio/Gelasio-Bold.ttf"), null where it is missing; null

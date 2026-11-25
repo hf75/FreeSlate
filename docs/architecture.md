@@ -154,7 +154,8 @@ what is Word's own lives in `Docx/`. `DocxConverter` runs the steps:
   out, a document of its own).
 - `PageRenderer` writes every page as SVG and positioned HTML: glyph outlines placed with `<use>`, a transparent text
   layer, `Drawings` and `Vml` for DrawingML and VML objects, and with markup the pane, balloons and change bars
-  (`PageRenderer.Markup`, `Describe`); lines and glyphs stand on Word's 600 dpi device as it rounds onto it
+  (`PageRenderer.Markup`, `Describe`; a `WordDocument` read with markup as DocxConverter, `WordDocument.Balloons`); lines and glyphs
+  stand on Word's 600 dpi device as it rounds onto it
   (`WordDevice`, `DeviceGlyphs`).
 
 ## Scenes (`Rendering/`)
@@ -329,7 +330,11 @@ over each grid column at its top and bottom, as the layout resolves the cells' a
   change to undo. `TrackRevisions` is Word's Track Changes (w:trackRevisions). `MarkChanges` marks what changed since the body read as
   `BodyMarkup` gave it as the author's tracked changes, as Word's Compare marks a revised document (`Docx/TextEdits.Compare.cs`:
   paragraphs paired by their words, the words that differ deleted and inserted, formatting with the look it had, paragraphs and rows
-  that came or went inserted or deleted, the changes the blocks held kept).
+  that came or went inserted or deleted, the changes the blocks held kept; compared without the ids of content controls and notes'
+  references and without simple fields' results, so that a citation, bibliography, cross-reference or note made anew alike is no
+  change, and a note's reference never deleted, as its note goes with it). `EmbedFonts` embeds fonts as Word's Embed fonts in the
+  file does (obfuscated .odttf parts named in the font table, w:embedTrueTypeFonts), `FontFamilies` names those the document sets
+  text in, `FontOf` a paragraph's.
 - `Editing/EditSession` is an editor's work without its surface, over either kind of document: the cursor and the
   selection as places, typing, Backspace, Delete, Enter, formats, copy and paste, markup, blocks and notes put in, each
   handling one step to undo, whose changes the document keeps as one version (typing on adds to it); what else a
@@ -600,8 +605,13 @@ all, an author's or by their ids, through the engine's `AcceptRevisions` and `Re
 read on the "Page:" line), properties (`Mailings.Properties`: File > Info's title, subject, keywords
 and the others, never a name the wish does not give, read after the document as "Properties:") and mailings (`Mailings.Mailing`: a
 form letter, an envelope before the letter, the document made a sheet of labels, read as "Mailings:", the envelope's and the
-sheet's paragraphs not as the document's text; the page tool and "Page:" are the letter's). A write with track (or in a document whose Track Changes is on) is marked as Claude's tracked changes against the
-body as it read before it (`WordDocument.MarkChanges`), word by word, as Word's Compare marks a revision. A token written is its object: one in text a write takes away is kept from before and goes in
+sheet's paragraphs not as the document's text; the page tool and "Page:" are the letter's) and save (`Saving`, a first way to save
+before the editor has a place of its own for it: the document as a Word file by the name given in the folder FreeSlate of the user's
+own folder, told without the whole path; the editor's own fonts it is set in and the machine lacks embedded, `EngineFonts.Embeddable`,
+so that Word shows it in them). A write with track (or in a document whose Track Changes is on) is marked as Claude's tracked changes
+against the body as it read before it (`WordDocument.MarkChanges`), word by word, as Word's Compare marks a revision; the fields Word
+updates (a table of contents' pages, references, the count of words) after that, unmarked. SmartArt and charts take the text's
+font where they are written (`Markup.BodyFont`, `WordDocument.FontOf`), as Word's take the theme's body font. A token written is its object: one in text a write takes away is kept from before and goes in
 again where its token is written (its markup as copying keeps it, found again by that markup without its ids), one written
 elsewhere moves there; a note's mark written again brings its note with its text. A table in text a write takes away waits
 after the place and is written again in place where the write gives a table like it (`Writing.Tables`): rows and columns added

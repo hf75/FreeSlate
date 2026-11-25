@@ -138,7 +138,7 @@ public sealed class Talk : GestureRing.IAsked
                         case ToolBegan { Name: "picture" or "tone" or "page" or "comment" or "review" }:
                             Say("AskWriting");
                             break;
-                        case ToolBegan { Name: "properties" or "mailings" }:
+                        case ToolBegan { Name: "properties" or "mailings" or "save" }:
                             Say("AskWriting");
                             break;
                         case ToolBegan { Name: "look" }:
@@ -282,6 +282,11 @@ public sealed class Talk : GestureRing.IAsked
             case "review":
             {
                 var (told, error) = Reviewing.Review(editing, sheets, called.Json);
+                return new ToolResultPart(called.Id, told, [], error);
+            }
+            case "save":
+            {
+                var (told, error) = Saving.Save(editing, called.Json);
                 return new ToolResultPart(called.Id, told, [], error);
             }
             default:

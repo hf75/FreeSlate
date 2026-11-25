@@ -416,6 +416,16 @@ static class Prompt
         }
         """;
 
+    const string SaveSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "description": "The file's name, without .docx (\"Project Proposal\")." }
+          },
+          "required": ["name"]
+        }
+        """;
+
     public static readonly IReadOnlyList<ClaudeTool> Tools =
     [
         new("write", "Writes into the document: at the focus, after or before a paragraph, or in place of paragraphs. The content streams into the document as you write it. Give place and paragraph before content.", WriteSchema, Streams: true),
@@ -427,5 +437,6 @@ static class Prompt
         new("review", "Reviews the document's tracked changes as Word's Review tab does: accepts or rejects all of them, an author's or those with the ids given (a move with its other half); or turns Word's Track Changes on or off. Tells the changes as they then are.", ReviewSchema),
         new("properties", "Sets the document's properties as Word's File > Info shows them (\"Properties:\" after the document): title, subject, keywords, comments, category, status, company, manager, author. Never a person's name the user did not give. Give only what changes; an empty text takes one away.", PropertiesSchema),
         new("mailings", "Sets the document up for Word's Mailings (\"Mailings:\" after the document): a form letter for a mail merge, an envelope printed before the letter, or a sheet of labels (the document becomes the sheet). Give only what changes.", MailingsSchema),
+        new("save", "Saves the document as a Word file (.docx) under the name given, in the folder FreeSlate of the user's own folder; a file of that name is saved over. Only when the user asks for it to be saved.", SaveSchema),
     ];
 }
